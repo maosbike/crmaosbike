@@ -1,0 +1,10 @@
+{
+  "name": "crmaosbike",
+  "private": true,
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "build:frontend": "cd frontend && npm run build"
+  }
+}
