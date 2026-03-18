@@ -12,94 +12,95 @@ module.exports = async function seed(db) {
     ON CONFLICT (code) DO NOTHING
   `);
 
+  // UUIDs válidos (solo hex: 0-9, a-f)
+  const IDS = {
+    joaquin:     'c0000001-0001-0001-0001-000000000001',
+    javiera:     'c0000001-0001-0001-0001-000000000002',
+    camila:      'c0000001-0001-0001-0001-000000000003',
+    pauli:       'c0000001-0001-0001-0001-000000000004',
+    eduardo:     'c0000001-0001-0001-0001-000000000005',
+    ahentua:     'c0000001-0001-0001-0001-000000000006',
+    miguelangel: 'c0000001-0001-0001-0001-000000000007',
+    fran:        'c0000001-0001-0001-0001-000000000008',
+  };
+
   // Desactivar usuarios anteriores que no son parte de la lista nueva
-  await db.query(`
-    UPDATE users SET active = false
-    WHERE id NOT IN (
-      'u0000001-0001-0001-0001-000000000001',
-      'u0000001-0001-0001-0001-000000000002',
-      'u0000001-0001-0001-0001-000000000003',
-      'u0000001-0001-0001-0001-000000000004',
-      'u0000001-0001-0001-0001-000000000005',
-      'u0000001-0001-0001-0001-000000000006',
-      'u0000001-0001-0001-0001-000000000007',
-      'u0000001-0001-0001-0001-000000000008'
-    )
-  `);
+  const idList = Object.values(IDS).map(id => `'${id}'`).join(',');
+  await db.query(`UPDATE users SET active = false WHERE id NOT IN (${idList})`);
 
   // Usuarios oficiales (upsert por ID)
   const users = [
     {
-      id:         'u0000001-0001-0001-0001-000000000001',
-      username:   'joaquin',
-      email:      'joaquin@crmaosbike.cl',
-      fn:         'Joaquín',
-      ln:         'Oliva',
-      role:       'super_admin',
-      branch:     null,
+      id:       IDS.joaquin,
+      username: 'joaquin',
+      email:    'joaquin@crmaosbike.cl',
+      fn:       'Joaquín',
+      ln:       'Oliva',
+      role:     'super_admin',
+      branch:   null,
     },
     {
-      id:         'u0000001-0001-0001-0001-000000000002',
-      username:   'javiera',
-      email:      'javiera@crmaosbike.cl',
-      fn:         'Javiera',
-      ln:         '-',
-      role:       'vendedor',
-      branch:     'b0000001-0001-0001-0001-000000000001', // MPN
+      id:       IDS.javiera,
+      username: 'javiera',
+      email:    'javiera@crmaosbike.cl',
+      fn:       'Javiera',
+      ln:       '-',
+      role:     'vendedor',
+      branch:   'b0000001-0001-0001-0001-000000000001', // MPN
     },
     {
-      id:         'u0000001-0001-0001-0001-000000000003',
-      username:   'camila',
-      email:      'camila@crmaosbike.cl',
-      fn:         'Camila',
-      ln:         '-',
-      role:       'vendedor',
-      branch:     null,
+      id:       IDS.camila,
+      username: 'camila',
+      email:    'camila@crmaosbike.cl',
+      fn:       'Camila',
+      ln:       '-',
+      role:     'vendedor',
+      branch:   null,
     },
     {
-      id:         'u0000001-0001-0001-0001-000000000004',
-      username:   'pauli',
-      email:      'pauli@crmaosbike.cl',
-      fn:         'Pauli',
-      ln:         '-',
-      role:       'vendedor',
-      branch:     null,
+      id:       IDS.pauli,
+      username: 'pauli',
+      email:    'pauli@crmaosbike.cl',
+      fn:       'Pauli',
+      ln:       '-',
+      role:     'vendedor',
+      branch:   null,
     },
     {
-      id:         'u0000001-0001-0001-0001-000000000005',
-      username:   'eduardo',
-      email:      'eduardo@crmaosbike.cl',
-      fn:         'Eduardo',
-      ln:         '-',
-      role:       'vendedor',
-      branch:     null,
+      id:       IDS.eduardo,
+      username: 'eduardo',
+      email:    'eduardo@crmaosbike.cl',
+      fn:       'Eduardo',
+      ln:       '-',
+      role:     'vendedor',
+      branch:   null,
     },
     {
-      id:         'u0000001-0001-0001-0001-000000000006',
-      username:   'ahentua',
-      email:      'ahentua@crmaosbike.cl',
-      fn:         'Ahentua',
-      ln:         '-',
-      role:       'vendedor',
-      branch:     null,
+      id:       IDS.ahentua,
+      username: 'ahentua',
+      email:    'ahentua@crmaosbike.cl',
+      fn:       'Ahentua',
+      ln:       '-',
+      role:     'vendedor',
+      branch:   null,
     },
     {
-      id:         'u0000001-0001-0001-0001-000000000007',
-      username:   'miguelangel',
-      email:      'miguelangel@crmaosbike.cl',
-      fn:         'Miguel Ángel',
-      ln:         '-',
-      role:       'admin_comercial',
-      branch:     null,
+      id:       IDS.miguelangel,
+      username: 'miguelangel',
+      email:    'miguelangel@crmaosbike.cl',
+      fn:       'Miguel Ángel',
+      ln:       '-',
+      role:     'admin_comercial',
+      branch:   null,
     },
     {
-      id:         'u0000001-0001-0001-0001-000000000008',
-      username:   'fran',
-      email:      'fran@crmaosbike.cl',
-      fn:         'Francisca',
-      ln:         'Reyes',
-      role:       'backoffice',
-      branch:     null,
+      id:       IDS.fran,
+      username: 'fran',
+      email:    'fran@crmaosbike.cl',
+      fn:       'Francisca',
+      ln:       'Reyes',
+      role:     'backoffice',
+      branch:   null,
     },
   ];
 
@@ -118,6 +119,7 @@ module.exports = async function seed(db) {
          active        = true`,
       [u.id, u.username, u.email, hash, u.fn, u.ln, u.role, u.branch]
     );
+    console.log(`  ✓ Usuario ${u.username} (${u.role})`);
   }
 
   // Moto catalog
@@ -148,8 +150,7 @@ module.exports = async function seed(db) {
   for (const [brand, model, year, cc, cat, colors, price, bonus] of motos) {
     await db.query(
       `INSERT INTO moto_models (brand, model, year, cc, category, colors, price, bonus)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
-       ON CONFLICT DO NOTHING`,
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8) ON CONFLICT DO NOTHING`,
       [brand, model, year, cc, cat, colors, price, bonus]
     );
   }
