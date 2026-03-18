@@ -17,9 +17,11 @@ const request = async (method, path, body) => {
 
   const res = await fetch(`${BASE}${path}`, opts);
   if (res.status === 401) {
-    localStorage.removeItem('crm_token');
-    localStorage.removeItem('crm_user');
-    window.location.reload();
+    if (token) {
+      localStorage.removeItem('crm_token');
+      localStorage.removeItem('crm_user');
+      window.location.reload();
+    }
     throw new Error('Sesión expirada');
   }
   const data = await res.json();
