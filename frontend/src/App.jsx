@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { api } from "./services/api";
 
 // ═══════════════════════════════════════════
 // DATA
@@ -141,6 +142,8 @@ const Ic={
   target:p=><svg width={p.size||18} height={p.size||18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
   user:p=><I d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 3a4 4 0 100 8 4 4 0 000-8z" {...p}/>,
   dl:p=><I d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M7 10l5 5 5-5 M12 15V3" {...p}/>,
+  cal:p=><I d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" {...p}/>,
+  remind:p=><I d="M15 17H20L18.6 15.6A7 7 0 0018 14V11a6 6 0 10-12 0v3a7 7 0 00-.6 1.6L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" {...p}/>,
 };
 
 // ═══════════════════════════════════════════
@@ -198,6 +201,7 @@ export default function App(){
   const items=[
     {id:"dashboard",icon:Ic.home,label:"Dashboard"},
     ...(r!=="backoffice"?[{id:"leads",icon:Ic.users,label:"Leads / Tickets"},{id:"pipeline",icon:Ic.kanban,label:"Pipeline"}]:[]),
+    {id:"calendar",icon:Ic.cal,label:"Calendario"},
     {id:"inventory",icon:Ic.box,label:"Inventario"},
     {id:"sales",icon:Ic.sale,label:"Ventas"},
     {id:"catalog",icon:Ic.bike,label:"Catálogo"},
@@ -213,7 +217,7 @@ export default function App(){
         <div style={{borderTop:"1px solid #1E1E1F",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+user.ln[0]).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#555"}}>{gB(user.branch)?.name||user.role}</div></div><button onClick={()=>setUser(null)} style={{...S.gh,padding:4}}><Ic.out size={14} color="#555"/></button></div></div>
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
-        <header style={{height:48,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",borderBottom:"1px solid #1E1E1F",background:"rgba(17,17,18,0.7)",flexShrink:0}}><button style={{...S.gh,padding:6,position:"relative"}}><Ic.bell size={17} color="#8A8A8A"/><span style={{position:"absolute",top:4,right:4,width:6,height:6,borderRadius:"50%",background:"#F28100"}}/></button></header>
+        <header style={{height:48,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",borderBottom:"1px solid #1E1E1F",background:"rgba(17,17,18,0.7)",flexShrink:0}}><NotifBell nav={nav}/></header>
         <main style={{flex:1,overflow:"auto",padding:"16px 20px"}}>
           {page==="dashboard"&&<Dashboard leads={leads} inv={inv} user={user} nav={nav}/>}
           {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead}/>}
@@ -224,6 +228,7 @@ export default function App(){
           {page==="catalog"&&<CatalogView/>}
           {page==="reports"&&<ReportsView leads={leads}/>}
           {page==="admin"&&<AdminView/>}
+          {page==="calendar"&&<CalendarView user={user} nav={nav}/>}
         </main>
       </div>
     </div>
@@ -258,13 +263,37 @@ function Login({onLogin}){
 // DASHBOARD
 // ═══════════════════════════════════════════
 function Dashboard({leads,inv,user,nav}){
+  const[stats,setStats]=useState(null);
   const active=leads.filter(l=>!["ganado","perdido","cerrado"].includes(l.status));
   const ganados=leads.filter(l=>l.status==="ganado");
   const avail=inv.filter(x=>x.status==="disponible").length;
   const pipe=Object.entries(TICKET_STATUS).slice(0,5).map(([k,v])=>({name:v.l,count:leads.filter(l=>l.status===k).length,color:v.c}));
+  useEffect(()=>{api.getCommercialStats().then(d=>setStats(d)).catch(()=>{});},[]);
+  const kpi=(key,...fallbacks)=>{if(!stats)return 0;for(const k of[key,...fallbacks]){const v=stats.kpis?.[k]??stats[k];if(v!==undefined)return v;}return 0;};
+  const urgentes=stats?.leads_urgentes||stats?.urgentes||[];
+  const tareasHoy=stats?.tareas_hoy||stats?.reminders_today||[];
   return(
     <div>
       <div style={{marginBottom:18}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Bienvenido, {user.fn}</h1><p style={{color:"#6B6B6B",fontSize:12,margin:"2px 0 0"}}>{gB(user.branch)?.name||"Todas las sucursales"}</p></div>
+
+      {stats&&<>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:14}}>
+          <Stat icon={Ic.alert} ic="#EF4444" ib="rgba(239,68,68,0.1)" label="SLA Vencidos" val={kpi("vencidos","sla_vencidos")} al={kpi("vencidos","sla_vencidos")>0}/>
+          <Stat icon={Ic.clock} ic="#F59E0B" ib="rgba(245,158,11,0.1)" label="Por Vencer" val={kpi("proximos_vencer")} sub="Próximas 2h"/>
+          <Stat icon={Ic.users} ic="#6B7280" ib="rgba(107,114,128,0.1)" label="Sin Tocar" val={kpi("sin_tocar")} sub="Leads sin gestión"/>
+          <Stat icon={Ic.remind} ic="#8B5CF6" ib="rgba(139,92,246,0.1)" label="Recor. Hoy" val={kpi("recordatorios_hoy")}/>
+          <Stat icon={Ic.bell} ic="#F28100" ib="rgba(242,129,0,0.1)" label="Reasignados" val={kpi("reasignados_hoy")} sub="Hoy"/>
+        </div>
+        {urgentes.length>0&&<div style={{...S.card,marginBottom:14}}>
+          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px",color:"#EF4444"}}>⚠ Leads urgentes</h3>
+          {urgentes.slice(0,5).map((l,i)=><div key={i} onClick={()=>nav("ticket",String(l.id||l.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A1B"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.client_name||`${l.fn||""} ${l.ln||""}`.trim()}</div><div style={{fontSize:11,color:"#666"}}>{l.seller_name||""}</div></div><span style={{fontSize:11,color:"#EF4444",fontWeight:600}}>{l.sla_status==="vencido"?"SLA Vencido":l.hours_elapsed?`${Math.floor(l.hours_elapsed)}h sin contacto`:"Urgente"}</span></div>)}
+        </div>}
+        {tareasHoy.length>0&&<div style={{...S.card,marginBottom:14}}>
+          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px"}}>📋 Tareas para hoy</h3>
+          {tareasHoy.slice(0,5).map((t,i)=><div key={i} onClick={()=>t.ticket_id&&nav("ticket",String(t.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A1B"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{t.title}</div><div style={{fontSize:11,color:"#666"}}>{t.client_name||""}</div></div><span style={{fontSize:10,color:"#F28100"}}>{t.reminder_time||fD(t.reminder_date)}</span></div>)}
+        </div>}
+      </>}
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",gap:10,marginBottom:18}}>
         <Stat icon={Ic.users} ic="#3B82F6" ib="rgba(59,130,246,0.1)" label="Tickets Activos" val={active.length} sub={`${ganados.length} ganados`}/>
         <Stat icon={Ic.target} ic="#10B981" ib="rgba(16,185,129,0.1)" label="Ganados" val={ganados.length} sub={`${leads.length>0?((ganados.length/leads.length)*100).toFixed(0):0}% conversión`} sc="#10B981"/>
@@ -306,7 +335,11 @@ function PipelineView({leads,user,nav,updLead}){
   const stages=["abierto","en_gestion","cotizado","financiamiento"];
   const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(user.role==="vendedor"&&l.seller!==user.id)return false;return true;});
   const drop=stage=>{if(dragId){const ld=leads.find(l=>l.id===dragId);if(ld)updLead(dragId,{status:stage,timeline:[{id:`tl-${Date.now()}`,type:"status",title:`Estado → ${TICKET_STATUS[stage]?.l}`,date:new Date().toISOString(),user:user.fn},...ld.timeline]});setDragId(null);}};
-  const getSlaInfo=(l)=>{const created=new Date(l.createdAt).getTime();const now=Date.now();const diff=now-created;const horas=diff/(1e3*60*60);const lastC=l.lastContact?new Date(l.lastContact).getTime():0;const sinContacto=lastC?((now-lastC)/(1e3*60*60)):horas;return{horas:Math.floor(sinContacto),breach:sinContacto>=8&&!l.lastContact,warning:sinContacto>=6&&sinContacto<8};};
+  const getSlaInfo=(l)=>{
+    if(l.sla_status==="vencido")return{horas:0,breach:true,warning:false};
+    if(l.sla_status==="en_riesgo")return{horas:0,breach:false,warning:true};
+    const created=new Date(l.createdAt).getTime();const now=Date.now();const diff=now-created;const horas=diff/(1e3*60*60);const lastC=l.lastContact?new Date(l.lastContact).getTime():0;const sinContacto=lastC?((now-lastC)/(1e3*60*60)):horas;return{horas:Math.floor(sinContacto),breach:sinContacto>=8&&!l.lastContact,warning:sinContacto>=6&&sinContacto<8};
+  };
   return(
     <div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {user.role==="vendedor"&&<span style={{fontSize:13,fontWeight:400,color:"#666"}}>· Mis tickets</span>}</h1><div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:14}}>{stages.map(stage=>{const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);return(<div key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(stage)} style={{minWidth:250,flex:"0 0 250px",background:"#111112",borderRadius:12,border:"1px solid #1E1E1F",display:"flex",flexDirection:"column",maxHeight:"calc(100vh - 130px)"}}><div style={{padding:"10px 12px",borderBottom:"1px solid #1E1E1F",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:sc?.c}}/><span style={{fontSize:11,fontWeight:600}}>{sc?.l}</span></div><span style={{fontSize:10,color:"#555",fontWeight:600}}>{sl.length}</span></div><div style={{flex:1,overflowY:"auto",padding:6,display:"flex",flexDirection:"column",gap:5}}>{sl.map(l=>{const m=gM(l.motoId);const sla=getSlaInfo(l);return(<div key={l.id} draggable onDragStart={()=>setDragId(l.id)} onClick={()=>nav("ticket",l.id)} style={{background:sla.breach?"rgba(239,68,68,0.05)":"#171718",border:sla.breach?"1px solid rgba(239,68,68,0.3)":"1px solid #222",borderRadius:10,padding:10,cursor:"grab"}} onMouseEnter={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#F28100";}} onMouseLeave={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#222";}}>
       {sla.breach&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"3px 8px",borderRadius:6,background:"rgba(239,68,68,0.1)",fontSize:10,color:"#EF4444",fontWeight:600}}><Ic.alert size={11} color="#EF4444"/>SLA vencido · {sla.horas}h sin contacto</div>}
@@ -328,15 +361,15 @@ function TicketView({lead,user,nav,updLead}){
   const created=new Date(lead.createdAt).getTime();const now=Date.now();
   const lastC=lead.lastContact?new Date(lead.lastContact).getTime():0;
   const sinContactoH=Math.floor((lastC?(now-lastC):(now-created))/(1e3*60*60));
-  const slaBreach=sinContactoH>=8&&lead.status==="abierto";
-  const slaWarning=sinContactoH>=6&&sinContactoH<8&&lead.status==="abierto";
+  const slaBreach=lead.sla_status==="vencido"||(sinContactoH>=8&&lead.status==="abierto");
+  const slaWarning=lead.sla_status==="en_riesgo"||(sinContactoH>=6&&sinContactoH<8&&lead.status==="abierto");
 
   const upd=(field,val)=>updLead(lead.id,{[field]:val});
   const addTimeline=(type,title,note)=>{updLead(lead.id,{timeline:[{id:`tl-${Date.now()}`,type,title,note,date:new Date().toISOString(),user:`${user.fn} ${user.ln}`,method:contactForm.method},...lead.timeline],lastContact:new Date().toISOString()});};
   const submitContact=e=>{e.preventDefault();if(!contactForm.result)return;addTimeline("contact",`${contactForm.method.toUpperCase()}: ${contactForm.result}`,contactForm.note);setContactForm({method:"whatsapp",result:"",note:""});};
   const togglePV=(f)=>updLead(lead.id,{postVenta:{...lead.postVenta,[f]:!lead.postVenta[f]}});
 
-  const tabs=[{id:"datos",l:"Datos Cliente"},{id:"timeline",l:"Timeline"},{id:"financiamiento",l:"Financiamiento"},{id:"postventa",l:"Post Venta"}];
+  const tabs=[{id:"datos",l:"Datos Cliente"},{id:"timeline",l:"Timeline"},{id:"recordatorios",l:"Recordatorios"},{id:"financiamiento",l:"Financiamiento"},{id:"postventa",l:"Post Venta"}];
 
   return(
     <div>
@@ -474,6 +507,12 @@ function TicketView({lead,user,nav,updLead}){
         </div>
       )}
 
+      {tab==="recordatorios"&&(
+        <div style={S.card}>
+          <RemindersTab ticketId={lead.id} user={user}/>
+        </div>
+      )}
+
       {tab==="postventa"&&(
         <div style={S.card}>
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Documentación / Entrega</h3>
@@ -561,4 +600,235 @@ function ReportsView({leads}){
 
 function AdminView(){
   return(<div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Administración</h1><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><div style={S.card}><h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Usuarios</h3>{USERS.map(u=><div key={u.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #1A1A1B"}}><div style={{width:26,height:26,borderRadius:"50%",background:"rgba(242,129,0,0.1)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:9,fontWeight:700}}>{(u.fn[0]+u.ln[0]).toUpperCase()}</div><div style={{flex:1}}><div style={{fontSize:12,fontWeight:600}}>{u.fn} {u.ln}</div><div style={{fontSize:10,color:"#555"}}>{u.email}</div></div><Bdg l={u.role.replace(/_/g," ")} c={u.role==="super_admin"?"#EF4444":u.role==="admin_comercial"?"#8B5CF6":u.role==="backoffice"?"#F59E0B":"#3B82F6"}/></div>)}</div><div style={S.card}><h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Sucursales</h3>{BRANCHES.map(b=><div key={b.id} style={{background:"#0E0E0F",borderRadius:10,padding:12,marginBottom:8}}><div style={{fontWeight:700,marginBottom:4}}>{b.name}</div><div style={{fontSize:11,color:"#555"}}>{b.addr}</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Código: {b.code} · Vendedores: {USERS.filter(u=>u.branch===b.id&&u.role==="vendedor").length}</div></div>)}</div></div></div>);
+}
+
+// ═══════════════════════════════════════════
+// NOTIFICATION BELL
+// ═══════════════════════════════════════════
+function NotifBell({nav}){
+  const[open,setOpen]=useState(false);
+  const[notifs,setNotifs]=useState([]);
+  const[unread,setUnread]=useState(0);
+
+  const fetchCount=async()=>{try{const d=await api.getUnreadCount();setUnread(d.count||0);}catch{}};
+  const fetchNotifs=async()=>{try{const d=await api.getNotifications({limit:30});setNotifs(d.notifications||[]);}catch{}};
+
+  useEffect(()=>{
+    fetchCount();
+    const iv=setInterval(fetchCount,30000);
+    return()=>clearInterval(iv);
+  },[]);
+
+  const handleOpen=()=>{setOpen(true);fetchNotifs();};
+  const markAll=async()=>{try{await api.markAllRead();setUnread(0);setNotifs(p=>p.map(n=>({...n,is_read:true})));}catch{}};
+  const markOne=async(id)=>{try{await api.markRead(id);setNotifs(p=>p.map(n=>n.id===id?{...n,is_read:true}:n));setUnread(p=>Math.max(0,p-1));}catch{}};
+  const goTicket=(n)=>{markOne(n.id);if(n.ticket_id&&nav)nav("ticket",String(n.ticket_id));setOpen(false);};
+
+  return(
+    <div style={{position:"relative"}}>
+      <button onClick={()=>open?setOpen(false):handleOpen()} style={{...S.gh,padding:6,position:"relative"}}>
+        <Ic.bell size={17} color={unread>0?"#F28100":"#8A8A8A"}/>
+        {unread>0&&<span style={{position:"absolute",top:1,right:1,minWidth:16,height:16,borderRadius:8,background:"#EF4444",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",padding:"0 3px"}}>{unread>9?"9+":unread}</span>}
+      </button>
+      {open&&(
+        <div style={{position:"fixed",inset:0,zIndex:50}} onClick={()=>setOpen(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:50,right:18,width:320,background:"#151516",border:"1px solid #262626",borderRadius:14,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.7)",zIndex:51}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",borderBottom:"1px solid #1E1E1F"}}>
+              <span style={{fontWeight:700,fontSize:13}}>Notificaciones{unread>0&&<span style={{color:"#F28100"}}> ({unread})</span>}</span>
+              {unread>0&&<button onClick={markAll} style={{...S.gh,fontSize:11,color:"#F28100",padding:"2px 6px"}}>Marcar leídas</button>}
+            </div>
+            <div style={{maxHeight:380,overflowY:"auto"}}>
+              {notifs.length===0&&<div style={{padding:24,textAlign:"center",color:"#555",fontSize:12}}>Sin notificaciones pendientes</div>}
+              {notifs.map(n=>(
+                <div key={n.id} onClick={()=>goTicket(n)} style={{padding:"10px 14px",borderBottom:"1px solid #1A1A1B",cursor:"pointer",background:n.is_read?"transparent":"rgba(242,129,0,0.04)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                    <div style={{fontSize:12,fontWeight:n.is_read?400:600,color:n.is_read?"#888":"#FAFAFA",flex:1}}>{n.title}</div>
+                    {!n.is_read&&<div style={{width:7,height:7,borderRadius:"50%",background:"#F28100",flexShrink:0,marginTop:4}}/>}
+                  </div>
+                  {n.body&&<div style={{fontSize:11,color:"#555",marginTop:2,lineHeight:1.4}}>{n.body}</div>}
+                  <div style={{fontSize:10,color:"#444",marginTop:4}}>{ago(n.created_at)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// REMINDERS TAB
+// ═══════════════════════════════════════════
+function RemindersTab({ticketId,user}){
+  const[reminders,setReminders]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[showNew,setShowNew]=useState(false);
+  const[form,setForm]=useState({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});
+  const TYPE_L={llamada:"Llamada",visita:"Visita",whatsapp:"WhatsApp",email:"Email",otro:"Otro"};
+  const ST_C={pending:"#F59E0B",completed:"#10B981",overdue:"#EF4444"};
+  const ST_L={pending:"Pendiente",completed:"Completado",overdue:"Vencido"};
+
+  useEffect(()=>{
+    api.getReminders({ticket_id:ticketId}).then(d=>setReminders(d.reminders||[])).catch(()=>{}).finally(()=>setLoading(false));
+  },[ticketId]);
+
+  const create=async(e)=>{
+    e.preventDefault();
+    try{const d=await api.createReminder({...form,ticket_id:ticketId});setReminders(p=>[d.reminder,...p]);setShowNew(false);setForm({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});}
+    catch(err){alert(err.message);}
+  };
+  const complete=async(id)=>{try{await api.completeReminder(id);setReminders(p=>p.map(r=>r.id===id?{...r,status:"completed"}:r));}catch{}};
+  const del=async(id)=>{if(!confirm("¿Eliminar recordatorio?"))return;try{await api.deleteReminder(id);setReminders(p=>p.filter(r=>r.id!==id));}catch{}};
+
+  if(loading)return<div style={{padding:20,textAlign:"center",color:"#555",fontSize:12}}>Cargando...</div>;
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <span style={{fontWeight:600,fontSize:13}}>Recordatorios del lead</span>
+        <button onClick={()=>setShowNew(true)} style={{...S.btn,fontSize:12,display:"flex",alignItems:"center",gap:5}}><Ic.plus size={13}/>Nuevo</button>
+      </div>
+      {reminders.length===0&&<div style={{padding:24,textAlign:"center",color:"#555",fontSize:12,background:"#0E0E0F",borderRadius:10}}>Sin recordatorios. Crea uno para hacer seguimiento.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {reminders.map(r=>(
+          <div key={r.id} style={{background:"#0E0E0F",borderRadius:10,padding:12,border:`1px solid ${r.status==="overdue"?"rgba(239,68,68,0.3)":r.status==="completed"?"rgba(16,185,129,0.2)":"#1E1E1F"}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                  <span style={{fontWeight:600,fontSize:13,textDecoration:r.status==="completed"?"line-through":"none",color:r.status==="completed"?"#555":"#FAFAFA"}}>{r.title}</span>
+                  <Bdg l={ST_L[r.status]||r.status} c={ST_C[r.status]||"#6B7280"}/>
+                </div>
+                <div style={{fontSize:11,color:"#888",display:"flex",gap:12,flexWrap:"wrap"}}>
+                  <span>{TYPE_L[r.type]||r.type}</span>
+                  <span>{fD(r.reminder_date)}{r.reminder_time&&" · "+r.reminder_time}</span>
+                  {r.priority==="alta"&&<span style={{color:"#EF4444",fontWeight:600}}>Alta prioridad</span>}
+                </div>
+                {r.note&&<div style={{fontSize:11,color:"#666",marginTop:6}}>{r.note}</div>}
+              </div>
+              <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
+                {r.status==="pending"&&<button onClick={()=>complete(r.id)} style={{...S.btn2,padding:"4px 10px",fontSize:11,background:"rgba(16,185,129,0.1)",color:"#10B981",border:"1px solid rgba(16,185,129,0.2)"}}>Completar</button>}
+                <button onClick={()=>del(r.id)} style={{...S.gh,padding:4,color:"#555"}}><Ic.x size={14}/></button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {showNew&&(
+        <Modal onClose={()=>setShowNew(false)} title="Nuevo Recordatorio">
+          <form onSubmit={create}>
+            <div style={{marginBottom:10}}><Field label="Título *" value={form.title} onChange={v=>setForm({...form,title:v})} req ph="Ej: Llamar para confirmar visita..."/></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <Field label="Tipo" value={form.type} onChange={v=>setForm({...form,type:v})} opts={Object.entries(TYPE_L).map(([k,v])=>({v:k,l:v}))}/>
+              <Field label="Prioridad" value={form.priority} onChange={v=>setForm({...form,priority:v})} opts={[{v:"alta",l:"Alta"},{v:"media",l:"Media"},{v:"baja",l:"Baja"}]}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <Field label="Fecha *" value={form.reminder_date} onChange={v=>setForm({...form,reminder_date:v})} type="date" req/>
+              <Field label="Hora" value={form.reminder_time} onChange={v=>setForm({...form,reminder_time:v})} type="time"/>
+            </div>
+            <div style={{marginBottom:16}}><Field label="Nota" value={form.note} onChange={v=>setForm({...form,note:v})} rows={2} ph="Detalles adicionales..."/></div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+              <button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button>
+              <button type="submit" style={S.btn}>Crear Recordatorio</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// CALENDAR VIEW
+// ═══════════════════════════════════════════
+function CalendarView({user,nav}){
+  const[date,setDate]=useState(new Date());
+  const[events,setEvents]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const yr=date.getFullYear();const mo=date.getMonth();
+  const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  const TYPE_C={reminder:"#3B82F6",sla_deadline:"#EF4444"};
+
+  useEffect(()=>{
+    setLoading(true);
+    const start=new Date(yr,mo,1).toISOString().split("T")[0];
+    const end=new Date(yr,mo+1,0).toISOString().split("T")[0];
+    api.getCalendarEvents({start,end}).then(d=>setEvents(d.events||[])).catch(()=>setEvents([])).finally(()=>setLoading(false));
+  },[yr,mo]);
+
+  const firstDay=new Date(yr,mo,1).getDay();
+  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  const cells=[];
+  for(let i=0;i<firstDay;i++)cells.push(null);
+  for(let d=1;d<=daysInMonth;d++)cells.push(d);
+  while(cells.length%7!==0)cells.push(null);
+
+  const eventsForDay=(d)=>{
+    if(!d)return[];
+    const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    return events.filter(e=>(e.date||"").startsWith(ds));
+  };
+  const today=new Date();
+  const todayStr=today.toISOString().split("T")[0];
+  const upcoming=events.filter(e=>e.date>=todayStr).slice(0,10);
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Calendario</h1><p style={{color:"#6B6B6B",fontSize:12,margin:"2px 0 0"}}>{events.length} eventos este mes</p></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={()=>setDate(new Date(yr,mo-1,1))} style={{...S.btn2,padding:"6px 14px"}}>←</button>
+          <span style={{fontWeight:700,fontSize:15,minWidth:160,textAlign:"center"}}>{MESES[mo]} {yr}</span>
+          <button onClick={()=>setDate(new Date(yr,mo+1,1))} style={{...S.btn2,padding:"6px 14px"}}>→</button>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#888"}}><div style={{width:10,height:10,borderRadius:2,background:"#3B82F6"}}/> Recordatorio</div>
+        <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#888"}}><div style={{width:10,height:10,borderRadius:2,background:"#EF4444"}}/> Vencimiento SLA</div>
+      </div>
+      <div style={{...S.card,padding:0,overflow:"hidden",marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1px solid #1E1E1F"}}>
+          {DIAS.map(d=><div key={d} style={{padding:"9px 4px",textAlign:"center",fontSize:10,fontWeight:600,color:"#555",textTransform:"uppercase"}}>{d}</div>)}
+        </div>
+        {loading
+          ?<div style={{padding:48,textAlign:"center",color:"#555",fontSize:12}}>Cargando eventos...</div>
+          :<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+            {cells.map((day,i)=>{
+              const evs=eventsForDay(day);
+              const isToday=day&&today.getDate()===day&&today.getMonth()===mo&&today.getFullYear()===yr;
+              return(
+                <div key={i} style={{minHeight:88,padding:5,borderRight:"1px solid #1A1A1B",borderBottom:"1px solid #1A1A1B",background:isToday?"rgba(242,129,0,0.04)":"transparent"}}>
+                  {day&&<div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?"#F28100":"#888",width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:isToday?"rgba(242,129,0,0.15)":"transparent",marginBottom:3}}>{day}</div>}
+                  {evs.slice(0,3).map((ev,ei)=>(
+                    <div key={ei} onClick={()=>ev.ticket_id&&nav("ticket",String(ev.ticket_id))} title={ev.title} style={{fontSize:9,padding:"2px 5px",borderRadius:3,background:`${TYPE_C[ev.type]||"#F28100"}22`,color:TYPE_C[ev.type]||"#F28100",marginBottom:2,cursor:ev.ticket_id?"pointer":"default",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>{ev.title}</div>
+                  ))}
+                  {evs.length>3&&<div style={{fontSize:9,color:"#555"}}>+{evs.length-3} más</div>}
+                </div>
+              );
+            })}
+          </div>
+        }
+      </div>
+      {upcoming.length>0&&(
+        <div style={S.card}>
+          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 12px"}}>Próximos eventos</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {upcoming.map((ev,i)=>(
+              <div key={i} onClick={()=>ev.ticket_id&&nav("ticket",String(ev.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,background:"#0E0E0F",cursor:ev.ticket_id?"pointer":"default"}} onMouseEnter={e=>ev.ticket_id&&(e.currentTarget.style.background="#1A1A1B")} onMouseLeave={e=>(e.currentTarget.style.background="#0E0E0F")}>
+                <div style={{width:4,height:32,borderRadius:2,background:TYPE_C[ev.type]||"#F28100",flexShrink:0}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:600}}>{ev.title}</div>
+                  {ev.client_name&&<div style={{fontSize:11,color:"#666"}}>{ev.client_name}</div>}
+                </div>
+                <div style={{fontSize:11,color:"#555",textAlign:"right"}}>
+                  <div>{fD(ev.date)}</div>
+                  {ev.time&&<div>{ev.time}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
