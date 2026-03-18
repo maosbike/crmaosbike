@@ -31,7 +31,7 @@ const request = async (method, path, body) => {
 
 export const api = {
   // Auth
-  login: (email, password) => request('POST', '/auth/login', { email, password }),
+  login: (identifier, password) => request('POST', '/auth/login', { email: identifier, password }),
   me: () => request('GET', '/auth/me'),
 
   // Tickets

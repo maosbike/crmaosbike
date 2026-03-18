@@ -9,7 +9,11 @@ async function migrate() {
     console.log('Running migrations...');
     const sql = fs.readFileSync(path.join(__dirname, '../../migrations/001_schema.sql'), 'utf-8');
     await db.query(sql);
-    console.log('✓ Schema created');
+    console.log('✓ Schema 001 created');
+
+    const sql003 = fs.readFileSync(path.join(__dirname, '../../migrations/003_username.sql'), 'utf-8');
+    await db.query(sql003);
+    console.log('✓ Migration 003 (username) applied');
 
     await seed(db);
     console.log('✓ All done');

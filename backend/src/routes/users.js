@@ -24,7 +24,7 @@ router.put('/change-password', async (req, res) => {
 router.get('/', roleCheck('super_admin'), async (req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.role,
+      `SELECT u.id, u.email, u.username, u.first_name, u.last_name, u.phone, u.role,
               u.branch_id, u.active, u.created_at,
               b.name as branch_name, b.code as branch_code
        FROM users u LEFT JOIN branches b ON u.branch_id = b.id ORDER BY u.first_name`
@@ -35,17 +35,24 @@ router.get('/', roleCheck('super_admin'), async (req, res) => {
 
 router.post('/', roleCheck('super_admin'), async (req, res) => {
   try {
-    const { email, password, first_name, last_name, phone, role, branch_id } = req.body;
-    if (!email || !password || !first_name || !last_name || !role) return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    const { email, username, password, first_name, last_name, phone, role, branch_id } = req.body;
+    if ((!email && !username) || !password || !first_name || !last_name || !role)
+      return res.status(400).json({ error: 'Faltan campos obligatorios (username o email, password, nombre, rol)' });
     if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener mínimo 6 caracteres' });
-    const existing = await db.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
-    if (existing.rows.length > 0) return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
+    if (email) {
+      const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
+      if (existing.rows.length > 0) return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
+    }
+    if (username) {
+      const existing = await db.query('SELECT id FROM users WHERE username = $1', [username.trim()]);
+      if (existing.rows.length > 0) return res.status(400).json({ error: 'Ya existe un usuario con ese username' });
+    }
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await db.query(
-      `INSERT INTO users (email, password_hash, first_name, last_name, phone, role, branch_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, email, first_name, last_name, phone, role, branch_id, active, created_at`,
-      [email.toLowerCase().trim(), hash, first_name, last_name, phone || null, role, branch_id || null]
+      `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, role, branch_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, username, email, first_name, last_name, phone, role, branch_id, active, created_at`,
+      [username?.trim() || null, email?.toLowerCase().trim() || null, hash, first_name, last_name, phone || null, role, branch_id || null]
     );
     res.status(201).json(rows[0]);
   } catch (e) { console.error('Error crear usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }
