@@ -1,0 +1,137 @@
+const router = require('express').Router();
+const db = require('../config/db');
+const { auth } = require('../middleware/auth');
+
+router.use(auth);
+
+// ═══════════════════════════════════════════════════
+// EVENTOS DEL CALENDARIO
+// GET /api/calendar/events?start=2026-03-01&end=2026-03-31&user_id=5&branch_id=1
+// ═══════════════════════════════════════════════════
+router.get('/events', async (req, res) => {
+  try {
+    const { start, end, user_id, branch_id } = req.query;
+
+    if (!start || !end) {
+      return res.status(400).json({ error: 'start y end son requeridos' });
+    }
+
+    const events = [];
+
+    // 1. RECORDATORIOS
+    let remQuery = `
+      SELECT r.id, r.title, r.description, r.due_date, r.due_time,
+             r.priority, r.status, r.reminder_type, r.ticket_id,
+             r.assigned_to,
+             u.first_name as assigned_name,
+             t.ticket_number, t.first_name as client_name
+      FROM reminders r
+      LEFT JOIN users u ON r.assigned_to = u.id
+      LEFT JOIN tickets t ON r.ticket_id = t.id
+      WHERE r.due_date >= $1 AND r.due_date <= $2
+    `;
+    const remParams = [start, end];
+
+    // Vendedores solo ven los suyos
+    if (req.user.role === 'vendedor') {
+      remParams.push(req.user.id);
+      remQuery += ` AND r.assigned_to = $${remParams.length}`;
+    } else if (user_id) {
+      remParams.push(user_id);
+      remQuery += ` AND r.assigned_to = $${remParams.length}`;
+    }
+
+    const { rows: reminders } = await db.query(remQuery, remParams);
+
+    for (const r of reminders) {
+      const colorMap = {
+        pending: '#3B82F6',
+        completed: '#10B981',
+        overdue: '#EF4444'
+      };
+      events.push({
+        id: `rem-${r.id}`,
+        title: r.title,
+        start: r.due_time
+          ? `${r.due_date}T${r.due_time}`
+          : r.due_date,
+        allDay: !r.due_time,
+        color: colorMap[r.status] || '#3B82F6',
+        type: 'reminder',
+        subtype: r.reminder_type,
+        status: r.status,
+        priority: r.priority,
+        link_type: 'ticket',
+        link_id: r.ticket_id,
+        reminder_id: r.id,
+        meta: {
+          assigned_name: r.assigned_name,
+          ticket_number: r.ticket_number,
+          client_name: r.client_name,
+          description: r.description
+        }
+      });
+    }
+
+    // 2. VENCIMIENTOS SLA (tickets activos con SLA próximo)
+    let slaQuery = `
+      SELECT t.id, t.ticket_number, t.sla_deadline, t.sla_status,
+             t.first_name as client_first, t.last_name as client_last,
+             t.assigned_to, t.branch_id,
+             u.first_name as seller_name
+      FROM tickets t
+      LEFT JOIN users u ON t.assigned_to = u.id
+      WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
+        AND t.sla_deadline IS NOT NULL
+        AND DATE(t.sla_deadline) >= $1
+        AND DATE(t.sla_deadline) <= $2
+    `;
+    const slaParams = [start, end];
+
+    if (req.user.role === 'vendedor') {
+      slaParams.push(req.user.id);
+      slaQuery += ` AND t.assigned_to = $${slaParams.length}`;
+    } else if (user_id) {
+      slaParams.push(user_id);
+      slaQuery += ` AND t.assigned_to = $${slaParams.length}`;
+    }
+
+    if (branch_id) {
+      slaParams.push(branch_id);
+      slaQuery += ` AND t.branch_id = $${slaParams.length}`;
+    }
+
+    const { rows: slaTickets } = await db.query(slaQuery, slaParams);
+
+    for (const t of slaTickets) {
+      const slaColors = {
+        normal: '#F59E0B',
+        warning: '#F97316',
+        breached: '#EF4444',
+        reassigned: '#8B5CF6'
+      };
+      events.push({
+        id: `sla-${t.id}`,
+        title: `SLA: ${t.client_first || ''} ${t.client_last || ''} (${t.ticket_number})`,
+        start: t.sla_deadline,
+        allDay: false,
+        color: slaColors[t.sla_status] || '#F59E0B',
+        type: 'sla',
+        status: t.sla_status,
+        link_type: 'ticket',
+        link_id: t.id,
+        meta: {
+          seller_name: t.seller_name,
+          ticket_number: t.ticket_number
+        }
+      });
+    }
+
+    res.json(events);
+  } catch (e) {
+    console.error('Error calendar events:', e);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+module.exports = router;

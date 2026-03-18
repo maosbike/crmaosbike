@@ -66,4 +66,38 @@ export const api = {
   getBranches: () => request('GET', '/catalog/branches'),
   getUsers: (params) => request('GET', `/catalog/users?${new URLSearchParams(params || {})}`),
   getSellers: () => request('GET', '/catalog/sellers'),
+
+  // Users management
+  changePassword: (current_password, new_password) =>
+    request('PUT', '/users/change-password', { current_password, new_password }),
+  listUsers: () => request('GET', '/users'),
+  createUser: (data) => request('POST', '/users', data),
+  editUser: (id, data) => request('PUT', `/users/${id}`, data),
+  resetPassword: (id, new_password) =>
+    request('PUT', `/users/${id}/reset-password`, { new_password }),
+
+  // Notificaciones
+  getNotifications: (params) => request('GET', `/notifications?${new URLSearchParams(params || {})}`),
+  getUnreadCount: () => request('GET', '/notifications/unread-count'),
+  markRead: (id) => request('PUT', `/notifications/${id}/read`),
+  markAllRead: () => request('PUT', '/notifications/read-all'),
+
+  // Recordatorios
+  getReminders: (params) => request('GET', `/reminders?${new URLSearchParams(params || {})}`),
+  getReminder: (id) => request('GET', `/reminders/${id}`),
+  createReminder: (data) => request('POST', '/reminders', data),
+  updateReminder: (id, data) => request('PUT', `/reminders/${id}`, data),
+  completeReminder: (id) => request('PUT', `/reminders/${id}/complete`),
+  deleteReminder: (id) => request('DELETE', `/reminders/${id}`),
+
+  // Calendario
+  getCalendarEvents: (params) => request('GET', `/calendar/events?${new URLSearchParams(params || {})}`),
+
+  // Reasignaciones
+  getReassignments: (ticketId) => request('GET', `/reassignments/ticket/${ticketId}`),
+  getReassignmentLog: (params) => request('GET', `/reassignments?${new URLSearchParams(params || {})}`),
+  manualReassign: (data) => request('POST', '/reassignments/manual', data),
+
+  // Dashboard comercial
+  getCommercialStats: () => request('GET', '/dashboard/commercial'),
 };
