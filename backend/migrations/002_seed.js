@@ -24,9 +24,9 @@ module.exports = async function seed(db) {
     fran:        'c0000001-0001-0001-0001-000000000008',
   };
 
-  // Desactivar usuarios anteriores que no son parte de la lista nueva
+  // Desactivar usuarios anteriores y limpiar su email para evitar conflictos UNIQUE
   const idList = Object.values(IDS).map(id => `'${id}'`).join(',');
-  await db.query(`UPDATE users SET active = false WHERE id NOT IN (${idList})`);
+  await db.query(`UPDATE users SET active = false, email = NULL WHERE id NOT IN (${idList})`);
 
   // Usuarios oficiales (upsert por ID)
   const users = [
