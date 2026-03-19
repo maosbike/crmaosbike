@@ -66,7 +66,7 @@ router.get('/commercial', async (req, res) => {
 
     // 7. Leads urgentes (ordenados por tiempo restante SLA)
     const { rows: urgentes } = await db.query(
-      `SELECT t.id, t.ticket_number, t.first_name, t.last_name,
+      `SELECT t.id, t.ticket_num as ticket_number, t.first_name, t.last_name,
               t.sla_deadline, t.sla_status, t.assigned_to,
               u.first_name as seller_first, u.last_name as seller_last,
               EXTRACT(EPOCH FROM (t.sla_deadline - NOW())) / 3600 as hours_left
@@ -83,7 +83,7 @@ router.get('/commercial', async (req, res) => {
 
     // 8. Recordatorios de hoy (lista)
     const { rows: remHoyList } = await db.query(
-      `SELECT r.*, t.ticket_number, t.first_name as client_first, t.last_name as client_last
+      `SELECT r.*, t.ticket_num as ticket_number, t.first_name as client_first, t.last_name as client_last
        FROM reminders r
        LEFT JOIN tickets t ON r.ticket_id = t.id
        WHERE r.due_date = CURRENT_DATE AND r.status = 'pending'

@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
+const SLAService = require('../services/slaService');
 
 router.use(auth);
 
@@ -10,7 +11,7 @@ router.get('/', async (req, res) => {
     const { status, branch_id, search, page = 1, limit = 50 } = req.query;
     let where = ['1=1'], params = [], idx = 1;
 
-    if (req.user.role === 'vendedor') { where.push(`t.seller_id = $${idx++}`); params.push(req.user.id); }
+    if (req.user.role === 'vendedor') { where.push(`(t.seller_id = $${idx} OR t.assigned_to = $${idx})`); params.push(req.user.id); idx++; }
     if (status) { where.push(`t.status = $${idx++}`); params.push(status); }
     if (branch_id) { where.push(`t.branch_id = $${idx++}`); params.push(branch_id); }
     if (search) { where.push(`(t.first_name ILIKE $${idx} OR t.last_name ILIKE $${idx} OR t.phone ILIKE $${idx} OR t.rut ILIKE $${idx} OR t.ticket_num ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
@@ -22,7 +23,7 @@ router.get('/', async (req, res) => {
               b.name as branch_name, b.code as branch_code,
               m.brand as moto_brand, m.model as moto_model, m.price as moto_price, m.bonus as moto_bonus, m.image_url, m.cc, m.category, m.year as moto_year, m.colors as moto_colors
        FROM tickets t
-       LEFT JOIN users u ON t.seller_id = u.id
+       LEFT JOIN users u ON t.assigned_to = u.id
        LEFT JOIN branches b ON t.branch_id = b.id
        LEFT JOIN moto_models m ON t.model_id = m.id
        WHERE ${where.join(' AND ')}
@@ -42,7 +43,7 @@ router.get('/:id', async (req, res) => {
               m.brand as moto_brand, m.model as moto_model, m.price as moto_price, m.bonus as moto_bonus,
               m.image_url, m.cc, m.category, m.year as moto_year, m.colors as moto_colors, m.spec_url
        FROM tickets t
-       LEFT JOIN users u ON t.seller_id = u.id
+       LEFT JOIN users u ON t.assigned_to = u.id
        LEFT JOIN branches b ON t.branch_id = b.id
        LEFT JOIN moto_models m ON t.model_id = m.id
        WHERE t.id = $1`, [req.params.id]
@@ -72,7 +73,7 @@ router.post('/', async (req, res) => {
     if (!seller && branch) {
       const { rows: sellers } = await db.query(
         `SELECT u.id, COUNT(t.id) as cnt FROM users u
-         LEFT JOIN tickets t ON t.seller_id = u.id AND t.status NOT IN ('ganado','perdido','cerrado')
+         LEFT JOIN tickets t ON t.assigned_to = u.id AND t.status NOT IN ('ganado','perdido','cerrado')
          WHERE u.branch_id = $1 AND u.role = 'vendedor' AND u.active = true
          GROUP BY u.id ORDER BY cnt ASC LIMIT 1`, [branch]
       );
@@ -86,10 +87,11 @@ router.post('/', async (req, res) => {
     // SLA deadline = 8 hours from now
     const { rows } = await db.query(
       `INSERT INTO tickets (ticket_num, first_name, last_name, rut, email, phone, comuna, source,
-                            branch_id, seller_id, model_id, priority, color_pref)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+                            branch_id, seller_id, assigned_to, model_id, priority, color_pref,
+                            sla_deadline)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW() + INTERVAL '8 hours') RETURNING *`,
       [num, first_name, last_name, rut, email, phone, comuna, source || 'presencial',
-       branch, seller, model_id, priority || 'media', color_pref]
+       branch, seller, seller, model_id, priority || 'media', color_pref]
     );
 
     // Add timeline entry
@@ -131,6 +133,15 @@ router.put('/:id', async (req, res) => {
       `UPDATE tickets SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params
     );
     if (!rows[0]) return res.status(404).json({ error: 'Ticket no encontrado' });
+
+    // Registrar acciones SLA para cambios concretos
+    if (req.body.test_ride === true || req.body.test_ride === 'true') {
+      await SLAService.registerAction(req.params.id, 'test_ride_done');
+    }
+    if (req.body.fin_status && req.body.fin_status !== 'sin_movimiento') {
+      await SLAService.registerAction(req.params.id, 'financing_updated');
+    }
+
     res.json(rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
@@ -139,15 +150,32 @@ router.put('/:id', async (req, res) => {
 router.post('/:id/timeline', async (req, res) => {
   try {
     const { type, title, note, method } = req.body;
+
+    if (!type || !title) return res.status(400).json({ error: 'type y title son requeridos' });
+
+    // Validaciones por tipo de acción
+    if (type === 'contact_registered') {
+      if (!method) return res.status(400).json({ error: 'El método de contacto es requerido (llamada, whatsapp, presencial, email, sms)' });
+    }
+
+    if (type === 'note_added') {
+      if (!note || note.trim().length < 20) return res.status(400).json({ error: 'La nota debe tener al menos 20 caracteres para contar como gestión' });
+    }
+
     const { rows } = await db.query(
       `INSERT INTO timeline (ticket_id, user_id, type, title, note, method)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [req.params.id, req.user.id, type, title, note, method]
+      [req.params.id, req.user.id, type, title, note || null, method || null]
     );
-    // Update last contact
-    if (type === 'contact') {
+
+    // Registrar acción SLA para tipos que cuentan como primera gestión
+    if (type === 'contact_registered') {
       await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
+      await SLAService.registerAction(req.params.id, 'contact_registered');
+    } else if (type === 'note_added') {
+      await SLAService.registerAction(req.params.id, 'note_added');
     }
+
     res.status(201).json(rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
@@ -156,7 +184,7 @@ router.post('/:id/timeline', async (req, res) => {
 router.get('/stats/dashboard', async (req, res) => {
   try {
     let bWhere = '', params = [], idx = 1;
-    if (req.user.role === 'vendedor') { bWhere = `AND seller_id = $${idx++}`; params.push(req.user.id); }
+    if (req.user.role === 'vendedor') { bWhere = `AND assigned_to = $${idx++}`; params.push(req.user.id); }
     else if (req.user.branch_id) { bWhere = `AND branch_id = $${idx++}`; params.push(req.user.branch_id); }
 
     const stats = await db.query(`

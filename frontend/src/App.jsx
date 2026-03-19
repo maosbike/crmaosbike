@@ -211,7 +211,7 @@ export default function App(){
     {id:"sales",icon:Ic.sale,label:"Ventas"},
     {id:"catalog",icon:Ic.bike,label:"Catálogo"},
     ...(["super_admin","admin_comercial"].includes(r)?[{id:"reports",icon:Ic.chart,label:"Reportes"}]:[]),
-    ...(r==="super_admin"?[{id:"admin",icon:Ic.gear,label:"Admin"}]:[]),
+    ...(r==="super_admin"?[{id:"admin",icon:Ic.gear,label:"Admin"},{id:"import",icon:Ic.dl,label:"Importar"}]:[]),
   ];
 
   return(
@@ -238,7 +238,7 @@ export default function App(){
           {page==="sales"&&<SalesView leads={leads} user={user}/>}
           {page==="catalog"&&<CatalogView/>}
           {page==="reports"&&<ReportsView leads={leads}/>}
-          {page==="admin"&&<AdminView/>}
+          {page==="admin"&&<AdminView/>}{page==="import"&&r==="super_admin"&&<ImportView/>}
           {page==="calendar"&&<CalendarView user={user} nav={nav}/>}
         </main>
       </div>
@@ -499,9 +499,34 @@ function TicketView({lead,user,nav,updLead}){
   const slaBreach=lead.sla_status==="vencido"||(sinContactoH>=8&&lead.status==="abierto");
   const slaWarning=lead.sla_status==="en_riesgo"||(sinContactoH>=6&&sinContactoH<8&&lead.status==="abierto");
 
+  const[noteForm,setNoteForm]=useState("");
+  const[noteErr,setNoteErr]=useState("");
   const upd=(field,val)=>updLead(lead.id,{[field]:val});
-  const addTimeline=(type,title,note)=>{updLead(lead.id,{timeline:[{id:`tl-${Date.now()}`,type,title,note,date:new Date().toISOString(),user:`${user.fn} ${user.ln}`,method:contactForm.method},...lead.timeline],lastContact:new Date().toISOString()});};
-  const submitContact=e=>{e.preventDefault();if(!contactForm.result)return;addTimeline("contact",`${contactForm.method.toUpperCase()}: ${contactForm.result}`,contactForm.note);setContactForm({method:"whatsapp",result:"",note:""});};
+  const addTimelineLocal=(entry)=>{updLead(lead.id,{timeline:[entry,...(lead.timeline||[])],first_action_at:lead.first_action_at||entry.created_at||entry.date,lastContact:new Date().toISOString()});};
+  const submitContact=async e=>{
+    e.preventDefault();
+    if(!contactForm.result)return;
+    const title=`${contactForm.method.toUpperCase()}: ${contactForm.result}`;
+    try{
+      const entry=await api.addTimeline(lead.id,{type:"contact_registered",method:contactForm.method,title,note:contactForm.note||null});
+      addTimelineLocal(entry);
+    }catch{
+      addTimelineLocal({id:`tl-${Date.now()}`,type:"contact_registered",title,note:contactForm.note,date:new Date().toISOString(),user_fn:user.fn,user_ln:user.ln,method:contactForm.method});
+    }
+    setContactForm({method:"whatsapp",result:"",note:""});
+  };
+  const submitNote=async e=>{
+    e.preventDefault();
+    if(noteForm.trim().length<20){setNoteErr("La nota debe tener al menos 20 caracteres");return;}
+    setNoteErr("");
+    try{
+      const entry=await api.addTimeline(lead.id,{type:"note_added",title:"Nota agregada",note:noteForm.trim()});
+      addTimelineLocal(entry);
+    }catch{
+      addTimelineLocal({id:`tl-${Date.now()}`,type:"note_added",title:"Nota agregada",note:noteForm.trim(),date:new Date().toISOString(),user_fn:user.fn,user_ln:user.ln});
+    }
+    setNoteForm("");
+  };
   const togglePV=(f)=>updLead(lead.id,{postVenta:{...lead.postVenta,[f]:!lead.postVenta[f]}});
 
   const tabs=[{id:"datos",l:"Datos Cliente"},{id:"timeline",l:"Timeline"},{id:"recordatorios",l:"Recordatorios"},{id:"financiamiento",l:"Financiamiento"},{id:"postventa",l:"Post Venta"}];
@@ -609,21 +634,35 @@ function TicketView({lead,user,nav,updLead}){
       {tab==="timeline"&&(
         <div style={S.card}>
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Timeline de Gestión</h3>
+          {/* Agregar nota */}
+          <form onSubmit={submitNote} style={{marginBottom:16,padding:12,background:"#0E0E0F",borderRadius:10,border:"1px solid #1E1E1F"}}>
+            <label style={{...S.lbl,marginBottom:6}}>Agregar nota <span style={{color:"#555",fontWeight:400}}>(mín. 20 caracteres para contar como gestión SLA)</span></label>
+            <textarea value={noteForm} onChange={e=>{setNoteForm(e.target.value);if(noteErr)setNoteErr("");}} rows={3} style={{...S.inp,width:"100%",resize:"vertical",marginBottom:6}} placeholder="Ej: Llamé al cliente, dice que está evaluando otras opciones, volver en 3 días..."/>
+            {noteErr&&<div style={{fontSize:11,color:"#EF4444",marginBottom:6}}>{noteErr}</div>}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:10,color:noteForm.length>=20?"#10B981":"#555"}}>{noteForm.length}/20</span>
+              <button type="submit" style={{...S.btn2,padding:"6px 14px",fontSize:12}}>Guardar nota</button>
+            </div>
+          </form>
+          {/* Lista */}
           <div style={{position:"relative",paddingLeft:20}}>
             <div style={{position:"absolute",left:7,top:0,bottom:0,width:2,background:"#1E1E1F"}}/>
-            {lead.timeline.map((t,i)=>(
-              <div key={t.id} style={{position:"relative",paddingBottom:16,paddingLeft:16}}>
-                <div style={{position:"absolute",left:-2,top:4,width:12,height:12,borderRadius:"50%",background:t.type==="contact"?"#3B82F6":t.type==="status"?"#F28100":"#333",border:"2px solid #0A0A0B"}}/>
+            {(lead.timeline||[]).map((t,i)=>{
+              const dotColor=t.type==="contact_registered"||t.type==="contact"?"#3B82F6":t.type==="note_added"?"#10B981":t.type==="status"?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#333";
+              const userName=t.user||(t.user_fn?`${t.user_fn} ${t.user_ln}`:"Sistema");
+              return(
+              <div key={t.id||i} style={{position:"relative",paddingBottom:16,paddingLeft:16}}>
+                <div style={{position:"absolute",left:-2,top:4,width:12,height:12,borderRadius:"50%",background:dotColor,border:"2px solid #0A0A0B"}}/>
                 <div style={{background:"#0E0E0F",borderRadius:10,padding:12}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:13,fontWeight:600}}>{t.title}</span>
-                    <span style={{fontSize:10,color:"#555"}}>{fDT(t.date)}</span>
+                    <span style={{fontSize:10,color:"#555"}}>{fDT(t.date||t.created_at)}</span>
                   </div>
                   {t.note&&<div style={{fontSize:12,color:"#A3A3A3",marginTop:4,lineHeight:1.4}}>{t.note}</div>}
-                  <div style={{fontSize:10,color:"#555",marginTop:4}}>{t.user}{t.method?` · vía ${t.method}`:""}</div>
+                  <div style={{fontSize:10,color:"#555",marginTop:4}}>{userName}{t.method?` · vía ${t.method}`:""}</div>
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         </div>
       )}
@@ -1024,6 +1063,342 @@ function CalendarView({user,nav}){
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// IMPORT VIEW (solo super_admin)
+// ═══════════════════════════════════════════
+function ImportView() {
+  const [step, setStep]         = useState('upload');
+  const [preview, setPreview]   = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [result, setResult]     = useState(null);
+  const [skipDups, setSkipDups] = useState(true);
+  const [inclNoSeller, setInclNoSeller] = useState(true);
+  const [filter, setFilter]     = useState('all');
+  const [dragOver, setDragOver] = useState(false);
+  const [logs, setLogs]         = useState(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('import');
+
+  const STATUS_CFG = {
+    valid:     { l:'Válido',        c:'#10B981', bg:'rgba(16,185,129,0.1)'  },
+    error:     { l:'Error',         c:'#EF4444', bg:'rgba(239,68,68,0.1)'   },
+    dup_file:  { l:'Dup. archivo',  c:'#F59E0B', bg:'rgba(245,158,11,0.1)'  },
+    dup_db:    { l:'Dup. CRM',      c:'#F28100', bg:'rgba(242,129,0,0.1)'   },
+    no_seller: { l:'Sin vendedor',  c:'#6B7280', bg:'rgba(107,114,128,0.1)' },
+  };
+
+  const processFile = async (f) => {
+    if (!f) return;
+    setLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      const data = await api.importPreview(fd);
+      setPreview(data);
+      setStep('preview');
+      setFilter('all');
+    } catch (e) { alert(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault(); setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) processFile(f);
+  };
+
+  const handleConfirm = async () => {
+    if (!preview) return;
+    setLoading(true);
+    try {
+      const data = await api.importConfirm({
+        rows: preview.rows, filename: preview.filename,
+        skip_dups: skipDups, include_no_seller: inclNoSeller,
+      });
+      setResult(data); setStep('result');
+    } catch (e) { alert(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const loadLogs = async () => {
+    if (logs) return;
+    setLogsLoading(true);
+    try { const d = await api.getImportLogs(); setLogs(d); }
+    catch { setLogs([]); }
+    finally { setLogsLoading(false); }
+  };
+
+  const reset = () => { setStep('upload'); setPreview(null); setResult(null); setFilter('all'); };
+
+  const filteredRows = preview?.rows?.filter(r => {
+    if (filter==='all')       return true;
+    if (filter==='valid')     return r.status==='valid';
+    if (filter==='error')     return r.status==='error';
+    if (filter==='dup')       return r.status==='dup_file'||r.status==='dup_db';
+    if (filter==='no_seller') return r.status==='no_seller';
+    return true;
+  }) || [];
+
+  const willImport = preview?.rows?.filter(r =>
+    r.status==='valid' ||
+    (r.status==='no_seller' && inclNoSeller) ||
+    (r.status==='dup_db' && !skipDups)
+  ).length || 0;
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:700,margin:0}}>Importar prospectos</h2>
+          <p style={{fontSize:12,color:'#6B6B6B',margin:'4px 0 0'}}>Carga masiva — acceso exclusivo super_admin</p>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          {[{k:'import',l:'Importación'},{k:'logs',l:'Historial'}].map(t=>(
+            <button key={t.k} onClick={()=>{setActiveTab(t.k);if(t.k==='logs')loadLogs();}}
+              style={{...S.btn2,padding:'6px 14px',fontSize:12,
+                background:activeTab===t.k?'rgba(242,129,0,0.1)':'transparent',
+                color:activeTab===t.k?'#F28100':'#A3A3A3',
+                border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #262626'}}>
+              {t.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab==='logs'&&(
+        <div style={S.card}>
+          <h3 style={{fontSize:13,fontWeight:600,margin:'0 0 14px'}}>Historial de importaciones</h3>
+          {logsLoading&&<div style={{color:'#555',fontSize:12}}>Cargando...</div>}
+          {logs&&logs.length===0&&<div style={{color:'#555',fontSize:12}}>Sin importaciones registradas.</div>}
+          {logs&&logs.length>0&&(
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                <thead><tr>{['Fecha','Archivo','Importado por','Total','Importados','Errores','Dups.','Sin vendedor'].map(h=>(
+                  <th key={h} style={{textAlign:'left',padding:'6px 10px',borderBottom:'1px solid #1E1E1F',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                ))}</tr></thead>
+                <tbody>{logs.map(l=>(
+                  <tr key={l.id} style={{borderBottom:'1px solid #111112'}}>
+                    <td style={{padding:'7px 10px',color:'#888'}}>{fDT(l.created_at)}</td>
+                    <td style={{padding:'7px 10px'}}>{l.filename}</td>
+                    <td style={{padding:'7px 10px'}}>{l.first_name} {l.last_name}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center'}}>{l.total_rows}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',color:'#10B981',fontWeight:600}}>{l.imported}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',color:l.errors>0?'#EF4444':'#555'}}>{l.errors}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',color:l.duplicates>0?'#F59E0B':'#555'}}>{l.duplicates}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',color:l.no_seller>0?'#6B7280':'#555'}}>{l.no_seller}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab==='import'&&(
+        <>
+          {step==='upload'&&(
+            <div style={{display:'flex',flexDirection:'column',gap:16}}>
+              <div
+                onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+                onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
+                style={{...S.card,border:`2px dashed ${dragOver?'#F28100':'#262626'}`,textAlign:'center',
+                  padding:'48px 24px',cursor:'pointer',transition:'border 0.2s',
+                  background:dragOver?'rgba(242,129,0,0.04)':'#111112'}}
+                onClick={()=>document.getElementById('imp-file-input').click()}
+              >
+                <Ic.dl size={36} color={dragOver?'#F28100':'#333'}/>
+                <div style={{fontSize:15,fontWeight:600,marginTop:12,marginBottom:6}}>
+                  {loading?'Procesando archivo..':'Arrastra tu archivo aquí o haz clic para seleccionar'}
+                </div>
+                <div style={{fontSize:12,color:'#555'}}>CSV o XLSX · Máximo 5 MB</div>
+                <input id="imp-file-input" type="file" accept=".csv,.xlsx,.xls" style={{display:'none'}}
+                  onChange={e=>e.target.files[0]&&processFile(e.target.files[0])}/>
+              </div>
+
+              <div style={{...S.card,display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                <Ic.file size={20} color='#F28100'/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600}}>Plantilla CSV</div>
+                  <div style={{fontSize:11,color:'#555'}}>Descarga el formato con las columnas requeridas</div>
+                </div>
+                <a href={api.getImportTemplate()} download="template_prospectos.csv"
+                   style={{...S.btn2,padding:'7px 14px',fontSize:12,textDecoration:'none',display:'inline-block'}}>
+                  Descargar plantilla
+                </a>
+              </div>
+
+              <div style={S.card}>
+                <h3 style={{fontSize:13,fontWeight:600,margin:'0 0 12px'}}>Columnas del archivo</h3>
+                <div style={{overflowX:'auto'}}>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                    <thead><tr>{['Columna','Obligatoria','Descripción'].map(h=>(
+                      <th key={h} style={{textAlign:'left',padding:'5px 10px',borderBottom:'1px solid #1E1E1F',color:'#6B6B6B',fontWeight:600}}>{h}</th>
+                    ))}</tr></thead>
+                    <tbody>{[
+                      ['nombre',    'Sí',  'Nombre del prospecto'],
+                      ['apellido',  'No',  'Apellido'],
+                      ['telefono',  'Sí*', 'Obligatorio si no hay email'],
+                      ['email',     'Sí*', 'Obligatorio si no hay teléfono'],
+                      ['sucursal',  'Sí',  'Código de sucursal: MPN, MPS o MOV'],
+                      ['rut',       'No',  'Formato: 12345678-9'],
+                      ['fuente',    'No',  'web / whatsapp / presencial / referido / evento / llamada'],
+                      ['prioridad', 'No',  'alta / media / baja'],
+                      ['comuna',    'No',  'Ciudad o comuna'],
+                      ['color_pref','No',  'Color de moto preferido'],
+                    ].map(([col,req,desc])=>(
+                      <tr key={col} style={{borderBottom:'1px solid #111112'}}>
+                        <td style={{padding:'5px 10px',fontFamily:'monospace',color:'#F28100'}}>{col}</td>
+                        <td style={{padding:'5px 10px',color:req.includes('Sí')?'#10B981':'#555',fontWeight:req.includes('Sí')?600:400}}>{req}</td>
+                        <td style={{padding:'5px 10px',color:'#777'}}>{desc}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step==='preview'&&preview&&(
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:10}}>
+                {[
+                  {l:'Total',        v:preview.summary.total,     c:'#FAFAFA'},
+                  {l:'Válidos',      v:preview.summary.valid,     c:'#10B981'},
+                  {l:'Errores',      v:preview.summary.errors,    c:'#EF4444'},
+                  {l:'Dup. archivo', v:preview.summary.dup_file,  c:'#F59E0B'},
+                  {l:'Dup. CRM',     v:preview.summary.dup_db,    c:'#F28100'},
+                  {l:'Sin vendedor', v:preview.summary.no_seller, c:'#6B7280'},
+                ].map(x=>(
+                  <div key={x.l} style={{...S.card,padding:'12px 14px',textAlign:'center'}}>
+                    <div style={{fontSize:22,fontWeight:800,color:x.c}}>{x.v}</div>
+                    <div style={{fontSize:10,color:'#555',marginTop:2}}>{x.l}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{...S.card,display:'flex',gap:16,flexWrap:'wrap',alignItems:'center'}}>
+                <span style={{fontSize:12,fontWeight:600,color:'#888'}}>Opciones:</span>
+                <label style={{display:'flex',alignItems:'center',gap:7,cursor:'pointer',fontSize:12}}>
+                  <input type="checkbox" checked={skipDups} onChange={e=>setSkipDups(e.target.checked)} style={{accentColor:'#F28100'}}/>
+                  Omitir duplicados del CRM
+                </label>
+                <label style={{display:'flex',alignItems:'center',gap:7,cursor:'pointer',fontSize:12}}>
+                  <input type="checkbox" checked={inclNoSeller} onChange={e=>setInclNoSeller(e.target.checked)} style={{accentColor:'#F28100'}}/>
+                  Importar sin vendedor disponible
+                </label>
+                <div style={{marginLeft:'auto',fontSize:12,color:'#888'}}>
+                  Importando <span style={{color:'#10B981',fontWeight:700}}>{willImport}</span> de {preview.summary.total}
+                </div>
+              </div>
+
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {[
+                  {k:'all',       l:`Todas (${preview.summary.total})`},
+                  {k:'valid',     l:`Válidas (${preview.summary.valid})`},
+                  {k:'error',     l:`Errores (${preview.summary.errors})`},
+                  {k:'dup',       l:`Duplicados (${preview.summary.dup_file+preview.summary.dup_db})`},
+                  {k:'no_seller', l:`Sin vendedor (${preview.summary.no_seller})`},
+                ].map(t=>(
+                  <button key={t.k} onClick={()=>setFilter(t.k)}
+                    style={{...S.btn2,padding:'5px 12px',fontSize:11,
+                      background:filter===t.k?'rgba(242,129,0,0.1)':'transparent',
+                      color:filter===t.k?'#F28100':'#888',
+                      border:filter===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #262626'}}>
+                    {t.l}
+                  </button>
+                ))}
+              </div>
+
+              <div style={S.card}>
+                <div style={{overflowX:'auto',maxHeight:400,overflowY:'auto'}}>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,minWidth:720}}>
+                    <thead style={{position:'sticky',top:0,background:'#111112',zIndex:1}}>
+                      <tr>{['Fila','Estado','Nombre','Teléfono','Email','Sucursal','Observaciones'].map(h=>(
+                        <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #1E1E1F',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                      ))}</tr>
+                    </thead>
+                    <tbody>
+                      {filteredRows.map((r,i)=>{
+                        const sc=STATUS_CFG[r.status]||STATUS_CFG.error;
+                        const obs=[...(r.errors||[]),r.dup_reason,r.no_seller_warning].filter(Boolean).join(' · ');
+                        return(
+                          <tr key={i} style={{borderBottom:'1px solid #0E0E0F',background:i%2?'transparent':'rgba(255,255,255,0.01)'}}>
+                            <td style={{padding:'6px 10px',color:'#555'}}>{r._row}</td>
+                            <td style={{padding:'6px 10px'}}>
+                              <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:12,fontSize:10,fontWeight:600,color:sc.c,background:sc.bg,whiteSpace:'nowrap'}}>{sc.l}</span>
+                            </td>
+                            <td style={{padding:'6px 10px',fontWeight:500}}>{r.nombre}{r.apellido?` ${r.apellido}`:''}</td>
+                            <td style={{padding:'6px 10px',color:'#888'}}>{r.telefono||'—'}</td>
+                            <td style={{padding:'6px 10px',color:'#888'}}>{r.email||'—'}</td>
+                            <td style={{padding:'6px 10px'}}>{r.branch_name||r.sucursal||'—'}</td>
+                            <td style={{padding:'6px 10px',color:r.errors?.length?'#EF4444':'#555',fontSize:11}}>{obs||'—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {filteredRows.length===0&&(
+                    <div style={{padding:'24px',textAlign:'center',color:'#555',fontSize:12}}>Sin filas con este filtro</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+                <button onClick={reset} style={{...S.btn2,padding:'9px 20px'}}>Cancelar</button>
+                <button onClick={handleConfirm} disabled={willImport===0||loading}
+                  style={{...S.btn,padding:'9px 24px',opacity:willImport===0||loading?0.5:1}}>
+                  {loading?'Importando...':`Confirmar importación (${willImport} leads)`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step==='result'&&result&&(
+            <div style={{display:'flex',flexDirection:'column',gap:16}}>
+              <div style={{...S.card,textAlign:'center',padding:'32px 24px'}}>
+                <div style={{fontSize:40,marginBottom:8}}>✓</div>
+                <h3 style={{fontSize:18,fontWeight:700,margin:'0 0 6px',color:'#10B981'}}>Importación completada</h3>
+                <div style={{fontSize:13,color:'#888'}}>{preview?.filename}</div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
+                {[
+                  {l:'Leads importados',  v:result.imported,  c:'#10B981'},
+                  {l:'Sin vendedor asig.',v:result.no_seller, c:'#6B7280'},
+                  {l:'Errores en fila',   v:result.errors,    c:'#EF4444'},
+                ].map(x=>(
+                  <div key={x.l} style={{...S.card,padding:'14px',textAlign:'center'}}>
+                    <div style={{fontSize:26,fontWeight:800,color:x.c}}>{x.v}</div>
+                    <div style={{fontSize:10,color:'#555',marginTop:4}}>{x.l}</div>
+                  </div>
+                ))}
+              </div>
+              {result.no_seller>0&&(
+                <div style={{...S.card,border:'1px solid rgba(107,114,128,0.3)',background:'rgba(107,114,128,0.05)',padding:'12px 16px',fontSize:12,color:'#888'}}>
+                  ⚠ {result.no_seller} lead(s) importados sin vendedor — la sucursal no tiene vendedores activos. Reasignar manualmente desde Leads.
+                </div>
+              )}
+              {result.tickets?.length>0&&(
+                <div style={S.card}>
+                  <h3 style={{fontSize:12,fontWeight:600,margin:'0 0 10px',color:'#888'}}>Tickets creados</h3>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                    {result.tickets.map(n=>(
+                      <span key={n} style={{padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600,color:'#F28100',background:'rgba(242,129,0,0.1)'}}>{n}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+                <button onClick={()=>{setActiveTab('logs');setLogs(null);loadLogs();}} style={{...S.btn2,padding:'9px 20px'}}>Ver historial</button>
+                <button onClick={reset} style={{...S.btn,padding:'9px 20px'}}>Nueva importación</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

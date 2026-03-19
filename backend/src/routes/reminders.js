@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
              u_creator.last_name as creator_last_name,
              u_assigned.first_name as assigned_first_name,
              u_assigned.last_name as assigned_last_name,
-             t.ticket_number, t.first_name as client_first_name, t.last_name as client_last_name
+             t.ticket_num as ticket_number, t.first_name as client_first_name, t.last_name as client_last_name
       FROM reminders r
       LEFT JOIN users u_creator ON r.created_by = u_creator.id
       LEFT JOIN users u_assigned ON r.assigned_to = u_assigned.id
@@ -126,13 +126,13 @@ router.post('/', async (req, res) => {
     // Si está asociado a un ticket, agregar al timeline y registrar acción SLA
     if (ticket_id) {
       await db.query(
-        `INSERT INTO ticket_timeline (ticket_id, type, title, note, user_name)
-         VALUES ($1, 'system', $2, $3, $4)`,
+        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+         VALUES ($1, $2, 'system', $3, $4)`,
         [
           ticket_id,
+          req.user.id,
           `Recordatorio creado: ${title}`,
-          `Para: ${due_date}${due_time ? ' ' + due_time : ''} | Tipo: ${reminder_type || 'follow_up'}`,
-          `${req.user.first_name || ''} ${req.user.last_name || ''}`
+          `Para: ${due_date}${due_time ? ' ' + due_time : ''} | Tipo: ${reminder_type || 'follow_up'}`
         ]
       );
       // Cuenta como acción real para SLA
@@ -200,12 +200,12 @@ router.put('/:id/complete', async (req, res) => {
     // Si tiene ticket, agregar al timeline
     if (rows[0].ticket_id) {
       await db.query(
-        `INSERT INTO ticket_timeline (ticket_id, type, title, note, user_name)
-         VALUES ($1, 'system', $2, '', $3)`,
+        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+         VALUES ($1, $2, 'system', $3, '')`,
         [
           rows[0].ticket_id,
-          `Recordatorio completado: ${rows[0].title}`,
-          `${req.user.first_name || ''} ${req.user.last_name || ''}`
+          req.user.id,
+          `Recordatorio completado: ${rows[0].title}`
         ]
       );
     }

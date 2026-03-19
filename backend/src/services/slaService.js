@@ -2,14 +2,15 @@ const db = require('../config/db');
 const NotificationService = require('./notificationService');
 
 const SLAService = {
-  // Acciones que cuentan como "gestión real" del vendedor
+  // Acciones que cuentan como "primera gestión válida"
+  // Regla: abrir el ticket o cambiar el estado NO cuenta.
+  // Requiere una acción concreta sobre el cliente o el proceso.
   REAL_ACTIONS: [
-    'contact_registered',    // Registrar contacto (llamada, WhatsApp, etc)
-    'status_changed',        // Cambiar estado del ticket
-    'note_added',            // Agregar nota con contenido (min 10 chars)
-    'reminder_created',      // Crear recordatorio asociado
-    'financing_updated',     // Cambiar estado financiamiento
-    'test_ride_done',        // Marcar test ride realizado
+    'contact_registered',  // Llamada, WhatsApp, presencial, email — method requerido
+    'note_added',          // Nota sustantiva — mínimo 20 caracteres
+    'reminder_created',    // Crear recordatorio asociado al ticket
+    'financing_updated',   // Cambiar estado financiamiento a algo concreto
+    'test_ride_done',      // Marcar test ride realizado
   ],
 
   // Registrar una acción real en el ticket
@@ -119,8 +120,8 @@ const SLAService = {
 
     // Timeline del ticket
     await db.query(
-      `INSERT INTO ticket_timeline (ticket_id, type, title, note, user_name)
-       VALUES ($1, 'system', $2, $3, 'Sistema')`,
+      `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+       VALUES ($1, NULL, 'system', $2, $3)`,
       [
         ticket.id,
         `Reasignado a ${newSeller.first_name} ${newSeller.last_name}`,
@@ -142,7 +143,7 @@ const SLAService = {
 
     // 1. Tickets WARNING (entre 6h y 8h sin gestión)
     const { rows: warningTickets } = await db.query(
-      `SELECT t.*, t.ticket_number,
+      `SELECT t.*, t.ticket_num as ticket_number,
               COALESCE(t.first_name || ' ' || t.last_name, 'Sin nombre') as client_name
        FROM tickets t
        WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
@@ -164,7 +165,7 @@ const SLAService = {
 
     // 2. Tickets BREACH (más de 8h sin gestión)
     const { rows: breachedTickets } = await db.query(
-      `SELECT t.*, t.ticket_number,
+      `SELECT t.*, t.ticket_num as ticket_number,
               COALESCE(t.first_name || ' ' || t.last_name, 'Sin nombre') as client_name
        FROM tickets t
        WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')

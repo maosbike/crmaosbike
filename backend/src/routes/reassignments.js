@@ -81,13 +81,13 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
     const toName = `${toUser[0].first_name} ${toUser[0].last_name}`;
 
     await db.query(
-      `INSERT INTO ticket_timeline (ticket_id, type, title, note, user_name)
-       VALUES ($1, 'system', $2, $3, $4)`,
+      `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+       VALUES ($1, $2, 'system', $3, $4)`,
       [
         ticket_id,
+        req.user.id,
         `Reasignado manualmente a ${toName}`,
-        `Antes: ${fromName}`,
-        `${req.user.first_name || ''} ${req.user.last_name || ''}`
+        `Antes: ${fromName}`
       ]
     );
 
@@ -115,7 +115,7 @@ router.get('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) =>
     const limit = parseInt(req.query.limit) || 20;
     const { rows } = await db.query(
       `SELECT rl.*,
-              t.ticket_number,
+              t.ticket_num as ticket_number,
               uf.first_name as from_first, uf.last_name as from_last,
               ut.first_name as to_first, ut.last_name as to_last,
               ur.first_name as by_first, ur.last_name as by_last

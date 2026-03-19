@@ -18,6 +18,7 @@ app.use('/api/catalog', require('./routes/catalog'));
 app.use('/api/users', require('./routes/users'));
 
 // API Routes (nuevas - seguimiento comercial)
+app.use('/api/import', require('./routes/import'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/reminders', require('./routes/reminders'));
 app.use('/api/calendar', require('./routes/calendar'));

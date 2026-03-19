@@ -24,7 +24,7 @@ router.get('/events', async (req, res) => {
              r.priority, r.status, r.reminder_type, r.ticket_id,
              r.assigned_to,
              u.first_name as assigned_name,
-             t.ticket_number, t.first_name as client_name
+             t.ticket_num as ticket_number, t.first_name as client_name
       FROM reminders r
       LEFT JOIN users u ON r.assigned_to = u.id
       LEFT JOIN tickets t ON r.ticket_id = t.id
@@ -75,7 +75,7 @@ router.get('/events', async (req, res) => {
 
     // 2. VENCIMIENTOS SLA (tickets activos con SLA próximo)
     let slaQuery = `
-      SELECT t.id, t.ticket_number, t.sla_deadline, t.sla_status,
+      SELECT t.id, t.ticket_num as ticket_number, t.sla_deadline, t.sla_status,
              t.first_name as client_first, t.last_name as client_last,
              t.assigned_to, t.branch_id,
              u.first_name as seller_name

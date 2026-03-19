@@ -102,4 +102,21 @@ export const api = {
 
   // Dashboard comercial
   getCommercialStats: () => request('GET', '/dashboard/commercial'),
+
+  // Importación masiva (solo super_admin)
+  importPreview: (formData) => {
+    const token = getToken();
+    return fetch(`${BASE}/import/preview`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then(async r => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error en preview');
+      return data;
+    });
+  },
+  importConfirm: (data)   => request('POST', '/import/confirm', data),
+  getImportLogs: ()       => request('GET',  '/import/logs'),
+  getImportTemplate: ()   => `${BASE}/import/template`,
 };
