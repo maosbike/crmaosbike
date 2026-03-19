@@ -1077,7 +1077,6 @@ function ImportView() {
   const [loading, setLoading]   = useState(false);
   const [result, setResult]     = useState(null);
   const [skipDups, setSkipDups] = useState(true);
-  const [inclNoSeller, setInclNoSeller] = useState(true);
   const [filter, setFilter]     = useState('all');
   const [dragOver, setDragOver] = useState(false);
   const [logs, setLogs]         = useState(null);
@@ -1085,11 +1084,10 @@ function ImportView() {
   const [activeTab, setActiveTab] = useState('import');
 
   const STATUS_CFG = {
-    valid:     { l:'Válido',        c:'#10B981', bg:'rgba(16,185,129,0.1)'  },
-    error:     { l:'Error',         c:'#EF4444', bg:'rgba(239,68,68,0.1)'   },
-    dup_file:  { l:'Dup. archivo',  c:'#F59E0B', bg:'rgba(245,158,11,0.1)'  },
-    dup_db:    { l:'Dup. CRM',      c:'#F28100', bg:'rgba(242,129,0,0.1)'   },
-    no_seller: { l:'Sin vendedor',  c:'#6B7280', bg:'rgba(107,114,128,0.1)' },
+    valid:    { l:'Válido',       c:'#10B981', bg:'rgba(16,185,129,0.1)' },
+    error:    { l:'Error',        c:'#EF4444', bg:'rgba(239,68,68,0.1)'  },
+    dup_file: { l:'Dup. archivo', c:'#F59E0B', bg:'rgba(245,158,11,0.1)' },
+    dup_db:   { l:'Dup. CRM',     c:'#F28100', bg:'rgba(242,129,0,0.1)'  },
   };
 
   const processFile = async (f) => {
@@ -1118,7 +1116,7 @@ function ImportView() {
     try {
       const data = await api.importConfirm({
         rows: preview.rows, filename: preview.filename,
-        skip_dups: skipDups, include_no_seller: inclNoSeller,
+        skip_dups: skipDups,
       });
       setResult(data); setStep('result');
     } catch (e) { alert(e.message); }
@@ -1136,17 +1134,15 @@ function ImportView() {
   const reset = () => { setStep('upload'); setPreview(null); setResult(null); setFilter('all'); };
 
   const filteredRows = preview?.rows?.filter(r => {
-    if (filter==='all')       return true;
-    if (filter==='valid')     return r.status==='valid';
-    if (filter==='error')     return r.status==='error';
-    if (filter==='dup')       return r.status==='dup_file'||r.status==='dup_db';
-    if (filter==='no_seller') return r.status==='no_seller';
+    if (filter==='all')   return true;
+    if (filter==='valid') return r.status==='valid';
+    if (filter==='error') return r.status==='error';
+    if (filter==='dup')   return r.status==='dup_file'||r.status==='dup_db';
     return true;
   }) || [];
 
   const willImport = preview?.rows?.filter(r =>
     r.status==='valid' ||
-    (r.status==='no_seller' && inclNoSeller) ||
     (r.status==='dup_db' && !skipDups)
   ).length || 0;
 
@@ -1267,12 +1263,11 @@ function ImportView() {
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:10}}>
                 {[
-                  {l:'Total',        v:preview.summary.total,     c:'#FAFAFA'},
-                  {l:'Válidos',      v:preview.summary.valid,     c:'#10B981'},
-                  {l:'Errores',      v:preview.summary.errors,    c:'#EF4444'},
-                  {l:'Dup. archivo', v:preview.summary.dup_file,  c:'#F59E0B'},
-                  {l:'Dup. CRM',     v:preview.summary.dup_db,    c:'#F28100'},
-                  {l:'Sin vendedor', v:preview.summary.no_seller, c:'#6B7280'},
+                  {l:'Total',        v:preview.summary.total,    c:'#FAFAFA'},
+                  {l:'Válidos',      v:preview.summary.valid,    c:'#10B981'},
+                  {l:'Errores',      v:preview.summary.errors,   c:'#EF4444'},
+                  {l:'Dup. archivo', v:preview.summary.dup_file, c:'#F59E0B'},
+                  {l:'Dup. CRM',     v:preview.summary.dup_db,   c:'#F28100'},
                 ].map(x=>(
                   <div key={x.l} style={{...S.card,padding:'12px 14px',textAlign:'center'}}>
                     <div style={{fontSize:22,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -1287,10 +1282,6 @@ function ImportView() {
                   <input type="checkbox" checked={skipDups} onChange={e=>setSkipDups(e.target.checked)} style={{accentColor:'#F28100'}}/>
                   Omitir duplicados del CRM
                 </label>
-                <label style={{display:'flex',alignItems:'center',gap:7,cursor:'pointer',fontSize:12}}>
-                  <input type="checkbox" checked={inclNoSeller} onChange={e=>setInclNoSeller(e.target.checked)} style={{accentColor:'#F28100'}}/>
-                  Importar sin vendedor disponible
-                </label>
                 <div style={{marginLeft:'auto',fontSize:12,color:'#888'}}>
                   Importando <span style={{color:'#10B981',fontWeight:700}}>{willImport}</span> de {preview.summary.total}
                 </div>
@@ -1298,11 +1289,10 @@ function ImportView() {
 
               <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                 {[
-                  {k:'all',       l:`Todas (${preview.summary.total})`},
-                  {k:'valid',     l:`Válidas (${preview.summary.valid})`},
-                  {k:'error',     l:`Errores (${preview.summary.errors})`},
-                  {k:'dup',       l:`Duplicados (${preview.summary.dup_file+preview.summary.dup_db})`},
-                  {k:'no_seller', l:`Sin vendedor (${preview.summary.no_seller})`},
+                  {k:'all',   l:`Todas (${preview.summary.total})`},
+                  {k:'valid', l:`Válidas (${preview.summary.valid})`},
+                  {k:'error', l:`Errores (${preview.summary.errors})`},
+                  {k:'dup',   l:`Duplicados (${preview.summary.dup_file+preview.summary.dup_db})`},
                 ].map(t=>(
                   <button key={t.k} onClick={()=>setFilter(t.k)}
                     style={{...S.btn2,padding:'5px 12px',fontSize:11,
@@ -1325,7 +1315,7 @@ function ImportView() {
                     <tbody>
                       {filteredRows.map((r,i)=>{
                         const sc=STATUS_CFG[r.status]||STATUS_CFG.error;
-                        const obs=[...(r.errors||[]),r.dup_reason,r.no_seller_warning].filter(Boolean).join(' · ');
+                        const obs=[...(r.errors||[]),r.dup_reason].filter(Boolean).join(' · ');
                         return(
                           <tr key={i} style={{borderBottom:'1px solid #0E0E0F',background:i%2?'transparent':'rgba(255,255,255,0.01)'}}>
                             <td style={{padding:'6px 10px',color:'#555'}}>{r._row}</td>
@@ -1335,7 +1325,7 @@ function ImportView() {
                             <td style={{padding:'6px 10px',fontWeight:500}}>{r.nombre}{r.apellido?` ${r.apellido}`:''}</td>
                             <td style={{padding:'6px 10px',color:'#888'}}>{r.telefono||'—'}</td>
                             <td style={{padding:'6px 10px',color:'#888'}}>{r.email||'—'}</td>
-                            <td style={{padding:'6px 10px'}}>{r.branch_name||r.sucursal||'—'}</td>
+                            <td style={{padding:'6px 10px'}}>{r.branch_name||r.sucursal_raw||'—'}</td>
                             <td style={{padding:'6px 10px',color:r.errors?.length?'#EF4444':'#555',fontSize:11}}>{obs||'—'}</td>
                           </tr>
                         );
@@ -1367,9 +1357,8 @@ function ImportView() {
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
                 {[
-                  {l:'Leads importados',  v:result.imported,  c:'#10B981'},
-                  {l:'Sin vendedor asig.',v:result.no_seller, c:'#6B7280'},
-                  {l:'Errores en fila',   v:result.errors,    c:'#EF4444'},
+                  {l:'Leads importados', v:result.imported, c:'#10B981'},
+                  {l:'Errores en fila',  v:result.errors,   c:'#EF4444'},
                 ].map(x=>(
                   <div key={x.l} style={{...S.card,padding:'14px',textAlign:'center'}}>
                     <div style={{fontSize:26,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -1377,11 +1366,6 @@ function ImportView() {
                   </div>
                 ))}
               </div>
-              {result.no_seller>0&&(
-                <div style={{...S.card,border:'1px solid rgba(107,114,128,0.3)',background:'rgba(107,114,128,0.05)',padding:'12px 16px',fontSize:12,color:'#888'}}>
-                  ⚠ {result.no_seller} lead(s) importados sin vendedor — la sucursal no tiene vendedores activos. Reasignar manualmente desde Leads.
-                </div>
-              )}
               {result.tickets?.length>0&&(
                 <div style={S.card}>
                   <h3 style={{fontSize:12,fontWeight:600,margin:'0 0 10px',color:'#888'}}>Tickets creados</h3>

@@ -31,6 +31,10 @@ async function migrate() {
     await db.query(sql007);
     console.log('✓ Migration 007 (fin_data JSONB) applied');
 
+    const sql008 = fs.readFileSync(path.join(__dirname, '../../migrations/008_user_branches.sql'), 'utf-8');
+    await db.query(sql008);
+    console.log('✓ Migration 008 (extra_branches para vendedores multi-sucursal) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);

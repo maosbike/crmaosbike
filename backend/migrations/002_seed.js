@@ -25,25 +25,29 @@ module.exports = async function seed(db) {
   // ─── USUARIOS ──────────────────────────────────────────────────────────────
   const hash = await bcrypt.hash('maosbike2026', 10);
 
+  const MPN = 'b0000001-0001-0001-0001-000000000001'; // Mall Plaza Norte
+  const MPS = 'b0000001-0001-0001-0001-000000000002'; // Mall Plaza Sur
+
+  // [username, email, first_name, last_name, role, branch_id, extra_branches]
+  // extra_branches: sucursales adicionales — Camila cubre MPS y MPN
   const users = [
-    // [username, email, first_name, last_name, role, branch_id]
-    ['joaquin',     'joaquin@crmaosbike.cl',     'Joaquín',     'Oliva',  'super_admin',     null],
-    ['javiera',     'javiera@crmaosbike.cl',     'Javiera',     '-',      'vendedor',        'b0000001-0001-0001-0001-000000000001'],
-    ['camila',      'camila@crmaosbike.cl',      'Camila',      '-',      'vendedor',        null],
-    ['pauli',       'pauli@crmaosbike.cl',       'Pauli',       '-',      'vendedor',        null],
-    ['eduardo',     'eduardo@crmaosbike.cl',     'Eduardo',     '-',      'vendedor',        null],
-    ['ahentua',     'ahentua@crmaosbike.cl',     'Ahentua',     '-',      'vendedor',        null],
-    ['miguelangel', 'miguelangel@crmaosbike.cl', 'Miguel Ángel','-',      'admin_comercial', null],
-    ['fran',        'fran@crmaosbike.cl',        'Fran',        '-',      'backoffice',      null],
+    ['joaquin',     'joaquin@crmaosbike.cl',     'Joaquín',     'Oliva',  'super_admin',     null, []],
+    ['javiera',     'javiera@crmaosbike.cl',     'Javiera',     '-',      'vendedor',        MPN,  []],
+    ['camila',      'camila@crmaosbike.cl',      'Camila',      '-',      'vendedor',        MPS,  [MPN]],
+    ['pauli',       'pauli@crmaosbike.cl',       'Pauli',       '-',      'vendedor',        MPS,  []],
+    ['eduardo',     'eduardo@crmaosbike.cl',     'Eduardo',     '-',      'vendedor',        MPN,  []],
+    ['ahentua',     'ahentua@crmaosbike.cl',     'Ahentua',     '-',      'vendedor',        MPS,  []],
+    ['miguelangel', 'miguelangel@crmaosbike.cl', 'Miguel Ángel','-',      'admin_comercial', null, []],
+    ['fran',        'fran@crmaosbike.cl',        'Fran',        '-',      'backoffice',      null, []],
   ];
 
-  for (const [username, email, fn, ln, role, branch] of users) {
+  for (const [username, email, fn, ln, role, branch, extras] of users) {
     await db.query(
-      `INSERT INTO users (username, email, password_hash, first_name, last_name, role, branch_id, active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true)`,
-      [username, email, hash, fn, ln, role, branch]
+      `INSERT INTO users (username, email, password_hash, first_name, last_name, role, branch_id, active, extra_branches)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8::uuid[])`,
+      [username, email, hash, fn, ln, role, branch, extras]
     );
-    console.log(`  ✓ ${username} (${role})`);
+    console.log(`  ✓ ${username} (${role}${branch ? ` · ${branch === MPN ? 'MPN' : 'MPS'}${extras.length ? '+extra' : ''}` : ''})`);
   }
 
   // ─── CATÁLOGO DE MOTOS ─────────────────────────────────────────────────────

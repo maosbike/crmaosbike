@@ -28,6 +28,8 @@ const COL_ALIASES = {
   rut:              ['rut', 'run', 'rut_cliente'],
   // 'distribuidor' es la columna de sucursal en plantillas Yamaha
   sucursal:         ['sucursal', 'branch', 'tienda', 'local', 'distribuidor'],
+  // vendedor del Excel → solo referencia informativa, NO se usa para asignar
+  vendedor_ref:     ['vendedor', 'vendedor_asignado', 'seller', 'asesor', 'ejecutivo'],
   fuente:           ['fuente', 'source', 'origen', 'canal'],
   prioridad:        ['prioridad', 'priority', 'urgencia'],
   comuna:           ['comuna', 'ciudad', 'city'],
@@ -156,6 +158,7 @@ function validateRow(row, headerMap, rowIndex) {
   const pre_eval_autofin = get(row, headerMap, 'pre_eval_autofin');
   const eval_autofin     = get(row, headerMap, 'eval_autofin');
   const obs_autofin      = get(row, headerMap, 'obs_autofin');
+  const vendedor_ref     = get(row, headerMap, 'vendedor_ref'); // solo referencia, no se usa para asignar
 
   const errors = [];
 
@@ -194,6 +197,8 @@ function validateRow(row, headerMap, rowIndex) {
   if (pre_eval_autofin) fin_data.pre_eval_autofin = pre_eval_autofin;
   if (eval_autofin)     fin_data.eval_autofin     = eval_autofin;
   if (obs_autofin)      fin_data.obs_autofin      = obs_autofin;
+  // Vendedor del archivo guardado como referencia — el CRM asigna por sucursal
+  if (vendedor_ref)     fin_data.vendedor_ref     = vendedor_ref;
 
   return {
     _row:            rowIndex,
@@ -308,13 +313,6 @@ router.post('/preview', upload.single('file'), async (req, res) => {
     // ── Cargar sucursales activas ──────────────────────────────
     const { rows: branches } = await db.query('SELECT id, name, code FROM branches WHERE active = true');
 
-    // ── Cargar vendedores activos por sucursal ─────────────────
-    const { rows: sellerCounts } = await db.query(
-      `SELECT branch_id, COUNT(*) as cnt FROM users WHERE role = 'vendedor' AND active = true GROUP BY branch_id`
-    );
-    const sellersByBranch = {};
-    sellerCounts.forEach(s => { sellersByBranch[s.branch_id] = parseInt(s.cnt); });
-
     // ── Aplicar flags ──────────────────────────────────────────
     for (const r of rows) {
       if (r.status === 'error') continue;
@@ -347,21 +345,15 @@ router.post('/preview', upload.single('file'), async (req, res) => {
       } else {
         r.branch_id   = branch.id;
         r.branch_name = branch.name;
-
-        if (r.status === 'valid' && (sellersByBranch[branch.id] || 0) === 0) {
-          r.status            = 'no_seller';
-          r.no_seller_warning = `Sin vendedores activos en ${branch.name}`;
-        }
       }
     }
 
     const summary = {
-      total:     rows.length,
-      valid:     rows.filter(r => r.status === 'valid').length,
-      errors:    rows.filter(r => r.status === 'error').length,
-      dup_file:  rows.filter(r => r.status === 'dup_file').length,
-      dup_db:    rows.filter(r => r.status === 'dup_db').length,
-      no_seller: rows.filter(r => r.status === 'no_seller').length,
+      total:    rows.length,
+      valid:    rows.filter(r => r.status === 'valid').length,
+      errors:   rows.filter(r => r.status === 'error').length,
+      dup_file: rows.filter(r => r.status === 'dup_file').length,
+      dup_db:   rows.filter(r => r.status === 'dup_db').length,
     };
 
     res.json({ rows, summary, filename: req.file.originalname });
@@ -374,7 +366,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
 // ─── POST /api/import/confirm ─────────────────────────────────
 router.post('/confirm', async (req, res) => {
   try {
-    const { rows, filename, skip_dups = true, include_no_seller = true } = req.body;
+    const { rows, filename, skip_dups = true } = req.body;
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(400).json({ error: 'No hay filas para importar' });
@@ -382,8 +374,7 @@ router.post('/confirm', async (req, res) => {
 
     const toImport = rows.filter(r =>
       r.status === 'valid' ||
-      (r.status === 'no_seller' && include_no_seller) ||
-      (r.status === 'dup_db'    && !skip_dups)
+      (r.status === 'dup_db' && !skip_dups)
     );
 
     if (toImport.length === 0) {
@@ -394,6 +385,8 @@ router.post('/confirm', async (req, res) => {
     let ticketCount = parseInt(countR[0].count);
 
     // ── Least-loaded + round-robin por sucursal ────────────────
+    // Incluye vendedores con branch_id = branch_id O que tienen branch_id
+    // en extra_branches (ej: Camila cubre MPS y MPN)
     const sellerCache = {};
     async function assignSeller(branch_id) {
       if (!sellerCache[branch_id]) {
@@ -402,7 +395,8 @@ router.post('/confirm', async (req, res) => {
                   COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) AS active_tickets
            FROM users u
            LEFT JOIN tickets t ON t.assigned_to = u.id
-           WHERE u.role = 'vendedor' AND u.active = true AND u.branch_id = $1
+           WHERE u.role = 'vendedor' AND u.active = true
+             AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
            GROUP BY u.id
            ORDER BY active_tickets ASC`,
           [branch_id]
