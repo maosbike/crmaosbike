@@ -111,6 +111,40 @@ const genInv=()=>{
   return inv;
 };
 
+const BRANCH_CODE_TO_LOCAL={MPN:'b1',MPS:'b2',MOV:'b3'};
+const mapTicket=(t)=>{
+  const motoLocal=t.moto_brand?MOTOS.find(m=>m.brand===t.moto_brand&&m.model===t.moto_model):null;
+  const pv=t.post_venta||{factura:false,pagoReg:false,homSol:false,homRec:false,enrolada:false,entregada:false};
+  return{
+    id:t.id,num:t.ticket_num,
+    fn:t.first_name,ln:t.last_name||'',
+    rut:t.rut||'',bday:t.birthdate||'',
+    email:t.email||'',phone:t.phone||'',
+    comuna:t.comuna||'',source:t.source||'presencial',
+    branch:BRANCH_CODE_TO_LOCAL[t.branch_code]||null,
+    branch_id:t.branch_id||null,branch_name:t.branch_name||'',
+    branch_code:t.branch_code||'',branch_addr:t.branch_addr||'',
+    seller:null,seller_fn:t.seller_fn||'',seller_ln:t.seller_ln||'',
+    seller_id:t.assigned_to||null,
+    status:t.status||'abierto',priority:t.priority||'media',
+    motoId:motoLocal?.id||null,
+    model_brand:t.moto_brand||null,model_name:t.moto_model||null,
+    colorPref:t.color_pref||'',wantsFin:t.wants_financing||false,
+    sitLab:t.sit_laboral||'',continuidad:t.continuidad||'',
+    renta:t.renta||0,pie:t.pie||0,
+    testRide:t.test_ride||false,
+    finStatus:t.fin_status||'sin_movimiento',
+    finInst:t.fin_institution||'Autofin',
+    rechazoMotivo:t.rechazo_motivo||null,
+    obsVendedor:t.obs_vendedor||'',obsSupervisor:t.obs_supervisor||'',
+    createdAt:t.created_at,lastContact:t.last_contact_at||null,
+    sla_status:t.sla_status||null,sla_deadline:t.sla_deadline||null,
+    first_action_at:t.first_action_at||null,
+    postVenta:typeof pv==='string'?JSON.parse(pv):pv,
+    timeline:[],fin_data:t.fin_data||null,
+  };
+};
+
 // ═══════════════════════════════════════════
 // ICONS
 // ═══════════════════════════════════════════
@@ -189,15 +223,34 @@ const Field=({label,value,onChange,type="text",ph,req,opts,rows,disabled})=>{
 export default function App(){
   const[user,setUser]=useState(null);
   const[page,setPage]=useState("dashboard");
-  const[leads,setLeads]=useState(()=>genLeads());
+  const[leads,setLeads]=useState([]);
   const[inv,setInv]=useState(()=>genInv());
   const[selLead,setSelLead]=useState(null);
   const[showChangePw,setShowChangePw]=useState(false);
   const[drawerOpen,setDrawerOpen]=useState(false);
+  const[realBranches,setRealBranches]=useState(BRANCHES);
+
+  useEffect(()=>{
+    if(!user)return;
+    api.getTickets({limit:200}).then(d=>setLeads((d.data||[]).map(mapTicket))).catch(()=>{});
+    api.getBranches().then(bs=>setRealBranches(bs.length?bs:BRANCHES)).catch(()=>{});
+  },[user?.id]);
 
   if(!user)return<Login onLogin={setUser}/>;
   if(user.forceChange)return<ForceChangeView user={user} onChanged={u=>{setUser(u);localStorage.setItem("crm_user",JSON.stringify(u));}}/>;
-  const nav=(pg,lid)=>{if(pg==="ticket"&&lid)setSelLead(leads.find(l=>l.id===lid));setPage(pg);};
+  const reloadLeads=()=>api.getTickets({limit:200}).then(d=>setLeads((d.data||[]).map(mapTicket))).catch(()=>{});
+  const nav=(pg,lid)=>{
+    if(pg==="ticket"&&lid){
+      setSelLead(leads.find(l=>l.id===lid)||{id:lid,fn:'',ln:'',timeline:[]});
+      api.getTicket(lid).then(d=>{
+        const tl=(d.timeline||[]).map(t=>({id:t.id,type:t.type,title:t.title,note:t.note,method:t.method,date:t.created_at,user_fn:t.user_fn,user_ln:t.user_ln}));
+        const full={...mapTicket(d),timeline:tl};
+        setSelLead(full);
+        setLeads(p=>p.map(l=>l.id===lid?full:l));
+      }).catch(()=>{});
+    }
+    setPage(pg);
+  };
   const updLead=(id,u)=>{setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));if(selLead?.id===id)setSelLead(p=>({...p,...u}));};
   const addLead=l=>setLeads(p=>[l,...p]);
   const updInv=(id,u)=>setInv(p=>p.map(x=>x.id===id?{...x,...u}:x));
@@ -220,7 +273,7 @@ export default function App(){
       <aside className="crm-sidebar" style={{width:210,background:"#111112",borderRight:"1px solid #1E1E1F",display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 14px",height:52,borderBottom:"1px solid #1E1E1F"}}><div style={{width:30,height:30,borderRadius:8,background:"#F28100",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic.bike size={17} color="white"/></div><span style={{fontSize:14,fontWeight:700}}>MaosBike <span style={{color:"#F28100"}}>CRM</span></span></div>
         <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column",gap:1}}>{items.map(it=>{const act=page===it.id||(it.id==="leads"&&page==="ticket");return<button key={it.id} onClick={()=>nav(it.id)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:500,fontFamily:"inherit",background:act?"rgba(242,129,0,0.1)":"transparent",color:act?"#F28100":"#A3A3A3"}}><it.icon size={16}/>{it.label}</button>;})}</nav>
-        <div style={{borderTop:"1px solid #1E1E1F",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+user.ln[0]).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#555"}}>{gB(user.branch)?.name||user.role}</div></div><button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#555"/></button><button onClick={()=>setUser(null)} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#555"/></button></div></div>
+        <div style={{borderTop:"1px solid #1E1E1F",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+(user.ln&&user.ln!=='-'?user.ln[0]:'')).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#555"}}>{user.branchName||user.role}</div></div><button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#555"/></button><button onClick={()=>setUser(null)} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#555"/></button></div></div>
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
         <header className="crm-mobile-hdr" style={{display:"none",height:52,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid #1E1E1F",background:"#111112",flexShrink:0,gap:10}}>
@@ -231,7 +284,7 @@ export default function App(){
         <header className="crm-desktop-hdr" style={{height:48,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",borderBottom:"1px solid #1E1E1F",background:"rgba(17,17,18,0.7)",flexShrink:0}}><NotifBell nav={nav}/></header>
         <main className="crm-scroll-area" style={{flex:1,overflow:"auto",padding:"16px 20px"}}>
           {page==="dashboard"&&<Dashboard leads={leads} inv={inv} user={user} nav={nav}/>}
-          {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead}/>}
+          {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches}/>}
           {page==="pipeline"&&<PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/>}
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
           {page==="inventory"&&<InventoryView inv={inv} updInv={updInv} addInv={addInv} user={user}/>}
@@ -409,7 +462,7 @@ function Dashboard({leads,inv,user,nav}){
   const tareasHoy=stats?.tareas_hoy||stats?.reminders_today||[];
   return(
     <div>
-      <div style={{marginBottom:18}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Bienvenido, {user.fn}</h1><p style={{color:"#6B6B6B",fontSize:12,margin:"2px 0 0"}}>{gB(user.branch)?.name||"Todas las sucursales"}</p></div>
+      <div style={{marginBottom:18}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Bienvenido, {user.fn}</h1><p style={{color:"#6B6B6B",fontSize:12,margin:"2px 0 0"}}>{user.branchName||"Todas las sucursales"}</p></div>
 
       {stats&&<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:14}}>
@@ -447,17 +500,30 @@ function Dashboard({leads,inv,user,nav}){
 // ═══════════════════════════════════════════
 // LEADS LIST
 // ═══════════════════════════════════════════
-function LeadsList({leads,user,nav,addLead}){
+function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
+  const brs=realBranches||BRANCHES;
   const[search,setSearch]=useState("");const[stF,setStF]=useState("");const[brF,setBrF]=useState("");const[showNew,setShowNew]=useState(false);
-  const[nw,setNw]=useState({fn:"",ln:"",phone:"",email:"",rut:"",comuna:"",source:"presencial",motoId:"",branch:user.branch||"b1",priority:"media"});
-  const f=leads.filter(l=>{if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;if(stF&&l.status!==stF)return false;if(brF&&l.branch!==brF)return false;if(user.role==="vendedor"&&l.seller!==user.id)return false;return true;});
-  const handleAdd=e=>{e.preventDefault();const sellers=USERS.filter(u=>u.role==="vendedor"&&u.branch===(nw.branch||"b1"));const s=sellers[0]||USERS[3];const m=gM(nw.motoId);addLead({id:`t-${Date.now()}`,num:`SCM-${247200+leads.length}`,fn:nw.fn,ln:nw.ln,phone:nw.phone,email:nw.email,rut:nw.rut,bday:"",comuna:nw.comuna,source:nw.source,branch:nw.branch||s.branch,seller:user.role==="vendedor"?user.id:s.id,status:"abierto",priority:nw.priority,motoId:nw.motoId||null,colorPref:m?.colors[0]||"",wantsFin:false,sitLab:"",continuidad:"",renta:0,pie:0,testRide:false,finStatus:"sin_movimiento",finInst:"Autofin",rechazoMotivo:null,obsVendedor:"",obsSupervisor:"",createdAt:new Date().toISOString(),lastContact:null,timeline:[{id:`tl-new`,type:"system",title:"Ticket creado",date:new Date().toISOString(),user:`${user.fn} ${user.ln}`}],postVenta:{factura:false,pagoReg:false,homSol:false,homRec:false,enrolada:false,entregada:false}});setShowNew(false);};
+  const[nw,setNw]=useState({fn:"",ln:"",phone:"",email:"",rut:"",comuna:"",source:"presencial",motoId:"",branch_id:user.branch||"",priority:"media"});
+  const f=leads.filter(l=>{if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;if(stF&&l.status!==stF)return false;if(brF&&l.branch_id!==brF&&l.branch!==brF)return false;if(user.role==="vendedor"&&l.seller_id!==user.id)return false;return true;});
+  const[adding,setAdding]=useState(false);
+  const handleAdd=async e=>{
+    e.preventDefault();setAdding(true);
+    try{
+      const body={first_name:nw.fn,last_name:nw.ln,phone:nw.phone,email:nw.email,rut:nw.rut,comuna:nw.comuna,source:nw.source,branch_id:nw.branch_id||null,priority:nw.priority,model_id:null,wants_financing:false};
+      if(nw.motoId){const m=gM(nw.motoId);if(m){const models=await api.getModels({brand:m.brand}).catch(()=>({data:[]}));const found=(models.data||models||[]).find(x=>x.brand===m.brand&&x.model===m.model);if(found)body.model_id=found.id;}}
+      const created=await api.createTicket(body);
+      addLead(mapTicket(created));
+      setShowNew(false);
+      setTimeout(()=>onRefresh?.(),1000);
+    }catch(ex){alert(ex.message||"Error al crear ticket");}
+    finally{setAdding(false);}
+  };
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}><div><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Leads / Tickets</h1><p style={{color:"#6B6B6B",fontSize:12}}>{f.length} tickets</p></div><button onClick={()=>setShowNew(true)} style={{...S.btn,display:"flex",alignItems:"center",gap:6,fontSize:12}}><Ic.plus size={15}/>Nuevo Ticket</button></div>
-      <div className="crm-filters" style={{...S.card,padding:10,marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}><div className="crm-search" style={{position:"relative",flex:1,minWidth:200}}><Ic.search size={14} color="#555" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nombre, RUT, ticket..." style={{...S.inp,paddingLeft:30,width:"100%"}}/></div><select value={stF} onChange={e=>setStF(e.target.value)} style={{...S.inp,minWidth:140}}><option value="">Todos los estados</option>{Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select><select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp,minWidth:140}}><option value="">Todas las sucursales</option>{BRANCHES.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
-      <div className="crm-table-scroll" style={{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{borderBottom:"1px solid #1E1E1F"}}>{["Ticket","Cliente","Contacto","Moto","Prioridad","Estado","Vendedor","Fecha"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 12px",fontSize:10,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{f.slice(0,40).map(l=>{const m=gM(l.motoId),s=gU(l.seller);return<tr key={l.id} onClick={()=>nav("ticket",l.id)} style={{borderBottom:"1px solid #1A1A1B",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#151516"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{padding:"9px 12px",color:"#F28100",fontWeight:600,fontSize:11}}>{l.num}</td><td style={{padding:"9px 12px"}}><div style={{fontWeight:600}}>{l.fn} {l.ln}</div><div style={{fontSize:10,color:"#555"}}>{l.rut}</div></td><td style={{padding:"9px 12px"}}><div style={{fontSize:11,color:"#888"}}>{l.phone}</div><div style={{fontSize:10,color:"#555"}}>{l.email}</div></td><td style={{padding:"9px 12px"}}>{m?`${m.brand} ${m.model}`:<span style={{color:"#555"}}>-</span>}</td><td style={{padding:"9px 12px"}}><PBdg p={l.priority}/></td><td style={{padding:"9px 12px"}}><TBdg s={l.status}/></td><td style={{padding:"9px 12px",fontSize:11}}>{s?.fn} {s?.ln[0]}.</td><td style={{padding:"9px 12px",fontSize:10,color:"#555"}}>{ago(l.createdAt)}</td></tr>;})}</tbody></table></div>
-      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch} onChange={v=>setNw({...nw,branch:v})} opts={BRANCHES.map(b=>({v:b.id,l:b.name}))}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...MOTOS.map(m=>({v:m.id,l:`${m.brand} ${m.model} - ${fmt(m.price)}`}))]}/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" style={S.btn}>Crear Ticket</button></div></form></Modal>}
+      <div className="crm-filters" style={{...S.card,padding:10,marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}><div className="crm-search" style={{position:"relative",flex:1,minWidth:200}}><Ic.search size={14} color="#555" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nombre, RUT, ticket..." style={{...S.inp,paddingLeft:30,width:"100%"}}/></div><select value={stF} onChange={e=>setStF(e.target.value)} style={{...S.inp,minWidth:140}}><option value="">Todos los estados</option>{Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select><select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp,minWidth:140}}><option value="">Todas las sucursales</option>{brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
+      <div className="crm-table-scroll" style={{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{borderBottom:"1px solid #1E1E1F"}}>{["Ticket","Cliente","Contacto","Moto","Prioridad","Estado","Vendedor","Fecha"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 12px",fontSize:10,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{f.slice(0,40).map(l=>{const m=gM(l.motoId)||(l.model_brand?{brand:l.model_brand,model:l.model_name}:null);const sfn=l.seller_fn||(gU(l.seller)?.fn)||'';const sln=l.seller_ln||(gU(l.seller)?.ln)||'';return<tr key={l.id} onClick={()=>nav("ticket",l.id)} style={{borderBottom:"1px solid #1A1A1B",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#151516"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{padding:"9px 12px",color:"#F28100",fontWeight:600,fontSize:11}}>{l.num}</td><td style={{padding:"9px 12px"}}><div style={{fontWeight:600}}>{l.fn} {l.ln}</div><div style={{fontSize:10,color:"#555"}}>{l.rut}</div></td><td style={{padding:"9px 12px"}}><div style={{fontSize:11,color:"#888"}}>{l.phone}</div><div style={{fontSize:10,color:"#555"}}>{l.email}</div></td><td style={{padding:"9px 12px"}}>{m?`${m.brand} ${m.model}`:<span style={{color:"#555"}}>-</span>}</td><td style={{padding:"9px 12px"}}><PBdg p={l.priority}/></td><td style={{padding:"9px 12px"}}><TBdg s={l.status}/></td><td style={{padding:"9px 12px",fontSize:11}}>{sfn}{sln?` ${sln[0]}.`:''}</td><td style={{padding:"9px 12px",fontSize:10,color:"#555"}}>{ago(l.createdAt)}</td></tr>;})}</tbody></table></div>
+      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...MOTOS.map(m=>({v:m.id,l:`${m.brand} ${m.model} - ${fmt(m.price)}`}))]}/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
     </div>
   );
 }
@@ -468,7 +534,7 @@ function LeadsList({leads,user,nav,addLead}){
 function PipelineView({leads,user,nav,updLead}){
   const[dragId,setDragId]=useState(null);
   const stages=["abierto","en_gestion","cotizado","financiamiento"];
-  const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(user.role==="vendedor"&&l.seller!==user.id)return false;return true;});
+  const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(user.role==="vendedor"&&l.seller_id!==user.id)return false;return true;});
   const drop=stage=>{if(dragId){const ld=leads.find(l=>l.id===dragId);if(ld)updLead(dragId,{status:stage,timeline:[{id:`tl-${Date.now()}`,type:"status",title:`Estado → ${TICKET_STATUS[stage]?.l}`,date:new Date().toISOString(),user:user.fn},...ld.timeline]});setDragId(null);}};
   const getSlaInfo=(l)=>{
     if(l.sla_status==="vencido")return{horas:0,breach:true,warning:false};
@@ -479,7 +545,7 @@ function PipelineView({leads,user,nav,updLead}){
     <div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {user.role==="vendedor"&&<span style={{fontSize:13,fontWeight:400,color:"#666"}}>· Mis tickets</span>}</h1><div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:14}}>{stages.map(stage=>{const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);return(<div key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(stage)} style={{minWidth:250,flex:"0 0 250px",background:"#111112",borderRadius:12,border:"1px solid #1E1E1F",display:"flex",flexDirection:"column",maxHeight:"calc(100vh - 130px)"}}><div style={{padding:"10px 12px",borderBottom:"1px solid #1E1E1F",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:sc?.c}}/><span style={{fontSize:11,fontWeight:600}}>{sc?.l}</span></div><span style={{fontSize:10,color:"#555",fontWeight:600}}>{sl.length}</span></div><div style={{flex:1,overflowY:"auto",padding:6,display:"flex",flexDirection:"column",gap:5}}>{sl.map(l=>{const m=gM(l.motoId);const sla=getSlaInfo(l);return(<div key={l.id} draggable onDragStart={()=>setDragId(l.id)} onClick={()=>nav("ticket",l.id)} style={{background:sla.breach?"rgba(239,68,68,0.05)":"#171718",border:sla.breach?"1px solid rgba(239,68,68,0.3)":"1px solid #222",borderRadius:10,padding:10,cursor:"grab"}} onMouseEnter={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#F28100";}} onMouseLeave={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#222";}}>
       {sla.breach&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"3px 8px",borderRadius:6,background:"rgba(239,68,68,0.1)",fontSize:10,color:"#EF4444",fontWeight:600}}><Ic.alert size={11} color="#EF4444"/>SLA vencido · {sla.horas}h sin contacto</div>}
       {sla.warning&&!sla.breach&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"3px 8px",borderRadius:6,background:"rgba(245,158,11,0.1)",fontSize:10,color:"#F59E0B",fontWeight:600}}><Ic.clock size={11} color="#F59E0B"/>{8-sla.horas}h para SLA</div>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:4}}><div style={{fontWeight:600,fontSize:12}}>{l.fn} {l.ln}</div><PBdg p={l.priority}/></div>{m&&<div style={{fontSize:10,color:"#888",marginBottom:4}}>{m.brand} {m.model}</div>}<div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#555"}}><span>{l.phone}</span>{m&&<span style={{fontWeight:600,color:"#F28100"}}>{fmt(m.price-m.bonus)}</span>}</div><div style={{fontSize:9,color:"#444",marginTop:4}}>{gU(l.seller)?.fn} · {gB(l.branch)?.code} · {ago(l.createdAt)}</div></div>);})}  {sl.length===0&&<div style={{padding:16,textAlign:"center",color:"#333",fontSize:11}}>Sin tickets</div>}</div></div>);})}</div></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:4}}><div style={{fontWeight:600,fontSize:12}}>{l.fn} {l.ln}</div><PBdg p={l.priority}/></div>{m&&<div style={{fontSize:10,color:"#888",marginBottom:4}}>{m.brand} {m.model}</div>}<div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#555"}}><span>{l.phone}</span>{m&&<span style={{fontWeight:600,color:"#F28100"}}>{fmt(m.price-m.bonus)}</span>}</div><div style={{fontSize:9,color:"#444",marginTop:4}}>{l.seller_fn||(gU(l.seller)?.fn)||''} · {l.branch_code||(gB(l.branch)?.code)||''} · {ago(l.createdAt)}</div></div>);})}  {sl.length===0&&<div style={{padding:16,textAlign:"center",color:"#333",fontSize:11}}>Sin tickets</div>}</div></div>);})}</div></div>
   );
 }
 
@@ -489,7 +555,9 @@ function PipelineView({leads,user,nav,updLead}){
 function TicketView({lead,user,nav,updLead}){
   const[tab,setTab]=useState("datos");
   const[contactForm,setContactForm]=useState({method:"whatsapp",result:"",note:""});
-  const m=gM(lead.motoId);const s=gU(lead.seller);const br=gB(lead.branch);
+  const m=gM(lead.motoId)||(lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:0,bonus:0,year:2025,cc:0,cat:'',colors:[]}:null);
+  const s=gU(lead.seller)||{fn:lead.seller_fn||'',ln:lead.seller_ln||''};
+  const br=gB(lead.branch)||{name:lead.branch_name||'',code:lead.branch_code||'',addr:lead.branch_addr||''};
   const isAdmin=["super_admin","admin_comercial"].includes(user.role);
   const sellers=USERS.filter(u=>u.role==="vendedor");
   // SLA calc
