@@ -15,6 +15,10 @@ async function migrate() {
     await db.query(sql003);
     console.log('✓ Migration 003 (username) applied');
 
+    const sql004 = fs.readFileSync(path.join(__dirname, '../../migrations/004_password_change.sql'), 'utf-8');
+    await db.query(sql004);
+    console.log('✓ Migration 004 (password_change) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);

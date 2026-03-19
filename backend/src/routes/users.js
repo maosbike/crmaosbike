@@ -7,16 +7,20 @@ router.use(auth);
 
 router.put('/change-password', async (req, res) => {
   try {
-    const { current_password, new_password } = req.body;
+    const { current_password, new_password, confirm_password } = req.body;
     if (!current_password || !new_password) return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
-    if (new_password.length < 6) return res.status(400).json({ error: 'La nueva contraseña debe tener mínimo 6 caracteres' });
+    if (confirm_password !== undefined && new_password !== confirm_password) return res.status(400).json({ error: 'Las contraseñas nuevas no coinciden' });
+    if (new_password.length < 8) return res.status(400).json({ error: 'La nueva contraseña debe tener mínimo 8 caracteres' });
     if (current_password === new_password) return res.status(400).json({ error: 'La nueva contraseña debe ser diferente a la actual' });
     const { rows } = await db.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
     const valid = await bcrypt.compare(current_password, rows[0].password_hash);
     if (!valid) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
     const newHash = await bcrypt.hash(new_password, 10);
-    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, req.user.id]);
+    await db.query(
+      'UPDATE users SET password_hash = $1, force_password_change = false, updated_at = NOW() WHERE id = $2',
+      [newHash, req.user.id]
+    );
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (e) { console.error('Error cambiar contraseña:', e); res.status(500).json({ error: 'Error del servidor' }); }
 });
@@ -80,14 +84,18 @@ router.put('/:id', roleCheck('super_admin'), async (req, res) => {
 
 router.put('/:id/reset-password', roleCheck('super_admin'), async (req, res) => {
   try {
-    const { new_password } = req.body;
-    if (!new_password) return res.status(400).json({ error: 'Nueva contraseña requerida' });
-    if (new_password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener mínimo 6 caracteres' });
     const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
-    const hash = await bcrypt.hash(new_password, 10);
-    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.params.id]);
-    res.json({ message: `Contraseña de ${check.rows[0].first_name} ${check.rows[0].last_name} reseteada correctamente` });
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let tempPassword = '';
+    for (let i = 0; i < 10; i++) tempPassword += chars[Math.floor(Math.random() * chars.length)];
+    const hash = await bcrypt.hash(tempPassword, 10);
+    await db.query(
+      'UPDATE users SET password_hash = $1, force_password_change = true, updated_at = NOW() WHERE id = $2',
+      [hash, req.params.id]
+    );
+    const u = check.rows[0];
+    res.json({ message: `Contraseña de ${u.first_name} ${u.last_name} reseteada`, temp_password: tempPassword });
   } catch (e) { console.error('Error resetear contraseña:', e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 

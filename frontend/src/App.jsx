@@ -144,6 +144,7 @@ const Ic={
   dl:p=><I d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4 M7 10l5 5 5-5 M12 15V3" {...p}/>,
   cal:p=><I d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" {...p}/>,
   remind:p=><I d="M15 17H20L18.6 15.6A7 7 0 0018 14V11a6 6 0 10-12 0v3a7 7 0 00-.6 1.6L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" {...p}/>,
+  lock:p=><I d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z M7 11V7a5 5 0 0110 0v4" {...p}/>,
 };
 
 // ═══════════════════════════════════════════
@@ -190,8 +191,10 @@ export default function App(){
   const[leads,setLeads]=useState(()=>genLeads());
   const[inv,setInv]=useState(()=>genInv());
   const[selLead,setSelLead]=useState(null);
+  const[showChangePw,setShowChangePw]=useState(false);
 
   if(!user)return<Login onLogin={setUser}/>;
+  if(user.forceChange)return<ForceChangeView user={user} onChanged={u=>{setUser(u);localStorage.setItem("crm_user",JSON.stringify(u));}}/>;
   const nav=(pg,lid)=>{if(pg==="ticket"&&lid)setSelLead(leads.find(l=>l.id===lid));setPage(pg);};
   const updLead=(id,u)=>{setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));if(selLead?.id===id)setSelLead(p=>({...p,...u}));};
   const addLead=l=>setLeads(p=>[l,...p]);
@@ -214,7 +217,7 @@ export default function App(){
       <aside style={{width:210,background:"#111112",borderRight:"1px solid #1E1E1F",display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 14px",height:52,borderBottom:"1px solid #1E1E1F"}}><div style={{width:30,height:30,borderRadius:8,background:"#F28100",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic.bike size={17} color="white"/></div><span style={{fontSize:14,fontWeight:700}}>MaosBike <span style={{color:"#F28100"}}>CRM</span></span></div>
         <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column",gap:1}}>{items.map(it=>{const act=page===it.id||(it.id==="leads"&&page==="ticket");return<button key={it.id} onClick={()=>nav(it.id)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:500,fontFamily:"inherit",background:act?"rgba(242,129,0,0.1)":"transparent",color:act?"#F28100":"#A3A3A3"}}><it.icon size={16}/>{it.label}</button>;})}</nav>
-        <div style={{borderTop:"1px solid #1E1E1F",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+user.ln[0]).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#555"}}>{gB(user.branch)?.name||user.role}</div></div><button onClick={()=>setUser(null)} style={{...S.gh,padding:4}}><Ic.out size={14} color="#555"/></button></div></div>
+        <div style={{borderTop:"1px solid #1E1E1F",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+user.ln[0]).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#555"}}>{gB(user.branch)?.name||user.role}</div></div><button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#555"/></button><button onClick={()=>setUser(null)} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#555"/></button></div></div>
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
         <header style={{height:48,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",borderBottom:"1px solid #1E1E1F",background:"rgba(17,17,18,0.7)",flexShrink:0}}><NotifBell nav={nav}/></header>
@@ -230,6 +233,92 @@ export default function App(){
           {page==="admin"&&<AdminView/>}
           {page==="calendar"&&<CalendarView user={user} nav={nav}/>}
         </main>
+      </div>
+      {showChangePw&&<ChangePasswordModal onClose={()=>setShowChangePw(false)}/>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// CHANGE PASSWORD MODAL
+// ═══════════════════════════════════════════
+function ChangePasswordModal({onClose}){
+  const[form,setForm]=useState({current:"",next:"",confirm:""});
+  const[err,setErr]=useState("");
+  const[ok,setOk]=useState(false);
+  const[loading,setLoading]=useState(false);
+  const submit=async e=>{
+    e.preventDefault();setErr("");
+    if(form.next!==form.confirm)return setErr("Las contraseñas nuevas no coinciden");
+    if(form.next.length<8)return setErr("La nueva contraseña debe tener mínimo 8 caracteres");
+    setLoading(true);
+    try{
+      await api.changePassword(form.current,form.next,form.confirm);
+      setOk(true);
+    }catch(ex){setErr(ex.message||"Error al cambiar contraseña");}
+    finally{setLoading(false);}
+  };
+  return(
+    <Modal onClose={onClose} title="Cambiar Contraseña">
+      {ok
+        ?<div style={{textAlign:"center",padding:"16px 0"}}>
+          <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(16,185,129,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><Ic.check size={24} color="#10B981"/></div>
+          <p style={{color:"#10B981",fontWeight:600,marginBottom:4}}>Contraseña actualizada</p>
+          <p style={{color:"#6B6B6B",fontSize:12,marginBottom:16}}>Tu contraseña fue cambiada correctamente.</p>
+          <button onClick={onClose} style={S.btn}>Cerrar</button>
+        </div>
+        :<form onSubmit={submit}>
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
+            <Field label="Contraseña actual *" value={form.current} onChange={v=>setForm({...form,current:v})} type="password" ph="Tu contraseña actual" req/>
+            <Field label="Nueva contraseña *" value={form.next} onChange={v=>setForm({...form,next:v})} type="password" ph="Mínimo 8 caracteres" req/>
+            <Field label="Confirmar nueva contraseña *" value={form.confirm} onChange={v=>setForm({...form,confirm:v})} type="password" ph="Repite la nueva contraseña" req/>
+          </div>
+          {err&&<div style={{background:"rgba(239,68,68,0.1)",borderRadius:8,padding:"7px 12px",color:"#EF4444",fontSize:12,marginBottom:12}}>{err}</div>}
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+            <button type="button" onClick={onClose} style={S.btn2}>Cancelar</button>
+            <button type="submit" disabled={loading} style={{...S.btn,opacity:loading?0.7:1}}>{loading?"Guardando...":"Cambiar Contraseña"}</button>
+          </div>
+        </form>
+      }
+    </Modal>
+  );
+}
+
+// ═══════════════════════════════════════════
+// FORCE CHANGE PASSWORD VIEW
+// ═══════════════════════════════════════════
+function ForceChangeView({user,onChanged}){
+  const[form,setForm]=useState({current:"",next:"",confirm:""});
+  const[err,setErr]=useState("");
+  const[loading,setLoading]=useState(false);
+  const submit=async e=>{
+    e.preventDefault();setErr("");
+    if(form.next!==form.confirm)return setErr("Las contraseñas nuevas no coinciden");
+    if(form.next.length<8)return setErr("La nueva contraseña debe tener mínimo 8 caracteres");
+    setLoading(true);
+    try{
+      await api.changePassword(form.current,form.next,form.confirm);
+      onChanged({...user,forceChange:false});
+    }catch(ex){setErr(ex.message||"Error al cambiar contraseña");}
+    finally{setLoading(false);}
+  };
+  return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0B",fontFamily:"'Montserrat',system-ui,sans-serif"}}>
+      <div style={{width:"100%",maxWidth:400,padding:"0 20px"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{width:52,height:52,borderRadius:14,background:"rgba(242,129,0,0.15)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:12}}><Ic.lock size={24} color="#F28100"/></div>
+          <h1 style={{fontSize:20,fontWeight:800,color:"#FAFAFA",margin:0}}>Cambio de contraseña requerido</h1>
+          <p style={{color:"#6B6B6B",fontSize:12,marginTop:6}}>Hola {user.fn}, debes cambiar tu contraseña antes de continuar.</p>
+        </div>
+        <form onSubmit={submit} style={{background:"#151516",border:"1px solid #262626",borderRadius:14,padding:22}}>
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
+            <Field label="Contraseña temporal *" value={form.current} onChange={v=>setForm({...form,current:v})} type="password" ph="La contraseña que te dieron" req/>
+            <Field label="Nueva contraseña *" value={form.next} onChange={v=>setForm({...form,next:v})} type="password" ph="Mínimo 8 caracteres" req/>
+            <Field label="Confirmar nueva contraseña *" value={form.confirm} onChange={v=>setForm({...form,confirm:v})} type="password" ph="Repite la nueva contraseña" req/>
+          </div>
+          {err&&<div style={{background:"rgba(239,68,68,0.1)",borderRadius:8,padding:"7px 12px",color:"#EF4444",fontSize:12,marginBottom:12}}>{err}</div>}
+          <button type="submit" disabled={loading} style={{...S.btn,width:"100%",padding:11,opacity:loading?0.7:1}}>{loading?"Guardando...":"Establecer nueva contraseña"}</button>
+        </form>
       </div>
     </div>
   );
@@ -610,7 +699,68 @@ function ReportsView({leads}){
 }
 
 function AdminView(){
-  return(<div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Administración</h1><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><div style={S.card}><h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Usuarios</h3>{USERS.map(u=><div key={u.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #1A1A1B"}}><div style={{width:26,height:26,borderRadius:"50%",background:"rgba(242,129,0,0.1)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:9,fontWeight:700}}>{(u.fn[0]+u.ln[0]).toUpperCase()}</div><div style={{flex:1}}><div style={{fontSize:12,fontWeight:600}}>{u.fn} {u.ln}</div><div style={{fontSize:10,color:"#555"}}>{u.email}</div></div><Bdg l={u.role.replace(/_/g," ")} c={u.role==="super_admin"?"#EF4444":u.role==="admin_comercial"?"#8B5CF6":u.role==="backoffice"?"#F59E0B":"#3B82F6"}/></div>)}</div><div style={S.card}><h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Sucursales</h3>{BRANCHES.map(b=><div key={b.id} style={{background:"#0E0E0F",borderRadius:10,padding:12,marginBottom:8}}><div style={{fontWeight:700,marginBottom:4}}>{b.name}</div><div style={{fontSize:11,color:"#555"}}>{b.addr}</div><div style={{fontSize:11,color:"#555",marginTop:4}}>Código: {b.code} · Vendedores: {USERS.filter(u=>u.branch===b.id&&u.role==="vendedor").length}</div></div>)}</div></div></div>);
+  const[users,setUsers]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[resetInfo,setResetInfo]=useState(null);
+  const[branches,setBranches]=useState([]);
+  useEffect(()=>{
+    api.listUsers().then(setUsers).catch(()=>{}).finally(()=>setLoading(false));
+    api.getBranches().then(setBranches).catch(()=>{});
+  },[]);
+  const ROLE_C={super_admin:"#EF4444",admin_comercial:"#8B5CF6",backoffice:"#F59E0B",vendedor:"#3B82F6"};
+  const handleReset=async(u)=>{
+    if(!confirm(`¿Resetear contraseña de ${u.first_name} ${u.last_name}? Se generará una contraseña temporal.`))return;
+    try{
+      const r=await api.resetPassword(u.id);
+      setResetInfo({name:`${u.first_name} ${u.last_name}`,temp:r.temp_password});
+    }catch(ex){alert(ex.message||"Error al resetear contraseña");}
+  };
+  return(
+    <div>
+      <h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Administración</h1>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={S.card}>
+          <h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Usuarios ({users.length})</h3>
+          {loading&&<div style={{color:"#555",fontSize:12,padding:8}}>Cargando...</div>}
+          {users.map(u=>(
+            <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid #1A1A1B"}}>
+              <div style={{width:26,height:26,borderRadius:"50%",background:"rgba(242,129,0,0.1)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:9,fontWeight:700,flexShrink:0}}>
+                {(u.first_name[0]+u.last_name[0]).toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,fontWeight:600}}>{u.first_name} {u.last_name}</div>
+                <div style={{fontSize:10,color:"#555"}}>{u.username||u.email}</div>
+              </div>
+              <Bdg l={u.role.replace(/_/g," ")} c={ROLE_C[u.role]||"#6B7280"}/>
+              <button onClick={()=>handleReset(u)} style={{...S.gh,fontSize:10,color:"#555",padding:"3px 7px",border:"1px solid #262626",borderRadius:6}} title="Reset contraseña"><Ic.lock size={12}/></button>
+            </div>
+          ))}
+        </div>
+        <div style={S.card}>
+          <h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Sucursales</h3>
+          {branches.map(b=>(
+            <div key={b.id} style={{background:"#0E0E0F",borderRadius:10,padding:12,marginBottom:8}}>
+              <div style={{fontWeight:700,marginBottom:4}}>{b.name}</div>
+              <div style={{fontSize:11,color:"#555"}}>{b.address||b.addr}</div>
+              <div style={{fontSize:11,color:"#555",marginTop:4}}>Código: {b.code} · Vendedores: {users.filter(u=>u.branch_id===b.id&&u.role==="vendedor").length}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {resetInfo&&(
+        <Modal onClose={()=>setResetInfo(null)} title="Contraseña Reseteada">
+          <div style={{textAlign:"center",padding:"8px 0"}}>
+            <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(16,185,129,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><Ic.check size={24} color="#10B981"/></div>
+            <p style={{fontWeight:600,marginBottom:4}}>{resetInfo.name}</p>
+            <p style={{color:"#6B6B6B",fontSize:12,marginBottom:12}}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
+            <div style={{background:"#0E0E0F",borderRadius:10,padding:"14px 20px",marginBottom:16,fontFamily:"monospace",fontSize:18,fontWeight:700,letterSpacing:2,color:"#F28100"}}>{resetInfo.temp}</div>
+            <p style={{color:"#555",fontSize:11,marginBottom:16}}>Comparte esta contraseña con el usuario de forma segura.</p>
+            <button onClick={()=>setResetInfo(null)} style={S.btn}>Cerrar</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════

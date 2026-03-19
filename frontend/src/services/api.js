@@ -70,13 +70,13 @@ export const api = {
   getSellers: () => request('GET', '/catalog/sellers'),
 
   // Users management
-  changePassword: (current_password, new_password) =>
-    request('PUT', '/users/change-password', { current_password, new_password }),
+  changePassword: (current_password, new_password, confirm_password) =>
+    request('PUT', '/users/change-password', { current_password, new_password, confirm_password }),
   listUsers: () => request('GET', '/users'),
   createUser: (data) => request('POST', '/users', data),
   editUser: (id, data) => request('PUT', `/users/${id}`, data),
-  resetPassword: (id, new_password) =>
-    request('PUT', `/users/${id}/reset-password`, { new_password }),
+  resetPassword: (id) =>
+    request('PUT', `/users/${id}/reset-password`),
 
   // Notificaciones
   getNotifications: (params) => request('GET', `/notifications?${new URLSearchParams(params || {})}`),

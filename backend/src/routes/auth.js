@@ -39,6 +39,7 @@ router.post('/login', async (req, res) => {
         branch: user.branch_id,
         branchName: user.branch_name,
         branchCode: user.branch_code,
+        forceChange: user.force_password_change || false,
       }
     });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
