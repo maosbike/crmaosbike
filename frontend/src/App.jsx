@@ -257,7 +257,7 @@ function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogout}){
       <div className={`crm-drawer${open?" open":""}`} style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:"#111112",borderRight:"1px solid #1E1E1F",display:"flex",flexDirection:"column",zIndex:89,overflowY:"auto"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",height:52,borderBottom:"1px solid #1E1E1F",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:28,height:28,borderRadius:8,background:"#F28100",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic.bike size={14} color="white"/></div><span style={{fontSize:13,fontWeight:700}}>MaosBike <span style={{color:"#F28100"}}>CRM</span></span></div>
-          <button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18} color="#555"/></button>
+          <button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18} color="#A3A3A3"/></button>
         </div>
         <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column",gap:1}}>{items.map(it=>{const act=page===it.id||(it.id==="leads"&&page==="ticket");return<button key={it.id} onClick={()=>nav(it.id)} style={{display:"flex",alignItems:"center",gap:9,padding:"12px 10px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:500,fontFamily:"inherit",background:act?"rgba(242,129,0,0.1)":"transparent",color:act?"#F28100":"#A3A3A3",textAlign:"left"}}><it.icon size={17}/>{it.label}</button>;})}
         </nav>
