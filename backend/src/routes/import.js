@@ -129,6 +129,54 @@ function resolveBranch(sucursalRaw, branches) {
   return null;
 }
 
+// ─── Resolución robusta de modelo de moto ────────────────────
+function normalizeStr(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar acentos
+    .replace(/[-_]+/g, ' ')                            // guiones → espacio
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Devuelve el registro de moto_models que mejor matchea con modeloRaw,
+// o null si no hay coincidencia suficiente.
+function resolveModel(modeloRaw, models) {
+  if (!modeloRaw || !models || models.length === 0) return null;
+  const raw = normalizeStr(modeloRaw);
+  if (!raw) return null;
+
+  // 1. Coincidencia exacta brand+model
+  for (const m of models) {
+    if (normalizeStr(`${m.brand} ${m.model}`) === raw) return m;
+  }
+  // 2. Coincidencia exacta solo model
+  for (const m of models) {
+    if (normalizeStr(m.model) === raw) return m;
+  }
+  // 3. Input contiene brand+model completo
+  for (const m of models) {
+    const full = normalizeStr(`${m.brand} ${m.model}`);
+    if (raw.includes(full)) return m;
+  }
+  // 4. brand+model contiene el input (el input es parte del nombre)
+  for (const m of models) {
+    const full = normalizeStr(`${m.brand} ${m.model}`);
+    if (full.includes(raw) && raw.length >= 4) return m;
+  }
+  // 5. Input contiene solo el model name
+  for (const m of models) {
+    const mn = normalizeStr(m.model);
+    if (mn.length >= 3 && raw.includes(mn)) return m;
+  }
+  // 6. Model name contiene el input
+  for (const m of models) {
+    const mn = normalizeStr(m.model);
+    if (mn.includes(raw) && raw.length >= 4) return m;
+  }
+  return null;
+}
+
 function validateRow(row, headerMap, rowIndex) {
   const nombre         = get(row, headerMap, 'nombre');
   const apellido       = get(row, headerMap, 'apellido');
@@ -310,8 +358,9 @@ router.post('/preview', upload.single('file'), async (req, res) => {
       dp.forEach(r => dbDupPhones.add(r.phone));
     }
 
-    // ── Cargar sucursales activas ──────────────────────────────
+    // ── Cargar sucursales activas y catálogo de motos ─────────
     const { rows: branches } = await db.query('SELECT id, name, code FROM branches WHERE active = true');
+    const { rows: models }   = await db.query('SELECT id, brand, model FROM moto_models WHERE active = true');
 
     // ── Aplicar flags ──────────────────────────────────────────
     for (const r of rows) {
@@ -346,6 +395,13 @@ router.post('/preview', upload.single('file'), async (req, res) => {
         r.branch_id   = branch.id;
         r.branch_name = branch.name;
       }
+
+      // Resolver modelo de moto
+      const modeloRaw = r.fin_data?.modelo || '';
+      const motoMatch = resolveModel(modeloRaw, models);
+      r.model_id            = motoMatch?.id   || null;
+      r.model_resolved_name = motoMatch ? `${motoMatch.brand} ${motoMatch.model}` : null;
+      r.model_raw           = modeloRaw || null;
     }
 
     const summary = {
@@ -384,6 +440,9 @@ router.post('/confirm', async (req, res) => {
     const { rows: countR } = await db.query('SELECT COUNT(*) FROM tickets');
     let ticketCount = parseInt(countR[0].count);
 
+    // ── Cargar catálogo de motos para resolver model_id ────────
+    const { rows: models } = await db.query('SELECT id, brand, model FROM moto_models WHERE active = true');
+
     // ── Least-loaded + round-robin por sucursal ────────────────
     // Incluye vendedores con branch_id = branch_id O que tienen branch_id
     // en extra_branches (ej: Camila cubre MPS y MPN)
@@ -419,17 +478,26 @@ router.post('/confirm', async (req, res) => {
         const seller = r.branch_id ? await assignSeller(r.branch_id) : null;
         const num    = `SCM-${247001 + ticketCount++}`;
 
+        // Resolver model_id: primero el que viene del preview (si el cliente
+        // lo mandó ya resuelto), sino resolverlo ahora desde el catálogo.
+        const modeloRaw = r.fin_data?.modelo || r.model_raw || '';
+        const motoMatch = r.model_id
+          ? models.find(m => m.id === r.model_id) || resolveModel(modeloRaw, models)
+          : resolveModel(modeloRaw, models);
+        const resolvedModelId = motoMatch?.id || null;
+
         const { rows: created } = await db.query(
           `INSERT INTO tickets (
              ticket_num, first_name, last_name, rut, email, phone,
              comuna, source, branch_id, seller_id, assigned_to,
-             priority, color_pref,
+             model_id, priority, color_pref,
              obs_vendedor, wants_financing, sit_laboral, continuidad,
              renta, pie, fin_data,
              sla_deadline, status
            ) VALUES (
-             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
-             $14,$15,$16,$17,$18,$19,$20,
+             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+             $12,$13,$14,
+             $15,$16,$17,$18,$19,$20,$21,
              NOW() + INTERVAL '8 hours', 'abierto'
            ) RETURNING id, ticket_num`,
           [
@@ -444,6 +512,7 @@ router.post('/confirm', async (req, res) => {
             r.branch_id        || null,
             seller?.id         || null,
             seller?.id         || null,
+            resolvedModelId,                               // $12 model_id
             r.prioridad        || 'media',
             r.color_pref       || null,
             r.obs_vendedor     || null,
@@ -462,7 +531,9 @@ router.post('/confirm', async (req, res) => {
           [
             created[0].id,
             req.user.id,
-            `Importado por ${req.user.first_name} ${req.user.last_name}${seller ? '' : ' · Sin vendedor asignado'}`,
+            `Importado por ${req.user.first_name} ${req.user.last_name}` +
+            (seller ? '' : ' · Sin vendedor asignado') +
+            (resolvedModelId ? ` · Moto: ${motoMatch.brand} ${motoMatch.model}` : (modeloRaw ? ` · Moto sin resolver: "${modeloRaw}"` : '')),
           ]
         );
 

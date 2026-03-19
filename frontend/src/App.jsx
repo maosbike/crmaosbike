@@ -1418,7 +1418,7 @@ function ImportView() {
                 <div style={{overflowX:'auto',maxHeight:400,overflowY:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,minWidth:720}}>
                     <thead style={{position:'sticky',top:0,background:'#111112',zIndex:1}}>
-                      <tr>{['Fila','Estado','Nombre','Teléfono','Email','Sucursal','Observaciones'].map(h=>(
+                      <tr>{['Fila','Estado','Nombre','Teléfono','Email','Sucursal','Moto','Observaciones'].map(h=>(
                         <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #1E1E1F',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                       ))}</tr>
                     </thead>
@@ -1436,6 +1436,14 @@ function ImportView() {
                             <td style={{padding:'6px 10px',color:'#888'}}>{r.telefono||'—'}</td>
                             <td style={{padding:'6px 10px',color:'#888'}}>{r.email||'—'}</td>
                             <td style={{padding:'6px 10px'}}>{r.branch_name||r.sucursal_raw||'—'}</td>
+                            <td style={{padding:'6px 10px',fontSize:11}}>
+                              {r.model_resolved_name
+                                ?<span style={{color:'#10B981',fontWeight:600}}>{r.model_resolved_name}</span>
+                                :r.model_raw
+                                  ?<span style={{color:'#F59E0B'}} title={`Sin match: "${r.model_raw}"`}>⚠ {r.model_raw}</span>
+                                  :<span style={{color:'#555'}}>—</span>
+                              }
+                            </td>
                             <td style={{padding:'6px 10px',color:r.errors?.length?'#EF4444':'#555',fontSize:11}}>{obs||'—'}</td>
                           </tr>
                         );
