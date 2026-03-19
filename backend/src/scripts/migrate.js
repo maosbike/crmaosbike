@@ -19,6 +19,14 @@ async function migrate() {
     await db.query(sql004);
     console.log('✓ Migration 004 (password_change) applied');
 
+    const sql005 = fs.readFileSync(path.join(__dirname, '../../migrations/005_fix_sla_schema.sql'), 'utf-8');
+    await db.query(sql005);
+    console.log('✓ Migration 005 (fix sla schema + assigned_to + UUID FKs) applied');
+
+    const sql006 = fs.readFileSync(path.join(__dirname, '../../migrations/006_import_logs.sql'), 'utf-8');
+    await db.query(sql006);
+    console.log('✓ Migration 006 (import_logs) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);
