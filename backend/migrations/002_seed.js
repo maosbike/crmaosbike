@@ -19,7 +19,7 @@ module.exports = async function seed(db) {
   await safeDelete(`DELETE FROM reminders`);
   await safeDelete(`DELETE FROM timeline`);
   await safeDelete(`DELETE FROM import_logs`);
-  await safeDelete(`UPDATE tickets SET seller_id = NULL`);
+  await safeDelete(`UPDATE tickets SET seller_id = NULL, assigned_to = NULL`);
   await db.query(`DELETE FROM users`);
   console.log('✓ Tabla users vaciada');
 
