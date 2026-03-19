@@ -105,6 +105,7 @@ export const api = {
 
   // Admin
   resetDemoData: () => request('DELETE', '/admin/reset-data'),
+  resetImports: () => request('DELETE', '/admin/reset-imports'),
 
   // Importación masiva (solo super_admin)
   importPreview: (formData) => {
