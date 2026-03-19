@@ -18,27 +18,49 @@ const upload = multer({
 router.use(auth);
 router.use(roleCheck('super_admin'));
 
-// ─── Column aliases (normalize incoming headers) ──────────────
+// ─── Column aliases ────────────────────────────────────────────
+// Soporta plantilla propia + plantilla Yamaha (distribuidor → sucursal, etc.)
 const COL_ALIASES = {
-  nombre:     ['nombre', 'first_name', 'name', 'nombres'],
-  apellido:   ['apellido', 'last_name', 'apellidos'],
-  telefono:   ['telefono', 'teléfono', 'phone', 'celular', 'fono', 'cel'],
-  email:      ['email', 'correo', 'mail', 'e-mail'],
-  rut:        ['rut', 'run', 'rut_cliente'],
-  sucursal:   ['sucursal', 'branch', 'tienda', 'local'],
-  fuente:     ['fuente', 'source', 'origen', 'canal'],
-  prioridad:  ['prioridad', 'priority', 'urgencia'],
-  comuna:     ['comuna', 'ciudad', 'city'],
-  color_pref: ['color', 'color_pref', 'color_preferido'],
+  nombre:           ['nombre', 'first_name', 'name', 'nombres'],
+  apellido:         ['apellido', 'last_name', 'apellidos'],
+  telefono:         ['telefono', 'teléfono', 'phone', 'celular', 'fono', 'cel'],
+  email:            ['email', 'correo', 'mail', 'e-mail'],
+  rut:              ['rut', 'run', 'rut_cliente'],
+  // 'distribuidor' es la columna de sucursal en plantillas Yamaha
+  sucursal:         ['sucursal', 'branch', 'tienda', 'local', 'distribuidor'],
+  fuente:           ['fuente', 'source', 'origen', 'canal'],
+  prioridad:        ['prioridad', 'priority', 'urgencia'],
+  comuna:           ['comuna', 'ciudad', 'city'],
+  color_pref:       ['color', 'color_pref', 'color_preferido'],
+  observaciones:    ['observaciones', 'obs', 'nota', 'notes', 'comentarios'],
+  mensaje:          ['mensaje', 'message'],
+  modelo:           ['modelo', 'product', 'producto', 'moto', 'motocicleta'],
+  // Campos financieros Yamaha
+  opcion_compra:    ['opcion_compra'],
+  financiamiento:   ['financiamiento'],
+  sit_laboral:      ['situacion_laboral', 'sit_laboral'],
+  continuidad:      ['continuidad_laboral', 'continuidad'],
+  renta:            ['renta_liquida', 'renta'],
+  pie:              ['pie'],
+  // Evaluaciones Tanner
+  pre_eval_tanner:  ['pre_evaluacion_tanner'],
+  eval_tanner:      ['evaluacion_tanner'],
+  obs_tanner:       ['observaciones_evaluacion_tanner'],
+  // Evaluaciones Autofin
+  id_autofin:       ['id_autofin'],
+  pre_eval_autofin: ['pre_evaluacion_autofin'],
+  eval_autofin:     ['evaluacion_autofin'],
+  obs_autofin:      ['observaciones_evaluacion_autofin'],
 };
 
 const VALID_SOURCES  = ['web','redes_sociales','whatsapp','presencial','referido','evento','llamada','importacion'];
 const VALID_PRIORITY = ['alta','media','baja'];
 
+// Normaliza espacios → guiones bajos para que "situacion laboral" == "situacion_laboral"
 function buildHeaderMap(rawHeaders) {
   const map = {};
   rawHeaders.forEach((h, i) => {
-    const key = (h || '').toString().trim().toLowerCase();
+    const key = (h || '').toString().trim().toLowerCase().replace(/\s+/g, '_');
     for (const [field, aliases] of Object.entries(COL_ALIASES)) {
       if (aliases.some(a => key === a || key.includes(a))) {
         if (map[field] === undefined) map[field] = i;
@@ -59,58 +81,151 @@ function normalizeRut(raw) {
   return raw.replace(/\./g, '').replace(/-/g, '').toUpperCase().trim();
 }
 
+// Parsea números chilenos con puntos como separadores de miles ("1.500.000" → 1500000)
+function parseChileanInt(val) {
+  if (!val) return null;
+  const cleaned = val.toString().replace(/\./g, '').replace(/[$,\s]/g, '').trim();
+  const n = parseInt(cleaned, 10);
+  return isNaN(n) ? null : n;
+}
+
+// ─── Resolución robusta de sucursal ──────────────────────────
+// Soporta códigos exactos (MPN), nombres exactos, y strings largos de Yamaha
+// como "MAOS RACING MALL PLAZA SUR" → busca si el nombre de sucursal está
+// contenido dentro del string, o viceversa.
+function resolveBranch(sucursalRaw, branches) {
+  if (!sucursalRaw) return null;
+  const s = sucursalRaw.toLowerCase().trim();
+
+  // 1. Coincidencia exacta por código o nombre
+  for (const b of branches) {
+    if (b.code.toLowerCase() === s || b.name.toLowerCase() === s) return b;
+  }
+
+  // 2. El nombre de sucursal del CRM está contenido en el string de entrada
+  //    Ej: "mall plaza sur" ⊆ "maos racing mall plaza sur" ✓
+  for (const b of branches) {
+    if (s.includes(b.name.toLowerCase())) return b;
+  }
+
+  // 3. El string de entrada está contenido en el nombre de sucursal del CRM
+  for (const b of branches) {
+    if (b.name.toLowerCase().includes(s)) return b;
+  }
+
+  // 4. Score por palabras en común (≥4 caracteres)
+  const sWords = new Set(s.split(/\s+/).filter(w => w.length >= 4));
+  let best = null;
+  let bestScore = 0;
+  for (const b of branches) {
+    const bWords = b.name.toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+    const score = bWords.filter(w => sWords.has(w)).length;
+    if (score > bestScore) { bestScore = score; best = b; }
+  }
+  if (bestScore >= 1) return best;
+
+  return null;
+}
+
 function validateRow(row, headerMap, rowIndex) {
-  const nombre    = get(row, headerMap, 'nombre');
-  const apellido  = get(row, headerMap, 'apellido');
-  const telefono  = get(row, headerMap, 'telefono');
-  const email     = get(row, headerMap, 'email');
-  const rut       = get(row, headerMap, 'rut');
-  const sucursal  = get(row, headerMap, 'sucursal').toLowerCase();
-  const fuente    = get(row, headerMap, 'fuente').toLowerCase() || 'importacion';
-  const prioridad = get(row, headerMap, 'prioridad').toLowerCase() || 'media';
-  const comuna    = get(row, headerMap, 'comuna');
-  const colorPref = get(row, headerMap, 'color_pref');
+  const nombre         = get(row, headerMap, 'nombre');
+  const apellido       = get(row, headerMap, 'apellido');
+  const telefono       = get(row, headerMap, 'telefono');
+  const email          = get(row, headerMap, 'email');
+  const rut            = get(row, headerMap, 'rut');
+  const sucursalRaw    = get(row, headerMap, 'sucursal'); // sin toLowerCase — lo hace resolveBranch
+  const fuente         = get(row, headerMap, 'fuente').toLowerCase() || 'importacion';
+  const prioridad      = get(row, headerMap, 'prioridad').toLowerCase() || 'media';
+  const comuna         = get(row, headerMap, 'comuna');
+  const colorPref      = get(row, headerMap, 'color_pref');
+  // Notas y observaciones (opcionales)
+  const observaciones  = get(row, headerMap, 'observaciones');
+  const mensaje        = get(row, headerMap, 'mensaje');
+  const modelo         = get(row, headerMap, 'modelo');
+  // Campos financieros Yamaha (opcionales)
+  const opcion_compra    = get(row, headerMap, 'opcion_compra');
+  const financiamiento   = get(row, headerMap, 'financiamiento');
+  const sit_laboral      = get(row, headerMap, 'sit_laboral');
+  const continuidad      = get(row, headerMap, 'continuidad');
+  const renta_raw        = get(row, headerMap, 'renta');
+  const pie_raw          = get(row, headerMap, 'pie');
+  const pre_eval_tanner  = get(row, headerMap, 'pre_eval_tanner');
+  const eval_tanner      = get(row, headerMap, 'eval_tanner');
+  const obs_tanner       = get(row, headerMap, 'obs_tanner');
+  const id_autofin       = get(row, headerMap, 'id_autofin');
+  const pre_eval_autofin = get(row, headerMap, 'pre_eval_autofin');
+  const eval_autofin     = get(row, headerMap, 'eval_autofin');
+  const obs_autofin      = get(row, headerMap, 'obs_autofin');
 
   const errors = [];
 
-  if (!nombre)                     errors.push('Nombre obligatorio');
-  if (!telefono && !email)         errors.push('Teléfono o email obligatorio');
-  if (!sucursal)                   errors.push('Sucursal obligatoria');
+  if (!nombre)                   errors.push('Nombre obligatorio');
+  if (!telefono && !email)       errors.push('Teléfono o email obligatorio');
+  if (!sucursalRaw)              errors.push('Sucursal obligatoria');
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-                                   errors.push('Formato de email inválido');
+                                 errors.push('Formato de email inválido');
   if (telefono && !/^\+?[\d\s\-\(\)]{6,16}$/.test(telefono))
-                                   errors.push('Formato de teléfono inválido');
+                                 errors.push('Formato de teléfono inválido');
   if (rut) {
     const cleaned = normalizeRut(rut);
     if (!/^\d{6,8}[0-9K]$/.test(cleaned)) errors.push('Formato de RUT inválido');
   }
-  if (prioridad && !VALID_PRIORITY.includes(prioridad))
-    errors.push(`Prioridad inválida — usar: alta, media, baja`);
+  // Prioridad: si viene en formato desconocido, se ignora y defaultea — no es error
+
+  // Componer obs_vendedor uniendo observaciones + mensaje (ambos opcionales)
+  const obs_parts = [observaciones, mensaje].filter(Boolean);
+  const obs_vendedor = obs_parts.join(' | ') || null;
+
+  // Detectar si quiere financiamiento
+  const wants_financing =
+    /financ/i.test(opcion_compra) ||
+    /financ/i.test(financiamiento) ||
+    !!(pre_eval_tanner || eval_tanner || id_autofin || pre_eval_autofin || eval_autofin);
+
+  // Construir fin_data con los campos de evaluación (solo los que tienen valor)
+  const fin_data = {};
+  if (modelo)           fin_data.modelo           = modelo;
+  if (opcion_compra)    fin_data.opcion_compra    = opcion_compra;
+  if (financiamiento)   fin_data.financiamiento   = financiamiento;
+  if (pre_eval_tanner)  fin_data.pre_eval_tanner  = pre_eval_tanner;
+  if (eval_tanner)      fin_data.eval_tanner      = eval_tanner;
+  if (obs_tanner)       fin_data.obs_tanner       = obs_tanner;
+  if (id_autofin)       fin_data.id_autofin       = id_autofin;
+  if (pre_eval_autofin) fin_data.pre_eval_autofin = pre_eval_autofin;
+  if (eval_autofin)     fin_data.eval_autofin     = eval_autofin;
+  if (obs_autofin)      fin_data.obs_autofin      = obs_autofin;
 
   return {
-    _row: rowIndex,
+    _row:            rowIndex,
     nombre,
-    apellido:   apellido || null,
-    telefono:   telefono || null,
-    email:      email    || null,
-    rut:        rut ? normalizeRut(rut) : null,
-    sucursal,
-    fuente:     VALID_SOURCES.includes(fuente) ? fuente : 'importacion',
-    prioridad:  VALID_PRIORITY.includes(prioridad) ? prioridad : 'media',
-    comuna:     comuna    || null,
-    color_pref: colorPref || null,
+    apellido:        apellido   || null,
+    telefono:        telefono   || null,
+    email:           email      || null,
+    rut:             rut ? normalizeRut(rut) : null,
+    sucursal_raw:    sucursalRaw,           // valor original para display y matching
+    fuente:          VALID_SOURCES.includes(fuente) ? fuente : 'importacion',
+    prioridad:       VALID_PRIORITY.includes(prioridad) ? prioridad : 'media',
+    comuna:          comuna     || null,
+    color_pref:      colorPref  || null,
+    obs_vendedor,
+    sit_laboral:     sit_laboral  || null,
+    continuidad:     continuidad || null,
+    renta:           parseChileanInt(renta_raw),
+    pie:             parseChileanInt(pie_raw),
+    wants_financing,
+    fin_data:        Object.keys(fin_data).length > 0 ? fin_data : null,
     errors,
-    status:     errors.length > 0 ? 'error' : 'valid',
-    // resolved later:
-    branch_id:  null,
-    branch_name: null,
-    dup_reason: null,
+    status:          errors.length > 0 ? 'error' : 'valid',
+    // Resueltos después:
+    branch_id:       null,
+    branch_name:     null,
+    dup_reason:      null,
     no_seller_warning: null,
   };
 }
 
-// ─── Helpers ─────────────────────────────────────────────────
-function parseBuffer(buffer, originalname) {
+// ─── Helpers ──────────────────────────────────────────────────
+function parseBuffer(buffer) {
   const wb = xlsx.read(buffer, { type: 'buffer', raw: false });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const raw = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
@@ -119,10 +234,9 @@ function parseBuffer(buffer, originalname) {
 }
 
 // ─── GET /api/import/template ─────────────────────────────────
-// Returns a CSV template as text for download
 router.get('/template', (req, res) => {
-  const csv = 'nombre,apellido,telefono,email,rut,sucursal,fuente,prioridad,comuna,color_pref\n' +
-              'Juan,Pérez,+56912345678,juan@email.com,12345678-9,MPN,whatsapp,media,Huechuraba,Negro\n';
+  const csv = 'nombre,apellido,telefono,email,rut,sucursal,fuente,prioridad,comuna,color_pref,observaciones\n' +
+              'Juan,Pérez,+56912345678,juan@email.com,12345678-9,MPN,whatsapp,media,Huechuraba,Negro,\n';
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="template_prospectos.csv"');
   res.send(csv);
@@ -133,7 +247,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
-    const raw = parseBuffer(req.file.buffer, req.file.originalname);
+    const raw = parseBuffer(req.file.buffer);
     const rawHeaders = raw[0].map(h => (h || '').toString());
     const headerMap  = buildHeaderMap(rawHeaders);
 
@@ -143,27 +257,27 @@ router.post('/preview', upload.single('file'), async (req, res) => {
       });
     }
 
-    // Parse and validate each row
+    // Parse y validar cada fila
     const rows = [];
     for (let i = 1; i < raw.length; i++) {
       const row = raw[i];
       if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
-      rows.push(validateRow(row, headerMap, i + 1)); // +1 for 1-based row number
+      rows.push(validateRow(row, headerMap, i + 1));
     }
 
     if (rows.length === 0) return res.status(400).json({ error: 'No se encontraron filas de datos' });
 
-    // ── Detect in-file duplicates ──────────────────────────────
+    // ── Duplicados internos al archivo ─────────────────────────
     const seenRut   = new Map();
     const seenEmail = new Map();
     const seenPhone = new Map();
     for (const r of rows) {
-      if (r.rut)     seenRut.set(r.rut,                (seenRut.get(r.rut) || 0)                   + 1);
-      if (r.email)   seenEmail.set(r.email.toLowerCase(), (seenEmail.get(r.email.toLowerCase()) || 0) + 1);
-      if (r.telefono) seenPhone.set(r.telefono,         (seenPhone.get(r.telefono) || 0)            + 1);
+      if (r.rut)      seenRut.set(r.rut, (seenRut.get(r.rut) || 0) + 1);
+      if (r.email)    seenEmail.set(r.email.toLowerCase(), (seenEmail.get(r.email.toLowerCase()) || 0) + 1);
+      if (r.telefono) seenPhone.set(r.telefono, (seenPhone.get(r.telefono) || 0) + 1);
     }
 
-    // ── Check DB duplicates ────────────────────────────────────
+    // ── Duplicados en base de datos ────────────────────────────
     const dbDupRuts   = new Set();
     const dbDupEmails = new Set();
     const dbDupPhones = new Set();
@@ -191,37 +305,28 @@ router.post('/preview', upload.single('file'), async (req, res) => {
       dp.forEach(r => dbDupPhones.add(r.phone));
     }
 
-    // ── Load active branches ───────────────────────────────────
+    // ── Cargar sucursales activas ──────────────────────────────
     const { rows: branches } = await db.query('SELECT id, name, code FROM branches WHERE active = true');
-    const branchMap = {};
-    branches.forEach(b => {
-      branchMap[b.code.toLowerCase()] = b;
-      branchMap[b.name.toLowerCase()] = b;
-      // partial match for names with spaces
-      b.name.toLowerCase().split(' ').forEach(word => {
-        if (word.length > 3 && !branchMap[word]) branchMap[word] = b;
-      });
-    });
 
-    // ── Load seller count per branch ──────────────────────────
+    // ── Cargar vendedores activos por sucursal ─────────────────
     const { rows: sellerCounts } = await db.query(
       `SELECT branch_id, COUNT(*) as cnt FROM users WHERE role = 'vendedor' AND active = true GROUP BY branch_id`
     );
     const sellersByBranch = {};
     sellerCounts.forEach(s => { sellersByBranch[s.branch_id] = parseInt(s.cnt); });
 
-    // ── Apply flags to rows ────────────────────────────────────
+    // ── Aplicar flags ──────────────────────────────────────────
     for (const r of rows) {
       if (r.status === 'error') continue;
 
-      // In-file dup check
-      const isDupFile = (r.rut     && seenRut.get(r.rut)                       > 1) ||
-                        (r.email   && seenEmail.get(r.email.toLowerCase())      > 1) ||
-                        (r.telefono && seenPhone.get(r.telefono)               > 1);
+      // Duplicados en archivo
+      const isDupFile = (r.rut      && seenRut.get(r.rut)                  > 1) ||
+                        (r.email    && seenEmail.get(r.email.toLowerCase()) > 1) ||
+                        (r.telefono && seenPhone.get(r.telefono)            > 1);
 
-      // DB dup check
-      const isDupDB = (r.rut     && dbDupRuts.has(r.rut))                   ||
-                      (r.email   && dbDupEmails.has(r.email.toLowerCase()))  ||
+      // Duplicados en BD
+      const isDupDB = (r.rut      && dbDupRuts.has(r.rut))                  ||
+                      (r.email    && dbDupEmails.has(r.email.toLowerCase())) ||
                       (r.telefono && dbDupPhones.has(r.telefono));
 
       if (isDupFile) {
@@ -232,19 +337,20 @@ router.post('/preview', upload.single('file'), async (req, res) => {
         r.dup_reason = 'Ya existe en el CRM';
       }
 
-      // Resolve branch
-      const branch = branchMap[r.sucursal] || branchMap[r.sucursal.split(' ')[0]];
+      // Resolver sucursal usando matching robusto
+      const branch = resolveBranch(r.sucursal_raw, branches);
       if (!branch) {
         r.status = 'error';
-        r.errors.push(`Sucursal "${r.sucursal}" no encontrada — válidas: ${branches.map(b => b.code).join(', ')}`);
+        r.errors.push(
+          `Sucursal "${r.sucursal_raw}" no encontrada — válidas: ${branches.map(b => `${b.code} (${b.name})`).join(', ')}`
+        );
       } else {
         r.branch_id   = branch.id;
         r.branch_name = branch.name;
 
-        // Check sellers availability (only for valid/dup rows)
         if (r.status === 'valid' && (sellersByBranch[branch.id] || 0) === 0) {
-          r.status             = 'no_seller';
-          r.no_seller_warning  = `Sin vendedores activos en ${branch.name}`;
+          r.status            = 'no_seller';
+          r.no_seller_warning = `Sin vendedores activos en ${branch.name}`;
         }
       }
     }
@@ -274,7 +380,6 @@ router.post('/confirm', async (req, res) => {
       return res.status(400).json({ error: 'No hay filas para importar' });
     }
 
-    // Filter which rows will be imported
     const toImport = rows.filter(r =>
       r.status === 'valid' ||
       (r.status === 'no_seller' && include_no_seller) ||
@@ -285,14 +390,11 @@ router.post('/confirm', async (req, res) => {
       return res.status(400).json({ error: 'No hay filas válidas para importar con la configuración actual' });
     }
 
-    // Current ticket count for numbering (read once, increment in memory)
     const { rows: countR } = await db.query('SELECT COUNT(*) FROM tickets');
     let ticketCount = parseInt(countR[0].count);
 
-    // ── Least-loaded seller cache per branch ──────────────────
-    // Loads sorted list of sellers (by active ticket count) per branch.
-    // Then cycles through them round-robin so bulk imports distribute evenly.
-    const sellerCache = {}; // branch_id -> { sellers: [], idx: number }
+    // ── Least-loaded + round-robin por sucursal ────────────────
+    const sellerCache = {};
     async function assignSeller(branch_id) {
       if (!sellerCache[branch_id]) {
         const { rows: sellers } = await db.query(
@@ -314,7 +416,7 @@ router.post('/confirm', async (req, res) => {
       return seller;
     }
 
-    // ── Create tickets ─────────────────────────────────────────
+    // ── Crear tickets ──────────────────────────────────────────
     const stats = { imported: 0, errors: 0, no_seller: 0 };
     const createdNums = [];
 
@@ -327,25 +429,36 @@ router.post('/confirm', async (req, res) => {
           `INSERT INTO tickets (
              ticket_num, first_name, last_name, rut, email, phone,
              comuna, source, branch_id, seller_id, assigned_to,
-             priority, color_pref, sla_deadline, status
+             priority, color_pref,
+             obs_vendedor, wants_financing, sit_laboral, continuidad,
+             renta, pie, fin_data,
+             sla_deadline, status
            ) VALUES (
              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+             $14,$15,$16,$17,$18,$19,$20,
              NOW() + INTERVAL '8 hours', 'abierto'
            ) RETURNING id, ticket_num`,
           [
             num,
             r.nombre,
-            r.apellido  || null,
-            r.rut       || null,
-            r.email     || null,
-            r.telefono  || null,
-            r.comuna    || null,
-            r.fuente    || 'importacion',
-            r.branch_id || null,
-            seller?.id  || null,
-            seller?.id  || null,
-            r.prioridad || 'media',
-            r.color_pref || null,
+            r.apellido         || null,
+            r.rut              || null,
+            r.email            || null,
+            r.telefono         || null,
+            r.comuna           || null,
+            r.fuente           || 'importacion',
+            r.branch_id        || null,
+            seller?.id         || null,
+            seller?.id         || null,
+            r.prioridad        || 'media',
+            r.color_pref       || null,
+            r.obs_vendedor     || null,
+            r.wants_financing  || false,
+            r.sit_laboral      || null,
+            r.continuidad      || null,
+            r.renta            || null,
+            r.pie              || null,
+            r.fin_data ? JSON.stringify(r.fin_data) : null,
           ]
         );
 
@@ -368,7 +481,7 @@ router.post('/confirm', async (req, res) => {
       }
     }
 
-    // ── Save import log ────────────────────────────────────────
+    // ── Guardar log de importación ─────────────────────────────
     await db.query(
       `INSERT INTO import_logs (imported_by, filename, total_rows, imported, errors, duplicates, no_seller)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,

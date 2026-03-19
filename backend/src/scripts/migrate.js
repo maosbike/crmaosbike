@@ -27,6 +27,10 @@ async function migrate() {
     await db.query(sql006);
     console.log('✓ Migration 006 (import_logs) applied');
 
+    const sql007 = fs.readFileSync(path.join(__dirname, '../../migrations/007_fin_data.sql'), 'utf-8');
+    await db.query(sql007);
+    console.log('✓ Migration 007 (fin_data JSONB) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);
