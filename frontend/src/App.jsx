@@ -849,10 +849,22 @@ function AdminView(){
   const[loading,setLoading]=useState(true);
   const[resetInfo,setResetInfo]=useState(null);
   const[branches,setBranches]=useState([]);
+  const[cleaning,setCleaning]=useState(false);
+  const[cleanDone,setCleanDone]=useState(false);
   useEffect(()=>{
     api.listUsers().then(setUsers).catch(()=>{}).finally(()=>setLoading(false));
     api.getBranches().then(setBranches).catch(()=>{});
   },[]);
+  const handleCleanData=async()=>{
+    if(!confirm('⚠️ ATENCIÓN: Esto eliminará TODOS los tickets, leads, importaciones e inventario.\n\nUsuarios, sucursales y catálogo de motos se conservan.\n\n¿Confirmar?'))return;
+    if(!confirm('Segunda confirmación: ¿Estás seguro? Esta acción NO se puede deshacer.'))return;
+    setCleaning(true);
+    try{
+      await api.resetDemoData();
+      setCleanDone(true);
+    }catch(ex){alert('Error: '+(ex.message||'No se pudo limpiar'));}
+    finally{setCleaning(false);}
+  };
   const ROLE_C={super_admin:"#EF4444",admin_comercial:"#8B5CF6",backoffice:"#F59E0B",vendedor:"#3B82F6"};
   const handleReset=async(u)=>{
     if(!confirm(`¿Resetear contraseña de ${u.first_name} ${u.last_name}? Se generará una contraseña temporal.`))return;
@@ -893,6 +905,15 @@ function AdminView(){
           ))}
         </div>
       </div>
+      <div style={{...S.card,marginTop:14,borderColor:"rgba(239,68,68,0.25)"}}>
+        <h3 style={{fontSize:12,fontWeight:600,margin:"0 0 6px",color:"#EF4444"}}>Zona de peligro</h3>
+        <p style={{fontSize:11,color:"#6B6B6B",marginBottom:12}}>Elimina todos los tickets, leads, importaciones e inventario de prueba. Los usuarios, sucursales y catálogo de motos se conservan.</p>
+        {cleanDone
+          ?<div style={{display:"flex",alignItems:"center",gap:8,color:"#10B981",fontSize:12,fontWeight:600}}><Ic.check size={16} color="#10B981"/>Data eliminada correctamente. Recarga la página para ver los cambios.</div>
+          :<button onClick={handleCleanData} disabled={cleaning} style={{...S.btn,background:"#EF4444",opacity:cleaning?0.7:1,fontSize:12}}>{cleaning?"Limpiando...":"🗑 Limpiar toda la data de prueba"}</button>
+        }
+      </div>
+
       {resetInfo&&(
         <Modal onClose={()=>setResetInfo(null)} title="Contraseña Reseteada">
           <div style={{textAlign:"center",padding:"8px 0"}}>

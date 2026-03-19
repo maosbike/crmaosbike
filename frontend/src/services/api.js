@@ -103,6 +103,9 @@ export const api = {
   // Dashboard comercial
   getCommercialStats: () => request('GET', '/dashboard/commercial'),
 
+  // Admin
+  resetDemoData: () => request('DELETE', '/admin/reset-data'),
+
   // Importación masiva (solo super_admin)
   importPreview: (formData) => {
     const token = getToken();

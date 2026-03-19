@@ -25,6 +25,8 @@ app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/reassignments', require('./routes/reassignments'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
+app.use('/api/admin', require('./routes/admin'));
+
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'CRMaosBike API v2.0' }));
 
