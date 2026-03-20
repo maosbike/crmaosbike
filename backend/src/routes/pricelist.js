@@ -65,11 +65,24 @@ async function resolveModel(brand, normalizedName) {
   return { match: 'none', candidates: [] };
 }
 
-// ── POST /api/pricelist/debug-pdf ─────────────────────────────────────────────
-// Devuelve el texto extraído y la detección de formato, sin parsear ni guardar.
-// Útil para diagnosticar PDFs que no se reconocen.
+// Helper: wraps multer upload to catch its errors (e.g. file size, wrong type)
+function uploadMiddleware(field) {
+  return (req, res, next) => {
+    upload.single(field)(req, res, (err) => {
+      if (err) {
+        const msg = err.code === 'LIMIT_FILE_SIZE'
+          ? 'Archivo demasiado grande (máximo 20 MB)'
+          : (err.message || 'Error al subir el archivo');
+        return res.status(400).json({ error: msg });
+      }
+      next();
+    });
+  };
+}
 
-router.post('/debug-pdf', upload.single('pdf'), async (req, res) => {
+// ── POST /api/pricelist/debug-pdf ─────────────────────────────────────────────
+
+router.post('/debug-pdf', uploadMiddleware('pdf'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Se requiere un archivo PDF' });
     const result = await debugPDF(req.file.buffer, req.file.originalname);
@@ -81,7 +94,7 @@ router.post('/debug-pdf', upload.single('pdf'), async (req, res) => {
 
 // ── POST /api/pricelist/preview ───────────────────────────────────────────────
 
-router.post('/preview', upload.single('pdf'), async (req, res) => {
+router.post('/preview', uploadMiddleware('pdf'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Se requiere un archivo PDF' });
 

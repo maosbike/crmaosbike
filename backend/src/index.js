@@ -43,8 +43,9 @@ if (process.env.NODE_ENV === 'production') {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Error interno' });
+  console.error('[ERROR GLOBAL]', err.stack || err.message || err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({ error: err.message || 'Error interno del servidor' });
 });
 
 app.listen(PORT, () => {
