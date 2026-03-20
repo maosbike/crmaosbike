@@ -1,61 +1,126 @@
 /**
- * pdfExtractor.js
- * Extrae datos de listas de precios de motos en distintos formatos PDF.
- * Formatos soportados: honda | yamaha | mmb | promobility
+ * pdfExtractor.js — v2
+ * Extrae datos de listas de precios de motos desde PDFs reales.
+ *
+ * Formatos soportados:
+ *   honda       — LISTA DE PRECIOS HONDA (código en línea separada)
+ *   yamaha      — Yamaimport (modelo / cc+precios / continuación opcional)
+ *   mmb         — Keeway/Benelli/Benda/QJ Motor (multi-línea por marca)
+ *   promobility — Promobility (modelo+año concatenados, precios en sig. línea)
  */
+
 const pdfParse = require('pdf-parse');
 
-// ─── Utilidades comunes ───────────────────────────────────────────────────────
+// ─── Utilidades ───────────────────────────────────────────────────────────────
 
 const MONTHS = {
-  enero: '01', febrero: '02', marzo: '03', abril: '04',
-  mayo: '05', junio: '06', julio: '07', agosto: '08',
-  septiembre: '09', octubre: '10', noviembre: '11', diciembre: '12',
+  enero:'01', febrero:'02', marzo:'03', abril:'04',
+  mayo:'05', junio:'06', julio:'07', agosto:'08',
+  septiembre:'09', octubre:'10', noviembre:'11', diciembre:'12',
 };
 
-/**
- * Parsea precio chileno: "$1.699.000" | "1.699.000" | "1699000" → 1699000
- * Retorna null si es 0, vacío o "-"
- */
+/** Parsea precio chileno → entero. Retorna null si 0/vacío/"-" */
 function parsePrice(str) {
   if (!str) return null;
   const s = String(str).trim();
-  if (s === '-' || s === '' || s === '$0' || s === '0') return null;
+  if (!s || s === '-' || s === '$0' || s === '0') return null;
   const n = parseInt(s.replace(/[$\s.]/g, '').replace(',', ''), 10);
   return isNaN(n) || n === 0 ? null : n;
 }
 
-/** Parsea porcentaje: "16%" → "16%" | null */
-function parsePct(str) {
-  if (!str) return null;
-  const m = String(str).match(/(\d+)\s*%/);
-  return m ? `${m[1]}%` : null;
+/** Extrae todos los precios en formato chileno de un texto */
+function extractPrices(text) {
+  const nums = [];
+  const re = /(\d{1,3}(?:\.\d{3})+)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const v = parseInt(m[1].replace(/\./g, ''), 10);
+    if (v > 0) nums.push(v);
+  }
+  return nums;
 }
 
 /**
- * Normaliza un nombre de modelo para matching:
- * - Elimina prefijo "NEW"
- * - Elimina sufijos entre paréntesis
- * - Elimina años (20xx)
- * - Lowercase, trim, espacios simples
+ * Asigna columnas de precios usando la heurística de ratio:
+ *   - Un valor < precio_lista / 2  →  es un bono
+ *   - Un valor ≥ precio_lista / 2  →  es un precio final
+ *
+ * Orden de columnas esperado:
+ *   price_list | [bono_todo_medio | price_todo_medio] | [bono_financiamiento | price_financiamiento]
+ *
+ * @param {number[]} nums  Array de enteros en orden de aparición
+ * @param {boolean}  hasDash  Si el texto original tenía "-" en la columna bono_tmp
  */
+function assignPriceColumns(nums, hasDash = false) {
+  if (!nums || nums.length === 0) return {};
+
+  const price_list = nums[0];
+  let bono_todo_medio      = null;
+  let price_todo_medio     = null;
+  let bono_financiamiento  = null;
+  let price_financiamiento = null;
+
+  const threshold = price_list / 2;
+
+  if (hasDash) {
+    // Bono TMP es null (dash). Siguiente valor = price_todo_medio
+    price_todo_medio = nums[1] || null;
+    // Luego, pares (bono, precio)
+    let i = 2;
+    while (i < nums.length) {
+      if (nums[i] < threshold && nums[i + 1] != null) {
+        bono_financiamiento  = nums[i];
+        price_financiamiento = nums[i + 1];
+        i += 2;
+      } else {
+        if (price_financiamiento === null) price_financiamiento = nums[i];
+        i++;
+      }
+    }
+  } else {
+    let i = 1;
+    while (i < nums.length) {
+      const v = nums[i];
+      if (v < threshold) {
+        // Es un bono
+        if (bono_todo_medio === null) {
+          bono_todo_medio = v;
+        } else {
+          bono_financiamiento = v;
+        }
+      } else {
+        // Es un precio
+        if (price_todo_medio === null) {
+          price_todo_medio = v;
+        } else {
+          price_financiamiento = v;
+        }
+      }
+      i++;
+    }
+  }
+
+  return { price_list, bono_todo_medio, price_todo_medio, bono_financiamiento, price_financiamiento };
+}
+
+/** Normaliza nombre de modelo para matching */
 function normalizeModel(name) {
   return name
-    .replace(/^new\s+/i, '')
-    .replace(/\(.*?\)/g, '')
-    .replace(/\b(20\d{2})\b/g, '')
-    .replace(/[^a-z0-9\s\-]/gi, ' ')
+    .replace(/^new\s+/i, '')          // quitar prefijo NEW
+    .replace(/\(.*?\)/g, '')          // quitar contenido entre paréntesis
+    .replace(/\b(20\d{2})\b/g, '')    // quitar años
+    .replace(/[^a-z0-9\s\-]/gi, ' ')  // solo alfanumérico, espacios, guiones
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-/** Commercial name: sin newlines, espacios normalizados */
+/** Limpia el nombre comercial (sin newlines ni espacios dobles) */
 function commercialName(name) {
   return name.replace(/\s+/g, ' ').trim();
 }
 
-/** Detecta período a partir de texto: "MARZO 2026" → "2026-03" */
+/** Detecta período: "MARZO 2026" → "2026-03" */
 function detectPeriod(text) {
   const re = /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(\d{4})\b/i;
   const m = text.match(re);
@@ -63,461 +128,623 @@ function detectPeriod(text) {
   return `${m[2]}-${MONTHS[m[1].toLowerCase()]}`;
 }
 
-// ─── Detección de formato ─────────────────────────────────────────────────────
-
+/** Detecta formato del PDF */
 function detectSourceType(text) {
   const t = text.toLowerCase();
-  if (t.includes('yamaha') && (t.includes('cilindrada') || t.includes('yamaimport') || t.includes('bono yamaha'))) return 'yamaha';
-  if (t.includes('lista de precios honda') || (t.includes('honda') && t.includes('cod p') && t.includes('pbv'))) return 'honda';
-  if (t.includes('promobility') || (t.includes('suzuki') && t.includes('cyclone') && t.includes('royal enfield'))) return 'promobility';
+  if (t.includes('lista de precios honda') || (t.includes('honda') && t.includes('pbv') && t.includes('cod p'))) return 'honda';
+  if (t.includes('yamaimport') || t.includes('yamaha') && t.includes('cilindrada') && t.includes('bono yamaha')) return 'yamaha';
+  if (t.includes('promobility')) return 'promobility';
   if ((t.includes('keeway') || t.includes('benelli') || t.includes('qj motor')) && t.includes('bono marca')) return 'mmb';
   return null;
 }
 
-// ─── Parser: HONDA ────────────────────────────────────────────────────────────
+// ─── Parser Honda ─────────────────────────────────────────────────────────────
+//
+// Estructura en el PDF:
+//   Línea A: código interno (ej: "LJA73")
+//   Línea B: "MODELO CATEGORIA PBV    PRECIO    [BONO_TMP|-]    PRECIO_TMP    [BONO_AF    PRECIO_AF]    [NOTAS]"
+//
+// Categorías válidas: Commuter, Mid Size, Big Bike, Off, ATV, BB special
 
-// Categorías válidas de Honda
-const HONDA_CATEGORIES = ['Commuter', 'Mid Size', 'Big Size', 'Big Bike', 'Off', 'ATV', 'BB special'];
+const HONDA_CATEGORIES = ['Commuter', 'Mid Size', 'Big Bike', 'Off', 'ATV', 'BB special'];
+// Regex que detecta donde empieza la categoría en la línea de datos
 const HONDA_CAT_RE = new RegExp(`(${HONDA_CATEGORIES.join('|')})`, 'i');
+// Regex que detecta una línea de código Honda
+const HONDA_CODE_RE = /^[A-Z]{2,4}\d+[A-Z0-9]*$/;
+// Secciones agrupadas (no son datos)
+const HONDA_SKIP_RE = /^(LMC ON|LMC ON\/OFF|MC ON|MC ON\/OFF|SC TTL|OFF|ATV|PVB|DESDE|HASTA EL|LISTA DE PRECIOS|OBSERVACIONES|\*|Nuevas|Nuestro|28-|02-)/i;
 
 function parseHonda(text) {
-  const rows = [];
-
-  // Período
-  let period = null;
-  const pm = text.match(/PERIODO[:\s]+(\w+)\s+(\d{4})/i);
-  if (pm) period = `${pm[2]}-${MONTHS[pm[1].toLowerCase()] || '??'}`;
-  if (!period) period = detectPeriod(text);
-
+  const rows  = [];
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const period = detectPeriod(text);
 
-  // Una fila Honda tiene: COD MODELO CATEGORIA PBV PRECIO [...bonos...]
-  // El código tiene formato: 2-3 letras + dígitos + sufijos opcionales
-  const codeRe = /^([A-Z]{2,4}\d+[A-Z0-9]*(?:EXT|EP|ES|EXD|EXT)?)\s+/;
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
 
-  let currentCategory = null;
+    // ¿Es una línea de código Honda?
+    if (HONDA_CODE_RE.test(line)) {
+      const code    = line;
+      const dataLine = lines[i + 1] || '';
+      i += 2;
 
-  for (const line of lines) {
-    // Detectar sección de categoría (LMC ON, SC TTL, etc.) — las ignoramos
-    // Detectar cambio de categoría implícito en la fila
-    const catM = line.match(HONDA_CAT_RE);
-    if (catM) currentCategory = catM[1];
+      if (HONDA_SKIP_RE.test(dataLine)) continue;
 
-    const codeM = line.match(codeRe);
-    if (!codeM) continue;
+      // Limpiar tabs
+      const dl = dataLine.replace(/\t/g, '').trim();
 
-    const code = codeM[1];
-    const rest = line.slice(codeM[0].length);
+      // Encontrar la categoría en la línea
+      const catMatch = dl.match(HONDA_CAT_RE);
+      if (!catMatch) continue;
 
-    // Extraer categoría de la línea
-    const lineCatM = rest.match(HONDA_CAT_RE);
-    const category = lineCatM ? lineCatM[1] : currentCategory;
+      const category = catMatch[1];
+      const catIdx   = dl.indexOf(category);
 
-    if (!category) continue; // sin categoría => no es fila de dato
+      // Modelo = todo antes de la categoría
+      const modelRaw = dl.slice(0, catIdx).trim();
+      if (!modelRaw) continue;
 
-    // Antes de la categoría está el modelo
-    const catPos = rest.indexOf(category);
-    const modelRaw = rest.slice(0, catPos).trim();
-    if (!modelRaw) continue;
+      // Texto después de la categoría: PBV + precios + notas
+      const afterCat = dl.slice(catIdx + category.length).trim();
 
-    // Después de la categoría: PBV PRECIO [BONO_TMP] [PRECIO_TMP] [BONO_AF] [PRECIO_AF] [notas]
-    const afterCat = rest.slice(catPos + category.length).trim();
+      // Extraer PBV (primer número pequeño, 2-3 dígitos, solo si no es BB special)
+      let pbv = null;
+      let priceText = afterCat;
+      if (category !== 'BB special') {
+        const pbvMatch = afterCat.match(/^(\d{2,3})\s+/);
+        if (pbvMatch) {
+          pbv = parseInt(pbvMatch[1]);
+          priceText = afterCat.slice(pbvMatch[0].length);
+        }
+      }
 
-    // Extraer todos los números de precio (formato: d.ddd.ddd)
-    const nums = [];
-    const numRe = /\b(\d{1,3}(?:\.\d{3})+)\b/g;
-    let nm;
-    while ((nm = numRe.exec(afterCat)) !== null) nums.push(nm[1]);
+      // ¿Tiene dash en la columna de BONO_TODO_MEDIO?
+      const hasDash = /\s-\s/.test(priceText);
 
-    // PBV es el primero (3 dígitos), luego vienen precios
-    const pbv = nums[0] && nums[0].length <= 5 ? nums.shift() : null;
+      // Extraer todos los precios
+      const nums = extractPrices(priceText);
 
-    const price_list           = parsePrice(nums[0]) || null;
-    let   bono_todo_medio      = null;
-    let   price_todo_medio     = null;
-    let   bono_financiamiento  = null;
-    let   price_financiamiento = null;
+      // Asignar columnas
+      const prices = assignPriceColumns(nums, hasDash);
 
-    // Notas al final (texto no numérico)
-    const notes = afterCat.replace(/\b\d{1,3}(?:\.\d{3})+\b/g, '').replace(/-/g, '').trim() || null;
+      // Notas (texto que queda después de eliminar números y dashes)
+      const notes = priceText
+        .replace(/\d{1,3}(?:\.\d{3})+/g, '')
+        .replace(/\s-\s/g, ' ')
+        .replace(/\/\/\//g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim() || null;
 
-    // Detectar tipo de bono desde notas
-    const hasTMP   = /TODO MEDIO/i.test(notes || '');
-    const hasAF    = /AUTOFIN/i.test(notes || '');
-    const hasAmbos = hasTMP && hasAF;
-
-    if (hasAmbos && nums.length >= 5) {
-      // PRECIO BONO_TMP PRECIO_TMP BONO_AF PRECIO_AF
-      bono_todo_medio      = parsePrice(nums[1]);
-      price_todo_medio     = parsePrice(nums[2]);
-      bono_financiamiento  = parsePrice(nums[3]);
-      price_financiamiento = parsePrice(nums[4]);
-    } else if (hasTMP && nums.length >= 3) {
-      bono_todo_medio      = parsePrice(nums[1]);
-      price_todo_medio     = parsePrice(nums[2]);
-    } else if (hasAF && nums.length >= 3) {
-      bono_financiamiento  = parsePrice(nums[1]);
-      price_financiamiento = parsePrice(nums[2]);
+      rows.push({
+        brand:            'Honda',
+        model:            commercialName(modelRaw),
+        normalized_model: normalizeModel(modelRaw),
+        code,
+        category,
+        segment:          null,
+        cc:               null,
+        ...prices,
+        dcto_30_dias:     null,
+        dcto_60_dias:     null,
+        notes,
+        raw: { code, model: modelRaw, category, pbv, afterCat },
+      });
+    } else {
+      i++;
     }
-
-    rows.push({
-      brand: 'Honda',
-      model: commercialName(modelRaw),
-      normalized_model: normalizeModel(modelRaw),
-      code,
-      category,
-      segment: null,
-      cc: null,
-      price_list,
-      bono_todo_medio,
-      price_todo_medio,
-      bono_financiamiento,
-      price_financiamiento,
-      dcto_30_dias: null,
-      dcto_60_dias: null,
-      notes,
-      raw: { code, model: modelRaw, category, pbv, afterCat },
-    });
   }
 
   return { period, source_type: 'honda', rows };
 }
 
-// ─── Parser: YAMAHA ───────────────────────────────────────────────────────────
+// ─── Parser Yamaha ────────────────────────────────────────────────────────────
+//
+// Estructura en el PDF (extraída por pdf-parse):
+//   Línea categoría: "URBANA" / "ON-OFF" / "SPORT TURING" etc.
+//   Línea modelo:    "FZ-S 4.0 "
+//   Línea cc:        "150 cc2.690.0002.690.000"  (cc + precios concatenados)
+//   Líneas extra:    "150.000"                    (solo número = bono o precio)
+//                    "2.540.000"
+//
+// Algunas líneas cc no tienen precios inline; vienen en las siguientes.
 
-const YAMAHA_CATEGORIES = [
-  'URBANA', 'NAKED', 'R-WORLD', 'ON-OFF', 'SPORT TURING', 'SPORT HERITAGE',
-  'CROSS', 'ENDURO', 'SCOOTERS', 'ATV', 'UTV', 'NAUTICA', 'COMPETICION',
+// Categorías que aparecen EN ORDEN en el texto
+const YAMAHA_CATS_ORDERED = [
+  'URBANA', 'ON-OFF', 'SPORT TURING', 'SPORT HERITAGE',
+  'ATV \\(4 ruedas agrícola\\)', 'ATV', 'UTV', 'NAUTICA',
+  'COMPETICION\\s+RAPTOR', 'ENDURO',
 ];
+const YAMAHA_CAT_RE = new RegExp(`^(${YAMAHA_CATS_ORDERED.join('|')})$`, 'i');
+
+// Categorías que aparecen FUERA DE ORDEN (detectadas por patrones de modelo)
+const YAMAHA_CAT_MAP = {
+  'mt-':      'Naked',
+  'yzf-r':    'Sport',
+  'yz-':      'Cross',
+  'wr-':      'Enduro',
+  'pw-':      'Enduro',
+  'ttr-':     'Enduro',
+  'cygnus':   'Scooter',
+  'nmax':     'Scooter',
+  'x-max':    'Scooter',
+  'fz-s':     'Commuter',
+  'fz-x':     'Commuter',
+  'fz-250':   'Commuter',
+  'tracer':   'Touring',
+  'teneré':   'Dual Sport',
+  'tenere':   'Dual Sport',
+  'xtz-':     'Dual Sport',
+  'bolt':     'Custom',
+  'yfm-':     'ATV',
+  'yfz-':     'ATV',
+  'yxz-':     'UTV',
+  'wolverine':'UTV',
+  'vx ':      'Náutica',
+  'fx-':      'Náutica',
+  'gp ho':    'Náutica',
+  'sj-':      'Náutica',
+};
+
+function mapYamahaCategory(seg) {
+  const m = {
+    'URBANA':'Commuter', 'NAKED':'Naked', 'R-WORLD':'Sport',
+    'ON-OFF':'Dual Sport', 'SPORT TURING':'Touring', 'SPORT HERITAGE':'Custom',
+    'CROSS':'Cross', 'ENDURO':'Enduro', 'SCOOTERS':'Scooter',
+    'ATV':'ATV', 'COMPETICION RAPTOR':'ATV', 'UTV':'UTV', 'NAUTICA':'Náutica',
+    'ATV (4 RUEDAS AGRÍCOLA)':'ATV',
+  };
+  return m[seg.toUpperCase()] || seg;
+}
+
+function inferYamahaCategory(model) {
+  const ml = model.toLowerCase();
+  for (const [prefix, cat] of Object.entries(YAMAHA_CAT_MAP)) {
+    if (ml.startsWith(prefix) || ml.includes(prefix)) return cat;
+  }
+  return null;
+}
+
+// Detecta líneas de solo-números (continuación de precios)
+const PURE_NUMS_RE = /^\d{1,3}(?:\.\d{3})+(?:\d{1,3}(?:\.\d{3})+)*$/;
 
 function parseYamaha(text) {
-  const rows = [];
+  const rows   = [];
   const period = detectPeriod(text);
   const lines  = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Regex para detectar cilindrada: "150 cc" | "150cc" | "1000 cc"
-  const ccRe = /(\d+)\s*cc/i;
-  // Regex para precios
-  const priceRe = /\b(\d{1,3}(?:\.\d{3})+)\b/g;
+  // Keywords a ignorar completamente
+  const SKIP_RE = /^(LISTADE PRECIOS|LISTA DE PRECIOS|CILINDRADA|PRECIO|BONO|PAGO|AUTOFIN|FINANCIAMIENTO|z$|RAPTOR|COMPETICION|4 ruedas|ATV Trabajo|Todo Medio|NAUTICA|UTV$|ATV$)/i;
 
-  const catSet = new Set(YAMAHA_CATEGORIES);
   let currentCategory = null;
+  let pendingModel    = null;
+  let pendingCc       = null;
+  let pendingNums     = [];
 
-  for (const line of lines) {
-    // Detectar si la línea ES o EMPIEZA con una categoría
-    let isCatLine = false;
-    for (const cat of YAMAHA_CATEGORIES) {
-      if (line.toUpperCase().startsWith(cat)) {
-        currentCategory = cat;
-        isCatLine = true;
-        break;
-      }
+  const emit = () => {
+    if (!pendingModel || pendingNums.length === 0) {
+      pendingModel = null; pendingCc = null; pendingNums = [];
+      return;
     }
-
-    if (!currentCategory) continue;
-
-    // Extraer la parte del modelo (antes del primer cc)
-    const ccM = line.match(ccRe);
-    if (!ccM) continue; // sin cilindrada → no es fila de dato
-
-    const ccIdx = line.indexOf(ccM[0]);
-    let modelPart = line.slice(0, ccIdx).trim();
-
-    // Si la línea empieza con una categoría, quitarla del modelo
-    for (const cat of YAMAHA_CATEGORIES) {
-      if (modelPart.toUpperCase().startsWith(cat)) {
-        modelPart = modelPart.slice(cat.length).trim();
-        break;
-      }
-    }
-
-    if (!modelPart) continue;
-
-    const cc = parseInt(ccM[1], 10);
-    const afterCc = line.slice(ccIdx + ccM[0].length).trim();
-
-    // Extraer todos los precios del resto de la línea
-    const prices = [];
-    let pm;
-    priceRe.lastIndex = 0;
-    while ((pm = priceRe.exec(afterCc)) !== null) prices.push(pm[1]);
-
-    if (prices.length === 0) continue;
-
-    const price_list           = parsePrice(prices[0]);
-    let   bono_todo_medio      = null;
-    let   price_todo_medio     = null;
-    let   bono_financiamiento  = null;
-    let   price_financiamiento = null;
-
-    // Yamaha: si hay 3 números → precio_lista, precio_tmp (=lista), bono_autofin, precio_autofin
-    // Si hay 4 → precio_lista, bono_yamaha, precio_tmp, bono_autofin, precio_autofin
-    if (prices.length === 5) {
-      bono_todo_medio      = parsePrice(prices[1]);
-      price_todo_medio     = parsePrice(prices[2]);
-      bono_financiamiento  = parsePrice(prices[3]);
-      price_financiamiento = parsePrice(prices[4]);
-    } else if (prices.length === 4) {
-      // precio_lista, precio_tmp (sin bono yamaha), bono_autofin, precio_autofin
-      price_todo_medio     = parsePrice(prices[1]);
-      bono_financiamiento  = parsePrice(prices[2]);
-      price_financiamiento = parsePrice(prices[3]);
-    } else if (prices.length === 3) {
-      price_todo_medio     = parsePrice(prices[1]);
-      price_financiamiento = parsePrice(prices[2]);
-    } else if (prices.length === 2) {
-      price_todo_medio = parsePrice(prices[1]);
-    }
-
+    const prices = assignPriceColumns(pendingNums, false);
+    const cat = currentCategory ? mapYamahaCategory(currentCategory) : inferYamahaCategory(pendingModel);
     rows.push({
-      brand: 'Yamaha',
-      model: commercialName(modelPart),
-      normalized_model: normalizeModel(modelPart),
-      code: null,
-      category: mapYamahaCategory(currentCategory),
-      segment: currentCategory,
-      cc,
-      price_list,
-      bono_todo_medio,
-      price_todo_medio,
-      bono_financiamiento,
-      price_financiamiento,
-      dcto_30_dias: null,
-      dcto_60_dias: null,
-      notes: null,
-      raw: { segment: currentCategory, model: modelPart, cc, prices },
+      brand:            'Yamaha',
+      model:            commercialName(pendingModel),
+      normalized_model: normalizeModel(pendingModel),
+      code:             null,
+      category:         cat,
+      segment:          currentCategory,
+      cc:               pendingCc,
+      ...prices,
+      dcto_30_dias:     null,
+      dcto_60_dias:     null,
+      notes:            null,
+      raw: { segment: currentCategory, model: pendingModel, cc: pendingCc, nums: pendingNums },
     });
+    pendingModel = null; pendingCc = null; pendingNums = [];
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Ignorar encabezados y texto decorativo
+    if (SKIP_RE.test(line)) continue;
+    if (line.match(/^\d{2}-\d{2}-\d{4}$/)) continue; // fechas
+
+    // ¿Es un encabezado de categoría que aparece en orden?
+    const catMatch = line.match(YAMAHA_CAT_RE);
+    if (catMatch) {
+      emit();
+      currentCategory = line.trim();
+      continue;
+    }
+
+    // ¿Es una línea de cc (tiene "cc" y/o números)?
+    const ccMatch = line.match(/^(\d+)\s*cc(.*)$/i);
+    if (ccMatch) {
+      // Si hay modelo pendiente, actualizamos su cc
+      if (pendingModel === null) { i++; continue; } // cc sin modelo → skip
+      if (pendingCc !== null) emit(); // había otro modelo — emitirlo primero
+
+      pendingCc = parseInt(ccMatch[1]);
+      const afterCc = ccMatch[2].trim();
+      if (afterCc) pendingNums.push(...extractPrices(afterCc));
+      continue;
+    }
+
+    // ¿Es una línea de solo números (continuación de precios)?
+    if (PURE_NUMS_RE.test(line)) {
+      if (pendingModel && pendingCc !== null) {
+        pendingNums.push(...extractPrices(line));
+      }
+      continue;
+    }
+
+    // ¿Es una línea de precios en formato "cc" en realidad cortada? (ej: "125 cc")
+    // Ya cubierta arriba.
+
+    // Cualquier otro texto = nombre de modelo (si no es skip)
+    if (pendingModel !== null && pendingCc !== null) emit();
+    if (pendingModel !== null && pendingCc === null) {
+      // Modelo anterior sin cc → descartar
+      pendingModel = null;
+    }
+    pendingModel = line;
+    pendingCc    = null;
+    pendingNums  = [];
   }
+
+  emit(); // el último modelo pendiente
 
   return { period, source_type: 'yamaha', rows };
 }
 
-function mapYamahaCategory(seg) {
-  const map = {
-    'URBANA': 'Commuter', 'NAKED': 'Naked', 'R-WORLD': 'Sport',
-    'ON-OFF': 'Dual Sport', 'SPORT TURING': 'Touring', 'SPORT HERITAGE': 'Custom',
-    'CROSS': 'Cross', 'ENDURO': 'Enduro', 'SCOOTERS': 'Scooter',
-    'ATV': 'ATV', 'COMPETICION': 'ATV', 'UTV': 'UTV', 'NAUTICA': 'Náutica',
-  };
-  return map[seg] || seg;
-}
+// ─── Parser MMB (Keeway / Benelli / Benda / QJ Motor) ────────────────────────
+//
+// Columnas del PDF:
+//   MARCA | MODELO | VALOR LISTA | BONO MARCA | PRECIO CON TODO MEDIO DE PAGO |
+//   BONO FINANCIAMIENTO | PRECIO CON CREDITO | DCTO 30 Días | DCTO 60 Días
+//
+// pdf-parse produce tres patrones:
+//   A) "MARCA + MODELO + TODOS_PRECIOS" en una sola línea
+//   B) "MARCA" sola → "MODELO" sola → "PRECIOS" sola
+//   C) "MARCA+MODELO" → "PRECIOS" (sin precios en la línea del modelo)
+//
+// Regla de columnas:
+//   1. VALOR LISTA
+//   2. BONO MARCA        (si valor < VALOR_LISTA / 2 — sino no hay bono)
+//   3. PRECIO TODO MEDIO
+//   4. PRECIO CON CREDITO (= PRECIO TODO MEDIO si no hay bono financiamiento)
+//   5. DCTO 30 días (%)
+//   6. DCTO 60 días (%)
 
-// ─── Parser: MMB (Keeway / Benelli / Benda / QJ Motor) ───────────────────────
-
-const MMB_BRANDS = ['KEEWAY', 'BENELLI', 'BENDA', 'QJ MOTOR'];
+const MMB_BRANDS_MAP = {
+  'KEEWAY':   'Keeway',
+  'BENELLI':  'Benelli',
+  'BENDA':    'Benda',
+  'QJ MOTOR': 'QJ Motor',
+};
+const MMB_BRANDS = Object.keys(MMB_BRANDS_MAP);
 
 function parseMMB(text) {
-  const rows = [];
+  const rows   = [];
   const period = detectPeriod(text);
   const lines  = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Regex para detectar marca al inicio de línea
-  const brandRe = new RegExp(`^(${MMB_BRANDS.join('|')})\\s+(.+)$`, 'i');
-  // Regex para precios con $ o sin
-  const priceRe = /\$?\s*(\d{1,3}(?:\.\d{3})+)/g;
-  const pctRe   = /(\d+)\s*%/g;
+  // Detectar línea de inicio de marca
+  function getBrand(line) {
+    for (const b of MMB_BRANDS) {
+      if (line.toUpperCase().startsWith(b)) return b;
+    }
+    return null;
+  }
 
-  for (const line of lines) {
-    const bm = line.match(brandRe);
-    if (!bm) continue;
+  // Detecta si una línea contiene precios MMB ($x.xxx.xxx o x.xxx.xxx con $)
+  const MMB_PRICE_RE = /\$\d{1,3}(?:\.\d{3})+/;
 
-    const brand    = bm[1].toUpperCase().trim();
-    const restLine = bm[2].trim();
-
+  // Parsear una línea de precios MMB
+  function parsePriceLine(priceText) {
     // Extraer precios
-    const prices = [];
-    let pm;
-    priceRe.lastIndex = 0;
-    while ((pm = priceRe.exec(restLine)) !== null) prices.push(pm[1]);
+    const re = /\$?(\d{1,3}(?:\.\d{3})+)/g;
+    const nums = [];
+    let m;
+    while ((m = re.exec(priceText)) !== null) {
+      const v = parseInt(m[1].replace(/\./g, ''), 10);
+      if (v > 0) nums.push(v);
+    }
+    // Extraer porcentajes
+    const pctRe = /(\d+)\s*%/g;
+    const pcts  = [];
+    while ((m = pctRe.exec(priceText)) !== null) pcts.push(`${m[1]}%`);
 
-    // Extraer porcentajes de descuento
-    const pcts = [];
-    pctRe.lastIndex = 0;
-    while ((pm = pctRe.exec(restLine)) !== null) pcts.push(`${pm[1]}%`);
+    // Asignar columnas
+    // MMB siempre tiene: price_list | [bono_tmp] | price_tmp | price_fin
+    // Si no hay bono (DARKFLAG): price_list = price_tmp = price_fin
+    let price_list = null, bono_todo_medio = null, price_todo_medio = null, price_financiamiento = null;
 
-    // El modelo es la parte antes del primer precio
-    const firstPriceIdx = restLine.search(/\$?\s*\d{1,3}(?:\.\d{3})+/);
-    const modelRaw = firstPriceIdx > 0 ? restLine.slice(0, firstPriceIdx).trim() : restLine;
+    if (nums.length >= 4) {
+      price_list           = nums[0];
+      bono_todo_medio      = nums[1] < nums[0] / 2 ? nums[1] : null;
+      price_todo_medio     = bono_todo_medio !== null ? nums[2] : nums[1];
+      price_financiamiento = bono_todo_medio !== null ? nums[3] : nums[2];
+    } else if (nums.length === 3) {
+      price_list = nums[0];
+      if (nums[1] < nums[0] / 2) {
+        bono_todo_medio      = nums[1];
+        price_todo_medio     = nums[2];
+        price_financiamiento = nums[2]; // igual a price_todo_medio
+      } else {
+        price_todo_medio     = nums[1];
+        price_financiamiento = nums[2];
+      }
+    } else if (nums.length === 2) {
+      price_list = nums[0];
+      if (nums[1] < nums[0] / 2) {
+        bono_todo_medio  = nums[1];
+        price_todo_medio = null;
+      } else {
+        price_todo_medio = nums[1];
+      }
+    } else if (nums.length === 1) {
+      price_list = nums[0];
+    }
 
-    if (!modelRaw) continue;
+    // Notas (texto no numérico)
+    const notes = priceText
+      .replace(/\$?\d{1,3}(?:\.\d{3})+/g, '')
+      .replace(/\d+%/g, '')
+      .replace(/\s+/g, ' ')
+      .trim() || null;
 
-    const price_list           = parsePrice(prices[0]);
-    const bono_todo_medio      = parsePrice(prices[1]);
-    const price_todo_medio     = parsePrice(prices[2]);
-    const price_financiamiento = prices[3] ? parsePrice(prices[3]) : price_todo_medio;
-    const dcto_30_dias         = pcts[0] || null;
-    const dcto_60_dias         = pcts[1] || null;
+    return {
+      price_list,
+      bono_todo_medio,
+      price_todo_medio,
+      bono_financiamiento:  null, // siempre vacío en estos PDFs
+      price_financiamiento,
+      dcto_30_dias: pcts[0] || null,
+      dcto_60_dias: pcts[1] || null,
+      notes,
+    };
+  }
 
-    // Notas (texto después de los números)
-    const numPctRe = /[\$\d\.\%\s]+$/;
-    const notesM   = restLine.replace(/\$?\s*\d{1,3}(?:\.\d{3})+/g, '').replace(/\d+%/g, '').trim();
-    // Buscar textos como "No aplica pronto pago" o "Arribo 25/03 aprox"
-    const notesRe = /(No aplica pronto pago|Arribo\s+[\w\/\s]+aprox\.?|NUEVO MODELO)/i;
-    const notesMatch = restLine.match(notesRe);
-    const notes = notesMatch ? notesMatch[0] : null;
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const brandKey = getBrand(line);
 
-    // Ignorar filas con precio_list = 0 (fuera de stock) pero marcarlas
-    const inStock = price_list !== null;
+    if (!brandKey) { i++; continue; }
 
-    rows.push({
-      brand: normalizeBrandMMB(brand),
-      model: commercialName(modelRaw),
-      normalized_model: normalizeModel(modelRaw),
-      code: null,
-      category: null,   // MMB no trae categoría
-      segment: null,
-      cc: null,
-      price_list:           inStock ? price_list : null,
-      bono_todo_medio:      inStock ? bono_todo_medio : null,
-      price_todo_medio:     inStock ? price_todo_medio : null,
-      bono_financiamiento:  null,
-      price_financiamiento: inStock ? price_financiamiento : null,
-      dcto_30_dias,
-      dcto_60_dias,
-      notes: inStock ? notes : 'Sin stock / sin precio',
-      raw: { brand, model: modelRaw, prices, pcts },
-    });
+    const brand      = MMB_BRANDS_MAP[brandKey];
+    const restOfLine = line.slice(brandKey.length).trim();
+
+    // ¿La misma línea tiene precios?
+    if (MMB_PRICE_RE.test(line)) {
+      // Patrón A o C: brand+model+prices en una línea
+      // Extraer modelo (todo antes del primer precio)
+      const priceStart = line.search(/\$\d{1,3}(?:\.\d{3})+/);
+      const brandModel = line.slice(0, priceStart).trim();
+      const modelRaw   = brandModel.slice(brandKey.length).trim();
+      const priceText  = line.slice(priceStart);
+
+      if (!modelRaw) { i++; continue; }
+
+      const prices = parsePriceLine(priceText);
+
+      // Skip modelos con precio 0 (fuera de stock)
+      if (!prices.price_list) {
+        rows.push({
+          brand, model: commercialName(modelRaw),
+          normalized_model: normalizeModel(modelRaw),
+          code: null, category: null, segment: null, cc: null,
+          price_list: null, bono_todo_medio: null, price_todo_medio: null,
+          bono_financiamiento: null, price_financiamiento: null,
+          dcto_30_dias: prices.dcto_30_dias, dcto_60_dias: prices.dcto_60_dias,
+          notes: 'Sin precio / fuera de stock',
+          raw: { brand: brandKey, model: modelRaw, line },
+        });
+        i++; continue;
+      }
+
+      rows.push({
+        brand,
+        model:            commercialName(modelRaw),
+        normalized_model: normalizeModel(modelRaw),
+        code:             null,
+        category:         null,
+        segment:          null,
+        cc:               null,
+        ...prices,
+        raw: { brand: brandKey, model: modelRaw, line },
+      });
+      i++;
+    } else if (restOfLine && !MMB_PRICE_RE.test(lines[i + 1] || '')) {
+      // Brand+modelo en línea actual, pero precios en la siguiente → Patrón C incompleto
+      // OR: la brand está sola (restOfLine puede ser el modelo si no hay precios)
+      // Comprobamos la siguiente línea
+      const nextLine = lines[i + 1] || '';
+      if (MMB_PRICE_RE.test(nextLine)) {
+        // restOfLine = modelo, nextLine = precios
+        const modelRaw = restOfLine;
+        const prices   = parsePriceLine(nextLine);
+        if (modelRaw) {
+          rows.push({
+            brand,
+            model:            commercialName(modelRaw),
+            normalized_model: normalizeModel(modelRaw),
+            code:             null,
+            category:         null,
+            segment:          null,
+            cc:               null,
+            price_list: prices.price_list,
+            bono_todo_medio: prices.bono_todo_medio,
+            price_todo_medio: prices.price_todo_medio,
+            bono_financiamiento: null,
+            price_financiamiento: prices.price_financiamiento,
+            dcto_30_dias: prices.dcto_30_dias,
+            dcto_60_dias: prices.dcto_60_dias,
+            notes: prices.price_list ? prices.notes : 'Sin precio / fuera de stock',
+            raw: { brand: brandKey, model: modelRaw, nextLine },
+          });
+        }
+        i += 2;
+      } else {
+        // Brand sola (Patrón B): brand, luego modelo, luego precios
+        const modelLine  = lines[i + 1] || '';
+        const priceLine  = lines[i + 2] || '';
+        if (modelLine && MMB_PRICE_RE.test(priceLine)) {
+          const modelRaw = modelLine.trim();
+          const prices   = parsePriceLine(priceLine);
+          if (modelRaw && !getBrand(modelRaw)) {
+            rows.push({
+              brand,
+              model:            commercialName(modelRaw),
+              normalized_model: normalizeModel(modelRaw),
+              code:             null,
+              category:         null,
+              segment:          null,
+              cc:               null,
+              price_list: prices.price_list,
+              bono_todo_medio: prices.bono_todo_medio,
+              price_todo_medio: prices.price_todo_medio,
+              bono_financiamiento: null,
+              price_financiamiento: prices.price_financiamiento,
+              dcto_30_dias: prices.dcto_30_dias,
+              dcto_60_dias: prices.dcto_60_dias,
+              notes: prices.price_list ? prices.notes : 'Sin precio / fuera de stock',
+              raw: { brand: brandKey, model: modelRaw, priceLine },
+            });
+            i += 3;
+          } else {
+            i++;
+          }
+        } else {
+          i++;
+        }
+      }
+    } else {
+      i++;
+    }
   }
 
   return { period, source_type: 'mmb', rows };
 }
 
-function normalizeBrandMMB(brand) {
-  const map = { 'QJ MOTOR': 'QJ Motor' };
-  const b = brand.toUpperCase();
-  return map[b] || (brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase());
+// ─── Parser Promobility ───────────────────────────────────────────────────────
+//
+// Estructura:
+//   Encabezado sub-tabla: "MarcaSegmentoModeloAño..."
+//   Modelo + año concatenados: "BURGMAN STREET 1252026" (model+year)
+//   Precios en línea siguiente: "2.299.900$  100.000$  2.199.900$"
+//
+// Los nombres de marca aparecen FUERA DE ORDEN al final del texto.
+// Usamos el número de sub-tabla y patrones de modelo para inferir la marca.
+
+// Lookup de modelo → marca para Promobility
+const PROMO_MODEL_BRAND = [
+  [/^(BURGMAN|GSX|GS[XR]|DS-|DL-|DRZ|RMZ|LT-[FA])/i, 'Suzuki'],
+  [/^(RA2|RX-|RX1$|RX3$)/i,                            'Cyclone'],
+  [/^ZII$/i,                                             'Zonsen'],
+  [/^(XTOWN|MXU|UXV)/i,                                 'KYMCO'],
+  [/^(HUNTER|CLASSIC|METEOR|GRR|HIMALAYAN|SHOTGUN|BEAR|SUPER METEOR)/i, 'Royal Enfield'],
+];
+
+function inferPromoBrand(model) {
+  for (const [re, brand] of PROMO_MODEL_BRAND) {
+    if (re.test(model.trim())) return brand;
+  }
+  return 'Promobility'; // fallback
 }
-
-// ─── Parser: PROMOBILITY ─────────────────────────────────────────────────────
-
-// Marcas que distribuye Promobility
-const PROMO_BRANDS = ['Suzuki', 'Cyclone', 'Zonsen', 'KYMCO', 'Royal Enfield'];
 
 function parsePromobility(text) {
   const rows   = [];
   const period = detectPeriod(text);
-  if (!period) {
-    // Intentar desde "Precios válidos hasta el DD-MM-YYYY"
-    const vm = text.match(/hasta el\s+(\d{2})-(\d{2})-(\d{4})/i);
-    // Solo tomamos el mes/año
-  }
+  const lines  = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Detectar período desde "Precios válidos hasta el 31-03-2026"
-  let finalPeriod = period;
-  if (!finalPeriod) {
-    const vm = text.match(/hasta el\s+\d{2}-(\d{2})-(\d{4})/i);
-    if (vm) finalPeriod = `${vm[2]}-${String(vm[1]).padStart(2, '0')}`;
-  }
+  // Regex para detectar "modelo+año" concatenado (termina en 202x o 202x)
+  const MODEL_YEAR_RE = /^(.+?)(20\d{2})$/;
+  // Regex para precios Promobility (usan $)
+  const PROMO_PRICE_RE = /\$\s*[\d,]+/;
 
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  // Textos a ignorar
+  const SKIP_RE = /^(Marca|Segmento|Modelo|Año|Precio|Bono|Precios válidos|Lista de precios|Todo Medio|Calle|Adventure|Cross|ATV|UTV|Fun|Sport|Trabajo|Calle\s+Sport)/i;
 
-  // Rastrear marca/segmento actuales desde encabezados de sub-tabla
-  let currentBrand   = null;
-  let currentSegment = null;
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
 
-  const brandSet = new Set(PROMO_BRANDS.map(b => b.toLowerCase()));
-  // Regex para precios
-  const priceRe = /\$\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{3})?|\d+)/g;
+    // Ignorar encabezados y textos descriptivos
+    if (SKIP_RE.test(line) || line.length < 3) { i++; continue; }
 
-  for (const line of lines) {
-    // Detectar encabezado de marca
-    const lowerLine = line.toLowerCase();
-    for (const brand of PROMO_BRANDS) {
-      if (lowerLine === brand.toLowerCase() || lowerLine.startsWith(brand.toLowerCase() + ' ')) {
-        currentBrand = brand;
-        break;
-      }
-    }
+    // ¿Es una línea de precios? (no modelo)
+    if (PROMO_PRICE_RE.test(line)) { i++; continue; }
 
-    // Detectar segmento (Calle, Adventure, Cross/Enduro, ATV Trabajo, etc.)
-    if (/^(Calle|Adventure|Cross|Enduro|ATV|UTV|Sport|Fun)/i.test(line) && !priceRe.test(line)) {
-      currentSegment = line.replace(/^\w+\s*/, '').trim() || line.trim();
-      priceRe.lastIndex = 0;
-      continue;
-    }
+    // ¿La línea termina con un año? → es modelo+año
+    const yearMatch = line.match(MODEL_YEAR_RE);
+    if (!yearMatch) { i++; continue; }
 
-    if (!currentBrand) continue;
+    const modelRaw = yearMatch[1].trim();
+    const year     = parseInt(yearMatch[2]);
+    const nextLine = lines[i + 1] || '';
 
-    // Detectar fila de dato: debe tener año (20xx) y al menos un precio
-    const yearM = line.match(/\b(20\d{2})\b/);
-    if (!yearM) continue;
+    // La siguiente línea debe tener precios con "$"
+    if (!PROMO_PRICE_RE.test(nextLine)) { i++; continue; }
 
-    const year = parseInt(yearM[1], 10);
-
-    // Extraer precios
-    const prices = [];
+    // Parsear precios de la siguiente línea
+    const priceRe = /\$\s*([\d.,]+)/g;
+    const prices  = [];
     let pm;
-    priceRe.lastIndex = 0;
-    while ((pm = priceRe.exec(line)) !== null) {
-      prices.push(pm[1].replace(/[.,]/g, (c, i, s) => {
-        // Normalizar separadores: último separador si hay 3 cifras después → decimal, si no → miles
-        return '.';
-      }));
+    while ((pm = priceRe.exec(nextLine)) !== null) {
+      const v = parsePrice(pm[1].replace(/,/g, '.'));
+      if (v) prices.push(v);
     }
-    priceRe.lastIndex = 0;
 
-    // El modelo es la parte antes del año
-    const yearIdx = line.indexOf(yearM[0]);
-    const modelRaw = line.slice(0, yearIdx).trim();
-    if (!modelRaw) continue;
+    if (prices.length === 0) { i += 2; continue; }
 
-    // Limpiar precios (pueden venir como "2.299.900")
-    const parsedPrices = prices.map(p => parsePrice(p));
+    const price_list      = prices[0] || null;
+    const bono_todo_medio = prices.length >= 3 ? (prices[1] < (prices[0] / 2) ? prices[1] : null) : null;
+    const price_todo_medio= prices.length >= 3 ? prices[2] : (prices.length === 2 ? prices[1] : null);
 
-    const price_list      = parsedPrices[0] || null;
-    const bono_todo_medio = parsedPrices[1] || null;
-    const price_todo_medio= parsedPrices[2] || null;
+    const brand = inferPromoBrand(modelRaw);
 
     rows.push({
-      brand: currentBrand,
-      model: commercialName(modelRaw),
+      brand,
+      model:            commercialName(modelRaw),
       normalized_model: normalizeModel(modelRaw),
-      code: null,
-      category: mapPromoSegment(currentSegment),
-      segment: currentSegment,
-      cc: null,
+      code:             null,
+      category:         null,
+      segment:          null,
+      cc:               null,
       year,
       price_list,
       bono_todo_medio,
       price_todo_medio,
       bono_financiamiento:  null,
       price_financiamiento: null,
-      dcto_30_dias: null,
-      dcto_60_dias: null,
-      notes: null,
-      raw: { brand: currentBrand, segment: currentSegment, model: modelRaw, year, prices },
+      dcto_30_dias:         null,
+      dcto_60_dias:         null,
+      notes:                null,
+      raw: { model: modelRaw, year, prices },
     });
+
+    i += 2; // consumir línea modelo + línea precios
   }
 
-  return { period: finalPeriod, source_type: 'promobility', rows };
+  return { period, source_type: 'promobility', rows };
 }
 
-function mapPromoSegment(seg) {
-  if (!seg) return null;
-  const s = seg.toLowerCase();
-  if (s.includes('calle') || s.includes('sport')) return 'Commuter';
-  if (s.includes('adventure')) return 'Dual Sport';
-  if (s.includes('cross') || s.includes('enduro')) return 'Cross';
-  if (s.includes('atv')) return 'ATV';
-  if (s.includes('utv')) return 'UTV';
-  if (s.includes('scooter')) return 'Scooter';
-  return seg;
-}
+// ─── Función principal ────────────────────────────────────────────────────────
 
-// ─── Función principal de extracción ─────────────────────────────────────────
-
-/**
- * @param {Buffer} buffer  — buffer del PDF
- * @param {string} filename — nombre del archivo (para logs)
- * @returns {{ period, source_type, rows, raw_text }}
- */
 async function extractFromPDF(buffer, filename) {
-  const data = await pdfParse(buffer);
-  const text = data.text;
-
+  const data        = await pdfParse(buffer);
+  const text        = data.text;
   const source_type = detectSourceType(text);
+
   if (!source_type) {
-    throw new Error('Formato de PDF no reconocido. Formatos soportados: Honda, Yamaha, MMB (Keeway/Benelli/Benda/QJ), Promobility.');
+    throw new Error(
+      'Formato de PDF no reconocido. Formatos soportados: Honda, Yamaha (Yamaimport), MMB (Keeway/Benelli/Benda/QJ), Promobility.'
+    );
   }
 
   let result;
