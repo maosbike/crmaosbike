@@ -35,6 +35,10 @@ async function migrate() {
     await db.query(sql008);
     console.log('✓ Migration 008 (extra_branches para vendedores multi-sucursal) applied');
 
+    const sql009 = fs.readFileSync(path.join(__dirname, '../../migrations/009_moto_catalog_prices.sql'), 'utf-8');
+    await db.query(sql009);
+    console.log('✓ Migration 009 (catálogo maestro + precios por período) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);
