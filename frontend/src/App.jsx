@@ -1592,9 +1592,18 @@ function PricelistView() {
 
   const rows = preview?.rows || [];
   const summary = preview?.summary || {};
-  const activeRows = rows.filter((_,i) => !rowOverrides[i]?.skip);
-  const willImport = activeRows.filter(r => r.status === 'match' || r.status === 'update' || r.status === 'fuzzy').length
-    + activeRows.filter((r,i) => r.status === 'new' && rowOverrides[i]?.create_new).length;
+  const newIndices = rows.map((r, i) => r.status === 'new' ? i : null).filter(i => i !== null);
+  const allNewCreated = newIndices.length > 0 && newIndices.every(i => rowOverrides[i]?.create_new);
+  const toggleAllNew = () => {
+    const val = !allNewCreated;
+    setRowOverrides(p => {
+      const next = { ...p };
+      for (const i of newIndices) next[i] = { ...(next[i]||{}), create_new: val };
+      return next;
+    });
+  };
+  const willImport = rows.filter((r,i) => !rowOverrides[i]?.skip && (r.status==='match'||r.status==='update'||r.status==='fuzzy')).length
+    + rows.filter((r,i) => !rowOverrides[i]?.skip && r.status==='new' && rowOverrides[i]?.create_new).length;
 
   return (
     <div>
@@ -1696,6 +1705,17 @@ function PricelistView() {
                   </div>
                   <div style={{fontSize:11,color:'#666'}}>{preview.filename}</div>
                 </div>
+                <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'flex-end'}}>
+                {newIndices.length > 0 && (
+                  <button onClick={toggleAllNew} style={{
+                    padding:'6px 14px',borderRadius:8,fontSize:11,fontWeight:600,cursor:'pointer',
+                    border:`1px solid ${allNewCreated?'rgba(139,92,246,0.5)':'rgba(139,92,246,0.25)'}`,
+                    background:allNewCreated?'rgba(139,92,246,0.15)':'rgba(139,92,246,0.07)',
+                    color:'#A78BFA',whiteSpace:'nowrap',
+                  }}>
+                    {allNewCreated ? `✓ Crear todos los nuevos (${newIndices.length})` : `Crear todos los nuevos (${newIndices.length})`}
+                  </button>
+                )}
                 <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
                   {[
                     {l:'Total',    v:summary.total,     c:'#FAFAFA'},
@@ -1710,6 +1730,7 @@ function PricelistView() {
                       <div style={{fontSize:10,color:'#666'}}>{l}</div>
                     </div>
                   ))}
+                </div>
                 </div>
               </div>
 
