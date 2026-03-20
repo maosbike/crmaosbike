@@ -43,6 +43,10 @@ async function migrate() {
     await db.query(sql010);
     console.log('✓ Migration 010 (limpieza de modelos demo) applied');
 
+    const sql011 = fs.readFileSync(path.join(__dirname, '../../migrations/011_catalog_enrich.sql'), 'utf-8');
+    await db.query(sql011);
+    console.log('✓ Migration 011 (catalog enrich: description, spec_url, image_gallery) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);

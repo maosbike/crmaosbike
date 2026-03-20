@@ -116,6 +116,7 @@ const S={
   inp:{background:"#0E0E0F",border:"1px solid #262626",borderRadius:8,padding:"8px 12px",color:"#FAFAFA",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"},
   btn:{background:"#F28100",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   btn2:{background:"#1A1A1B",color:"#FAFAFA",border:"1px solid #262626",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
+  btnSec:{background:"#1A1A1B",color:"#FAFAFA",border:"1px solid #262626",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   gh:{background:"transparent",border:"none",cursor:"pointer",borderRadius:8,fontFamily:"inherit"},
   lbl:{display:"block",fontSize:11,color:"#6B6B6B",marginBottom:4,fontWeight:500},
 };
@@ -214,7 +215,7 @@ export default function App(){
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
           {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches}/>}
           {page==="sales"&&<SalesView leads={leads} user={user}/>}
-          {page==="catalog"&&<CatalogView/>}
+          {page==="catalog"&&<CatalogView user={user}/>}
           {page==="reports"&&<ReportsView leads={leads}/>}
           {page==="admin"&&<AdminView/>}{page==="import"&&r==="super_admin"&&<ImportView/>}
           {page==="pricelist"&&r==="super_admin"&&<PricelistView/>}
@@ -782,11 +783,200 @@ function SalesView({leads,user}){
   </div>);
 }
 
-function CatalogView(){
+const CAT_COLOR={
+  "Commuter":"#3B82F6","Naked":"#8B5CF6","Sport":"#EF4444","Scooter":"#06B6D4",
+  "Adventure":"#10B981","Off-Road":"#F59E0B","Touring":"#6366F1","Eléctrica":"#22C55E",
+  "Big Bike":"#EC4899","ATV":"#F97316","Cruiser":"#A78BFA"
+};
+function catColor(c){return CAT_COLOR[c]||"#555";}
+
+function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
+  const[m,setM]=useState(m0);
+  const[editing,setEditing]=useState(false);
+  const[saving,setSaving]=useState(false);
+  const[form,setForm]=useState({});
+  const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
+  const gallery=Array.isArray(m.image_gallery)?m.image_gallery:(m.image_gallery?JSON.parse(m.image_gallery):[]);
+  const[imgUploading,setImgUploading]=useState(false);
+  const[colorInput,setColorInput]=useState("");
+
+  const startEdit=()=>{
+    setForm({
+      category:m.category||"",
+      description:m.description||"",
+      spec_url:m.spec_url||"",
+      colors:[...colors],
+      cc:m.cc||"",
+      year:m.year||"",
+      commercial_name:m.commercial_name||m.model||"",
+    });
+    setEditing(true);
+  };
+  const save=async()=>{
+    setSaving(true);
+    try{
+      const updated=await api.updateModel(m.id,form);
+      setM(updated);
+      setEditing(false);
+      onSaved&&onSaved(updated);
+    }catch(e){alert("Error al guardar");}
+    finally{setSaving(false);}
+  };
+  const addColor=()=>{
+    const c=colorInput.trim();
+    if(c&&!form.colors.includes(c)){setForm(f=>({...f,colors:[...f.colors,c]}));}
+    setColorInput("");
+  };
+  const removeColor=(c)=>setForm(f=>({...f,colors:f.colors.filter(x=>x!==c)}));
+  const uploadMainImg=async(file)=>{
+    setImgUploading(true);
+    try{
+      const res=await api.uploadModelImage(m.id,file);
+      setM(prev=>({...prev,image_url:res.url}));
+      onSaved&&onSaved({...m,image_url:res.url});
+    }catch(e){alert("Error al subir imagen");}
+    finally{setImgUploading(false);}
+  };
+
+  const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":"—");
+
+  return(
+    <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#111113",borderRadius:16,width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto",border:"1px solid #222"}}>
+        {/* Header imagen */}
+        <div style={{position:"relative",height:200,background:"#0A0A0B",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {m.image_url
+            ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            :<div style={{color:"#333",fontSize:48}}>🏍</div>
+          }
+          {canEdit&&(
+            <label style={{position:"absolute",bottom:10,right:10,background:"rgba(0,0,0,0.7)",border:"1px solid #333",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer",color:"#ccc"}}>
+              {imgUploading?"Subiendo…":"Cambiar foto"}
+              <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&uploadMainImg(e.target.files[0])}/>
+            </label>
+          )}
+          <button onClick={onClose} style={{position:"absolute",top:10,right:10,background:"rgba(0,0,0,0.6)",border:"none",borderRadius:20,width:30,height:30,color:"#ccc",cursor:"pointer",fontSize:16,lineHeight:"30px",textAlign:"center"}}>×</button>
+        </div>
+
+        <div style={{padding:20}}>
+          {/* Marca + categoría */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+            <div style={{fontSize:11,color:"#666",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{m.brand}</div>
+            {m.category&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:catColor(m.category)+"22",color:catColor(m.category),fontWeight:600}}>{m.category}</span>}
+          </div>
+
+          {/* Nombre */}
+          <div style={{fontSize:22,fontWeight:800,lineHeight:1.2,marginBottom:2}}>{m.commercial_name||m.model}</div>
+          {m.commercial_name&&m.commercial_name!==m.model&&<div style={{fontSize:12,color:"#555",marginBottom:8}}>{m.model}</div>}
+
+          {/* Specs rápidas */}
+          <div style={{display:"flex",gap:16,marginTop:10,marginBottom:14}}>
+            {m.year&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{m.year}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Año</div></div>}
+            <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{specInfo}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Motor</div></div>
+            {m.price>0&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#F28100"}}>{fmt(m.price)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Precio lista</div></div>}
+            {m.bonus>0&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#10B981"}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Con bono</div></div>}
+          </div>
+
+          {/* Bono detalle */}
+          {m.bonus>0&&<div style={{background:"#0D2B1A",border:"1px solid #10B98133",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:12}}>
+            <span style={{color:"#10B981",fontWeight:600}}>Bono {fmt(m.bonus)}</span>
+            <span style={{color:"#555",marginLeft:6}}>→ Precio final {fmt(m.price-m.bonus)}</span>
+          </div>}
+
+          {/* Colores */}
+          {!editing&&colors.length>0&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,color:"#555",textTransform:"uppercase",fontWeight:600,marginBottom:6}}>Colores disponibles</div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                {colors.map(c=><span key={c} style={{fontSize:11,padding:"4px 10px",borderRadius:12,background:"#1A1A1B",color:"#999",border:"1px solid #252526"}}>{c}</span>)}
+              </div>
+            </div>
+          )}
+
+          {/* Descripción */}
+          {!editing&&m.description&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,color:"#555",textTransform:"uppercase",fontWeight:600,marginBottom:4}}>Descripción</div>
+              <div style={{fontSize:13,color:"#aaa",lineHeight:1.5}}>{m.description}</div>
+            </div>
+          )}
+
+          {/* Ficha técnica */}
+          {!editing&&m.spec_url&&(
+            <a href={m.spec_url} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#F28100",textDecoration:"none",border:"1px solid #F2810033",borderRadius:8,padding:"6px 12px",marginBottom:14}}>
+              📄 Ver ficha técnica
+            </a>
+          )}
+
+          {/* FORM EDICIÓN */}
+          {editing&&(
+            <div style={{borderTop:"1px solid #222",paddingTop:16,marginTop:4}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#F28100",marginBottom:12}}>Editar modelo</div>
+
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:10,color:"#555",marginBottom:3}}>Nombre comercial</div>
+                <input value={form.commercial_name} onChange={e=>setForm(f=>({...f,commercial_name:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>Categoría</div>
+                  <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} style={{...S.inp,width:"100%"}}>
+                    <option value="">Sin categoría</option>
+                    {Object.keys(CAT_COLOR).map(c=><option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>Cilindrada (cc)</div>
+                  <input value={form.cc} onChange={e=>setForm(f=>({...f,cc:e.target.value}))} placeholder="ej: 150" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                </div>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:10,color:"#555",marginBottom:3}}>Descripción</div>
+                <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={3} style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical"}} placeholder="Descripción comercial del modelo..."/>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:10,color:"#555",marginBottom:3}}>URL ficha técnica (PDF o página)</div>
+                <input value={form.spec_url} onChange={e=>setForm(f=>({...f,spec_url:e.target.value}))} placeholder="https://..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,color:"#555",marginBottom:6}}>Colores</div>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
+                  {form.colors.map(c=>(
+                    <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#1A1A1B",color:"#999",border:"1px solid #252526",display:"flex",alignItems:"center",gap:4}}>
+                      {c}<button onClick={()=>removeColor(c)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",padding:0,fontSize:12,lineHeight:1}}>×</button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <input value={colorInput} onChange={e=>setColorInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addColor()} placeholder="Agregar color..." style={{...S.inp,flex:1}}/>
+                  <button onClick={addColor} style={{...S.btn,padding:"6px 12px",fontSize:12}}>+</button>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={save} disabled={saving} style={{...S.btn,flex:1}}>{saving?"Guardando…":"Guardar"}</button>
+                <button onClick={()=>setEditing(false)} style={{...S.btnSec,flex:1}}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {canEdit&&!editing&&(
+            <button onClick={startEdit} style={{...S.btnSec,width:"100%",marginTop:8,fontSize:12}}>Editar modelo</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CatalogView({user}){
   const[models,setModels]=useState([]);
   const[brands,setBrands]=useState([]);
   const[brandF,setBrandF]=useState("");
+  const[search,setSearch]=useState("");
   const[loading,setLoading]=useState(true);
+  const[selected,setSelected]=useState(null);
+  const canEdit=user&&(user.role==="super_admin"||user.role==="admin_comercial");
+
   useEffect(()=>{
     api.getModels().then(d=>{
       const ms=Array.isArray(d)?d:[];
@@ -794,39 +984,115 @@ function CatalogView(){
       setBrands([...new Set(ms.map(m=>m.brand))].sort());
     }).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
-  const f=brandF?models.filter(m=>m.brand===brandF):models;
+
+  const onSaved=(updated)=>{
+    setModels(ms=>ms.map(m=>m.id===updated.id?updated:m));
+    setSelected(updated);
+  };
+
+  let f=models;
+  if(brandF)f=f.filter(m=>m.brand===brandF);
+  if(search){const q=search.toLowerCase();f=f.filter(m=>(m.brand+m.model+(m.commercial_name||"")).toLowerCase().includes(q));}
+
+  // Group by brand for nicer display
+  const grouped=brands.filter(b=>!brandF||b===brandF).reduce((acc,b)=>{
+    const bm=f.filter(m=>m.brand===b);
+    if(bm.length)acc.push({brand:b,models:bm});
+    return acc;
+  },[]);
+
   return(
     <div>
-      <h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Catálogo de Motos</h1>
-      <p style={{color:"#6B6B6B",fontSize:12,margin:"-10px 0 14px"}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</p>
-      <select value={brandF} onChange={e=>setBrandF(e.target.value)} style={{...S.inp,marginBottom:14,minWidth:180}}>
-        <option value="">Todas las marcas</option>
-        {brands.map(b=><option key={b} value={b}>{b}</option>)}
-      </select>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+        <h1 style={{fontSize:18,fontWeight:700,margin:0}}>Catálogo de Motos</h1>
+        <span style={{fontSize:12,color:"#555"}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</span>
+      </div>
+
+      {/* Filtros */}
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar modelo..." style={{...S.inp,flex:1,minWidth:160}}/>
+        <select value={brandF} onChange={e=>setBrandF(e.target.value)} style={{...S.inp,minWidth:160}}>
+          <option value="">Todas las marcas</option>
+          {brands.map(b=><option key={b} value={b}>{b}</option>)}
+        </select>
+      </div>
+
       {!loading&&f.length===0&&(
         <div style={{...S.card,textAlign:"center",padding:40,color:"#555"}}>
-          <Ic.tag size={32} color="#333" style={{marginBottom:12}}/>
+          <div style={{fontSize:32,marginBottom:12}}>🏍</div>
           <div style={{fontWeight:600,marginBottom:6}}>Sin modelos en catálogo</div>
           <div style={{fontSize:12}}>Importá una lista de precios PDF para poblar el catálogo.</div>
         </div>
       )}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}}>
-        {f.map(m=>{
-          const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
-          return(
-            <div key={m.id} style={S.card}>
-              <div style={{fontSize:10,color:"#666",fontWeight:600,textTransform:"uppercase"}}>{m.brand}</div>
-              <div style={{fontSize:15,fontWeight:700,marginTop:2}}>{m.model}</div>
-              <div style={{fontSize:11,color:"#555",marginTop:3}}>{m.year} · {m.cc?m.cc+"cc":"Eléctrica"} · {m.category||m.cat}</div>
-              <div style={{marginTop:8}}>
-                <span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</span>
-                {m.bonus>0&&<div style={{fontSize:11,color:"#10B981",marginTop:2}}>Bono: {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b></div>}
-              </div>
-              {colors.length>0&&<div style={{display:"flex",gap:4,marginTop:8,flexWrap:"wrap"}}>{colors.map(c=><span key={c} style={{fontSize:9,padding:"2px 6px",borderRadius:12,background:"#1A1A1B",color:"#888"}}>{c}</span>)}</div>}
-            </div>
-          );
-        })}
-      </div>
+
+      {grouped.map(({brand,models:bms})=>(
+        <div key={brand} style={{marginBottom:24}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#F28100",textTransform:"uppercase",letterSpacing:2,marginBottom:10,paddingLeft:2}}>{brand} <span style={{color:"#444",fontWeight:400}}>({bms.length})</span></div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
+            {bms.map(m=>{
+              const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
+              const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":null);
+              return(
+                <div key={m.id} onClick={()=>setSelected(m)}
+                  style={{background:"#111113",border:"1px solid #1E1E1F",borderRadius:14,overflow:"hidden",cursor:"pointer",transition:"border-color 0.15s",position:"relative"}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor="#F2810055"}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor="#1E1E1F"}
+                >
+                  {/* Imagen */}
+                  <div style={{height:130,background:"#0A0A0B",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+                    {m.image_url
+                      ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                      :<span style={{fontSize:40,opacity:0.15}}>🏍</span>
+                    }
+                  </div>
+
+                  <div style={{padding:"10px 12px 12px"}}>
+                    {/* Categoría badge */}
+                    {m.category&&(
+                      <span style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:catColor(m.category)+"22",color:catColor(m.category),fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>
+                        {m.category}
+                      </span>
+                    )}
+
+                    {/* Nombre */}
+                    <div style={{fontSize:14,fontWeight:700,marginTop:5,lineHeight:1.2}}>{m.commercial_name||m.model}</div>
+                    {specInfo&&<div style={{fontSize:10,color:"#555",marginTop:2}}>{specInfo}{m.year?` · ${m.year}`:""}</div>}
+
+                    {/* Precio */}
+                    {m.price>0&&(
+                      <div style={{marginTop:8,borderTop:"1px solid #1E1E1F",paddingTop:8}}>
+                        <div style={{fontSize:16,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</div>
+                        {m.bonus>0&&(
+                          <div style={{fontSize:10,color:"#10B981",marginTop:1}}>
+                            Bono {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Colores */}
+                    {colors.length>0&&(
+                      <div style={{display:"flex",gap:3,marginTop:8,flexWrap:"wrap"}}>
+                        {colors.slice(0,4).map(c=><span key={c} style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#1A1A1B",color:"#666"}}>{c}</span>)}
+                        {colors.length>4&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#1A1A1B",color:"#444"}}>+{colors.length-4}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {selected&&(
+        <ModelDetailModal
+          model={selected}
+          canEdit={canEdit}
+          onClose={()=>setSelected(null)}
+          onSaved={onSaved}
+        />
+      )}
     </div>
   );
 }

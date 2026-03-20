@@ -58,6 +58,7 @@ export const api = {
   getModels: (params) => request('GET', `/catalog/models?${new URLSearchParams(params || {})}`),
   getBrands: () => request('GET', '/catalog/brands'),
   createModel: (data) => request('POST', '/catalog/models', data),
+  updateModel: (id, data) => request('PATCH', `/catalog/models/${id}`, data),
   uploadModelImage: (id, file) => {
     const fd = new FormData();
     fd.append('image', file);

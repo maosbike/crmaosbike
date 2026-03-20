@@ -38,6 +38,35 @@ router.post('/models', roleCheck('super_admin', 'admin_comercial'), async (req, 
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
 
+// Update model details
+router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const allowed = ['description', 'spec_url', 'colors', 'image_gallery', 'category', 'cc', 'year', 'commercial_name'];
+    const sets = [], params = [];
+    let idx = 1;
+    for (const key of allowed) {
+      if (key in req.body) {
+        const val = req.body[key];
+        if (key === 'colors' || key === 'image_gallery') {
+          sets.push(`${key} = $${idx++}::jsonb`);
+          params.push(JSON.stringify(val));
+        } else {
+          sets.push(`${key} = $${idx++}`);
+          params.push(val);
+        }
+      }
+    }
+    if (sets.length === 0) return res.status(400).json({ error: 'Sin campos a actualizar' });
+    params.push(req.params.id);
+    const { rows } = await db.query(
+      `UPDATE moto_models SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`,
+      params
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Modelo no encontrado' });
+    res.json(rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
 // Upload model image
 router.post('/models/:id/image', roleCheck('super_admin', 'admin_comercial'), upload.single('image'), async (req, res) => {
   try {
