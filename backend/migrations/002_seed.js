@@ -14,6 +14,7 @@ module.exports = async function seed(db) {
   // ─── LIMPIAR USUARIOS: manejar FKs antes de DELETE ─────────────────────────
   // Tablas que referencian users — limpiar en orden para evitar FK violations
   const safeDelete = async (sql) => { try { await db.query(sql); } catch (_) {} };
+  await safeDelete(`DELETE FROM price_import_logs`);
   await safeDelete(`DELETE FROM reassignment_log`);
   await safeDelete(`DELETE FROM notifications`);
   await safeDelete(`DELETE FROM reminders`);
