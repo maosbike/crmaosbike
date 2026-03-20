@@ -1521,6 +1521,7 @@ function PricelistView() {
   const [logs, setLogs]       = useState(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const [rowOverrides, setRowOverrides] = useState({}); // { rowIdx: { skip, create_new, model_id } }
+  const [period, setPeriod] = useState('');
 
   const STATUS_CFG = {
     match:     { l:'Coincide',   c:'#10B981', bg:'rgba(16,185,129,0.1)' },
@@ -1541,6 +1542,7 @@ function PricelistView() {
       const data = await api.pricelistPreview(fd);
       setPreview(data);
       setRowOverrides({});
+      setPeriod(data.period || '');
       setStep('preview');
     } catch (e) { alert('Error al procesar PDF: ' + e.message); }
     finally { setLoading(false); }
@@ -1554,6 +1556,11 @@ function PricelistView() {
 
   const handleConfirm = async () => {
     if (!preview) return;
+    const p = period.trim();
+    if (!p || !/^\d{4}-\d{2}$/.test(p)) {
+      alert('Ingresá el período en formato AAAA-MM (ej: 2026-03)');
+      return;
+    }
     setLoading(true);
     try {
       const rows = (preview.rows || []).map((row, i) => {
@@ -1566,7 +1573,7 @@ function PricelistView() {
         };
       });
       const data = await api.pricelistConfirm({
-        period:      preview.period,
+        period:      p,
         source_type: preview.source_type,
         filename:    preview.filename,
         rows,
@@ -1586,7 +1593,7 @@ function PricelistView() {
   };
 
   const setOv = (i, patch) => setRowOverrides(p => ({ ...p, [i]: { ...(p[i]||{}), ...patch } }));
-  const reset = () => { setStep('upload'); setPreview(null); setResult(null); setRowOverrides({}); };
+  const reset = () => { setStep('upload'); setPreview(null); setResult(null); setRowOverrides({}); setPeriod(''); };
 
   const fmtP = (n) => n ? '$' + Number(n).toLocaleString('es-CL') : '—';
 
@@ -1699,11 +1706,23 @@ function PricelistView() {
               {/* Header del preview */}
               <div style={{...S.card,marginBottom:12,display:'flex',flexWrap:'wrap',gap:16,alignItems:'center'}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>
+                  <div style={{fontSize:13,fontWeight:700,marginBottom:6}}>
                     {SOURCE_LABELS[preview.source_type]||preview.source_type}
-                    {preview.period && <span style={{color:'#F28100',marginLeft:10}}>Período: {preview.period}</span>}
                   </div>
-                  <div style={{fontSize:11,color:'#666'}}>{preview.filename}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                    <label style={{fontSize:11,color:'#888'}}>Período:</label>
+                    <input
+                      value={period}
+                      onChange={e=>setPeriod(e.target.value)}
+                      placeholder="2026-03"
+                      maxLength={7}
+                      style={{...S.inp,width:90,padding:'4px 8px',fontSize:12,
+                        borderColor: period && !/^\d{4}-\d{2}$/.test(period) ? '#EF4444' : undefined}}
+                    />
+                    {period && !/^\d{4}-\d{2}$/.test(period) &&
+                      <span style={{fontSize:10,color:'#EF4444'}}>formato AAAA-MM</span>}
+                  </div>
+                  <div style={{fontSize:11,color:'#555',marginTop:4}}>{preview.filename}</div>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'flex-end'}}>
                 {newIndices.length > 0 && (
