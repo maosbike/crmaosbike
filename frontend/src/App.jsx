@@ -874,13 +874,13 @@ function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
             {m.year&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{m.year}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Año</div></div>}
             <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{specInfo}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Motor</div></div>
             {m.price>0&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#F28100"}}>{fmt(m.price)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Precio lista</div></div>}
-            {m.bonus>0&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#10B981"}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Con bono</div></div>}
+            {m.bonus>0&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#10B981"}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Todo medio</div></div>}
           </div>
 
           {/* Bono detalle */}
           {m.bonus>0&&<div style={{background:"#0D2B1A",border:"1px solid #10B98133",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:12}}>
             <span style={{color:"#10B981",fontWeight:600}}>Bono {fmt(m.bonus)}</span>
-            <span style={{color:"#555",marginLeft:6}}>→ Precio final {fmt(m.price-m.bonus)}</span>
+            <span style={{color:"#555",marginLeft:6}}>→ Precio todo medio de pago {fmt(m.price-m.bonus)}</span>
           </div>}
 
           {/* Colores */}
@@ -2037,7 +2037,7 @@ function PricelistView() {
                 <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                   <thead>
                     <tr style={{borderBottom:'1px solid #1E1E1F'}}>
-                      {['','Estado','Marca','Modelo','Cat.','cc','Precio Lista','Bono TMP','P. TMP','Bono AF','P. AF','Notas'].map(h=>(
+                      {['','Estado','Marca','Modelo','Cat.','cc','Precio lista','Bono','P. todo medio','Bono AF','P. AF','Notas'].map(h=>(
                         <th key={h} style={{textAlign:'left',padding:'8px 10px',fontSize:10,fontWeight:600,color:'#6B6B6B',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>
                       ))}
                     </tr>

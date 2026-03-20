@@ -480,34 +480,25 @@ function parseMMB(text) {
     const pcts  = [];
     while ((m = pctRe.exec(priceText)) !== null) pcts.push(`${m[1]}%`);
 
-    // Asignar columnas
-    // MMB siempre tiene: price_list | [bono_tmp] | price_tmp | price_fin
-    // Si no hay bono (DARKFLAG): price_list = price_tmp = price_fin
+    // Mapeo posicional directo (columnas fijas del PDF MMB):
+    //   nums[0] = Valor Lista (precio_lista)
+    //   nums[1] = Bono Marca  (bono_todo_medio)  ← puede no existir
+    //   nums[2] = Precio Todo Medio de Pago       ← precio final con bono
+    //   nums[3] = Precio con Crédito              ← precio_financiamiento
     let price_list = null, bono_todo_medio = null, price_todo_medio = null, price_financiamiento = null;
 
     if (nums.length >= 4) {
       price_list           = nums[0];
-      bono_todo_medio      = nums[1] < nums[0] / 2 ? nums[1] : null;
-      price_todo_medio     = bono_todo_medio !== null ? nums[2] : nums[1];
-      price_financiamiento = bono_todo_medio !== null ? nums[3] : nums[2];
+      bono_todo_medio      = nums[1] || null;
+      price_todo_medio     = nums[2] || null;
+      price_financiamiento = nums[3] || null;
     } else if (nums.length === 3) {
-      price_list = nums[0];
-      if (nums[1] < nums[0] / 2) {
-        bono_todo_medio      = nums[1];
-        price_todo_medio     = nums[2];
-        price_financiamiento = nums[2]; // igual a price_todo_medio
-      } else {
-        price_todo_medio     = nums[1];
-        price_financiamiento = nums[2];
-      }
+      price_list       = nums[0];
+      bono_todo_medio  = nums[1] || null;
+      price_todo_medio = nums[2] || null;
     } else if (nums.length === 2) {
-      price_list = nums[0];
-      if (nums[1] < nums[0] / 2) {
-        bono_todo_medio  = nums[1];
-        price_todo_medio = null;
-      } else {
-        price_todo_medio = nums[1];
-      }
+      price_list       = nums[0];
+      price_todo_medio = nums[1] || null;
     } else if (nums.length === 1) {
       price_list = nums[0];
     }
@@ -724,9 +715,11 @@ function parsePromobility(text) {
 
     if (prices.length === 0) { i += 2; continue; }
 
-    const price_list      = prices[0] || null;
-    const bono_todo_medio = prices.length >= 3 ? (prices[1] < (prices[0] / 2) ? prices[1] : null) : null;
-    const price_todo_medio= prices.length >= 3 ? prices[2] : (prices.length === 2 ? prices[1] : null);
+    // Mapeo posicional: prices[0]=Lista, prices[1]=Bono, prices[2]=Precio Final con Bono
+    const price_list       = prices[0] || null;
+    const bono_todo_medio  = prices.length >= 3 ? (prices[1] || null) : null;
+    const price_todo_medio = prices.length >= 3 ? (prices[2] || null)
+                           : prices.length === 2 ? (prices[1] || null) : null;
 
     const brand = inferPromoBrand(modelRaw);
 
