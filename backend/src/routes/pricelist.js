@@ -7,7 +7,7 @@ const router  = require('express').Router();
 const multer  = require('multer');
 const db      = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
-const { extractFromPDF, normalizeModel } = require('../services/pdfExtractor');
+const { extractFromPDF, debugPDF, normalizeModel } = require('../services/pdfExtractor');
 
 router.use(auth);
 router.use(roleCheck('super_admin'));
@@ -65,6 +65,20 @@ async function resolveModel(brand, normalizedName) {
   return { match: 'none', candidates: [] };
 }
 
+// ── POST /api/pricelist/debug-pdf ─────────────────────────────────────────────
+// Devuelve el texto extraído y la detección de formato, sin parsear ni guardar.
+// Útil para diagnosticar PDFs que no se reconocen.
+
+router.post('/debug-pdf', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Se requiere un archivo PDF' });
+    const result = await debugPDF(req.file.buffer, req.file.originalname);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/pricelist/preview ───────────────────────────────────────────────
 
 router.post('/preview', upload.single('pdf'), async (req, res) => {
@@ -75,9 +89,11 @@ router.post('/preview', upload.single('pdf'), async (req, res) => {
 
     if (!extracted.rows || extracted.rows.length === 0) {
       return res.status(422).json({
-        error: 'No se pudieron extraer filas del PDF.',
+        error: `PDF detectado como "${extracted.source_type}" pero no se extrajeron filas. ` +
+               `Verificá que el PDF contenga la tabla de precios real y no esté protegido o escaneado.`,
         source_type: extracted.source_type,
         period: extracted.period,
+        text_snippet: (extracted.raw_text || '').replace(/\s+/g, ' ').slice(0, 500),
       });
     }
 
@@ -134,7 +150,7 @@ router.post('/preview', upload.single('pdf'), async (req, res) => {
       rows:        preview,
     });
   } catch (err) {
-    console.error('[pricelist/preview]', err);
+    console.error('[pricelist/preview]', err.message);
     res.status(500).json({ error: err.message || 'Error al procesar el PDF' });
   }
 });

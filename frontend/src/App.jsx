@@ -1792,9 +1792,12 @@ function PricelistView() {
 
   const SOURCE_LABELS = { honda:'Honda', yamaha:'Yamaha', mmb:'MMB (Keeway/Benelli/Benda/QJ)', promobility:'Promobility' };
 
+  const[debugResult,setDebugResult]=useState(null);
+
   const processFile = async (f) => {
     if (!f) return;
     setLoading(true);
+    setDebugResult(null);
     try {
       const fd = new FormData();
       fd.append('pdf', f);
@@ -1802,7 +1805,22 @@ function PricelistView() {
       setPreview(data);
       setRowOverrides({});
       setStep('preview');
-    } catch (e) { alert('Error al procesar PDF: ' + e.message); }
+    } catch (e) {
+      // Mostrar mensaje completo (puede incluir snippet del texto)
+      alert('Error al procesar PDF:\n\n' + e.message);
+    }
+    finally { setLoading(false); }
+  };
+
+  const runDebug = async (f) => {
+    if (!f) return;
+    setLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('pdf', f);
+      const data = await api.pricelistDebug(fd);
+      setDebugResult(data);
+    } catch(e) { alert('Error en debug: ' + e.message); }
     finally { setLoading(false); }
   };
 
@@ -1950,6 +1968,25 @@ function PricelistView() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Diagnóstico de PDF */}
+              <div style={{marginTop:12,padding:12,background:'#0E0E0F',borderRadius:10,border:'1px dashed #252526'}}>
+                <div style={{fontSize:11,color:'#555',marginBottom:6}}>¿El PDF no se reconoce? Diagnosticalo antes de importar:</div>
+                <label style={{...S.btn2,padding:'6px 12px',fontSize:11,cursor:'pointer',display:'inline-block'}}>
+                  {loading?'Analizando...':'🔍 Analizar PDF sin importar'}
+                  <input type="file" accept=".pdf" style={{display:'none'}} onChange={e=>e.target.files[0]&&runDebug(e.target.files[0])}/>
+                </label>
+                {debugResult&&(
+                  <div style={{marginTop:10,fontSize:11}}>
+                    <div><b>Formato detectado:</b> <span style={{color:debugResult.source_type?'#10B981':'#EF4444'}}>{debugResult.source_type||'No reconocido'}</span></div>
+                    <div><b>Líneas:</b> {debugResult.num_lines} · <b>Chars:</b> {debugResult.num_chars}</div>
+                    <div style={{marginTop:6,color:'#555',fontWeight:600}}>Primeras 50 líneas extraídas:</div>
+                    <pre style={{background:'#070708',borderRadius:6,padding:8,maxHeight:200,overflowY:'auto',fontSize:10,color:'#888',marginTop:4,whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+                      {(debugResult.first_50_lines||[]).join('\n')}
+                    </pre>
+                  </div>
+                )}
               </div>
             </div>
           )}

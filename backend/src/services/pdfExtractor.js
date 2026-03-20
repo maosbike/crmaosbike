@@ -131,10 +131,32 @@ function detectPeriod(text) {
 /** Detecta formato del PDF */
 function detectSourceType(text) {
   const t = text.toLowerCase();
-  if (t.includes('lista de precios honda') || (t.includes('honda') && t.includes('pbv') && t.includes('cod p'))) return 'honda';
-  if (t.includes('yamaimport') || t.includes('yamaha') && t.includes('cilindrada') && t.includes('bono yamaha')) return 'yamaha';
+
+  // Honda: título explícito o columnas características (PBV + COD P)
+  if (t.includes('lista de precios honda') ||
+      (t.includes('honda') && (t.includes('pbv') || t.includes('cod p')))) {
+    return 'honda';
+  }
+
+  // Yamaha: encabezado Yamaimport o combinación yamaha+cilindrada (sin exigir "bono yamaha")
+  if (t.includes('yamaimport') ||
+      (t.includes('yamaha') && t.includes('cilindrada'))) {
+    return 'yamaha';
+  }
+
+  // Promobility: nombre exacto
   if (t.includes('promobility')) return 'promobility';
-  if ((t.includes('keeway') || t.includes('benelli') || t.includes('qj motor')) && t.includes('bono marca')) return 'mmb';
+
+  // MMB: al menos una marca del grupo + alguna referencia a bono o lista de precios
+  const hasMmbBrand = t.includes('keeway') || t.includes('benelli') ||
+                      t.includes('qj motor') || t.includes('benda');
+  const hasMmbKeyword = t.includes('bono marca') || t.includes('bono de marca') ||
+                        t.includes('valor lista') || t.includes('lista de precios');
+  if (hasMmbBrand && hasMmbKeyword) return 'mmb';
+
+  // Fallback: solo por marca (sin keywords de columna)
+  if (hasMmbBrand) return 'mmb';
+
   return null;
 }
 
@@ -364,7 +386,7 @@ function parseYamaha(text) {
     const ccMatch = line.match(/^(\d+)\s*cc(.*)$/i);
     if (ccMatch) {
       // Si hay modelo pendiente, actualizamos su cc
-      if (pendingModel === null) { i++; continue; } // cc sin modelo → skip
+      if (pendingModel === null) { continue; } // cc sin modelo → skip (el for ya hace i++)
       if (pendingCc !== null) emit(); // había otro modelo — emitirlo primero
 
       pendingCc = parseInt(ccMatch[1]);
@@ -737,25 +759,62 @@ function parsePromobility(text) {
 // ─── Función principal ────────────────────────────────────────────────────────
 
 async function extractFromPDF(buffer, filename) {
-  const data        = await pdfParse(buffer);
-  const text        = data.text;
-  const source_type = detectSourceType(text);
+  // 1. Extraer texto
+  let data;
+  try {
+    data = await pdfParse(buffer);
+  } catch (e) {
+    throw new Error(`No se pudo leer el PDF: ${e.message}`);
+  }
 
+  const text = data.text || '';
+  if (!text.trim()) {
+    throw new Error('El PDF no contiene texto extraíble (posiblemente escaneado o protegido).');
+  }
+
+  // 2. Detectar formato
+  const source_type = detectSourceType(text);
   if (!source_type) {
+    // Devolver primeros 800 chars para diagnóstico
+    const snippet = text.replace(/\s+/g, ' ').slice(0, 800);
     throw new Error(
-      'Formato de PDF no reconocido. Formatos soportados: Honda, Yamaha (Yamaimport), MMB (Keeway/Benelli/Benda/QJ), Promobility.'
+      `Formato de PDF no reconocido.\n` +
+      `Formatos soportados: Honda, Yamaha (Yamaimport), MMB (Keeway/Benelli/Benda/QJ), Promobility.\n` +
+      `Texto detectado (primeros 800 chars): ${snippet}`
     );
   }
 
+  // 3. Parsear
   let result;
-  switch (source_type) {
-    case 'honda':       result = parseHonda(text);       break;
-    case 'yamaha':      result = parseYamaha(text);      break;
-    case 'mmb':         result = parseMMB(text);         break;
-    case 'promobility': result = parsePromobility(text); break;
+  try {
+    switch (source_type) {
+      case 'honda':       result = parseHonda(text);       break;
+      case 'yamaha':      result = parseYamaha(text);      break;
+      case 'mmb':         result = parseMMB(text);         break;
+      case 'promobility': result = parsePromobility(text); break;
+    }
+  } catch (e) {
+    throw new Error(`Error en parser ${source_type}: ${e.message}`);
   }
 
   return { ...result, raw_text: text, filename };
 }
 
-module.exports = { extractFromPDF, normalizeModel, detectSourceType };
+/** Expone el texto crudo + detección para debugging (no hace parsing) */
+async function debugPDF(buffer, filename) {
+  let data;
+  try { data = await pdfParse(buffer); } catch (e) { return { error: e.message, text: null }; }
+  const text = data.text || '';
+  const source_type = detectSourceType(text);
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  return {
+    filename,
+    source_type,
+    num_lines: lines.length,
+    num_chars: text.length,
+    first_50_lines: lines.slice(0, 50),
+    text_snippet: text.replace(/\s+/g, ' ').slice(0, 2000),
+  };
+}
+
+module.exports = { extractFromPDF, debugPDF, normalizeModel, detectSourceType };

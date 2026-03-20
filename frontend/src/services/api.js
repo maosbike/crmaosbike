@@ -109,6 +109,18 @@ export const api = {
   resetImports: () => request('DELETE', '/admin/reset-imports'),
 
   // Lista de precios PDF (solo super_admin)
+  pricelistDebug: (formData) => {
+    const token = getToken();
+    return fetch(`${BASE}/pricelist/debug-pdf`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then(async r => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error en debug');
+      return data;
+    });
+  },
   pricelistPreview: (formData) => {
     const token = getToken();
     return fetch(`${BASE}/pricelist/preview`, {
