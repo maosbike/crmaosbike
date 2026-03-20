@@ -15,30 +15,6 @@ const USERS=[
   {id:"u13",email:"catalina@maosbike.cl",pw:"catalina",fn:"Catalina",ln:"Vera",role:"vendedor",branch:"b2"},
   {id:"u14",email:"andres@maosbike.cl",pw:"andres",fn:"Andrés",ln:"Fuentes",role:"vendedor",branch:"b3"},
 ];
-const BRANDS_LIST=["Honda","Suzuki","Yamaha","Benelli","Keeway","Royal Enfield","Takasaki","UM","Can-Am","Zontes","Voge","QJ Motor","Benda","Segway","Kymco"];
-const MOTOS=[
-  {id:"m1",brand:"Honda",model:"CB 190R",year:2025,cc:184,price:2490000,bonus:100000,cat:"Sport",colors:["Negro","Rojo","Azul"]},
-  {id:"m2",brand:"Honda",model:"PCX 160",year:2025,cc:156,price:3290000,bonus:150000,cat:"Scooter",colors:["Blanco","Azul","Negro"]},
-  {id:"m3",brand:"Yamaha",model:"R15 V4",year:2025,cc:155,price:3790000,bonus:0,cat:"Sport",colors:["Azul","Negro","Gris"]},
-  {id:"m4",brand:"Yamaha",model:"MT-03",year:2025,cc:321,price:4590000,bonus:200000,cat:"Naked",colors:["Azul","Negro"]},
-  {id:"m5",brand:"Yamaha",model:"NMAX Connected",year:2025,cc:155,price:2890000,bonus:100000,cat:"Scooter",colors:["Negro","Azul"]},
-  {id:"m6",brand:"Suzuki",model:"Gixxer 250 SF",year:2025,cc:249,price:3490000,bonus:100000,cat:"Sport",colors:["Negro/Azul","Rojo"]},
-  {id:"m7",brand:"Suzuki",model:"V-Strom 250 SX",year:2025,cc:249,price:3790000,bonus:100000,cat:"Adventure",colors:["Amarillo","Negro"]},
-  {id:"m8",brand:"Benelli",model:"TNT 300",year:2025,cc:300,price:3690000,bonus:150000,cat:"Naked",colors:["Rojo","Negro"]},
-  {id:"m9",brand:"Benelli",model:"TRK 502 X",year:2025,cc:500,price:5990000,bonus:200000,cat:"Adventure",colors:["Gris","Negro"]},
-  {id:"m10",brand:"Keeway",model:"RKF 125",year:2025,cc:125,price:1490000,bonus:50000,cat:"Sport",colors:["Negro","Azul"]},
-  {id:"m11",brand:"Royal Enfield",model:"Classic 350",year:2025,cc:349,price:4590000,bonus:100000,cat:"Clásica",colors:["Negro","Verde"]},
-  {id:"m12",brand:"Royal Enfield",model:"Himalayan 450",year:2025,cc:452,price:5990000,bonus:150000,cat:"Adventure",colors:["Negro","Gris"]},
-  {id:"m13",brand:"Zontes",model:"350T",year:2025,cc:349,price:4290000,bonus:100000,cat:"Naked",colors:["Negro","Blanco"]},
-  {id:"m14",brand:"Voge",model:"500 DS",year:2025,cc:471,price:4990000,bonus:150000,cat:"Adventure",colors:["Negro","Gris"]},
-  {id:"m15",brand:"Can-Am",model:"Ryker 600",year:2025,cc:600,price:8990000,bonus:0,cat:"3 Ruedas",colors:["Negro","Rojo"]},
-  {id:"m16",brand:"Kymco",model:"AK 550",year:2025,cc:550,price:7990000,bonus:200000,cat:"Maxi Scooter",colors:["Negro","Gris"]},
-  {id:"m17",brand:"QJ Motor",model:"SRV 300",year:2025,cc:296,price:3290000,bonus:100000,cat:"Naked",colors:["Negro","Azul"]},
-  {id:"m18",brand:"Benda",model:"Napoleon 300",year:2025,cc:298,price:3490000,bonus:100000,cat:"Cruiser",colors:["Negro","Verde"]},
-  {id:"m19",brand:"Segway",model:"E125",year:2025,cc:0,price:2490000,bonus:100000,cat:"Eléctrica",colors:["Blanco","Negro"]},
-  {id:"m20",brand:"Takasaki",model:"TK 200",year:2025,cc:200,price:1290000,bonus:50000,cat:"Sport",colors:["Negro","Rojo"]},
-  {id:"m21",brand:"UM",model:"Renegade Sport S",year:2025,cc:230,price:2290000,bonus:100000,cat:"Cruiser",colors:["Negro"]},
-];
 
 const TICKET_STATUS={abierto:{l:"Abierto",c:"#3B82F6"},en_gestion:{l:"En Gestión",c:"#F59E0B"},cotizado:{l:"Cotizado",c:"#8B5CF6"},financiamiento:{l:"Financiamiento",c:"#F28100"},ganado:{l:"Ganado",c:"#10B981"},perdido:{l:"Perdido",c:"#EF4444"},cerrado:{l:"Cerrado",c:"#6B7280"}};
 const PRIORITY={alta:{l:"Alta",c:"#EF4444"},media:{l:"Media",c:"#F59E0B"},baja:{l:"Baja",c:"#6B7280"}};
@@ -56,64 +32,13 @@ const fmt=(n)=>n?"$"+Number(n).toLocaleString("es-CL"):"$0";
 const fD=(d)=>d?new Date(d).toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"}):"-";
 const fDT=(d)=>d?new Date(d).toLocaleString("es-CL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"-";
 const ago=(d)=>{if(!d)return"";const m=Math.floor((Date.now()-new Date(d).getTime())/6e4);if(m<60)return m+"min";const h=Math.floor(m/60);if(h<24)return h+"h";return Math.floor(h/24)+"d";};
-const gM=(id)=>MOTOS.find(m=>m.id===id);
 const gU=(id)=>USERS.find(u=>u.id===id);
 const gB=(id)=>BRANCHES.find(b=>b.id===id);
 
-const genLeads=()=>{
-  const names=[["Franco","Muñoz","19344481-4","24/07/1996","Franko.algenis96@gmail.com","957223438","Huechuraba"],["María","González","13346679-1","15/03/1985","maria.g@gmail.com","955551002","La Florida"],["Carlos","Soto","14347680-2","01/11/1990","carlos.soto@gmail.com","955551003","Maipú"],["Andrea","Silva","15678901-2","22/06/1992","andrea.s@yahoo.com","955551004","Providencia"],["Pedro","Fuentes","16789012-3","10/09/1988","pedro.f@outlook.com","955551005","Las Condes"],["Sofía","Reyes","17890123-4","03/12/1995","sofia.r@gmail.com","955551006","Ñuñoa"],["Fernando","Castro","18901234-5","18/04/1987","fcastro@gmail.com","955551007","Santiago Centro"],["Camila","Torres","19012345-6","25/08/1993","camila.t@gmail.com","955551008","Puente Alto"],["Rodrigo","Herrera","20123456-7","12/02/1991","rodrigo.h@gmail.com","955551009","San Bernardo"],["Valentina","Díaz","21234567-8","07/07/1994","vale.d@gmail.com","955551010","Quilicura"],["Sebastián","Rojas","22345678-9","30/01/1989","seba.r@gmail.com","955551011","Recoleta"],["Isidora","Mora","12456789-0","14/05/1996","isi.mora@gmail.com","955551012","Peñalolén"],["Nicolás","Vega","13567890-1","20/10/1986","nico.v@gmail.com","955551013","Macul"],["Catalina","Pinto","14678901-2","08/03/1993","cata.p@gmail.com","955551014","Lo Barnechea"],["Matías","Araya","15789012-3","16/11/1990","matias.a@gmail.com","955551015","Vitacura"],["Tomás","Navarro","16890123-4","29/06/1988","tomas.n@gmail.com","955551016","La Reina"],["Gabriel","Espinoza","17901234-5","05/09/1994","gabi.e@gmail.com","955551017","Independencia"],["Antonella","Figueroa","18012345-6","11/04/1992","anto.f@gmail.com","955551018","San Miguel"]];
-  const sellers=USERS.filter(u=>u.role==="vendedor");
-  const statuses=["abierto","abierto","en_gestion","en_gestion","cotizado","cotizado","financiamiento","financiamiento","ganado","ganado","ganado","perdido","perdido","cerrado","abierto","en_gestion","cotizado","financiamiento"];
-  return names.map(([fn,ln,rut,bday,email,phone,comuna],i)=>{
-    const s=sellers[i%sellers.length],m=MOTOS[i%MOTOS.length];
-    const st=statuses[i]||"abierto";
-    const prio=i<4?"alta":i<10?"media":"baja";
-    const wantsFin=i%3===0;
-    const sitLab=SIT_LABORAL[i%5];
-    const cont=CONTINUIDAD[i%4];
-    const renta=(500+i*50)*1000;
-    const pie=Math.round(m.price*0.15+(i*10000));
-    const finSt=st==="financiamiento"?(i%2===0?"en_evaluacion":"aprobado"):st==="ganado"?"aprobado":st==="perdido"?(i%2===0?"rechazado":"desistido"):"sin_movimiento";
-    const rechazoMotivo=finSt==="rechazado"?RECHAZO_MOTIVOS[i%RECHAZO_MOTIVOS.length]:null;
-    const testRide=i<6;
-    return{
-      id:`t-${i+1}`,num:`SCM-${247100+i+1}`,fn,ln,rut,bday,email,phone,comuna,
-      source:Object.keys(SRC)[i%7],branch:s.branch,seller:s.id,
-      status:st,priority:prio,motoId:m.id,colorPref:m.colors[0],
-      wantsFin,sitLab,continuidad:cont,renta,pie,testRide,
-      finStatus:finSt,finInst:"Autofin",rechazoMotivo,
-      obsVendedor:i<8?`Cliente interesado en ${m.brand} ${m.model}. ${wantsFin?"Solicita financiamiento.":"Pago contado."}`:null,
-      obsSupervisor:i<4?"Dar seguimiento prioritario":null,
-      createdAt:d2(i*2),lastContact:i<12?d2(i*0.5):null,
-      timeline:[
-        {id:`tl-${i}-1`,type:"system",title:"Ticket creado",date:d2(i*2),user:"Sistema"},
-        ...(i<14?[{id:`tl-${i}-2`,type:"contact",method:i%2===0?"llamada":"whatsapp",result:i<10?"Contactado":"No contesta",note:i<10?"Cliente respondió, se agenda visita":"Sin respuesta, reintentar",date:d2(i*1.2),user:`${s.fn} ${s.ln}`}]:[]),
-        ...(i<10?[{id:`tl-${i}-3`,type:"contact",method:"presencial",result:"Cotización entregada",note:`Vino a tienda, cotizó ${m.brand} ${m.model}`,date:d2(i*0.6),user:`${s.fn} ${s.ln}`}]:[]),
-        ...(i<6?[{id:`tl-${i}-4`,type:"contact",method:"whatsapp",result:"Envío documentos",note:"Cliente envió documentos para evaluación",date:d2(i*0.3),user:`${s.fn} ${s.ln}`}]:[]),
-      ],
-      postVenta:{factura:st==="ganado",pagoReg:st==="ganado",homSol:st==="ganado"&&i<10,homRec:st==="ganado"&&i<9,enrolada:st==="ganado"&&i<8,entregada:st==="ganado"&&i<7},
-    };
-  });
-};
 
-const genInv=()=>{
-  const inv=[];let idx=0;
-  MOTOS.slice(0,12).forEach((m,mi)=>{
-    m.colors.forEach((color,ci)=>{
-      BRANCHES.forEach((br,bi)=>{
-        if((mi+ci+bi)%3===0||idx<20){
-          const st=idx<16?"disponible":idx<20?"reservada":idx<24?"vendida":"preinscrita";
-          inv.push({id:`inv-${++idx}`,branch:br.id,year:m.year,brand:m.brand,model:m.model,color,chassis:`9C2${String(1e7+idx)}`,motor:`E${String(2e6+idx)}`,status:st,price:m.price,motoId:m.id});
-        }
-      });
-    });
-  });
-  return inv;
-};
 
 const BRANCH_CODE_TO_LOCAL={MPN:'b1',MPS:'b2',MOV:'b3'};
 const mapTicket=(t)=>{
-  const motoLocal=t.moto_brand?MOTOS.find(m=>m.brand===t.moto_brand&&m.model===t.moto_model):null;
   const pv=t.post_venta||{factura:false,pagoReg:false,homSol:false,homRec:false,enrolada:false,entregada:false};
   return{
     id:t.id,num:t.ticket_num,
@@ -127,7 +52,7 @@ const mapTicket=(t)=>{
     seller:null,seller_fn:t.seller_fn||'',seller_ln:t.seller_ln||'',
     seller_id:t.assigned_to||null,
     status:t.status||'abierto',priority:t.priority||'media',
-    motoId:motoLocal?.id||null,
+    motoId:null,
     model_brand:t.moto_brand||null,model_name:t.moto_model||null,
     colorPref:t.color_pref||'',wantsFin:t.wants_financing||false,
     sitLab:t.sit_laboral||'',continuidad:t.continuidad||'',
@@ -225,7 +150,7 @@ export default function App(){
   const[user,setUser]=useState(null);
   const[page,setPage]=useState("dashboard");
   const[leads,setLeads]=useState([]);
-  const[inv,setInv]=useState(()=>genInv());
+  const[inv,setInv]=useState([]);
   const[selLead,setSelLead]=useState(null);
   const[showChangePw,setShowChangePw]=useState(false);
   const[drawerOpen,setDrawerOpen]=useState(false);
@@ -235,6 +160,7 @@ export default function App(){
     if(!user)return;
     api.getTickets({limit:500}).then(d=>setLeads((d.data||[]).map(mapTicket))).catch(()=>{});
     api.getBranches().then(bs=>setRealBranches(bs.length?bs:BRANCHES)).catch(()=>{});
+    api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
   },[user?.id]);
 
   if(!user)return<Login onLogin={setUser}/>;
@@ -254,8 +180,6 @@ export default function App(){
   };
   const updLead=(id,u)=>{setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));if(selLead?.id===id)setSelLead(p=>({...p,...u}));};
   const addLead=l=>setLeads(p=>[l,...p]);
-  const updInv=(id,u)=>setInv(p=>p.map(x=>x.id===id?{...x,...u}:x));
-  const addInv=x=>setInv(p=>[x,...p]);
   const r=user.role;
   const items=[
     {id:"dashboard",icon:Ic.home,label:"Dashboard"},
@@ -288,7 +212,7 @@ export default function App(){
           {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches}/>}
           {page==="pipeline"&&<PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/>}
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
-          {page==="inventory"&&<InventoryView inv={inv} updInv={updInv} addInv={addInv} user={user}/>}
+          {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches}/>}
           {page==="sales"&&<SalesView leads={leads} user={user}/>}
           {page==="catalog"&&<CatalogView/>}
           {page==="reports"&&<ReportsView leads={leads}/>}
@@ -492,9 +416,9 @@ function Dashboard({leads,inv,user,nav}){
       </div>
       <div className="crm-dash-bottom" style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:14,marginBottom:18}}>
         <div style={S.card}><h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px"}}>Pipeline</h3><div style={{display:"flex",gap:4,marginBottom:4}}>{pipe.map((d,i)=><div key={i} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700}}>{d.count}</div>)}</div><div style={{display:"flex",gap:4,alignItems:"flex-end",height:88,overflow:"hidden"}}>{pipe.map((d,i)=>{const maxH=Math.max(...pipe.map(x=>x.count),1);const barH=Math.max(Math.round((d.count/maxH)*76),d.count>0?4:2);return<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><div style={{width:"100%",height:barH,background:d.color,borderRadius:4,opacity:0.8}}/><span style={{fontSize:8,color:"#666",textAlign:"center",lineHeight:1.1}}>{d.name}</span></div>})}</div></div>
-        <div style={S.card}><h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Inventario por Sucursal</h3>{BRANCHES.map(b=><div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1A1A1B",fontSize:12}}><span style={{color:"#A3A3A3"}}>{b.name}</span><span style={{fontWeight:700}}>{inv.filter(x=>x.branch===b.id&&x.status==="disponible").length} disp.</span></div>)}</div>
+        <div style={S.card}><h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Inventario por Sucursal</h3>{BRANCHES.map(b=><div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #1A1A1B",fontSize:12}}><span style={{color:"#A3A3A3"}}>{b.name}</span><span style={{fontWeight:700}}>{inv.filter(x=>x.branch_id===b.id&&x.status==="disponible").length} disp.</span></div>)}</div>
       </div>
-      <div style={S.card}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><h3 style={{fontSize:13,fontWeight:600,margin:0}}>Tickets Recientes</h3><button onClick={()=>nav("leads")} style={{...S.gh,fontSize:11,color:"#F28100"}}>Ver todos →</button></div>{leads.slice(0,6).map(l=>{const m=gM(l.motoId);const motoBrand=l.model_brand||m?.brand||'';const motoModel=l.model_name||m?.model||'';return<div key={l.id} onClick={()=>nav("ticket",l.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A1B"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.fn} {l.ln}</div><div style={{fontSize:11,color:"#666"}}>{motoBrand&&motoModel?`${motoBrand} ${motoModel} · `:`${motoBrand||motoModel||'Sin moto'} · `}{l.num}</div></div><PBdg p={l.priority}/><TBdg s={l.status}/></div>;})}</div>
+      <div style={S.card}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><h3 style={{fontSize:13,fontWeight:600,margin:0}}>Tickets Recientes</h3><button onClick={()=>nav("leads")} style={{...S.gh,fontSize:11,color:"#F28100"}}>Ver todos →</button></div>{leads.slice(0,6).map(l=>{const motoBrand=l.model_brand||'';const motoModel=l.model_name||'';return<div key={l.id} onClick={()=>nav("ticket",l.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A1B"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.fn} {l.ln}</div><div style={{fontSize:11,color:"#666"}}>{motoBrand&&motoModel?`${motoBrand} ${motoModel} · `:`${motoBrand||motoModel||'Sin moto'} · `}{l.num}</div></div><PBdg p={l.priority}/><TBdg s={l.status}/></div>;})}</div>
     </div>
   );
 }
@@ -505,14 +429,15 @@ function Dashboard({leads,inv,user,nav}){
 function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
   const brs=realBranches||BRANCHES;
   const[search,setSearch]=useState("");const[stF,setStF]=useState("");const[brF,setBrF]=useState("");const[showNew,setShowNew]=useState(false);
+  const[catalogModels,setCatalogModels]=useState([]);
+  useEffect(()=>{api.getModels().then(d=>setCatalogModels(Array.isArray(d)?d:[])).catch(()=>{});},[]);
   const[nw,setNw]=useState({fn:"",ln:"",phone:"",email:"",rut:"",comuna:"",source:"presencial",motoId:"",branch_id:user.branch||"",priority:"media"});
   const f=leads.filter(l=>{if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;if(stF&&l.status!==stF)return false;if(brF&&l.branch_id!==brF&&l.branch!==brF)return false;if(user.role==="vendedor"&&l.seller_id!==user.id)return false;return true;});
   const[adding,setAdding]=useState(false);
   const handleAdd=async e=>{
     e.preventDefault();setAdding(true);
     try{
-      const body={first_name:nw.fn,last_name:nw.ln,phone:nw.phone,email:nw.email,rut:nw.rut,comuna:nw.comuna,source:nw.source,branch_id:nw.branch_id||null,priority:nw.priority,model_id:null,wants_financing:false};
-      if(nw.motoId){const m=gM(nw.motoId);if(m){const models=await api.getModels({brand:m.brand}).catch(()=>({data:[]}));const found=(models.data||models||[]).find(x=>x.brand===m.brand&&x.model===m.model);if(found)body.model_id=found.id;}}
+      const body={first_name:nw.fn,last_name:nw.ln,phone:nw.phone,email:nw.email,rut:nw.rut,comuna:nw.comuna,source:nw.source,branch_id:nw.branch_id||null,priority:nw.priority,model_id:nw.motoId||null,wants_financing:false};
       const created=await api.createTicket(body);
       addLead(mapTicket(created));
       setShowNew(false);
@@ -524,8 +449,8 @@ function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
     <div>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}><div><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Leads / Tickets</h1><p style={{color:"#6B6B6B",fontSize:12}}>{f.length} tickets</p></div><button onClick={()=>setShowNew(true)} style={{...S.btn,display:"flex",alignItems:"center",gap:6,fontSize:12}}><Ic.plus size={15}/>Nuevo Ticket</button></div>
       <div className="crm-filters" style={{...S.card,padding:10,marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}><div className="crm-search" style={{position:"relative",flex:1,minWidth:200}}><Ic.search size={14} color="#555" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nombre, RUT, ticket..." style={{...S.inp,paddingLeft:30,width:"100%"}}/></div><select value={stF} onChange={e=>setStF(e.target.value)} style={{...S.inp,minWidth:140}}><option value="">Todos los estados</option>{Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select><select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp,minWidth:140}}><option value="">Todas las sucursales</option>{brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
-      <div className="crm-table-scroll" style={{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{borderBottom:"1px solid #1E1E1F"}}>{["Ticket","Cliente","Contacto","Moto","Prioridad","Estado","Vendedor","Fecha"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 12px",fontSize:10,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{f.map(l=>{const m=gM(l.motoId)||(l.model_brand?{brand:l.model_brand,model:l.model_name}:null);const sfn=l.seller_fn||(gU(l.seller)?.fn)||'';const sln=l.seller_ln||(gU(l.seller)?.ln)||'';return<tr key={l.id} onClick={()=>nav("ticket",l.id)} style={{borderBottom:"1px solid #1A1A1B",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#151516"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{padding:"9px 12px",color:"#F28100",fontWeight:600,fontSize:11}}>{l.num}</td><td style={{padding:"9px 12px"}}><div style={{fontWeight:600}}>{l.fn} {l.ln}</div><div style={{fontSize:10,color:"#555"}}>{l.rut}</div></td><td style={{padding:"9px 12px"}}><div style={{fontSize:11,color:"#888"}}>{l.phone}</div><div style={{fontSize:10,color:"#555"}}>{l.email}</div></td><td style={{padding:"9px 12px"}}>{m?`${m.brand} ${m.model}`:<span style={{color:"#555"}}>-</span>}</td><td style={{padding:"9px 12px"}}><PBdg p={l.priority}/></td><td style={{padding:"9px 12px"}}><TBdg s={l.status}/></td><td style={{padding:"9px 12px",fontSize:11}}>{sfn}{sln?` ${sln[0]}.`:''}</td><td style={{padding:"9px 12px",fontSize:10,color:"#555"}}>{ago(l.createdAt)}</td></tr>;})}</tbody></table></div>
-      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...MOTOS.map(m=>({v:m.id,l:`${m.brand} ${m.model} - ${fmt(m.price)}`}))]}/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
+      <div className="crm-table-scroll" style={{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{borderBottom:"1px solid #1E1E1F"}}>{["Ticket","Cliente","Contacto","Moto","Prioridad","Estado","Vendedor","Fecha"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 12px",fontSize:10,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{f.map(l=>{const m=l.model_brand?{brand:l.model_brand,model:l.model_name}:null;const sfn=l.seller_fn||(gU(l.seller)?.fn)||'';const sln=l.seller_ln||(gU(l.seller)?.ln)||'';return<tr key={l.id} onClick={()=>nav("ticket",l.id)} style={{borderBottom:"1px solid #1A1A1B",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#151516"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{padding:"9px 12px",color:"#F28100",fontWeight:600,fontSize:11}}>{l.num}</td><td style={{padding:"9px 12px"}}><div style={{fontWeight:600}}>{l.fn} {l.ln}</div><div style={{fontSize:10,color:"#555"}}>{l.rut}</div></td><td style={{padding:"9px 12px"}}><div style={{fontSize:11,color:"#888"}}>{l.phone}</div><div style={{fontSize:10,color:"#555"}}>{l.email}</div></td><td style={{padding:"9px 12px"}}>{m?`${m.brand} ${m.model}`:<span style={{color:"#555"}}>-</span>}</td><td style={{padding:"9px 12px"}}><PBdg p={l.priority}/></td><td style={{padding:"9px 12px"}}><TBdg s={l.status}/></td><td style={{padding:"9px 12px",fontSize:11}}>{sfn}{sln?` ${sln[0]}.`:''}</td><td style={{padding:"9px 12px",fontSize:10,color:"#555"}}>{ago(l.createdAt)}</td></tr>;})}</tbody></table></div>
+      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
     </div>
   );
 }
@@ -544,7 +469,7 @@ function PipelineView({leads,user,nav,updLead}){
     const created=new Date(l.createdAt).getTime();const now=Date.now();const diff=now-created;const horas=diff/(1e3*60*60);const lastC=l.lastContact?new Date(l.lastContact).getTime():0;const sinContacto=lastC?((now-lastC)/(1e3*60*60)):horas;return{horas:Math.floor(sinContacto),breach:sinContacto>=8&&!l.lastContact,warning:sinContacto>=6&&sinContacto<8};
   };
   return(
-    <div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {user.role==="vendedor"&&<span style={{fontSize:13,fontWeight:400,color:"#666"}}>· Mis tickets</span>}</h1><div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:14}}>{stages.map(stage=>{const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);return(<div key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(stage)} style={{minWidth:250,flex:"0 0 250px",background:"#111112",borderRadius:12,border:"1px solid #1E1E1F",display:"flex",flexDirection:"column",maxHeight:"calc(100vh - 130px)"}}><div style={{padding:"10px 12px",borderBottom:"1px solid #1E1E1F",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:sc?.c}}/><span style={{fontSize:11,fontWeight:600}}>{sc?.l}</span></div><span style={{fontSize:10,color:"#555",fontWeight:600}}>{sl.length}</span></div><div style={{flex:1,overflowY:"auto",padding:6,display:"flex",flexDirection:"column",gap:5}}>{sl.map(l=>{const m=gM(l.motoId);const sla=getSlaInfo(l);return(<div key={l.id} draggable onDragStart={()=>setDragId(l.id)} onClick={()=>nav("ticket",l.id)} style={{background:sla.breach?"rgba(239,68,68,0.05)":"#171718",border:sla.breach?"1px solid rgba(239,68,68,0.3)":"1px solid #222",borderRadius:10,padding:10,cursor:"grab"}} onMouseEnter={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#F28100";}} onMouseLeave={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#222";}}>
+    <div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {user.role==="vendedor"&&<span style={{fontSize:13,fontWeight:400,color:"#666"}}>· Mis tickets</span>}</h1><div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:14}}>{stages.map(stage=>{const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);return(<div key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(stage)} style={{minWidth:250,flex:"0 0 250px",background:"#111112",borderRadius:12,border:"1px solid #1E1E1F",display:"flex",flexDirection:"column",maxHeight:"calc(100vh - 130px)"}}><div style={{padding:"10px 12px",borderBottom:"1px solid #1E1E1F",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:sc?.c}}/><span style={{fontSize:11,fontWeight:600}}>{sc?.l}</span></div><span style={{fontSize:10,color:"#555",fontWeight:600}}>{sl.length}</span></div><div style={{flex:1,overflowY:"auto",padding:6,display:"flex",flexDirection:"column",gap:5}}>{sl.map(l=>{const m=l.model_brand?{brand:l.model_brand,model:l.model_name,price:0,bonus:0}:null;const sla=getSlaInfo(l);return(<div key={l.id} draggable onDragStart={()=>setDragId(l.id)} onClick={()=>nav("ticket",l.id)} style={{background:sla.breach?"rgba(239,68,68,0.05)":"#171718",border:sla.breach?"1px solid rgba(239,68,68,0.3)":"1px solid #222",borderRadius:10,padding:10,cursor:"grab"}} onMouseEnter={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#F28100";}} onMouseLeave={e=>{if(!sla.breach)e.currentTarget.style.borderColor="#222";}}>
       {sla.breach&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"3px 8px",borderRadius:6,background:"rgba(239,68,68,0.1)",fontSize:10,color:"#EF4444",fontWeight:600}}><Ic.alert size={11} color="#EF4444"/>SLA vencido · {sla.horas}h sin contacto</div>}
       {sla.warning&&!sla.breach&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"3px 8px",borderRadius:6,background:"rgba(245,158,11,0.1)",fontSize:10,color:"#F59E0B",fontWeight:600}}><Ic.clock size={11} color="#F59E0B"/>{8-sla.horas}h para SLA</div>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:4}}><div style={{fontWeight:600,fontSize:12}}>{l.fn} {l.ln}</div><PBdg p={l.priority}/></div>{m&&<div style={{fontSize:10,color:"#888",marginBottom:4}}>{m.brand} {m.model}</div>}<div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#555"}}><span>{l.phone}</span>{m&&<span style={{fontWeight:600,color:"#F28100"}}>{fmt(m.price-m.bonus)}</span>}</div><div style={{fontSize:9,color:"#444",marginTop:4}}>{l.seller_fn||(gU(l.seller)?.fn)||''} · {l.branch_code||(gB(l.branch)?.code)||''} · {ago(l.createdAt)}</div></div>);})}  {sl.length===0&&<div style={{padding:16,textAlign:"center",color:"#333",fontSize:11}}>Sin tickets</div>}</div></div>);})}</div></div>
@@ -557,12 +482,16 @@ function PipelineView({leads,user,nav,updLead}){
 function TicketView({lead,user,nav,updLead}){
   const[tab,setTab]=useState("datos");
   const[contactForm,setContactForm]=useState({method:"whatsapp",result:"",note:""});
-  const m=gM(lead.motoId)||(lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:0,bonus:0,year:2025,cc:0,cat:'',colors:[]}:null);
+  const m=lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:0,bonus:0,year:lead.year||2025,cc:lead.cc||0,cat:lead.category||'',colors:[]}:null;
   const s=gU(lead.seller)||{fn:lead.seller_fn||'',ln:lead.seller_ln||''};
   const br=gB(lead.branch)||{name:lead.branch_name||'',code:lead.branch_code||'',addr:lead.branch_addr||''};
   const isAdmin=["super_admin","admin_comercial"].includes(user.role);
   const[realSellers,setRealSellers]=useState([]);
-  useEffect(()=>{if(isAdmin)api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});},[isAdmin]);
+  const[realModels,setRealModels]=useState([]);
+  useEffect(()=>{
+    if(isAdmin)api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});
+    api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
+  },[isAdmin]);
   const sellers=realSellers.length>0?realSellers:USERS.filter(u=>u.role==="vendedor");
   // SLA calc
   const created=new Date(lead.createdAt).getTime();const now=Date.now();
@@ -643,7 +572,7 @@ function TicketView({lead,user,nav,updLead}){
               <span>🎨 Color: {lead.colorPref||m.colors[0]}</span>
             </div>
           </>):(<div style={{color:"#555",fontSize:12}}>Sin modelo seleccionado</div>)}
-          <div style={{marginTop:10}}><label style={S.lbl}>Cambiar modelo</label><select value={lead.motoId||""} onChange={e=>upd("motoId",e.target.value)} style={{...S.inp,width:"100%",fontSize:11}}><option value="">Seleccionar...</option>{MOTOS.map(m=><option key={m.id} value={m.id}>{m.brand} {m.model} - {fmt(m.price)}</option>)}</select></div>
+          <div style={{marginTop:10}}><label style={S.lbl}>Cambiar modelo</label><select value={lead.motoId||""} onChange={e=>upd("motoId",e.target.value)} style={{...S.inp,width:"100%",fontSize:11}}><option value="">Seleccionar...</option>{realModels.map(m=><option key={m.id} value={m.id}>{m.brand} {m.model}{m.price?` - ${fmt(m.price)}`:''}</option>)}</select></div>
           {/* SUCURSAL */}
           <div style={{marginTop:12,padding:10,background:"#0E0E0F",borderRadius:8}}>
             <div style={{fontWeight:600,fontSize:12}}>MAOS RACING {br?.name.toUpperCase()}</div>
@@ -779,44 +708,66 @@ function TicketView({lead,user,nav,updLead}){
 // ═══════════════════════════════════════════
 // INVENTORY
 // ═══════════════════════════════════════════
-function InventoryView({inv,updInv,addInv,user}){
-  const[brF,setBrF]=useState("");const[stF,setStF]=useState("");const[search,setSearch]=useState("");const[showAdd,setShowAdd]=useState(false);const[viewPhoto,setViewPhoto]=useState(null);const[detailUnit,setDetailUnit]=useState(null);
-  const[nw,setNw]=useState({branch:"b1",year:2025,brand:"Honda",model:"",color:"",chassis:"",motor:"",status:"disponible",price:0});
-  const f=inv.filter(x=>{if(brF&&x.branch!==brF)return false;if(stF&&x.status!==stF)return false;if(search&&!`${x.brand} ${x.model} ${x.chassis} ${x.color}`.toLowerCase().includes(search.toLowerCase()))return false;return true;});
+function InventoryView({inv,setInv,user,realBranches}){
+  const brs=realBranches||BRANCHES;
+  const[brF,setBrF]=useState("");const[stF,setStF]=useState("");const[search,setSearch]=useState("");const[showAdd,setShowAdd]=useState(false);const[viewPhoto,setViewPhoto]=useState(null);const[adding,setAdding]=useState(false);
+  const[nw,setNw]=useState({branch_id:"",year:new Date().getFullYear(),brand:"",model:"",color:"",chassis:"",motor_num:"",status:"disponible",price:0});
+  const f=inv.filter(x=>{if(brF&&x.branch_id!==brF)return false;if(stF&&x.status!==stF)return false;if(search&&!`${x.brand} ${x.model} ${x.chassis} ${x.color}`.toLowerCase().includes(search.toLowerCase()))return false;return true;});
   const counts=Object.fromEntries(Object.keys(INV_ST).map(k=>[k,inv.filter(x=>x.status===k).length]));
-  const handleAdd=e=>{e.preventDefault();addInv({...nw,id:`inv-${Date.now()}`,motoId:"",chassisPhoto:null,motorPhoto:null});setShowAdd(false);};
+  const reload=()=>api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
+  const handleAdd=async e=>{
+    e.preventDefault();setAdding(true);
+    try{
+      await api.createInventory({branch_id:nw.branch_id||null,year:Number(nw.year),brand:nw.brand,model:nw.model,color:nw.color,chassis:nw.chassis,motor_num:nw.motor_num,status:nw.status,price:Number(nw.price)});
+      setShowAdd(false);setNw({branch_id:"",year:new Date().getFullYear(),brand:"",model:"",color:"",chassis:"",motor_num:"",status:"disponible",price:0});
+      reload();
+    }catch(ex){alert(ex.message||"Error al agregar");}
+    finally{setAdding(false);}
+  };
   const handlePhoto=(id,field)=>{
     const input=document.createElement("input");input.type="file";input.accept="image/*";
-    input.onchange=e=>{const file=e.target.files[0];if(file){const reader=new FileReader();reader.onload=ev=>{updInv(id,{[field]:ev.target.result});};reader.readAsDataURL(file);}};
+    input.onchange=async e=>{
+      const file=e.target.files[0];if(!file)return;
+      try{const r=await api.uploadInvPhoto(id,file,field);setInv(p=>p.map(x=>x.id===id?{...x,[field]:r.url}:x));}
+      catch(ex){alert(ex.message||"Error al subir foto");}
+    };
     input.click();
+  };
+  const handleStatus=async(id,status)=>{
+    setInv(p=>p.map(x=>x.id===id?{...x,status}:x));
+    try{await api.updateInventory(id,{status});}catch(ex){alert(ex.message);reload();}
+  };
+  const handleMove=async(id,branch_id)=>{
+    setInv(p=>p.map(x=>x.id===id?{...x,branch_id}:x));
+    try{await api.updateInventory(id,{branch_id});reload();}catch(ex){alert(ex.message);reload();}
   };
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}><div><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Inventario</h1><p style={{color:"#6B6B6B",fontSize:12}}>{inv.length} unidades · {counts.disponible} disponibles</p></div><button onClick={()=>setShowAdd(true)} style={{...S.btn,display:"flex",alignItems:"center",gap:6,fontSize:12}}><Ic.plus size={15}/>Agregar Moto</button></div>
       <div className="grid-4col" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>{Object.entries(INV_ST).map(([k,v])=><div key={k} onClick={()=>setStF(stF===k?"":k)} style={{...S.card,padding:10,textAlign:"center",cursor:"pointer",border:stF===k?`1px solid ${v.c}`:"1px solid #1E1E1F"}}><div style={{fontSize:20,fontWeight:800,color:v.c}}>{counts[k]}</div><div style={{fontSize:10,color:"#6B6B6B"}}>{v.l}</div></div>)}</div>
-      <div style={{...S.card,padding:10,marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}><div style={{position:"relative",flex:1,minWidth:180}}><Ic.search size={14} color="#555" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{...S.inp,paddingLeft:30,width:"100%"}}/></div><select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp}}><option value="">Todas las sucursales</option>{BRANCHES.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
+      <div style={{...S.card,padding:10,marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}><div style={{position:"relative",flex:1,minWidth:180}}><Ic.search size={14} color="#555" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{...S.inp,paddingLeft:30,width:"100%"}}/></div><select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp}}><option value="">Todas las sucursales</option>{brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
       <div className="crm-table-scroll" style={{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:1050}}><thead><tr style={{borderBottom:"1px solid #1E1E1F"}}>{["Sucursal","Año","Marca","Modelo","Color","N° Chasis","Foto Chasis","N° Motor","Foto Motor","Estado","Precio",""].map(h=><th key={h} style={{textAlign:"left",padding:"9px 8px",fontSize:9,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{f.map(x=><tr key={x.id} style={{borderBottom:"1px solid #1A1A1B"}}>
-        <td style={{padding:"8px"}}><Bdg l={gB(x.branch)?.code} c="#A3A3A3"/></td>
+        <td style={{padding:"8px"}}><Bdg l={x.branch_code||brs.find(b=>b.id===x.branch_id)?.code} c="#A3A3A3"/></td>
         <td style={{padding:"8px"}}>{x.year}</td>
         <td style={{padding:"8px",fontWeight:600}}>{x.brand}</td>
         <td style={{padding:"8px"}}>{x.model}</td>
         <td style={{padding:"8px"}}>{x.color}</td>
         <td style={{padding:"8px",fontFamily:"monospace",fontSize:11}}>{x.chassis}</td>
         <td style={{padding:"8px"}}>
-          {x.chassisPhoto?<img src={x.chassisPhoto} onClick={()=>setViewPhoto({src:x.chassisPhoto,title:`Chasis ${x.chassis}`})} style={{width:36,height:36,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #333"}}/>:<button onClick={()=>handlePhoto(x.id,"chassisPhoto")} style={{...S.gh,padding:"4px 8px",fontSize:10,color:"#F28100",border:"1px dashed #333",borderRadius:6}}>📷</button>}
+          {x.chassis_photo?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:36,height:36,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #333"}}/>:<button onClick={()=>handlePhoto(x.id,"chassis_photo")} style={{...S.gh,padding:"4px 8px",fontSize:10,color:"#F28100",border:"1px dashed #333",borderRadius:6}}>📷</button>}
         </td>
-        <td style={{padding:"8px",fontFamily:"monospace",fontSize:11}}>{x.motor}</td>
+        <td style={{padding:"8px",fontFamily:"monospace",fontSize:11}}>{x.motor_num}</td>
         <td style={{padding:"8px"}}>
-          {x.motorPhoto?<img src={x.motorPhoto} onClick={()=>setViewPhoto({src:x.motorPhoto,title:`Motor ${x.motor}`})} style={{width:36,height:36,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #333"}}/>:<button onClick={()=>handlePhoto(x.id,"motorPhoto")} style={{...S.gh,padding:"4px 8px",fontSize:10,color:"#F28100",border:"1px dashed #333",borderRadius:6}}>📷</button>}
+          {x.motor_photo?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:36,height:36,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #333"}}/>:<button onClick={()=>handlePhoto(x.id,"motor_photo")} style={{...S.gh,padding:"4px 8px",fontSize:10,color:"#F28100",border:"1px dashed #333",borderRadius:6}}>📷</button>}
         </td>
-        <td style={{padding:"8px"}}><select value={x.status} onChange={e=>updInv(x.id,{status:e.target.value})} style={{...S.inp,padding:"3px 6px",fontSize:11,background:"transparent",border:"none",color:INV_ST[x.status]?.c,fontWeight:600,cursor:"pointer"}}>{Object.entries(INV_ST).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></td>
+        <td style={{padding:"8px"}}><select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)} style={{...S.inp,padding:"3px 6px",fontSize:11,background:"transparent",border:"none",color:INV_ST[x.status]?.c,fontWeight:600,cursor:"pointer"}}>{Object.entries(INV_ST).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></td>
         <td style={{padding:"8px",fontWeight:600,color:"#F28100"}}>{fmt(x.price)}</td>
-        <td style={{padding:"8px"}}><select defaultValue="" onChange={e=>{if(e.target.value)updInv(x.id,{branch:e.target.value});e.target.value="";}} style={{...S.inp,padding:"3px 6px",fontSize:10,width:55}}><option value="" disabled>Mover</option>{BRANCHES.filter(b=>b.id!==x.branch).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}</select></td>
+        <td style={{padding:"8px"}}><select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}} style={{...S.inp,padding:"3px 6px",fontSize:10,width:55}}><option value="" disabled>Mover</option>{brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}</select></td>
       </tr>)}</tbody></table></div>
 
       {viewPhoto&&<div onClick={()=>setViewPhoto(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:70,cursor:"pointer"}}><div onClick={e=>e.stopPropagation()} style={{background:"#151516",borderRadius:16,padding:16,maxWidth:600,width:"90%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><span style={{fontSize:14,fontWeight:600}}>{viewPhoto.title}</span><button onClick={()=>setViewPhoto(null)} style={{...S.gh,padding:4}}><Ic.x size={18}/></button></div><img src={viewPhoto.src} style={{width:"100%",borderRadius:10,maxHeight:400,objectFit:"contain"}}/></div></div>}
 
-      {showAdd&&<Modal onClose={()=>setShowAdd(false)} title="Agregar Moto" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Sucursal" value={nw.branch} onChange={v=>setNw({...nw,branch:v})} opts={BRANCHES.map(b=>({v:b.id,l:b.name}))}/><Field label="Año" value={nw.year} onChange={v=>setNw({...nw,year:v})} type="number"/><Field label="Marca" value={nw.brand} onChange={v=>setNw({...nw,brand:v})} opts={BRANDS_LIST.map(b=>({v:b,l:b}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/><Field label="Color *" value={nw.color} onChange={v=>setNw({...nw,color:v})} req/><Field label="Precio" value={nw.price} onChange={v=>setNw({...nw,price:Number(v)})} type="number"/></div><div className="grid-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}><Field label="N° Chasis *" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})} req/><Field label="N° Motor *" value={nw.motor} onChange={v=>setNw({...nw,motor:v})} req/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowAdd(false)} style={S.btn2}>Cancelar</button><button type="submit" style={S.btn}>Agregar</button></div></form></Modal>}
+      {showAdd&&<Modal onClose={()=>setShowAdd(false)} title="Agregar Moto" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]}/><Field label="Año" value={nw.year} onChange={v=>setNw({...nw,year:v})} type="number"/><Field label="Marca *" value={nw.brand} onChange={v=>setNw({...nw,brand:v})} req/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/><Field label="Color *" value={nw.color} onChange={v=>setNw({...nw,color:v})} req/><Field label="Precio" value={nw.price} onChange={v=>setNw({...nw,price:v})} type="number"/></div><div className="grid-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}><Field label="N° Chasis *" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})} req/><Field label="N° Motor *" value={nw.motor_num} onChange={v=>setNw({...nw,motor_num:v})} req/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowAdd(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Guardando...":"Agregar"}</button></div></form></Modal>}
     </div>
   );
 }
@@ -827,14 +778,57 @@ function InventoryView({inv,updInv,addInv,user}){
 function SalesView({leads,user}){
   const ganados=leads.filter(l=>l.status==="ganado");
   return(<div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Ventas Cerradas</h1><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",gap:10,marginBottom:16}}><Stat icon={Ic.sale} ic="#10B981" ib="rgba(16,185,129,0.1)" label="Ventas" val={ganados.length}/><Stat icon={Ic.file} ic="#F59E0B" ib="rgba(245,158,11,0.1)" label="Sin Factura" val={ganados.filter(l=>!l.postVenta.factura).length}/><Stat icon={Ic.box} ic="#8B5CF6" ib="rgba(139,92,246,0.1)" label="Pend. Homolog." val={ganados.filter(l=>!l.postVenta.homRec).length}/><Stat icon={Ic.target} ic="#06B6D4" ib="rgba(6,182,212,0.1)" label="Pend. Entrega" val={ganados.filter(l=>!l.postVenta.entregada).length}/></div>
-    <div className="crm-table-scroll" style={{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:550}}><thead><tr style={{borderBottom:"1px solid #1E1E1F"}}>{["Ticket","Cliente","Moto","Factura","Pago","Homolog.","Enrolada","Entregada"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 10px",fontSize:10,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{ganados.map(l=>{const m=gM(l.motoId);return<tr key={l.id} style={{borderBottom:"1px solid #1A1A1B"}}><td style={{padding:"8px 10px",color:"#F28100",fontWeight:600,fontSize:11}}>{l.num}</td><td style={{padding:"8px 10px"}}>{l.fn} {l.ln}</td><td style={{padding:"8px 10px"}}>{m?.brand} {m?.model}</td>{["factura","pagoReg","homRec","enrolada","entregada"].map(f=><td key={f} style={{padding:"8px 10px",textAlign:"center"}}>{l.postVenta[f]?<Ic.check size={16} color="#10B981"/>:<div style={{width:16,height:16,borderRadius:4,border:"2px solid #333",margin:"0 auto"}}/>}</td>)}</tr>;})}</tbody></table></div>
+    <div className="crm-table-scroll" style={{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:550}}><thead><tr style={{borderBottom:"1px solid #1E1E1F"}}>{["Ticket","Cliente","Moto","Factura","Pago","Homolog.","Enrolada","Entregada"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 10px",fontSize:10,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{ganados.map(l=>{const m=l.model_brand?{brand:l.model_brand,model:l.model_name}:null;return<tr key={l.id} style={{borderBottom:"1px solid #1A1A1B"}}><td style={{padding:"8px 10px",color:"#F28100",fontWeight:600,fontSize:11}}>{l.num}</td><td style={{padding:"8px 10px"}}>{l.fn} {l.ln}</td><td style={{padding:"8px 10px"}}>{m?.brand} {m?.model}</td>{["factura","pagoReg","homRec","enrolada","entregada"].map(f=><td key={f} style={{padding:"8px 10px",textAlign:"center"}}>{l.postVenta[f]?<Ic.check size={16} color="#10B981"/>:<div style={{width:16,height:16,borderRadius:4,border:"2px solid #333",margin:"0 auto"}}/>}</td>)}</tr>;})}</tbody></table></div>
   </div>);
 }
 
 function CatalogView(){
+  const[models,setModels]=useState([]);
+  const[brands,setBrands]=useState([]);
   const[brandF,setBrandF]=useState("");
-  const f=brandF?MOTOS.filter(m=>m.brand===brandF):MOTOS;
-  return(<div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Catálogo de Motos</h1><p style={{color:"#6B6B6B",fontSize:12,margin:"-10px 0 14px"}}>{MOTOS.length} modelos · {BRANDS_LIST.length} marcas</p><select value={brandF} onChange={e=>setBrandF(e.target.value)} style={{...S.inp,marginBottom:14,minWidth:180}}><option value="">Todas las marcas</option>{BRANDS_LIST.map(b=><option key={b} value={b}>{b}</option>)}</select><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}}>{f.map(m=><div key={m.id} style={S.card}><div style={{fontSize:10,color:"#666",fontWeight:600,textTransform:"uppercase"}}>{m.brand}</div><div style={{fontSize:15,fontWeight:700,marginTop:2}}>{m.model}</div><div style={{fontSize:11,color:"#555",marginTop:3}}>{m.year} · {m.cc?m.cc+"cc":"Eléctrica"} · {m.cat}</div><div style={{marginTop:8}}><span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</span>{m.bonus>0&&<div style={{fontSize:11,color:"#10B981",marginTop:2}}>Bono: {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b></div>}</div><div style={{display:"flex",gap:4,marginTop:8,flexWrap:"wrap"}}>{m.colors.map(c=><span key={c} style={{fontSize:9,padding:"2px 6px",borderRadius:12,background:"#1A1A1B",color:"#888"}}>{c}</span>)}</div></div>)}</div></div>);
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{
+    api.getModels().then(d=>{
+      const ms=Array.isArray(d)?d:[];
+      setModels(ms);
+      setBrands([...new Set(ms.map(m=>m.brand))].sort());
+    }).catch(()=>{}).finally(()=>setLoading(false));
+  },[]);
+  const f=brandF?models.filter(m=>m.brand===brandF):models;
+  return(
+    <div>
+      <h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Catálogo de Motos</h1>
+      <p style={{color:"#6B6B6B",fontSize:12,margin:"-10px 0 14px"}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</p>
+      <select value={brandF} onChange={e=>setBrandF(e.target.value)} style={{...S.inp,marginBottom:14,minWidth:180}}>
+        <option value="">Todas las marcas</option>
+        {brands.map(b=><option key={b} value={b}>{b}</option>)}
+      </select>
+      {!loading&&f.length===0&&(
+        <div style={{...S.card,textAlign:"center",padding:40,color:"#555"}}>
+          <Ic.tag size={32} color="#333" style={{marginBottom:12}}/>
+          <div style={{fontWeight:600,marginBottom:6}}>Sin modelos en catálogo</div>
+          <div style={{fontSize:12}}>Importá una lista de precios PDF para poblar el catálogo.</div>
+        </div>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:10}}>
+        {f.map(m=>{
+          const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
+          return(
+            <div key={m.id} style={S.card}>
+              <div style={{fontSize:10,color:"#666",fontWeight:600,textTransform:"uppercase"}}>{m.brand}</div>
+              <div style={{fontSize:15,fontWeight:700,marginTop:2}}>{m.model}</div>
+              <div style={{fontSize:11,color:"#555",marginTop:3}}>{m.year} · {m.cc?m.cc+"cc":"Eléctrica"} · {m.category||m.cat}</div>
+              <div style={{marginTop:8}}>
+                <span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</span>
+                {m.bonus>0&&<div style={{fontSize:11,color:"#10B981",marginTop:2}}>Bono: {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b></div>}
+              </div>
+              {colors.length>0&&<div style={{display:"flex",gap:4,marginTop:8,flexWrap:"wrap"}}>{colors.map(c=><span key={c} style={{fontSize:9,padding:"2px 6px",borderRadius:12,background:"#1A1A1B",color:"#888"}}>{c}</span>)}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ReportsView({leads}){

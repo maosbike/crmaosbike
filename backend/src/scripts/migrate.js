@@ -39,6 +39,10 @@ async function migrate() {
     await db.query(sql009);
     console.log('✓ Migration 009 (catálogo maestro + precios por período) applied');
 
+    const sql010 = fs.readFileSync(path.join(__dirname, '../../migrations/010_clean_seed_models.sql'), 'utf-8');
+    await db.query(sql010);
+    console.log('✓ Migration 010 (limpieza de modelos demo) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);
