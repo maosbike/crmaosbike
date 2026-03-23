@@ -1,58 +1,27 @@
 /**
  * priceimport.js
  * Nuevo flujo seguro de importación de precios:
- *   CSV/Excel → staging → revisión manual → publicar al catálogo.
+ *   PDF → staging → revisión manual → publicar al catálogo.
  * Los datos NUNCA impactan el catálogo sin aprobación explícita del super_admin.
+ * Formatos PDF soportados: Honda, Yamaha (Yamaimport), MMB (Keeway/Benelli/Benda/QJ), Promobility.
  */
 const router = require('express').Router();
 const multer = require('multer');
-const xlsx   = require('xlsx');
 const db     = require('../config/db');
-const { auth, roleCheck } = require('../middleware/auth');
-const { normalizeModel }  = require('../services/pdfExtractor');
+const { auth, roleCheck }          = require('../middleware/auth');
+const { extractFromPDF, normalizeModel } = require('../services/pdfExtractor');
 
 router.use(auth);
 router.use(roleCheck('super_admin', 'admin_comercial'));
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const ok = /\.(csv|xlsx|xls)$/i.test(file.originalname) ||
-      ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-       'application/vnd.ms-excel', 'text/csv', 'application/csv'].includes(file.mimetype);
-    cb(ok ? null : new Error('Solo se aceptan archivos CSV o Excel (.csv, .xlsx, .xls)'), ok);
+    const ok = file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname);
+    cb(ok ? null : new Error('Solo se aceptan archivos PDF'), ok);
   },
 });
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const COL_ALIASES = {
-  brand:            ['marca','brand'],
-  model:            ['modelo','model'],
-  commercial_name:  ['nombre_comercial','commercial_name','nombre comercial','nombre'],
-  category:         ['categoria','categoría','category'],
-  cc:               ['cc','cilindrada'],
-  year:             ['año','year','anio'],
-  price_list:       ['precio_lista','price_list','precio lista','precio'],
-  bonus:            ['bono','bonus'],
-  description:      ['descripcion','descripción','description'],
-};
-
-function findCol(headers, field) {
-  const aliases = COL_ALIASES[field] || [field];
-  for (const alias of aliases) {
-    const idx = headers.findIndex(h => String(h).trim().toLowerCase() === alias.toLowerCase());
-    if (idx !== -1) return idx;
-  }
-  return -1;
-}
-
-function parseNum(v) {
-  if (v == null || v === '') return null;
-  const n = parseInt(String(v).replace(/[$\s.]/g, '').replace(',', ''), 10);
-  return isNaN(n) ? null : n;
-}
 
 function validateRow(row) {
   const errors = [];
@@ -87,44 +56,31 @@ async function resolveModel(brand, model) {
 
 // ── POST /api/priceimport/upload ──────────────────────────────────────────────
 router.post('/upload', upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Se requiere un archivo CSV o Excel' });
+  if (!req.file) return res.status(400).json({ error: 'Se requiere un archivo PDF' });
   try {
-    const wb  = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const ws  = wb.Sheets[wb.SheetNames[0]];
-    const raw = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    // Extraer datos del PDF usando el parser existente
+    const extracted = await extractFromPDF(req.file.buffer, req.file.originalname);
 
-    if (raw.length < 2) return res.status(422).json({ error: 'El archivo está vacío o solo tiene encabezados' });
-
-    const headers = raw[0].map(h => String(h).trim());
-    const colIdx  = {};
-    for (const field of Object.keys(COL_ALIASES)) colIdx[field] = findCol(headers, field);
-
-    if (colIdx.brand === -1 || colIdx.model === -1 || colIdx.price_list === -1) {
+    if (!extracted.rows || extracted.rows.length === 0) {
       return res.status(422).json({
-        error: 'Columnas requeridas faltantes. El archivo debe tener: marca, modelo, precio_lista',
-        headers_found: headers,
+        error: `PDF reconocido como "${extracted.source_type}" pero no se extrajeron filas. Verificá que el PDF contenga la tabla de precios y no esté protegido o escaneado.`,
+        source_type: extracted.source_type,
+        period: extracted.period,
       });
     }
 
-    const parsed = [];
-    for (let i = 1; i < raw.length; i++) {
-      const r     = raw[i];
-      const brand = String(r[colIdx.brand] || '').trim();
-      const model = String(r[colIdx.model] || '').trim();
-      if (!brand && !model) continue;
-      parsed.push({
-        row_number:      i,
-        brand,
-        model,
-        commercial_name: colIdx.commercial_name !== -1 ? String(r[colIdx.commercial_name] || '').trim() || null : null,
-        category:        colIdx.category    !== -1 ? String(r[colIdx.category]    || '').trim() || null : null,
-        cc:              colIdx.cc          !== -1 ? parseNum(r[colIdx.cc])    : null,
-        year:            colIdx.year        !== -1 ? parseNum(r[colIdx.year])   : null,
-        price_list:      parseNum(r[colIdx.price_list]),
-        bonus:           colIdx.bonus       !== -1 ? parseNum(r[colIdx.bonus])  : null,
-        description:     colIdx.description !== -1 ? String(r[colIdx.description] || '').trim() || null : null,
-      });
-    }
+    // Mapear filas del parser al formato de staging
+    const parsed = extracted.rows.map((row, i) => ({
+      row_number:      i + 1,
+      brand:           row.brand           || '',
+      model:           row.model           || '',
+      commercial_name: row.commercial_name || null,
+      category:        row.category        || null,
+      cc:              row.cc              || null,
+      year:            row.year            || null,
+      price_list:      row.price_list      || null,
+      bonus:           row.bono_todo_medio || null,
+    }));
 
     if (parsed.length === 0) return res.status(422).json({ error: 'No se encontraron filas con datos' });
 
@@ -132,8 +88,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     try {
       await client.query('BEGIN');
       const batchRes = await client.query(
-        `INSERT INTO price_staging_batches (filename, uploaded_by, total_rows) VALUES ($1,$2,$3) RETURNING id`,
-        [req.file.originalname, req.user.id, parsed.length]
+        `INSERT INTO price_staging_batches (filename, uploaded_by, total_rows, status)
+         VALUES ($1,$2,$3,'pending') RETURNING id`,
+        [
+          `${req.file.originalname} [${extracted.source_type}${extracted.period ? ' · ' + extracted.period : ''}]`,
+          req.user.id,
+          parsed.length,
+        ]
       );
       const batch_id = batchRes.rows[0].id;
       const rows = [];

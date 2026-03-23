@@ -2095,36 +2095,22 @@ function StagingImportView() {
 
           <div style={{ background: '#111113', border: '2px dashed #2A2A2B', borderRadius: 14, padding: 40, textAlign: 'center', marginBottom: 16 }}
             onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-              {uploading ? 'Procesando archivo...' : 'Arrastrá el archivo aquí o seleccionalo'}
+              {uploading ? 'Procesando PDF...' : 'Arrastrá el PDF de lista de precios aquí'}
             </div>
-            <div style={{ fontSize: 11, color: '#555', marginBottom: 16 }}>Formatos: CSV o Excel (.xlsx, .xls)</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <label style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#F28100', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
-                {uploading ? 'Procesando...' : 'Seleccionar archivo'}
-                <input type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} disabled={uploading}
-                  onChange={e => e.target.files[0] && handleUpload(e.target.files[0])} />
-              </label>
-              <a href={api.getPriceTemplate()} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #333', background: 'transparent', color: '#aaa', fontSize: 12, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-                📥 Descargar plantilla
-              </a>
+            <div style={{ fontSize: 11, color: '#555', marginBottom: 16 }}>
+              Formatos soportados: Honda · Yamaha (Yamaimport) · MMB (Keeway/Benelli/Benda/QJ) · Promobility
             </div>
+            <label style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#F28100', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
+              {uploading ? 'Procesando...' : 'Seleccionar PDF'}
+              <input type="file" accept=".pdf" style={{ display: 'none' }} disabled={uploading}
+                onChange={e => e.target.files[0] && handleUpload(e.target.files[0])} />
+            </label>
           </div>
 
-          <div style={{ background: '#111113', border: '1px solid #1E1E1F', borderRadius: 10, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Columnas del archivo</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {[
-                { col: 'marca', req: true }, { col: 'modelo', req: true }, { col: 'nombre_comercial', req: false },
-                { col: 'categoria', req: false }, { col: 'cc', req: false }, { col: 'año', req: false },
-                { col: 'precio_lista', req: true }, { col: 'bono', req: false }, { col: 'descripcion', req: false },
-              ].map(({ col, req }) => (
-                <span key={col} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: req ? '#F2810022' : '#1A1A1B', color: req ? '#F28100' : '#666', border: `1px solid ${req ? '#F2810055' : '#222'}` }}>
-                  {col}{req ? ' *' : ''}
-                </span>
-              ))}
-            </div>
+          <div style={{ background: '#111113', border: '1px solid #1E1E1F', borderRadius: 10, padding: 14, fontSize: 12, color: '#555' }}>
+            El parser extrae automáticamente: <span style={{ color: '#aaa' }}>marca · modelo · categoría · precio lista · bono todo medio de pago</span>. Después podés revisar y corregir cada fila antes de publicar.
           </div>
         </div>
       )}
