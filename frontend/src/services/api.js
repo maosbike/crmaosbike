@@ -108,6 +108,7 @@ export const api = {
   // Admin
   resetDemoData: () => request('DELETE', '/admin/reset-data'),
   resetImports: () => request('DELETE', '/admin/reset-imports'),
+  resetCatalog: () => request('DELETE', '/admin/reset-catalog'),
 
   // Lista de precios PDF (solo super_admin)
   pricelistDebug: (formData) => {

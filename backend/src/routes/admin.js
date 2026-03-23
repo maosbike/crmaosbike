@@ -67,4 +67,22 @@ router.delete('/reset-imports', async (req, res) => {
   }
 });
 
+// DELETE /api/admin/reset-catalog
+// Desactiva (soft delete) todos los modelos del catálogo y borra los precios importados.
+router.delete('/reset-catalog', async (req, res) => {
+  try {
+    await db.query('BEGIN');
+    await db.query('DELETE FROM moto_prices');
+    await db.query('DELETE FROM price_import_logs');
+    const { rowCount } = await db.query('UPDATE moto_models SET active = false, updated_at = NOW()');
+    await db.query('COMMIT');
+    console.log(`[admin] reset-catalog: ${rowCount} modelos desactivados por user ${req.user.id}`);
+    res.json({ ok: true, deleted: rowCount });
+  } catch (e) {
+    await db.query('ROLLBACK');
+    console.error('reset-catalog error:', e);
+    res.status(500).json({ error: 'Error al limpiar catálogo: ' + e.message });
+  }
+});
+
 module.exports = router;

@@ -1293,6 +1293,8 @@ function AdminView(){
   const[cleanDone,setCleanDone]=useState(false);
   const[cleaningImports,setCleaningImports]=useState(false);
   const[cleanImportsDone,setCleanImportsDone]=useState(null);
+  const[cleaningCatalog,setCleaningCatalog]=useState(false);
+  const[cleanCatalogDone,setCleanCatalogDone]=useState(null);
   useEffect(()=>{
     api.listUsers().then(setUsers).catch(()=>{}).finally(()=>setLoading(false));
     api.getBranches().then(setBranches).catch(()=>{});
@@ -1306,6 +1308,16 @@ function AdminView(){
       setCleanDone(true);
     }catch(ex){alert('Error: '+(ex.message||'No se pudo limpiar'));}
     finally{setCleaning(false);}
+  };
+  const handleCleanCatalog=async()=>{
+    if(!confirm('⚠️ ATENCIÓN: Esto eliminará TODO el catálogo de motos y todos los precios importados.\n\nTickets, inventario y usuarios se conservan.\n\n¿Confirmar?'))return;
+    if(!confirm('Segunda confirmación: ¿Seguro? Esta acción NO se puede deshacer.'))return;
+    setCleaningCatalog(true);
+    try{
+      const r=await api.resetCatalog();
+      setCleanCatalogDone(r.deleted??0);
+    }catch(ex){alert('Error: '+(ex.message||'No se pudo limpiar catálogo'));}
+    finally{setCleaningCatalog(false);}
   };
   const handleCleanImports=async()=>{
     if(!confirm('¿Eliminar todos los tickets importados (source=importacion) y los logs de importación?\n\nLos tickets creados manualmente se conservan.'))return;
@@ -1360,6 +1372,10 @@ function AdminView(){
         <h3 style={{fontSize:12,fontWeight:600,margin:"0 0 6px",color:"#EF4444"}}>Zona de peligro</h3>
         <p style={{fontSize:11,color:"#6B6B6B",marginBottom:12}}>Elimina todos los tickets, leads, importaciones e inventario de prueba. Los usuarios, sucursales y catálogo de motos se conservan.</p>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {cleanCatalogDone!==null
+            ?<div style={{display:"flex",alignItems:"center",gap:8,color:"#10B981",fontSize:12,fontWeight:600}}><Ic.check size={16} color="#10B981"/>{cleanCatalogDone} modelos eliminados. Recarga para ver cambios.</div>
+            :<button onClick={handleCleanCatalog} disabled={cleaningCatalog} style={{...S.btn,background:"#8B5CF6",opacity:cleaningCatalog?0.7:1,fontSize:12}}>{cleaningCatalog?"Limpiando...":"🗑 Borrar catálogo completo"}</button>
+          }
           {cleanImportsDone!==null
             ?<div style={{display:"flex",alignItems:"center",gap:8,color:"#10B981",fontSize:12,fontWeight:600}}><Ic.check size={16} color="#10B981"/>{cleanImportsDone} tickets importados eliminados. Recarga para ver cambios.</div>
             :<button onClick={handleCleanImports} disabled={cleaningImports||cleanDone} style={{...S.btn,background:"#F59E0B",opacity:cleaningImports?0.7:1,fontSize:12}}>{cleaningImports?"Limpiando...":"🗑 Borrar data importada"}</button>
