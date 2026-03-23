@@ -110,7 +110,29 @@ export const api = {
   resetImports: () => request('DELETE', '/admin/reset-imports'),
   resetCatalog: () => request('DELETE', '/admin/reset-catalog'),
 
-  // Lista de precios PDF (solo super_admin)
+  // ── Nuevo flujo: importación CSV/Excel con staging (super_admin) ──────────
+  uploadPriceFile: (formData) => {
+    const token = getToken();
+    return fetch(`${BASE}/priceimport/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then(async r => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error al subir archivo');
+      return data;
+    });
+  },
+  getPriceBatches: () => request('GET', '/priceimport/batches'),
+  getPriceBatch:   (id) => request('GET', `/priceimport/batches/${id}`),
+  updatePriceRow:  (id, data) => request('PATCH', `/priceimport/rows/${id}`, data),
+  rejectPriceRow:  (id) => request('DELETE', `/priceimport/rows/${id}`),
+  publishPriceBatch: (id, rowIds) => request('POST', `/priceimport/batches/${id}/publish`, { row_ids: rowIds || [] }),
+  deletePriceBatch: (id) => request('DELETE', `/priceimport/batches/${id}`),
+  getPriceTemplate: () => `${BASE}/priceimport/template`,
+
+  // ── Flujo PDF anterior (DESACTIVADO — solo conservado por si acaso) ────────
+  // pricelistDebug: ...
   pricelistDebug: (formData) => {
     const token = getToken();
     return fetch(`${BASE}/pricelist/debug-pdf`, {

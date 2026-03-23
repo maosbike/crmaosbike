@@ -51,6 +51,14 @@ async function migrate() {
     await db.query(sql012);
     console.log('✓ Migration 012 (fix price_list bug: corrige moto_models.price desde moto_prices) applied');
 
+    const sql013 = fs.readFileSync(path.join(__dirname, '../../migrations/013_clean_prices.sql'), 'utf-8');
+    await db.query(sql013);
+    console.log('✓ Migration 013 (clean precios mal cargados) applied');
+
+    const sql014 = fs.readFileSync(path.join(__dirname, '../../migrations/014_price_staging.sql'), 'utf-8');
+    await db.query(sql014);
+    console.log('✓ Migration 014 (price_staging tables) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);
