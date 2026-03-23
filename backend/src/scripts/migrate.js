@@ -47,6 +47,10 @@ async function migrate() {
     await db.query(sql011);
     console.log('✓ Migration 011 (catalog enrich: description, spec_url, image_gallery) applied');
 
+    const sql012 = fs.readFileSync(path.join(__dirname, '../../migrations/012_fix_price_list_bug.sql'), 'utf-8');
+    await db.query(sql012);
+    console.log('✓ Migration 012 (fix price_list bug: corrige moto_models.price desde moto_prices) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);
