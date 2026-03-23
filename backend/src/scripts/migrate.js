@@ -59,6 +59,10 @@ async function migrate() {
     await db.query(sql014);
     console.log('✓ Migration 014 (price_staging tables) applied');
 
+    const sql015 = fs.readFileSync(path.join(__dirname, '../../migrations/015_fix_branch_addresses.sql'), 'utf-8');
+    await db.query(sql015);
+    console.log('✓ Migration 015 (fix branch addresses: Movicenter y Mall Plaza Sur) applied');
+
     await seed(db);
     console.log('✓ All done');
     process.exit(0);

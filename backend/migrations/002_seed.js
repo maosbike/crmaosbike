@@ -6,8 +6,8 @@ module.exports = async function seed(db) {
   await db.query(`
     INSERT INTO branches (id, name, code, address) VALUES
     ('b0000001-0001-0001-0001-000000000001', 'Mall Plaza Norte', 'MPN', 'Av. Américo Vespucio 1737, Auto Plaza Local 106, Huechuraba'),
-    ('b0000001-0001-0001-0001-000000000002', 'Mall Plaza Sur',   'MPS', 'Av. Vicuña Mackenna 13451, La Florida'),
-    ('b0000001-0001-0001-0001-000000000003', 'Movicenter',       'MOV', 'Av. Américo Vespucio 1001, Cerrillos')
+    ('b0000001-0001-0001-0001-000000000002', 'Mall Plaza Sur',   'MPS', 'Av. Pdte. Jorge Alessandri Rodríguez 20040'),
+    ('b0000001-0001-0001-0001-000000000003', 'Movicenter',       'MOV', 'Av. Américo Vespucio 1155, Huechuraba')
     ON CONFLICT (code) DO NOTHING
   `);
 
