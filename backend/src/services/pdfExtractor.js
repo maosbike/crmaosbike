@@ -497,8 +497,14 @@ function parseMMB(text) {
       bono_todo_medio  = nums[1] || null;
       price_todo_medio = nums[2] || null;
     } else if (nums.length === 2) {
-      price_list       = nums[0];
-      price_todo_medio = nums[1] || null;
+      price_list = nums[0];
+      // Aplicar heurística de ratio: si el 2do valor es < 40% del price_list,
+      // es un bono (no un precio final). Mismo criterio que assignPriceColumns.
+      if (nums[1] < nums[0] * 0.40) {
+        bono_todo_medio = nums[1];
+      } else {
+        price_todo_medio = nums[1];
+      }
     } else if (nums.length === 1) {
       price_list = nums[0];
     }

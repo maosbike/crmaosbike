@@ -873,12 +873,12 @@ function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
           <div style={{display:"flex",gap:16,marginTop:10,marginBottom:14}}>
             {m.year&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{m.year}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Año</div></div>}
             <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{specInfo}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Motor</div></div>
-            {m.price>0&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#F28100"}}>{fmt(m.price)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Precio lista</div></div>}
-            {m.bonus>0&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#10B981"}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Todo medio</div></div>}
+            {m.price>0&&m.bonus<m.price&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#F28100"}}>{fmt(m.price)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Precio lista</div></div>}
+            {m.bonus>0&&m.bonus<m.price&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#10B981"}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#555",textTransform:"uppercase"}}>Todo medio</div></div>}
           </div>
 
           {/* Bono detalle */}
-          {m.bonus>0&&<div style={{background:"#0D2B1A",border:"1px solid #10B98133",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:12}}>
+          {m.bonus>0&&m.bonus<m.price&&<div style={{background:"#0D2B1A",border:"1px solid #10B98133",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:12}}>
             <span style={{color:"#10B981",fontWeight:600}}>Bono {fmt(m.bonus)}</span>
             <span style={{color:"#555",marginLeft:6}}>→ Precio todo medio de pago {fmt(m.price-m.bonus)}</span>
           </div>}
@@ -1059,7 +1059,7 @@ function CatalogView({user}){
                     {specInfo&&<div style={{fontSize:10,color:"#555",marginTop:2}}>{specInfo}{m.year?` · ${m.year}`:""}</div>}
 
                     {/* Precio */}
-                    {m.price>0&&(
+                    {m.price>0&&m.bonus<m.price&&(
                       <div style={{marginTop:8,borderTop:"1px solid #1E1E1F",paddingTop:8}}>
                         <div style={{fontSize:16,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</div>
                         {m.bonus>0&&(

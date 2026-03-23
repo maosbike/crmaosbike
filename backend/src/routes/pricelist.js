@@ -27,6 +27,64 @@ const upload = multer({
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
+ * Valida coherencia de los precios extraídos antes de publicarlos.
+ * Retorna array de strings con los errores encontrados (vacío = OK).
+ *
+ * Regla crítica: si el parser no puede distinguir con certeza
+ * precio_lista / bono / precio_todo_medio → NO publicar el precio.
+ */
+function validatePriceRow(row) {
+  const errors = [];
+  const { price_list, bono_todo_medio, price_todo_medio, bono_financiamiento, price_financiamiento } = row;
+
+  // 1. price_list debe existir y ser positivo
+  if (!price_list || price_list <= 0) {
+    errors.push('price_list ausente o inválido');
+    return errors; // sin price_list no podemos validar nada más
+  }
+
+  // 2. El bono no puede ser mayor o igual al precio lista
+  if (bono_todo_medio && bono_todo_medio >= price_list) {
+    errors.push(`bono_todo_medio (${bono_todo_medio}) >= price_list (${price_list}) — posible confusión de columnas`);
+  }
+
+  // 3. El bono no puede superar el 40% del precio lista (umbral generoso)
+  if (bono_todo_medio && bono_todo_medio > price_list * 0.40) {
+    errors.push(`bono_todo_medio (${bono_todo_medio}) es más del 40% del price_list (${price_list}) — dato sospechoso`);
+  }
+
+  // 4. price_todo_medio debe ser menor al price_list
+  if (price_todo_medio && price_todo_medio > price_list) {
+    errors.push(`price_todo_medio (${price_todo_medio}) > price_list (${price_list})`);
+  }
+
+  // 5. price_todo_medio no puede ser menor al 50% del price_list
+  if (price_todo_medio && price_todo_medio < price_list * 0.50) {
+    errors.push(`price_todo_medio (${price_todo_medio}) < 50% del price_list (${price_list}) — dato sospechoso`);
+  }
+
+  // 6. Si existen los tres valores, deben ser coherentes entre sí (tolerancia 2%)
+  if (bono_todo_medio && price_todo_medio) {
+    const expected = price_list - bono_todo_medio;
+    const diff = Math.abs(expected - price_todo_medio);
+    const tolerance = price_list * 0.02;
+    if (diff > tolerance) {
+      errors.push(`inconsistencia: ${price_list} - ${bono_todo_medio} = ${expected} ≠ price_todo_medio ${price_todo_medio} (diff ${diff})`);
+    }
+  }
+
+  // 7. Mismo chequeo para precios de financiamiento
+  if (bono_financiamiento && bono_financiamiento >= price_list) {
+    errors.push(`bono_financiamiento (${bono_financiamiento}) >= price_list (${price_list})`);
+  }
+  if (price_financiamiento && price_financiamiento > price_list) {
+    errors.push(`price_financiamiento (${price_financiamiento}) > price_list (${price_list})`);
+  }
+
+  return errors;
+}
+
+/**
  * Busca un modelo en moto_models por marca + normalized_model.
  * Retorna: { match: 'exact'|'fuzzy'|'none', candidates: [...] }
  */
@@ -277,8 +335,20 @@ router.post('/confirm', async (req, res) => {
           stats.imported++;
         }
 
-        // Actualizar precio vigente en moto_models (campo price = price_todo_medio || price_list)
-        const currentPrice = row.price_todo_medio || row.price_list;
+        // Validar coherencia de precios antes de publicar
+        const priceErrors = validatePriceRow(row);
+        if (priceErrors.length > 0) {
+          const errMsg = `Precio no publicado por validación fallida: ${priceErrors.join('; ')}`;
+          stats.errors.push({ model: row.model, error: errMsg });
+          console.warn('[pricelist/confirm validation]', row.model, priceErrors);
+          // Guardamos el precio en moto_prices igual (para auditoría) pero NO actualizamos moto_models
+          continue;
+        }
+
+        // Actualizar precio vigente en moto_models:
+        //   price = price_list (NO price_todo_medio — ese es el precio final, no el de lista)
+        //   bonus = bono_todo_medio
+        const currentPrice = row.price_list;
         if (currentPrice) {
           await client.query(
             `UPDATE moto_models SET
@@ -290,7 +360,7 @@ router.post('/confirm', async (req, res) => {
              WHERE id = $6`,
             [
               currentPrice,
-              row.bono_todo_medio || row.bono_financiamiento || 0,
+              row.bono_todo_medio || 0,
               row.code || '',
               row.normalized_model || normalizeModel(row.model),
               row.commercial_name || row.model,
