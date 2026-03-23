@@ -790,10 +790,12 @@ const CAT_COLOR={
 };
 function catColor(c){return CAT_COLOR[c]||"#555";}
 
-function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
+function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}){
   const[m,setM]=useState(m0);
   const[editing,setEditing]=useState(false);
   const[saving,setSaving]=useState(false);
+  const[deleting,setDeleting]=useState(false);
+  const[confirmDel,setConfirmDel]=useState(false);
   const[form,setForm]=useState({});
   const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
   const gallery=Array.isArray(m.image_gallery)?m.image_gallery:(m.image_gallery?JSON.parse(m.image_gallery):[]);
@@ -802,25 +804,38 @@ function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
 
   const startEdit=()=>{
     setForm({
+      brand:m.brand||"",
+      model:m.model||"",
+      commercial_name:m.commercial_name||m.model||"",
       category:m.category||"",
       description:m.description||"",
       spec_url:m.spec_url||"",
       colors:[...colors],
       cc:m.cc||"",
       year:m.year||"",
-      commercial_name:m.commercial_name||m.model||"",
+      price:m.price||0,
+      bonus:m.bonus||0,
     });
     setEditing(true);
   };
   const save=async()=>{
     setSaving(true);
     try{
-      const updated=await api.updateModel(m.id,form);
+      const updated=await api.updateModel(m.id,{...form,price:Number(form.price)||0,bonus:Number(form.bonus)||0,cc:form.cc?Number(form.cc):null,year:form.year?Number(form.year):null});
       setM(updated);
       setEditing(false);
       onSaved&&onSaved(updated);
     }catch(e){alert("Error al guardar");}
     finally{setSaving(false);}
+  };
+  const handleDelete=async()=>{
+    setDeleting(true);
+    try{
+      await api.deleteModel(m.id);
+      onDeleted&&onDeleted(m.id);
+      onClose();
+    }catch(e){alert("Error al eliminar");}
+    finally{setDeleting(false);}
   };
   const addColor=()=>{
     const c=colorInput.trim();
@@ -913,6 +928,16 @@ function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
             <div style={{borderTop:"1px solid #222",paddingTop:16,marginTop:4}}>
               <div style={{fontSize:12,fontWeight:700,color:"#F28100",marginBottom:12}}>Editar modelo</div>
 
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>Marca</div>
+                  <input value={form.brand} onChange={e=>setForm(f=>({...f,brand:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>Modelo (código)</div>
+                  <input value={form.model} onChange={e=>setForm(f=>({...f,model:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                </div>
+              </div>
               <div style={{marginBottom:10}}>
                 <div style={{fontSize:10,color:"#555",marginBottom:3}}>Nombre comercial</div>
                 <input value={form.commercial_name} onChange={e=>setForm(f=>({...f,commercial_name:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
@@ -928,6 +953,23 @@ function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
                 <div>
                   <div style={{fontSize:10,color:"#555",marginBottom:3}}>Cilindrada (cc)</div>
                   <input value={form.cc} onChange={e=>setForm(f=>({...f,cc:e.target.value}))} placeholder="ej: 150" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>Año</div>
+                  <input value={form.year} onChange={e=>setForm(f=>({...f,year:e.target.value}))} placeholder="ej: 2025" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                </div>
+                <div/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>Precio lista ($)</div>
+                  <input type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder="ej: 2990000" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#555",marginBottom:3}}>Bono todo medio ($)</div>
+                  <input type="number" value={form.bonus} onChange={e=>setForm(f=>({...f,bonus:e.target.value}))} placeholder="ej: 150000" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
               </div>
               <div style={{marginBottom:10}}>
@@ -962,7 +1004,123 @@ function ModelDetailModal({model:m0,canEdit,onClose,onSaved}){
           {canEdit&&!editing&&(
             <button onClick={startEdit} style={{...S.btnSec,width:"100%",marginTop:8,fontSize:12}}>Editar modelo</button>
           )}
+
+          {/* Eliminar — solo super_admin */}
+          {canDelete&&!editing&&(
+            <div style={{marginTop:8}}>
+              {!confirmDel
+                ?<button onClick={()=>setConfirmDel(true)} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid #3F1111",background:"transparent",color:"#EF4444",fontSize:12,cursor:"pointer"}}>Eliminar del catálogo</button>
+                :<div style={{background:"#1A0A0A",border:"1px solid #3F1111",borderRadius:8,padding:"10px 12px"}}>
+                  <div style={{fontSize:12,color:"#EF4444",marginBottom:8,fontWeight:600}}>¿Eliminar {m.commercial_name||m.model}?</div>
+                  <div style={{fontSize:11,color:"#666",marginBottom:10}}>Esta acción desactiva el modelo del catálogo. No se puede deshacer desde aquí.</div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={handleDelete} disabled={deleting} style={{flex:1,padding:"7px",borderRadius:7,border:"none",background:"#EF4444",color:"#fff",fontSize:12,cursor:"pointer",fontWeight:600}}>{deleting?"Eliminando…":"Sí, eliminar"}</button>
+                    <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"7px",borderRadius:7,border:"1px solid #333",background:"transparent",color:"#aaa",fontSize:12,cursor:"pointer"}}>Cancelar</button>
+                  </div>
+                </div>
+              }
+            </div>
+          )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AddModelModal({onClose,onAdded}){
+  const[form,setForm]=useState({brand:"",model:"",commercial_name:"",category:"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,description:"",spec_url:""});
+  const[colors,setColors]=useState([]);
+  const[colorInput,setColorInput]=useState("");
+  const[saving,setSaving]=useState(false);
+  const addColor=()=>{const c=colorInput.trim();if(c&&!colors.includes(c))setColors(cs=>[...cs,c]);setColorInput("");};
+  const removeColor=(c)=>setColors(cs=>cs.filter(x=>x!==c));
+  const handleSubmit=async(e)=>{
+    e.preventDefault();
+    if(!form.brand.trim()||!form.model.trim()){alert("Marca y modelo son obligatorios");return;}
+    setSaving(true);
+    try{
+      const created=await api.createModel({...form,commercial_name:form.commercial_name||form.model,cc:form.cc?Number(form.cc):null,year:Number(form.year),price:Number(form.price)||0,bonus:Number(form.bonus)||0,colors});
+      onAdded(created);
+      onClose();
+    }catch(e){alert(e.message||"Error al crear");}
+    finally{setSaving(false);}
+  };
+  return(
+    <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#111113",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",border:"1px solid #222"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #1E1E1F",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{fontWeight:700,fontSize:15}}>Agregar moto al catálogo</div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#666",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={{padding:20}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:10,color:"#555",marginBottom:3}}>Marca *</div>
+              <input required value={form.brand} onChange={e=>setForm(f=>({...f,brand:e.target.value}))} placeholder="ej: Honda" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"#555",marginBottom:3}}>Modelo (código) *</div>
+              <input required value={form.model} onChange={e=>setForm(f=>({...f,model:e.target.value}))} placeholder="ej: CB 300F" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:10,color:"#555",marginBottom:3}}>Nombre comercial</div>
+            <input value={form.commercial_name} onChange={e=>setForm(f=>({...f,commercial_name:e.target.value}))} placeholder="Igual al modelo si se deja vacío" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:10,color:"#555",marginBottom:3}}>Categoría</div>
+              <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} style={{...S.inp,width:"100%"}}>
+                <option value="">Sin categoría</option>
+                {Object.keys(CAT_COLOR).map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"#555",marginBottom:3}}>Cilindrada (cc)</div>
+              <input type="number" value={form.cc} onChange={e=>setForm(f=>({...f,cc:e.target.value}))} placeholder="ej: 300" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:10,color:"#555",marginBottom:3}}>Año</div>
+              <input type="number" value={form.year} onChange={e=>setForm(f=>({...f,year:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"#555",marginBottom:3}}>Precio lista ($)</div>
+              <input type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder="0" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"#555",marginBottom:3}}>Bono ($)</div>
+              <input type="number" value={form.bonus} onChange={e=>setForm(f=>({...f,bonus:e.target.value}))} placeholder="0" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:10,color:"#555",marginBottom:3}}>Descripción</div>
+            <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={2} style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical"}} placeholder="Descripción comercial..."/>
+          </div>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:10,color:"#555",marginBottom:3}}>URL ficha técnica</div>
+            <input value={form.spec_url} onChange={e=>setForm(f=>({...f,spec_url:e.target.value}))} placeholder="https://..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+          </div>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:10,color:"#555",marginBottom:6}}>Colores</div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
+              {colors.map(c=>(
+                <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#1A1A1B",color:"#999",border:"1px solid #252526",display:"flex",alignItems:"center",gap:4}}>
+                  {c}<button type="button" onClick={()=>removeColor(c)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",padding:0,fontSize:12}}>×</button>
+                </span>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <input value={colorInput} onChange={e=>setColorInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addColor();}}} placeholder="Agregar color..." style={{...S.inp,flex:1}}/>
+              <button type="button" onClick={addColor} style={{...S.btn,padding:"6px 12px",fontSize:12}}>+</button>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="submit" disabled={saving} style={{...S.btn,flex:1}}>{saving?"Guardando…":"Agregar al catálogo"}</button>
+            <button type="button" onClick={onClose} style={{...S.btnSec,flex:1}}>Cancelar</button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -975,19 +1133,32 @@ function CatalogView({user}){
   const[search,setSearch]=useState("");
   const[loading,setLoading]=useState(true);
   const[selected,setSelected]=useState(null);
+  const[showAdd,setShowAdd]=useState(false);
   const canEdit=user&&(user.role==="super_admin"||user.role==="admin_comercial");
+  const canDelete=user&&user.role==="super_admin";
+
+  const refreshBrands=(ms)=>setBrands([...new Set(ms.map(m=>m.brand))].sort());
 
   useEffect(()=>{
     api.getModels().then(d=>{
       const ms=Array.isArray(d)?d:[];
       setModels(ms);
-      setBrands([...new Set(ms.map(m=>m.brand))].sort());
+      refreshBrands(ms);
     }).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
 
   const onSaved=(updated)=>{
-    setModels(ms=>ms.map(m=>m.id===updated.id?updated:m));
+    setModels(ms=>{const next=ms.map(m=>m.id===updated.id?updated:m);refreshBrands(next);return next;});
     setSelected(updated);
+  };
+
+  const onAdded=(created)=>{
+    setModels(ms=>{const next=[...ms,created];refreshBrands(next);return next;});
+  };
+
+  const onDeleted=(id)=>{
+    setModels(ms=>{const next=ms.filter(m=>m.id!==id);refreshBrands(next);return next;});
+    setSelected(null);
   };
 
   let f=models;
@@ -1005,7 +1176,10 @@ function CatalogView({user}){
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
         <h1 style={{fontSize:18,fontWeight:700,margin:0}}>Catálogo de Motos</h1>
-        <span style={{fontSize:12,color:"#555"}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</span>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:12,color:"#555"}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</span>
+          {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"6px 14px"}}>+ Agregar moto</button>}
+        </div>
       </div>
 
       {/* Filtros */}
@@ -1085,12 +1259,16 @@ function CatalogView({user}){
         </div>
       ))}
 
+      {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded}/>}
+
       {selected&&(
         <ModelDetailModal
           model={selected}
           canEdit={canEdit}
+          canDelete={canDelete}
           onClose={()=>setSelected(null)}
           onSaved={onSaved}
+          onDeleted={onDeleted}
         />
       )}
     </div>

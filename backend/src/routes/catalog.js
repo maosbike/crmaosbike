@@ -41,13 +41,15 @@ router.post('/models', roleCheck('super_admin', 'admin_comercial'), async (req, 
 // Update model details
 router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
-    const allowed = ['description', 'spec_url', 'colors', 'image_gallery', 'category', 'cc', 'year', 'commercial_name'];
+    const jsonFields = ['colors', 'image_gallery'];
+    const allowed = ['brand', 'model', 'commercial_name', 'description', 'spec_url',
+                     'colors', 'image_gallery', 'category', 'cc', 'year', 'price', 'bonus'];
     const sets = [], params = [];
     let idx = 1;
     for (const key of allowed) {
       if (key in req.body) {
         const val = req.body[key];
-        if (key === 'colors' || key === 'image_gallery') {
+        if (jsonFields.includes(key)) {
           sets.push(`${key} = $${idx++}::jsonb`);
           params.push(JSON.stringify(val));
         } else {
@@ -64,6 +66,18 @@ router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), async (
     );
     if (!rows.length) return res.status(404).json({ error: 'Modelo no encontrado' });
     res.json(rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
+// Delete model (soft delete — solo super_admin)
+router.delete('/models/:id', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `UPDATE moto_models SET active = false, updated_at = NOW() WHERE id = $1 RETURNING id`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Modelo no encontrado' });
+    res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
 

@@ -59,6 +59,7 @@ export const api = {
   getBrands: () => request('GET', '/catalog/brands'),
   createModel: (data) => request('POST', '/catalog/models', data),
   updateModel: (id, data) => request('PATCH', `/catalog/models/${id}`, data),
+  deleteModel: (id) => request('DELETE', `/catalog/models/${id}`),
   uploadModelImage: (id, file) => {
     const fd = new FormData();
     fd.append('image', file);
