@@ -1,8 +1,29 @@
 const BASE = '/api';
 
 const getToken = () => localStorage.getItem('crm_token');
+const getRefreshToken = () => localStorage.getItem('crm_refresh_token');
 
-const request = async (method, path, body) => {
+let _refreshing = null;
+
+const tryRefresh = async () => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const { token } = await res.json();
+    localStorage.setItem('crm_token', token);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const request = async (method, path, body, _retry = false) => {
   const headers = { 'Content-Type': 'application/json' };
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -16,14 +37,21 @@ const request = async (method, path, body) => {
   }
 
   const res = await fetch(`${BASE}${path}`, opts);
-  if (res.status === 401) {
-    if (token) {
-      localStorage.removeItem('crm_token');
-      localStorage.removeItem('crm_user');
-      window.location.reload();
-    }
+
+  if (res.status === 401 && !_retry) {
+    // Intentar renovar el token (una sola vez)
+    if (!_refreshing) _refreshing = tryRefresh();
+    const ok = await _refreshing;
+    _refreshing = null;
+    if (ok) return request(method, path, body, true);
+    // Refresh falló — limpiar sesión
+    localStorage.removeItem('crm_token');
+    localStorage.removeItem('crm_refresh_token');
+    localStorage.removeItem('crm_user');
+    window.location.reload();
     throw new Error('Sesión expirada');
   }
+
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Error');
   return data;

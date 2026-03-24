@@ -1,3 +1,4 @@
+const logger = require("../config/logger");
 const db = require('../config/db');
 const NotificationService = require('./notificationService');
 
@@ -75,7 +76,7 @@ const SLAService = {
     const newSeller = await this.findBestSeller(ticket.branch_id, ticket.assigned_to);
 
     if (!newSeller) {
-      console.log(`[SLA] No hay vendedor disponible para reasignar ticket #${ticket.id}`);
+      logger.info(`[SLA] No hay vendedor disponible para reasignar ticket #${ticket.id}`);
       // Notificar a admins que no hay vendedor
       const adminIds = await this.getAdminIds(ticket.branch_id);
       await NotificationService.notifyMany(adminIds, {
@@ -132,61 +133,69 @@ const SLAService = {
     // Notificaciones
     await NotificationService.reassigned(ticket, newSeller.id, oldSellerName);
 
-    console.log(`[SLA] Ticket #${ticket.ticket_number} reasignado de ${oldSellerName} a ${newSeller.first_name} ${newSeller.last_name}`);
+    logger.info(`[SLA] Ticket #${ticket.ticket_number} reasignado de ${oldSellerName} a ${newSeller.first_name} ${newSeller.last_name}`);
     return newSeller;
   },
 
+  _running: false,
+
   // Chequeo completo de SLA (llamado por el cron)
   async checkAll() {
-    const now = new Date();
-    console.log(`[SLA] Iniciando chequeo - ${now.toISOString()}`);
-
-    // 1. Tickets WARNING (entre 6h y 8h sin gestión)
-    const { rows: warningTickets } = await db.query(
-      `SELECT t.*, t.ticket_num as ticket_number,
-              COALESCE(t.first_name || ' ' || t.last_name, 'Sin nombre') as client_name
-       FROM tickets t
-       WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
-         AND t.first_action_at IS NULL
-         AND t.sla_status = 'normal'
-         AND t.sla_deadline - INTERVAL '2 hours' < NOW()
-         AND t.sla_deadline > NOW()`
-    );
-
-    for (const ticket of warningTickets) {
-      await db.query(
-        `UPDATE tickets SET sla_status = 'warning' WHERE id = $1`,
-        [ticket.id]
-      );
-      const adminIds = await this.getAdminIds(ticket.branch_id);
-      await NotificationService.slaWarning(ticket, ticket.assigned_to, adminIds);
-      console.log(`[SLA] WARNING: Ticket #${ticket.ticket_number}`);
+    if (this._running) {
+      logger.info('[SLA] Chequeo anterior aún en curso, saltando...');
+      return;
     }
+    this._running = true;
+    try {
+      const now = new Date();
+      logger.info(`[SLA] Iniciando chequeo - ${now.toISOString()}`);
 
-    // 2. Tickets BREACH (más de 8h sin gestión)
-    const { rows: breachedTickets } = await db.query(
-      `SELECT t.*, t.ticket_num as ticket_number,
-              COALESCE(t.first_name || ' ' || t.last_name, 'Sin nombre') as client_name
-       FROM tickets t
-       WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
-         AND t.first_action_at IS NULL
-         AND t.sla_status IN ('normal', 'warning')
-         AND t.sla_deadline < NOW()`
-    );
-
-    for (const ticket of breachedTickets) {
-      await db.query(
-        `UPDATE tickets SET sla_status = 'breached' WHERE id = $1`,
-        [ticket.id]
+      // 1. Tickets WARNING — update atómico con RETURNING para evitar doble procesamiento
+      const { rows: warningTickets } = await db.query(
+        `UPDATE tickets SET sla_status = 'warning'
+         WHERE id IN (
+           SELECT t.id FROM tickets t
+           WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
+             AND t.first_action_at IS NULL
+             AND t.sla_status = 'normal'
+             AND t.sla_deadline - INTERVAL '2 hours' < NOW()
+             AND t.sla_deadline > NOW()
+         )
+         RETURNING *, ticket_num as ticket_number,
+                   COALESCE(first_name || ' ' || last_name, 'Sin nombre') as client_name`
       );
-      const adminIds = await this.getAdminIds(ticket.branch_id);
-      await NotificationService.slaBreach(ticket, ticket.assigned_to, adminIds);
-      // Reasignar automáticamente
-      await this.reassignTicket(ticket, 'sla_breach');
-      console.log(`[SLA] BREACH + REASIGNADO: Ticket #${ticket.ticket_number}`);
-    }
 
-    console.log(`[SLA] Chequeo completo: ${warningTickets.length} warnings, ${breachedTickets.length} breaches`);
+      for (const ticket of warningTickets) {
+        const adminIds = await this.getAdminIds(ticket.branch_id);
+        await NotificationService.slaWarning(ticket, ticket.assigned_to, adminIds);
+        logger.info(`[SLA] WARNING: Ticket #${ticket.ticket_number}`);
+      }
+
+      // 2. Tickets BREACH — update atómico con RETURNING
+      const { rows: breachedTickets } = await db.query(
+        `UPDATE tickets SET sla_status = 'breached'
+         WHERE id IN (
+           SELECT t.id FROM tickets t
+           WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
+             AND t.first_action_at IS NULL
+             AND t.sla_status IN ('normal', 'warning')
+             AND t.sla_deadline < NOW()
+         )
+         RETURNING *, ticket_num as ticket_number,
+                   COALESCE(first_name || ' ' || last_name, 'Sin nombre') as client_name`
+      );
+
+      for (const ticket of breachedTickets) {
+        const adminIds = await this.getAdminIds(ticket.branch_id);
+        await NotificationService.slaBreach(ticket, ticket.assigned_to, adminIds);
+        await this.reassignTicket(ticket, 'sla_breach');
+        logger.info(`[SLA] BREACH + REASIGNADO: Ticket #${ticket.ticket_number}`);
+      }
+
+      logger.info(`[SLA] Chequeo completo: ${warningTickets.length} warnings, ${breachedTickets.length} breaches`);
+    } finally {
+      this._running = false;
+    }
   }
 };
 

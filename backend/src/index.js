@@ -1,3 +1,4 @@
+const logger = require("./config/logger");
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -42,15 +43,12 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error('[ERROR GLOBAL]', err.stack || err.message || err);
-  const status = err.status || err.statusCode || 500;
-  res.status(status).json({ error: err.message || 'Error interno del servidor' });
-});
+// Error handler centralizado
+const { errorHandler } = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`
+  logger.info(`
   ╔═══════════════════════════════════╗
   ║  🏍️  CRMaosBike API v2.0        ║
   ║  Puerto: ${PORT}                    ║
