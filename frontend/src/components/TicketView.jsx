@@ -62,7 +62,7 @@ export function TicketView({lead,user,nav,updLead}){
         <div style={{display:"flex",gap:10}}>
           <button onClick={()=>nav("leads")} style={{...S.gh,padding:6,marginTop:2}}><Ic.back size={17}/></button>
           <div>
-            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:13,color:"#F28100",fontWeight:600}}>Ticket #{lead.num}</span><span style={{fontSize:12,color:"#555"}}>/ a cargo de {s?.fn} {s?.ln}</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:13,color:"#F28100",fontWeight:600}}>Ticket #{lead.num}</span><span style={{fontSize:12,color:"#6B7280"}}>/ a cargo de {s?.fn} {s?.ln}</span></div>
             <h1 style={{fontSize:20,fontWeight:700,margin:"4px 0 0"}}>{lead.fn} {lead.ln}</h1>
           </div>
         </div>
@@ -87,19 +87,19 @@ export function TicketView({lead,user,nav,updLead}){
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 12px",color:"#F28100"}}>Producto Cotizado</h3>
           {m?(<>
             <div style={{display:"flex",gap:14}}>
-              <div style={{width:100,height:80,borderRadius:8,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#555"}}>📷 {m.brand}</div>
+              <div style={{width:100,height:80,borderRadius:8,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#6B7280"}}>📷 {m.brand}</div>
               <div><div style={{fontSize:16,fontWeight:700}}>{m.brand} {m.model}</div><div style={{fontSize:12,color:"#888",marginTop:2}}>{m.year} · {m.cc}cc · {m.cat}</div><div style={{marginTop:6}}><span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>Desde {fmt(m.price-m.bonus)}</span></div><div style={{fontSize:11,color:"#888"}}>{fmt(m.price)} precio de lista</div></div>
             </div>
             <div style={{marginTop:10,display:"flex",gap:12,fontSize:11,color:"#888"}}>
               <span>📄 Ficha Técnica: <span style={{color:"#3B82F6",cursor:"pointer"}}>Descargar</span></span>
               <span>🎨 Color: {lead.colorPref||m.colors[0]}</span>
             </div>
-          </>):(<div style={{color:"#555",fontSize:12}}>Sin modelo seleccionado</div>)}
+          </>):(<div style={{color:"#6B7280",fontSize:12}}>Sin modelo seleccionado</div>)}
           <div style={{marginTop:10}}><label style={S.lbl}>Cambiar modelo</label><select value={lead.motoId||""} onChange={e=>upd("motoId",e.target.value)} style={{...S.inp,width:"100%",fontSize:11}}><option value="">Seleccionar...</option>{realModels.map(m=><option key={m.id} value={m.id}>{m.brand} {m.model}{m.price?` - ${fmt(m.price)}`:''}</option>)}</select></div>
           {/* SUCURSAL */}
           <div style={{marginTop:12,padding:10,background:"#F9FAFB",borderRadius:8}}>
             <div style={{fontWeight:600,fontSize:12}}>MAOS RACING {br?.name.toUpperCase()}</div>
-            <div style={{fontSize:10,color:"#666",marginTop:2}}>{br?.addr}</div>
+            <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{br?.addr}</div>
           </div>
         </div>
 
@@ -160,7 +160,7 @@ export function TicketView({lead,user,nav,updLead}){
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Timeline de Gestión</h3>
           {/* Agregar nota */}
           <form onSubmit={submitNote} style={{marginBottom:16,padding:12,background:"#F9FAFB",borderRadius:10,border:"1px solid #E5E7EB"}}>
-            <label style={{...S.lbl,marginBottom:6}}>Agregar nota <span style={{color:"#555",fontWeight:400}}>(mín. 20 caracteres para contar como gestión SLA)</span></label>
+            <label style={{...S.lbl,marginBottom:6}}>Agregar nota <span style={{color:"#6B7280",fontWeight:400}}>(mín. 20 caracteres para contar como gestión SLA)</span></label>
             <textarea value={noteForm} onChange={e=>{setNoteForm(e.target.value);if(noteErr)setNoteErr("");}} rows={3} style={{...S.inp,width:"100%",resize:"vertical",marginBottom:6}} placeholder="Ej: Llamé al cliente, dice que está evaluando otras opciones, volver en 3 días..."/>
             {noteErr&&<div style={{fontSize:11,color:"#EF4444",marginBottom:6}}>{noteErr}</div>}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -180,10 +180,10 @@ export function TicketView({lead,user,nav,updLead}){
                 <div style={{background:"#F9FAFB",borderRadius:10,padding:12}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:13,fontWeight:600}}>{t.title}</span>
-                    <span style={{fontSize:10,color:"#555"}}>{fDT(t.date||t.created_at)}</span>
+                    <span style={{fontSize:10,color:"#6B7280"}}>{fDT(t.date||t.created_at)}</span>
                   </div>
                   {t.note&&<div style={{fontSize:12,color:"#6B7280",marginTop:4,lineHeight:1.4}}>{t.note}</div>}
-                  <div style={{fontSize:10,color:"#555",marginTop:4}}>{userName}{t.method?` · vía ${t.method}`:""}</div>
+                  <div style={{fontSize:10,color:"#6B7280",marginTop:4}}>{userName}{t.method?` · vía ${t.method}`:""}</div>
                 </div>
               </div>
             );})}

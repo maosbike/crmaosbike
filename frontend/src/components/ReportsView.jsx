@@ -33,7 +33,7 @@ function Bar({ items, colorKey, maxVal }) {
 
 // Sparkline mini chart (pure SVG)
 function Sparkline({ data, width=320, height=60 }) {
-  if (!data || data.length < 2) return <div style={{ color:'#555', fontSize:11 }}>Sin datos suficientes</div>;
+  if (!data || data.length < 2) return <div style={{ color:'#6B7280', fontSize:11 }}>Sin datos suficientes</div>;
   const vals = data.map(d => d.value);
   const mx = Math.max(...vals, 1);
   const mn = Math.min(...vals, 0);

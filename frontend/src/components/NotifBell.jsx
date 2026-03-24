@@ -35,14 +35,14 @@ export function NotifBell({nav}){
               {unread>0&&<button onClick={markAll} style={{...S.gh,fontSize:11,color:"#F28100",padding:"2px 6px"}}>Marcar leídas</button>}
             </div>
             <div style={{maxHeight:380,overflowY:"auto"}}>
-              {notifs.length===0&&<div style={{padding:24,textAlign:"center",color:"#555",fontSize:12}}>Sin notificaciones pendientes</div>}
+              {notifs.length===0&&<div style={{padding:24,textAlign:"center",color:"#6B7280",fontSize:12}}>Sin notificaciones pendientes</div>}
               {notifs.map(n=>(
                 <div key={n.id} onClick={()=>goTicket(n)} style={{padding:"10px 14px",borderBottom:"1px solid #F3F4F6",cursor:"pointer",background:n.is_read?"transparent":"rgba(242,129,0,0.04)"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                     <div style={{fontSize:12,fontWeight:n.is_read?400:600,color:n.is_read?"#888":"#1a1a1a",flex:1}}>{n.title}</div>
                     {!n.is_read&&<div style={{width:7,height:7,borderRadius:"50%",background:"#F28100",flexShrink:0,marginTop:4}}/>}
                   </div>
-                  {n.body&&<div style={{fontSize:11,color:"#555",marginTop:2,lineHeight:1.4}}>{n.body}</div>}
+                  {n.body&&<div style={{fontSize:11,color:"#6B7280",marginTop:2,lineHeight:1.4}}>{n.body}</div>}
                   <div style={{fontSize:10,color:"#444",marginTop:4}}>{ago(n.created_at)}</div>
                 </div>
               ))}

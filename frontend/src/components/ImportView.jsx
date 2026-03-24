@@ -100,8 +100,8 @@ export function ImportView() {
       {activeTab==='logs'&&(
         <div style={S.card}>
           <h3 style={{fontSize:13,fontWeight:600,margin:'0 0 14px'}}>Historial de importaciones</h3>
-          {logsLoading&&<div style={{color:'#555',fontSize:12}}>Cargando...</div>}
-          {logs&&logs.length===0&&<div style={{color:'#555',fontSize:12}}>Sin importaciones registradas.</div>}
+          {logsLoading&&<div style={{color:'#6B7280',fontSize:12}}>Cargando...</div>}
+          {logs&&logs.length===0&&<div style={{color:'#6B7280',fontSize:12}}>Sin importaciones registradas.</div>}
           {logs&&logs.length>0&&(
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
@@ -142,7 +142,7 @@ export function ImportView() {
                 <div style={{fontSize:15,fontWeight:600,marginTop:12,marginBottom:6}}>
                   {loading?'Procesando archivo..':'Arrastra tu archivo aquí o haz clic para seleccionar'}
                 </div>
-                <div style={{fontSize:12,color:'#555'}}>CSV o XLSX · Máximo 5 MB</div>
+                <div style={{fontSize:12,color:'#6B7280'}}>CSV o XLSX · Máximo 5 MB</div>
                 <input id="imp-file-input" type="file" accept=".csv,.xlsx,.xls" style={{display:'none'}}
                   onChange={e=>e.target.files[0]&&processFile(e.target.files[0])}/>
               </div>
@@ -151,7 +151,7 @@ export function ImportView() {
                 <Ic.file size={20} color='#F28100'/>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:600}}>Plantilla CSV</div>
-                  <div style={{fontSize:11,color:'#555'}}>Descarga el formato con las columnas requeridas</div>
+                  <div style={{fontSize:11,color:'#6B7280'}}>Descarga el formato con las columnas requeridas</div>
                 </div>
                 <a href={api.getImportTemplate()} download="template_prospectos.csv"
                    style={{...S.btn2,padding:'7px 14px',fontSize:12,textDecoration:'none',display:'inline-block'}}>
@@ -202,7 +202,7 @@ export function ImportView() {
                 ].map(x=>(
                   <div key={x.l} style={{...S.card,padding:'12px 14px',textAlign:'center'}}>
                     <div style={{fontSize:22,fontWeight:800,color:x.c}}>{x.v}</div>
-                    <div style={{fontSize:10,color:'#555',marginTop:2}}>{x.l}</div>
+                    <div style={{fontSize:10,color:'#6B7280',marginTop:2}}>{x.l}</div>
                   </div>
                 ))}
               </div>
@@ -249,7 +249,7 @@ export function ImportView() {
                         const obs=[...(r.errors||[]),r.dup_reason].filter(Boolean).join(' · ');
                         return(
                           <tr key={i} style={{borderBottom:'1px solid #F9FAFB',background:i%2?'transparent':'rgba(255,255,255,0.01)'}}>
-                            <td style={{padding:'6px 10px',color:'#555'}}>{r._row}</td>
+                            <td style={{padding:'6px 10px',color:'#6B7280'}}>{r._row}</td>
                             <td style={{padding:'6px 10px'}}>
                               <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:12,fontSize:10,fontWeight:600,color:sc.c,background:sc.bg,whiteSpace:'nowrap'}}>{sc.l}</span>
                             </td>
@@ -262,7 +262,7 @@ export function ImportView() {
                                 ?<span style={{color:'#10B981',fontWeight:600}}>{r.model_resolved_name}</span>
                                 :r.model_raw
                                   ?<span style={{color:'#F59E0B'}} title={`Sin match: "${r.model_raw}"`}>⚠ {r.model_raw}</span>
-                                  :<span style={{color:'#555'}}>—</span>
+                                  :<span style={{color:'#6B7280'}}>—</span>
                               }
                             </td>
                             <td style={{padding:'6px 10px',color:r.errors?.length?'#EF4444':'#555',fontSize:11}}>{obs||'—'}</td>
@@ -272,7 +272,7 @@ export function ImportView() {
                     </tbody>
                   </table>
                   {filteredRows.length===0&&(
-                    <div style={{padding:'24px',textAlign:'center',color:'#555',fontSize:12}}>Sin filas con este filtro</div>
+                    <div style={{padding:'24px',textAlign:'center',color:'#6B7280',fontSize:12}}>Sin filas con este filtro</div>
                   )}
                 </div>
               </div>
@@ -301,7 +301,7 @@ export function ImportView() {
                 ].map(x=>(
                   <div key={x.l} style={{...S.card,padding:'14px',textAlign:'center'}}>
                     <div style={{fontSize:26,fontWeight:800,color:x.c}}>{x.v}</div>
-                    <div style={{fontSize:10,color:'#555',marginTop:4}}>{x.l}</div>
+                    <div style={{fontSize:10,color:'#6B7280',marginTop:4}}>{x.l}</div>
                   </div>
                 ))}
               </div>

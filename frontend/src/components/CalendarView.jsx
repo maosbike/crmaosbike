@@ -50,10 +50,10 @@ export function CalendarView({user,nav}){
       </div>
       <div style={{...S.card,padding:0,overflow:"hidden",marginBottom:14}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1px solid #E5E7EB"}}>
-          {DIAS.map(d=><div key={d} style={{padding:"9px 4px",textAlign:"center",fontSize:10,fontWeight:600,color:"#555",textTransform:"uppercase"}}>{d}</div>)}
+          {DIAS.map(d=><div key={d} style={{padding:"9px 4px",textAlign:"center",fontSize:10,fontWeight:600,color:"#6B7280",textTransform:"uppercase"}}>{d}</div>)}
         </div>
         {loading
-          ?<div style={{padding:48,textAlign:"center",color:"#555",fontSize:12}}>Cargando eventos...</div>
+          ?<div style={{padding:48,textAlign:"center",color:"#6B7280",fontSize:12}}>Cargando eventos...</div>
           :<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
             {cells.map((day,i)=>{
               const evs=eventsForDay(day);
@@ -64,7 +64,7 @@ export function CalendarView({user,nav}){
                   {evs.slice(0,3).map((ev,ei)=>(
                     <div key={ei} onClick={()=>ev.ticket_id&&nav("ticket",String(ev.ticket_id))} title={ev.title} style={{fontSize:9,padding:"2px 5px",borderRadius:3,background:`${TYPE_C[ev.type]||"#F28100"}22`,color:TYPE_C[ev.type]||"#F28100",marginBottom:2,cursor:ev.ticket_id?"pointer":"default",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>{ev.title}</div>
                   ))}
-                  {evs.length>3&&<div style={{fontSize:9,color:"#555"}}>+{evs.length-3} más</div>}
+                  {evs.length>3&&<div style={{fontSize:9,color:"#6B7280"}}>+{evs.length-3} más</div>}
                 </div>
               );
             })}
@@ -80,9 +80,9 @@ export function CalendarView({user,nav}){
                 <div style={{width:4,height:32,borderRadius:2,background:TYPE_C[ev.type]||"#F28100",flexShrink:0}}/>
                 <div style={{flex:1}}>
                   <div style={{fontSize:12,fontWeight:600}}>{ev.title}</div>
-                  {ev.client_name&&<div style={{fontSize:11,color:"#666"}}>{ev.client_name}</div>}
+                  {ev.client_name&&<div style={{fontSize:11,color:"#6B7280"}}>{ev.client_name}</div>}
                 </div>
-                <div style={{fontSize:11,color:"#555",textAlign:"right"}}>
+                <div style={{fontSize:11,color:"#6B7280",textAlign:"right"}}>
                   <div>{fD(ev.date)}</div>
                   {ev.time&&<div>{ev.time}</div>}
                 </div>

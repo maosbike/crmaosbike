@@ -138,8 +138,8 @@ export function PricelistView() {
       {activeTab==='logs' && (
         <div style={S.card}>
           <h3 style={{fontSize:14,fontWeight:600,margin:'0 0 14px'}}>Historial de importaciones</h3>
-          {logsLoading ? <p style={{color:'#555',fontSize:13}}>Cargando...</p>
-          : !logs?.length ? <p style={{color:'#555',fontSize:13}}>Sin importaciones registradas.</p>
+          {logsLoading ? <p style={{color:'#6B7280',fontSize:13}}>Cargando...</p>
+          : !logs?.length ? <p style={{color:'#6B7280',fontSize:13}}>Sin importaciones registradas.</p>
           : <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr style={{borderBottom:'1px solid #E5E7EB'}}>{['Fecha','Archivo','Período','Formato','Total','Importados','Actualizados','Nuevos Modelos','Errores','Por'].map(h=><th key={h} style={{textAlign:'left',padding:'8px 10px',fontSize:10,fontWeight:600,color:'#6B6B6B',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
@@ -153,7 +153,7 @@ export function PricelistView() {
                   <td style={{padding:'8px 10px',textAlign:'center',color:'#3B82F6',fontWeight:600}}>{l.updated}</td>
                   <td style={{padding:'8px 10px',textAlign:'center',color:'#8B5CF6',fontWeight:600}}>{l.new_models}</td>
                   <td style={{padding:'8px 10px',textAlign:'center',color:l.errors>0?'#EF4444':'#555'}}>{l.errors}</td>
-                  <td style={{padding:'8px 10px',fontSize:11,color:'#666'}}>{l.imported_by_name}</td>
+                  <td style={{padding:'8px 10px',fontSize:11,color:'#6B7280'}}>{l.imported_by_name}</td>
                 </tr>)}</tbody>
               </table>
             </div>
@@ -179,7 +179,7 @@ export function PricelistView() {
                 <p style={{fontSize:15,fontWeight:600,margin:'0 0 6px'}}>
                   {loading ? 'Procesando PDF...' : 'Arrastra el PDF de lista de precios aquí'}
                 </p>
-                <p style={{fontSize:12,color:'#555',margin:0}}>o haz clic para seleccionar — Formatos: Honda · Yamaha · MMB · Promobility</p>
+                <p style={{fontSize:12,color:'#6B7280',margin:0}}>o haz clic para seleccionar — Formatos: Honda · Yamaha · MMB · Promobility</p>
                 <input id="pl-pdf-input" type="file" accept=".pdf" style={{display:'none'}}
                   onChange={e=>e.target.files[0]&&processFile(e.target.files[0])}/>
               </div>
@@ -195,7 +195,7 @@ export function PricelistView() {
                   ].map(([n,d])=>(
                     <div key={n} style={{padding:'8px 10px',background:'#FFFFFF',borderRadius:8,border:'1px solid #E5E7EB'}}>
                       <div style={{fontWeight:600,color:'#F28100',marginBottom:2}}>{n}</div>
-                      <div style={{fontSize:11,color:'#666'}}>{d}</div>
+                      <div style={{fontSize:11,color:'#6B7280'}}>{d}</div>
                     </div>
                   ))}
                 </div>
@@ -203,7 +203,7 @@ export function PricelistView() {
 
               {/* Diagnóstico de PDF */}
               <div style={{marginTop:12,padding:12,background:'#F9FAFB',borderRadius:10,border:'1px dashed #252526'}}>
-                <div style={{fontSize:11,color:'#555',marginBottom:6}}>¿El PDF no se reconoce? Diagnosticalo antes de importar:</div>
+                <div style={{fontSize:11,color:'#6B7280',marginBottom:6}}>¿El PDF no se reconoce? Diagnosticalo antes de importar:</div>
                 <label style={{...S.btn2,padding:'6px 12px',fontSize:11,cursor:'pointer',display:'inline-block'}}>
                   {loading?'Analizando...':'🔍 Analizar PDF sin importar'}
                   <input type="file" accept=".pdf" style={{display:'none'}} onChange={e=>e.target.files[0]&&runDebug(e.target.files[0])}/>
@@ -212,7 +212,7 @@ export function PricelistView() {
                   <div style={{marginTop:10,fontSize:11}}>
                     <div><b>Formato detectado:</b> <span style={{color:debugResult.source_type?'#10B981':'#EF4444'}}>{debugResult.source_type||'No reconocido'}</span></div>
                     <div><b>Líneas:</b> {debugResult.num_lines} · <b>Chars:</b> {debugResult.num_chars}</div>
-                    <div style={{marginTop:6,color:'#555',fontWeight:600}}>Primeras 50 líneas extraídas:</div>
+                    <div style={{marginTop:6,color:'#6B7280',fontWeight:600}}>Primeras 50 líneas extraídas:</div>
                     <pre style={{background:'#070708',borderRadius:6,padding:8,maxHeight:200,overflowY:'auto',fontSize:10,color:'#888',marginTop:4,whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
                       {(debugResult.first_50_lines||[]).join('\n')}
                     </pre>
@@ -232,7 +232,7 @@ export function PricelistView() {
                     {SOURCE_LABELS[preview.source_type]||preview.source_type}
                     {preview.period && <span style={{color:'#F28100',marginLeft:10}}>Período: {preview.period}</span>}
                   </div>
-                  <div style={{fontSize:11,color:'#666'}}>{preview.filename}</div>
+                  <div style={{fontSize:11,color:'#6B7280'}}>{preview.filename}</div>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'flex-end'}}>
                 {newIndices.length > 0 && (
@@ -256,7 +256,7 @@ export function PricelistView() {
                   ].map(({l,v,c})=>(
                     <div key={l} style={{textAlign:'center',padding:'6px 12px',background:'#F9FAFB',borderRadius:8,border:'1px solid #E5E7EB'}}>
                       <div style={{fontSize:18,fontWeight:800,color:c}}>{v||0}</div>
-                      <div style={{fontSize:10,color:'#666'}}>{l}</div>
+                      <div style={{fontSize:10,color:'#6B7280'}}>{l}</div>
                     </div>
                   ))}
                 </div>
@@ -312,7 +312,7 @@ export function PricelistView() {
                           <td style={{padding:'6px 10px',fontWeight:600}}>{row.brand}</td>
                           <td style={{padding:'6px 10px',maxWidth:180}}>
                             <div style={{fontWeight:600}}>{row.model}</div>
-                            {row.code && <div style={{fontSize:10,color:'#555'}}>{row.code}</div>}
+                            {row.code && <div style={{fontSize:10,color:'#6B7280'}}>{row.code}</div>}
                           </td>
                           <td style={{padding:'6px 10px',color:'#888'}}>{row.category||row.segment||'—'}</td>
                           <td style={{padding:'6px 10px',color:'#888'}}>{row.cc||'—'}</td>
@@ -321,7 +321,7 @@ export function PricelistView() {
                           <td style={{padding:'6px 10px',fontWeight:600,color:'#3B82F6'}}>{fmtP(row.price_todo_medio)}</td>
                           <td style={{padding:'6px 10px',color:'#F59E0B'}}>{fmtP(row.bono_financiamiento)}</td>
                           <td style={{padding:'6px 10px',fontWeight:600,color:'#F28100'}}>{fmtP(row.price_financiamiento)}</td>
-                          <td style={{padding:'6px 10px',fontSize:10,color:'#666',maxWidth:160}}>{row.notes||row.dcto_30_dias||'—'}</td>
+                          <td style={{padding:'6px 10px',fontSize:10,color:'#6B7280',maxWidth:160}}>{row.notes||row.dcto_30_dias||'—'}</td>
                         </tr>
                       );
                     })}
@@ -348,7 +348,7 @@ export function PricelistView() {
                   <Ic.check size={28} color="#10B981"/>
                 </div>
                 <h3 style={{fontSize:16,fontWeight:700,margin:'0 0 4px'}}>Importación completada</h3>
-                <p style={{fontSize:12,color:'#666',margin:0}}>Período {result.period} · {SOURCE_LABELS[result.source_type]||result.source_type}</p>
+                <p style={{fontSize:12,color:'#6B7280',margin:0}}>Período {result.period} · {SOURCE_LABELS[result.source_type]||result.source_type}</p>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:24}}>
                 {[
@@ -360,7 +360,7 @@ export function PricelistView() {
                 ].map(({l,v,c})=>(
                   <div key={l} style={{textAlign:'center',padding:'12px 8px',background:'#F9FAFB',borderRadius:10,border:'1px solid #E5E7EB'}}>
                     <div style={{fontSize:24,fontWeight:800,color:c}}>{v}</div>
-                    <div style={{fontSize:11,color:'#666',marginTop:2}}>{l}</div>
+                    <div style={{fontSize:11,color:'#6B7280',marginTop:2}}>{l}</div>
                   </div>
                 ))}
               </div>
