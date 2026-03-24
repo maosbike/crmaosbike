@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
     const isVendedor = req.user.role === 'vendedor';
 
     // Build WHERE clauses
-    const conditions = ['t.deleted_at IS NULL'];
+    const conditions = ['1=1'];
     const params = [];
     let idx = 1;
 
