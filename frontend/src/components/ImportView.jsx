@@ -89,8 +89,8 @@ export function ImportView() {
             <button key={t.k} onClick={()=>{setActiveTab(t.k);if(t.k==='logs')loadLogs();}}
               style={{...S.btn2,padding:'6px 14px',fontSize:12,
                 background:activeTab===t.k?'rgba(242,129,0,0.1)':'transparent',
-                color:activeTab===t.k?'#F28100':'#A3A3A3',
-                border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #262626'}}>
+                color:activeTab===t.k?'#F28100':'#6B7280',
+                border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
               {t.l}
             </button>
           ))}
@@ -106,10 +106,10 @@ export function ImportView() {
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr>{['Fecha','Archivo','Importado por','Total','Importados','Errores','Dups.','Sin vendedor'].map(h=>(
-                  <th key={h} style={{textAlign:'left',padding:'6px 10px',borderBottom:'1px solid #1E1E1F',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                  <th key={h} style={{textAlign:'left',padding:'6px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                 ))}</tr></thead>
                 <tbody>{logs.map(l=>(
-                  <tr key={l.id} style={{borderBottom:'1px solid #111112'}}>
+                  <tr key={l.id} style={{borderBottom:'1px solid #FFFFFF'}}>
                     <td style={{padding:'7px 10px',color:'#888'}}>{fDT(l.created_at)}</td>
                     <td style={{padding:'7px 10px'}}>{l.filename}</td>
                     <td style={{padding:'7px 10px'}}>{l.first_name} {l.last_name}</td>
@@ -133,9 +133,9 @@ export function ImportView() {
               <div
                 onDragOver={e=>{e.preventDefault();setDragOver(true);}}
                 onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
-                style={{...S.card,border:`2px dashed ${dragOver?'#F28100':'#262626'}`,textAlign:'center',
+                style={{...S.card,border:`2px dashed ${dragOver?'#F28100':'#D1D5DB'}`,textAlign:'center',
                   padding:'48px 24px',cursor:'pointer',transition:'border 0.2s',
-                  background:dragOver?'rgba(242,129,0,0.04)':'#111112'}}
+                  background:dragOver?'rgba(242,129,0,0.04)':'#FFFFFF'}}
                 onClick={()=>document.getElementById('imp-file-input').click()}
               >
                 <Ic.dl size={36} color={dragOver?'#F28100':'#333'}/>
@@ -164,7 +164,7 @@ export function ImportView() {
                 <div style={{overflowX:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                     <thead><tr>{['Columna','Obligatoria','Descripción'].map(h=>(
-                      <th key={h} style={{textAlign:'left',padding:'5px 10px',borderBottom:'1px solid #1E1E1F',color:'#6B6B6B',fontWeight:600}}>{h}</th>
+                      <th key={h} style={{textAlign:'left',padding:'5px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B6B6B',fontWeight:600}}>{h}</th>
                     ))}</tr></thead>
                     <tbody>{[
                       ['nombre',    'Sí',  'Nombre del prospecto'],
@@ -178,7 +178,7 @@ export function ImportView() {
                       ['comuna',    'No',  'Ciudad o comuna'],
                       ['color_pref','No',  'Color de moto preferido'],
                     ].map(([col,req,desc])=>(
-                      <tr key={col} style={{borderBottom:'1px solid #111112'}}>
+                      <tr key={col} style={{borderBottom:'1px solid #FFFFFF'}}>
                         <td style={{padding:'5px 10px',fontFamily:'monospace',color:'#F28100'}}>{col}</td>
                         <td style={{padding:'5px 10px',color:req.includes('Sí')?'#10B981':'#555',fontWeight:req.includes('Sí')?600:400}}>{req}</td>
                         <td style={{padding:'5px 10px',color:'#777'}}>{desc}</td>
@@ -194,7 +194,7 @@ export function ImportView() {
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:10}}>
                 {[
-                  {l:'Total',        v:preview.summary.total,    c:'#FAFAFA'},
+                  {l:'Total',        v:preview.summary.total,    c:'#1a1a1a'},
                   {l:'Válidos',      v:preview.summary.valid,    c:'#10B981'},
                   {l:'Errores',      v:preview.summary.errors,   c:'#EF4444'},
                   {l:'Dup. archivo', v:preview.summary.dup_file, c:'#F59E0B'},
@@ -229,7 +229,7 @@ export function ImportView() {
                     style={{...S.btn2,padding:'5px 12px',fontSize:11,
                       background:filter===t.k?'rgba(242,129,0,0.1)':'transparent',
                       color:filter===t.k?'#F28100':'#888',
-                      border:filter===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #262626'}}>
+                      border:filter===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
                     {t.l}
                   </button>
                 ))}
@@ -238,9 +238,9 @@ export function ImportView() {
               <div style={S.card}>
                 <div style={{overflowX:'auto',maxHeight:400,overflowY:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,minWidth:720}}>
-                    <thead style={{position:'sticky',top:0,background:'#111112',zIndex:1}}>
+                    <thead style={{position:'sticky',top:0,background:'#FFFFFF',zIndex:1}}>
                       <tr>{['Fila','Estado','Nombre','Teléfono','Email','Sucursal','Moto','Observaciones'].map(h=>(
-                        <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #1E1E1F',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                        <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                       ))}</tr>
                     </thead>
                     <tbody>
@@ -248,7 +248,7 @@ export function ImportView() {
                         const sc=STATUS_CFG[r.status]||STATUS_CFG.error;
                         const obs=[...(r.errors||[]),r.dup_reason].filter(Boolean).join(' · ');
                         return(
-                          <tr key={i} style={{borderBottom:'1px solid #0E0E0F',background:i%2?'transparent':'rgba(255,255,255,0.01)'}}>
+                          <tr key={i} style={{borderBottom:'1px solid #F9FAFB',background:i%2?'transparent':'rgba(255,255,255,0.01)'}}>
                             <td style={{padding:'6px 10px',color:'#555'}}>{r._row}</td>
                             <td style={{padding:'6px 10px'}}>
                               <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:12,fontSize:10,fontWeight:600,color:sc.c,background:sc.bg,whiteSpace:'nowrap'}}>{sc.l}</span>

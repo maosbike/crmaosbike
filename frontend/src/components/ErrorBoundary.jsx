@@ -17,7 +17,7 @@ export class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0A0A0B',color:'#FAFAFA',fontFamily:"'Montserrat',system-ui,sans-serif",gap:16}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',background:'#F5F5F7',color:'#1a1a1a',fontFamily:"'Inter',system-ui,sans-serif",gap:16}}>
           <div style={{width:52,height:52,borderRadius:14,background:'rgba(239,68,68,0.15)',display:'flex',alignItems:'center',justifyContent:'center'}}>
             <span style={{fontSize:24}}>⚠</span>
           </div>

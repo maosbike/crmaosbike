@@ -87,13 +87,13 @@ export const Ic={
 
 // Styles
 export const S={
-  card:{background:"#111112",border:"1px solid #1E1E1F",borderRadius:12,padding:16},
-  inp:{background:"#0E0E0F",border:"1px solid #262626",borderRadius:8,padding:"8px 12px",color:"#FAFAFA",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"},
+  card:{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,padding:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"},
+  inp:{background:"#F9FAFB",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 12px",color:"#1a1a1a",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"},
   btn:{background:"#F28100",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
-  btn2:{background:"#1A1A1B",color:"#FAFAFA",border:"1px solid #262626",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
-  btnSec:{background:"#1A1A1B",color:"#FAFAFA",border:"1px solid #262626",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
+  btn2:{background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
+  btnSec:{background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   gh:{background:"transparent",border:"none",cursor:"pointer",borderRadius:8,fontFamily:"inherit"},
-  lbl:{display:"block",fontSize:11,color:"#6B6B6B",marginBottom:4,fontWeight:500},
+  lbl:{display:"block",fontSize:11,color:"#6B7280",marginBottom:4,fontWeight:500},
 };
 
 // Shared components
@@ -108,8 +108,8 @@ export const Stat=({icon:Ico,ic,ib,label,val,sub,sc,al})=>(
   </div>
 );
 export const Modal=({onClose,title,children,wide})=>(
-  <div onClick={onClose} className="crm-modal-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:16}}>
-    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:"#151516",border:"1px solid #262626",borderRadius:16,padding:24,width:"100%",maxWidth:wide?750:480,maxHeight:"90vh",overflow:"auto"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}><h2 style={{fontSize:16,fontWeight:700,margin:0}}>{title}</h2><button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18}/></button></div>{children}</div>
+  <div onClick={onClose} className="crm-modal-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:16}}>
+    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:16,padding:24,width:"100%",maxWidth:wide?750:480,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}><h2 style={{fontSize:16,fontWeight:700,margin:0}}>{title}</h2><button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18}/></button></div>{children}</div>
   </div>
 );
 export const Field=({label,value,onChange,type="text",ph,req,opts,rows,disabled})=>{

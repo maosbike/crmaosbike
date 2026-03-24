@@ -127,8 +127,8 @@ export function PricelistView() {
             <button key={t.k} onClick={()=>{setActiveTab(t.k);if(t.k==='logs'){setLogs(null);loadLogs();}}}
               style={{...S.btn2,padding:'7px 16px',fontSize:12,
                 background:activeTab===t.k?'rgba(242,129,0,0.1)':'',
-                color:activeTab===t.k?'#F28100':'#A3A3A3',
-                border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #262626'}}>
+                color:activeTab===t.k?'#F28100':'#6B7280',
+                border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
               {t.l}
             </button>
           ))}
@@ -142,8 +142,8 @@ export function PricelistView() {
           : !logs?.length ? <p style={{color:'#555',fontSize:13}}>Sin importaciones registradas.</p>
           : <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-                <thead><tr style={{borderBottom:'1px solid #1E1E1F'}}>{['Fecha','Archivo','Período','Formato','Total','Importados','Actualizados','Nuevos Modelos','Errores','Por'].map(h=><th key={h} style={{textAlign:'left',padding:'8px 10px',fontSize:10,fontWeight:600,color:'#6B6B6B',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
-                <tbody>{logs.map((l,i)=><tr key={i} style={{borderBottom:'1px solid #1A1A1B'}}>
+                <thead><tr style={{borderBottom:'1px solid #E5E7EB'}}>{['Fecha','Archivo','Período','Formato','Total','Importados','Actualizados','Nuevos Modelos','Errores','Por'].map(h=><th key={h} style={{textAlign:'left',padding:'8px 10px',fontSize:10,fontWeight:600,color:'#6B6B6B',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead>
+                <tbody>{logs.map((l,i)=><tr key={i} style={{borderBottom:'1px solid #F3F4F6'}}>
                   <td style={{padding:'8px 10px',color:'#888',whiteSpace:'nowrap'}}>{new Date(l.created_at).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
                   <td style={{padding:'8px 10px',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={l.filename}>{l.filename}</td>
                   <td style={{padding:'8px 10px',fontWeight:600,color:'#F28100'}}>{l.period}</td>
@@ -170,7 +170,7 @@ export function PricelistView() {
                 onDragOver={e=>{e.preventDefault();setDragOver(true);}}
                 onDragLeave={()=>setDragOver(false)}
                 onDrop={handleDrop}
-                style={{border:`2px dashed ${dragOver?'#F28100':'#262626'}`,borderRadius:12,padding:'48px 24px',textAlign:'center',background:dragOver?'rgba(242,129,0,0.04)':'#0E0E0F',transition:'all 0.2s',cursor:'pointer'}}
+                style={{border:`2px dashed ${dragOver?'#F28100':'#D1D5DB'}`,borderRadius:12,padding:'48px 24px',textAlign:'center',background:dragOver?'rgba(242,129,0,0.04)':'#F9FAFB',transition:'all 0.2s',cursor:'pointer'}}
                 onClick={()=>document.getElementById('pl-pdf-input').click()}
               >
                 <div style={{width:52,height:52,borderRadius:14,background:'rgba(242,129,0,0.1)',display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:14}}>
@@ -184,8 +184,8 @@ export function PricelistView() {
                   onChange={e=>e.target.files[0]&&processFile(e.target.files[0])}/>
               </div>
 
-              <div style={{marginTop:16,padding:14,background:'#0E0E0F',borderRadius:10,fontSize:12,color:'#888'}}>
-                <div style={{fontWeight:600,color:'#FAFAFA',marginBottom:8}}>Formatos soportados</div>
+              <div style={{marginTop:16,padding:14,background:'#F9FAFB',borderRadius:10,fontSize:12,color:'#888'}}>
+                <div style={{fontWeight:600,color:'#1a1a1a',marginBottom:8}}>Formatos soportados</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
                   {[
                     ['Honda','Código · Categoría · Precio · Bono TMP · Bono Autofin'],
@@ -193,7 +193,7 @@ export function PricelistView() {
                     ['MMB (Keeway/Benelli/Benda/QJ)','Marca · Precio · Bono · Dcto 30/60 días'],
                     ['Promobility (Suzuki/Cyclone/KYMCO/RE)','Marca · Segmento · Año · Precio · Bono'],
                   ].map(([n,d])=>(
-                    <div key={n} style={{padding:'8px 10px',background:'#151516',borderRadius:8,border:'1px solid #1E1E1F'}}>
+                    <div key={n} style={{padding:'8px 10px',background:'#FFFFFF',borderRadius:8,border:'1px solid #E5E7EB'}}>
                       <div style={{fontWeight:600,color:'#F28100',marginBottom:2}}>{n}</div>
                       <div style={{fontSize:11,color:'#666'}}>{d}</div>
                     </div>
@@ -202,7 +202,7 @@ export function PricelistView() {
               </div>
 
               {/* Diagnóstico de PDF */}
-              <div style={{marginTop:12,padding:12,background:'#0E0E0F',borderRadius:10,border:'1px dashed #252526'}}>
+              <div style={{marginTop:12,padding:12,background:'#F9FAFB',borderRadius:10,border:'1px dashed #252526'}}>
                 <div style={{fontSize:11,color:'#555',marginBottom:6}}>¿El PDF no se reconoce? Diagnosticalo antes de importar:</div>
                 <label style={{...S.btn2,padding:'6px 12px',fontSize:11,cursor:'pointer',display:'inline-block'}}>
                   {loading?'Analizando...':'🔍 Analizar PDF sin importar'}
@@ -247,14 +247,14 @@ export function PricelistView() {
                 )}
                 <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
                   {[
-                    {l:'Total',    v:summary.total,     c:'#FAFAFA'},
+                    {l:'Total',    v:summary.total,     c:'#1a1a1a'},
                     {l:'Coincide', v:summary.match,     c:'#10B981'},
                     {l:'Actualiza',v:summary.update,    c:'#3B82F6'},
                     {l:'Fuzzy',    v:summary.fuzzy,     c:'#F59E0B'},
                     {l:'Ambiguo',  v:summary.ambiguous, c:'#F28100'},
                     {l:'Nuevo',    v:summary.new,       c:'#8B5CF6'},
                   ].map(({l,v,c})=>(
-                    <div key={l} style={{textAlign:'center',padding:'6px 12px',background:'#0E0E0F',borderRadius:8,border:'1px solid #1E1E1F'}}>
+                    <div key={l} style={{textAlign:'center',padding:'6px 12px',background:'#F9FAFB',borderRadius:8,border:'1px solid #E5E7EB'}}>
                       <div style={{fontSize:18,fontWeight:800,color:c}}>{v||0}</div>
                       <div style={{fontSize:10,color:'#666'}}>{l}</div>
                     </div>
@@ -267,7 +267,7 @@ export function PricelistView() {
               <div style={{...S.card,marginBottom:12,overflowX:'auto'}}>
                 <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                   <thead>
-                    <tr style={{borderBottom:'1px solid #1E1E1F'}}>
+                    <tr style={{borderBottom:'1px solid #E5E7EB'}}>
                       {['','Estado','Marca','Modelo','Cat.','cc','Precio lista','Bono','P. todo medio','Bono AF','P. AF','Notas'].map(h=>(
                         <th key={h} style={{textAlign:'left',padding:'8px 10px',fontSize:10,fontWeight:600,color:'#6B6B6B',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>
                       ))}
@@ -279,7 +279,7 @@ export function PricelistView() {
                       const skipped = ov.skip;
                       const cfg = STATUS_CFG[row.status] || STATUS_CFG.new;
                       return (
-                        <tr key={i} style={{borderBottom:'1px solid #1A1A1B',opacity:skipped?0.35:1}}>
+                        <tr key={i} style={{borderBottom:'1px solid #F3F4F6',opacity:skipped?0.35:1}}>
                           {/* Skip checkbox */}
                           <td style={{padding:'6px 10px'}}>
                             <input type="checkbox" checked={!!ov.skip}
@@ -358,7 +358,7 @@ export function PricelistView() {
                   {l:'Omitidos',      v:result.skipped,     c:'#6B7280'},
                   {l:'Errores',       v:result.errors?.length||0, c:'#EF4444'},
                 ].map(({l,v,c})=>(
-                  <div key={l} style={{textAlign:'center',padding:'12px 8px',background:'#0E0E0F',borderRadius:10,border:'1px solid #1E1E1F'}}>
+                  <div key={l} style={{textAlign:'center',padding:'12px 8px',background:'#F9FAFB',borderRadius:10,border:'1px solid #E5E7EB'}}>
                     <div style={{fontSize:24,fontWeight:800,color:c}}>{v}</div>
                     <div style={{fontSize:11,color:'#666',marginTop:2}}>{l}</div>
                   </div>

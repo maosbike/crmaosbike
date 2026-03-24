@@ -62,7 +62,7 @@ export function AdminView(){
           <h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Usuarios ({users.length})</h3>
           {loading&&<div style={{color:"#555",fontSize:12,padding:8}}>Cargando...</div>}
           {users.map(u=>(
-            <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid #1A1A1B"}}>
+            <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid #F3F4F6"}}>
               <div style={{width:26,height:26,borderRadius:"50%",background:"rgba(242,129,0,0.1)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:9,fontWeight:700,flexShrink:0}}>
                 {(u.first_name[0]+u.last_name[0]).toUpperCase()}
               </div>
@@ -71,14 +71,14 @@ export function AdminView(){
                 <div style={{fontSize:10,color:"#555"}}>{u.username||u.email}</div>
               </div>
               <Bdg l={u.role.replace(/_/g," ")} c={ROLE_C[u.role]||"#6B7280"}/>
-              <button onClick={()=>handleReset(u)} style={{...S.gh,fontSize:10,color:"#555",padding:"3px 7px",border:"1px solid #262626",borderRadius:6}} title="Reset contraseña"><Ic.lock size={12}/></button>
+              <button onClick={()=>handleReset(u)} style={{...S.gh,fontSize:10,color:"#555",padding:"3px 7px",border:"1px solid #D1D5DB",borderRadius:6}} title="Reset contraseña"><Ic.lock size={12}/></button>
             </div>
           ))}
         </div>
         <div style={S.card}>
           <h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Sucursales</h3>
           {branches.map(b=>(
-            <div key={b.id} style={{background:"#0E0E0F",borderRadius:10,padding:12,marginBottom:8}}>
+            <div key={b.id} style={{background:"#F9FAFB",borderRadius:10,padding:12,marginBottom:8}}>
               <div style={{fontWeight:700,marginBottom:4}}>{b.name}</div>
               <div style={{fontSize:11,color:"#555"}}>{b.address||b.addr}</div>
               <div style={{fontSize:11,color:"#555",marginTop:4}}>Código: {b.code} · Vendedores: {users.filter(u=>u.branch_id===b.id&&u.role==="vendedor").length}</div>
@@ -111,7 +111,7 @@ export function AdminView(){
             <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(16,185,129,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><Ic.check size={24} color="#10B981"/></div>
             <p style={{fontWeight:600,marginBottom:4}}>{resetInfo.name}</p>
             <p style={{color:"#6B6B6B",fontSize:12,marginBottom:12}}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
-            <div style={{background:"#0E0E0F",borderRadius:10,padding:"14px 20px",marginBottom:16,fontFamily:"monospace",fontSize:18,fontWeight:700,letterSpacing:2,color:"#F28100"}}>{resetInfo.temp}</div>
+            <div style={{background:"#F9FAFB",borderRadius:10,padding:"14px 20px",marginBottom:16,fontFamily:"monospace",fontSize:18,fontWeight:700,letterSpacing:2,color:"#F28100"}}>{resetInfo.temp}</div>
             <p style={{color:"#555",fontSize:11,marginBottom:16}}>Comparte esta contraseña con el usuario de forma segura.</p>
             <button onClick={()=>setResetInfo(null)} style={S.btn}>Cerrar</button>
           </div>

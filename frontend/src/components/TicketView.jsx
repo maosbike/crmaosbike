@@ -87,7 +87,7 @@ export function TicketView({lead,user,nav,updLead}){
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 12px",color:"#F28100"}}>Producto Cotizado</h3>
           {m?(<>
             <div style={{display:"flex",gap:14}}>
-              <div style={{width:100,height:80,borderRadius:8,background:"#1A1A1B",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#555"}}>📷 {m.brand}</div>
+              <div style={{width:100,height:80,borderRadius:8,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#555"}}>📷 {m.brand}</div>
               <div><div style={{fontSize:16,fontWeight:700}}>{m.brand} {m.model}</div><div style={{fontSize:12,color:"#888",marginTop:2}}>{m.year} · {m.cc}cc · {m.cat}</div><div style={{marginTop:6}}><span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>Desde {fmt(m.price-m.bonus)}</span></div><div style={{fontSize:11,color:"#888"}}>{fmt(m.price)} precio de lista</div></div>
             </div>
             <div style={{marginTop:10,display:"flex",gap:12,fontSize:11,color:"#888"}}>
@@ -97,7 +97,7 @@ export function TicketView({lead,user,nav,updLead}){
           </>):(<div style={{color:"#555",fontSize:12}}>Sin modelo seleccionado</div>)}
           <div style={{marginTop:10}}><label style={S.lbl}>Cambiar modelo</label><select value={lead.motoId||""} onChange={e=>upd("motoId",e.target.value)} style={{...S.inp,width:"100%",fontSize:11}}><option value="">Seleccionar...</option>{realModels.map(m=><option key={m.id} value={m.id}>{m.brand} {m.model}{m.price?` - ${fmt(m.price)}`:''}</option>)}</select></div>
           {/* SUCURSAL */}
-          <div style={{marginTop:12,padding:10,background:"#0E0E0F",borderRadius:8}}>
+          <div style={{marginTop:12,padding:10,background:"#F9FAFB",borderRadius:8}}>
             <div style={{fontWeight:600,fontSize:12}}>MAOS RACING {br?.name.toUpperCase()}</div>
             <div style={{fontSize:10,color:"#666",marginTop:2}}>{br?.addr}</div>
           </div>
@@ -107,7 +107,7 @@ export function TicketView({lead,user,nav,updLead}){
         <div style={S.card}>
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 12px"}}>Registrar Contacto</h3>
           <form onSubmit={submitContact}>
-            <div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>{["whatsapp","llamada","email","presencial","sms"].map(mt=><button key={mt} type="button" onClick={()=>setContactForm({...contactForm,method:mt})} style={{...S.btn2,padding:"5px 10px",fontSize:11,background:contactForm.method===mt?"#F28100":"transparent",color:contactForm.method===mt?"#fff":"#888",border:contactForm.method===mt?"none":"1px solid #262626"}}>{mt.charAt(0).toUpperCase()+mt.slice(1)}</button>)}</div>
+            <div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>{["whatsapp","llamada","email","presencial","sms"].map(mt=><button key={mt} type="button" onClick={()=>setContactForm({...contactForm,method:mt})} style={{...S.btn2,padding:"5px 10px",fontSize:11,background:contactForm.method===mt?"#F28100":"transparent",color:contactForm.method===mt?"#fff":"#888",border:contactForm.method===mt?"none":"1px solid #D1D5DB"}}>{mt.charAt(0).toUpperCase()+mt.slice(1)}</button>)}</div>
             <div style={{marginBottom:8}}><label style={S.lbl}>Resultado</label><select value={contactForm.result} onChange={e=>setContactForm({...contactForm,result:e.target.value})} style={{...S.inp,width:"100%"}} required><option value="">Seleccionar resultado...</option><option value="Contactado">Contactado</option><option value="No contesta">No contesta</option><option value="Buzón de voz">Buzón de voz</option><option value="Número equivocado">Número equivocado</option><option value="Interesado">Interesado</option><option value="Agendó visita">Agendó visita</option><option value="Cotización entregada">Cotización entregada</option><option value="Envió documentos">Envió documentos</option><option value="No interesado">No interesado</option></select></div>
             <div style={{marginBottom:10}}><label style={S.lbl}>Nota / Comentario</label><textarea value={contactForm.note} onChange={e=>setContactForm({...contactForm,note:e.target.value})} rows={3} style={{...S.inp,width:"100%",resize:"vertical"}} placeholder="Ej: Cliente aún no tiene el pie, volver a llamar en 1 semana..."/></div>
             <button type="submit" style={{...S.btn,width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Ic.send size={13}/>Registrar Contacto</button>
@@ -122,7 +122,7 @@ export function TicketView({lead,user,nav,updLead}){
       </div>
 
       {/* TABS */}
-      <div className="crm-tabs" style={{display:"flex",gap:1,borderBottom:"1px solid #1E1E1F",marginBottom:14}}>{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 16px",fontSize:12,fontWeight:500,background:"none",border:"none",cursor:"pointer",color:tab===t.id?"#F28100":"#555",borderBottom:tab===t.id?"2px solid #F28100":"2px solid transparent",fontFamily:"inherit"}}>{t.l}</button>)}</div>
+      <div className="crm-tabs" style={{display:"flex",gap:1,borderBottom:"1px solid #E5E7EB",marginBottom:14}}>{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 16px",fontSize:12,fontWeight:500,background:"none",border:"none",cursor:"pointer",color:tab===t.id?"#F28100":"#555",borderBottom:tab===t.id?"2px solid #F28100":"2px solid transparent",fontFamily:"inherit"}}>{t.l}</button>)}</div>
 
       {/* TAB CONTENT */}
       {tab==="datos"&&(
@@ -159,7 +159,7 @@ export function TicketView({lead,user,nav,updLead}){
         <div style={S.card}>
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Timeline de Gestión</h3>
           {/* Agregar nota */}
-          <form onSubmit={submitNote} style={{marginBottom:16,padding:12,background:"#0E0E0F",borderRadius:10,border:"1px solid #1E1E1F"}}>
+          <form onSubmit={submitNote} style={{marginBottom:16,padding:12,background:"#F9FAFB",borderRadius:10,border:"1px solid #E5E7EB"}}>
             <label style={{...S.lbl,marginBottom:6}}>Agregar nota <span style={{color:"#555",fontWeight:400}}>(mín. 20 caracteres para contar como gestión SLA)</span></label>
             <textarea value={noteForm} onChange={e=>{setNoteForm(e.target.value);if(noteErr)setNoteErr("");}} rows={3} style={{...S.inp,width:"100%",resize:"vertical",marginBottom:6}} placeholder="Ej: Llamé al cliente, dice que está evaluando otras opciones, volver en 3 días..."/>
             {noteErr&&<div style={{fontSize:11,color:"#EF4444",marginBottom:6}}>{noteErr}</div>}
@@ -170,19 +170,19 @@ export function TicketView({lead,user,nav,updLead}){
           </form>
           {/* Lista */}
           <div style={{position:"relative",paddingLeft:20}}>
-            <div style={{position:"absolute",left:7,top:0,bottom:0,width:2,background:"#1E1E1F"}}/>
+            <div style={{position:"absolute",left:7,top:0,bottom:0,width:2,background:"#E5E7EB"}}/>
             {(lead.timeline||[]).map((t,i)=>{
               const dotColor=t.type==="contact_registered"||t.type==="contact"?"#3B82F6":t.type==="note_added"?"#10B981":t.type==="status"?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#333";
               const userName=t.user||(t.user_fn?`${t.user_fn} ${t.user_ln}`:"Sistema");
               return(
               <div key={t.id||i} style={{position:"relative",paddingBottom:16,paddingLeft:16}}>
-                <div style={{position:"absolute",left:-2,top:4,width:12,height:12,borderRadius:"50%",background:dotColor,border:"2px solid #0A0A0B"}}/>
-                <div style={{background:"#0E0E0F",borderRadius:10,padding:12}}>
+                <div style={{position:"absolute",left:-2,top:4,width:12,height:12,borderRadius:"50%",background:dotColor,border:"2px solid #F5F5F7"}}/>
+                <div style={{background:"#F9FAFB",borderRadius:10,padding:12}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:13,fontWeight:600}}>{t.title}</span>
                     <span style={{fontSize:10,color:"#555"}}>{fDT(t.date||t.created_at)}</span>
                   </div>
-                  {t.note&&<div style={{fontSize:12,color:"#A3A3A3",marginTop:4,lineHeight:1.4}}>{t.note}</div>}
+                  {t.note&&<div style={{fontSize:12,color:"#6B7280",marginTop:4,lineHeight:1.4}}>{t.note}</div>}
                   <div style={{fontSize:10,color:"#555",marginTop:4}}>{userName}{t.method?` · vía ${t.method}`:""}</div>
                 </div>
               </div>
@@ -194,7 +194,7 @@ export function TicketView({lead,user,nav,updLead}){
       {tab==="financiamiento"&&(
         <div style={S.card}>
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Evaluación Financiamiento</h3>
-          <div style={{display:"flex",gap:6,marginBottom:14}}>{["Autofin"].map(inst=><button key={inst} style={{...S.btn2,padding:"6px 16px",fontSize:12,background:lead.finInst===inst?"rgba(242,129,0,0.15)":"transparent",color:lead.finInst===inst?"#F28100":"#888",border:lead.finInst===inst?"1px solid #F28100":"1px solid #262626"}}>{inst}</button>)}</div>
+          <div style={{display:"flex",gap:6,marginBottom:14}}>{["Autofin"].map(inst=><button key={inst} style={{...S.btn2,padding:"6px 16px",fontSize:12,background:lead.finInst===inst?"rgba(242,129,0,0.15)":"transparent",color:lead.finInst===inst?"#F28100":"#888",border:lead.finInst===inst?"1px solid #F28100":"1px solid #D1D5DB"}}>{inst}</button>)}</div>
           <div className="grid-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
             <div><label style={S.lbl}>Estado</label><select value={lead.finStatus} onChange={e=>upd("finStatus",e.target.value)} style={{...S.inp,width:"100%"}}>{Object.entries(FIN_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></div>
             <div><label style={S.lbl}>Motivo Rechazo</label><select value={lead.rechazoMotivo||""} onChange={e=>upd("rechazoMotivo",e.target.value)} style={{...S.inp,width:"100%"}} disabled={lead.finStatus!=="rechazado"}><option value="">Seleccionar...</option>{RECHAZO_MOTIVOS.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
@@ -216,9 +216,9 @@ export function TicketView({lead,user,nav,updLead}){
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Documentación / Entrega</h3>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             {[["factura","Factura emitida"],["pagoReg","Pago registrado"],["homSol","Homologación solicitada"],["homRec","Homologación recibida"],["enrolada","Moto enrolada"],["entregada","Entrega realizada"]].map(([key,label])=>(
-              <div key={key} onClick={()=>togglePV(key)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"#0E0E0F",cursor:"pointer",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#1A1A1B"} onMouseLeave={e=>e.currentTarget.style.background="#0E0E0F"}>
+              <div key={key} onClick={()=>togglePV(key)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"#F9FAFB",cursor:"pointer",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="#F9FAFB"}>
                 <div style={{width:22,height:22,borderRadius:6,border:lead.postVenta[key]?"none":"2px solid #333",background:lead.postVenta[key]?"#10B981":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{lead.postVenta[key]&&<Ic.check size={13} color="white"/>}</div>
-                <span style={{fontSize:13,color:lead.postVenta[key]?"#FAFAFA":"#888"}}>{label}</span>
+                <span style={{fontSize:13,color:lead.postVenta[key]?"#1a1a1a":"#888"}}>{label}</span>
               </div>
             ))}
           </div>

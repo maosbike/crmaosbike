@@ -30,14 +30,14 @@ export function RemindersTab({ticketId,user}){
         <span style={{fontWeight:600,fontSize:13}}>Recordatorios del lead</span>
         <button onClick={()=>setShowNew(true)} style={{...S.btn,fontSize:12,display:"flex",alignItems:"center",gap:5}}><Ic.plus size={13}/>Nuevo</button>
       </div>
-      {reminders.length===0&&<div style={{padding:24,textAlign:"center",color:"#555",fontSize:12,background:"#0E0E0F",borderRadius:10}}>Sin recordatorios. Crea uno para hacer seguimiento.</div>}
+      {reminders.length===0&&<div style={{padding:24,textAlign:"center",color:"#555",fontSize:12,background:"#F9FAFB",borderRadius:10}}>Sin recordatorios. Crea uno para hacer seguimiento.</div>}
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {reminders.map(r=>(
-          <div key={r.id} style={{background:"#0E0E0F",borderRadius:10,padding:12,border:`1px solid ${r.status==="overdue"?"rgba(239,68,68,0.3)":r.status==="completed"?"rgba(16,185,129,0.2)":"#1E1E1F"}`}}>
+          <div key={r.id} style={{background:"#F9FAFB",borderRadius:10,padding:12,border:`1px solid ${r.status==="overdue"?"rgba(239,68,68,0.3)":r.status==="completed"?"rgba(16,185,129,0.2)":"#E5E7EB"}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                  <span style={{fontWeight:600,fontSize:13,textDecoration:r.status==="completed"?"line-through":"none",color:r.status==="completed"?"#555":"#FAFAFA"}}>{r.title}</span>
+                  <span style={{fontWeight:600,fontSize:13,textDecoration:r.status==="completed"?"line-through":"none",color:r.status==="completed"?"#555":"#1a1a1a"}}>{r.title}</span>
                   <Bdg l={ST_L[r.status]||r.status} c={ST_C[r.status]||"#6B7280"}/>
                 </div>
                 <div style={{fontSize:11,color:"#888",display:"flex",gap:12,flexWrap:"wrap"}}>

@@ -49,7 +49,7 @@ export function CalendarView({user,nav}){
         <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#888"}}><div style={{width:10,height:10,borderRadius:2,background:"#EF4444"}}/> Vencimiento SLA</div>
       </div>
       <div style={{...S.card,padding:0,overflow:"hidden",marginBottom:14}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1px solid #1E1E1F"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1px solid #E5E7EB"}}>
           {DIAS.map(d=><div key={d} style={{padding:"9px 4px",textAlign:"center",fontSize:10,fontWeight:600,color:"#555",textTransform:"uppercase"}}>{d}</div>)}
         </div>
         {loading
@@ -59,7 +59,7 @@ export function CalendarView({user,nav}){
               const evs=eventsForDay(day);
               const isToday=day&&today.getDate()===day&&today.getMonth()===mo&&today.getFullYear()===yr;
               return(
-                <div key={i} style={{minHeight:88,padding:5,borderRight:"1px solid #1A1A1B",borderBottom:"1px solid #1A1A1B",background:isToday?"rgba(242,129,0,0.04)":"transparent"}}>
+                <div key={i} style={{minHeight:88,padding:5,borderRight:"1px solid #F3F4F6",borderBottom:"1px solid #F3F4F6",background:isToday?"rgba(242,129,0,0.04)":"transparent"}}>
                   {day&&<div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?"#F28100":"#888",width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:isToday?"rgba(242,129,0,0.15)":"transparent",marginBottom:3}}>{day}</div>}
                   {evs.slice(0,3).map((ev,ei)=>(
                     <div key={ei} onClick={()=>ev.ticket_id&&nav("ticket",String(ev.ticket_id))} title={ev.title} style={{fontSize:9,padding:"2px 5px",borderRadius:3,background:`${TYPE_C[ev.type]||"#F28100"}22`,color:TYPE_C[ev.type]||"#F28100",marginBottom:2,cursor:ev.ticket_id?"pointer":"default",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>{ev.title}</div>
@@ -76,7 +76,7 @@ export function CalendarView({user,nav}){
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 12px"}}>Próximos eventos</h3>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {upcoming.map((ev,i)=>(
-              <div key={i} onClick={()=>ev.ticket_id&&nav("ticket",String(ev.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,background:"#0E0E0F",cursor:ev.ticket_id?"pointer":"default"}} onMouseEnter={e=>ev.ticket_id&&(e.currentTarget.style.background="#1A1A1B")} onMouseLeave={e=>(e.currentTarget.style.background="#0E0E0F")}>
+              <div key={i} onClick={()=>ev.ticket_id&&nav("ticket",String(ev.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,background:"#F9FAFB",cursor:ev.ticket_id?"pointer":"default"}} onMouseEnter={e=>ev.ticket_id&&(e.currentTarget.style.background="#F3F4F6")} onMouseLeave={e=>(e.currentTarget.style.background="#F9FAFB")}>
                 <div style={{width:4,height:32,borderRadius:2,background:TYPE_C[ev.type]||"#F28100",flexShrink:0}}/>
                 <div style={{flex:1}}>
                   <div style={{fontSize:12,fontWeight:600}}>{ev.title}</div>

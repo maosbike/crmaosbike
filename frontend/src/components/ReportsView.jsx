@@ -5,13 +5,13 @@ import { S, TICKET_STATUS, FIN_STATUS, fmt } from '../ui.jsx';
 const TABS = ['General','Marca','Modelo','Sucursal','Vendedor','Financiamiento','Color','Estado','Tiempo'];
 
 const card = { ...S.card, padding: 16 };
-const kpiBox = { background:'#0E0E0F', borderRadius:10, padding:'14px 16px', textAlign:'center', minWidth:120, flex:1 };
+const kpiBox = { background:'#F9FAFB', borderRadius:10, padding:'14px 16px', textAlign:'center', minWidth:120, flex:1, border:'1px solid #E5E7EB' };
 const kpiVal = { fontSize:26, fontWeight:800, lineHeight:1.1 };
-const kpiLbl = { fontSize:10, color:'#888', marginTop:4, textTransform:'uppercase' };
-const thS = { textAlign:'left', padding:'6px 8px', color:'#888', fontSize:10, textTransform:'uppercase', borderBottom:'1px solid #2A2A2B', whiteSpace:'nowrap' };
-const tdS = { padding:'6px 8px', fontSize:12, borderBottom:'1px solid #1A1A1B' };
-const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'#F28100':'#333'), background:active?'#F28100':'transparent', color:active?'#000':'#ccc', fontSize:11, fontWeight:600, cursor:'pointer' });
-const selectS = { background:'#111', border:'1px solid #333', borderRadius:8, color:'#ccc', padding:'6px 10px', fontSize:11 };
+const kpiLbl = { fontSize:10, color:'#6B7280', marginTop:4, textTransform:'uppercase' };
+const thS = { textAlign:'left', padding:'6px 8px', color:'#6B7280', fontSize:10, textTransform:'uppercase', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' };
+const tdS = { padding:'6px 8px', fontSize:12, borderBottom:'1px solid #F3F4F6' };
+const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'#F28100':'#D1D5DB'), background:active?'#F28100':'#FFFFFF', color:active?'#FFF':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' });
+const selectS = { background:'#F9FAFB', border:'1px solid #D1D5DB', borderRadius:8, color:'#374151', padding:'6px 10px', fontSize:11 };
 const inputS = { ...selectS };
 
 const pct = (a,b) => b > 0 ? ((a/b)*100).toFixed(1)+'%' : '0%';
@@ -23,9 +23,9 @@ function Bar({ items, colorKey, maxVal }) {
   return <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
     {items.map((it, i) => <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
       <div style={{ width:100, fontSize:11, textAlign:'right', flexShrink:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.label}</div>
-      <div style={{ flex:1, background:'#1A1A1B', borderRadius:4, height:20, position:'relative', overflow:'hidden' }}>
+      <div style={{ flex:1, background:'#F3F4F6', borderRadius:4, height:20, position:'relative', overflow:'hidden' }}>
         <div style={{ width:`${(it.value/mx)*100}%`, height:'100%', background:colorKey||'#F28100', borderRadius:4, transition:'width .3s' }}/>
-        <span style={{ position:'absolute', right:6, top:2, fontSize:10, color:'#ccc' }}>{it.value}</span>
+        <span style={{ position:'absolute', right:6, top:2, fontSize:10, color:'#374151' }}>{it.value}</span>
       </div>
     </div>)}
   </div>;
@@ -42,8 +42,8 @@ function Sparkline({ data, width=320, height=60 }) {
   return <svg width={width} height={height+20} style={{ display:'block' }}>
     <polyline points={pts} fill="none" stroke="#F28100" strokeWidth="2"/>
     {vals.map((v,i) => <circle key={i} cx={(i/(vals.length-1))*width} cy={height - ((v-mn)/range)*height} r="2.5" fill="#F28100"/>)}
-    <text x="0" y={height+14} fill="#666" fontSize="9">{data[0]?.label}</text>
-    <text x={width} y={height+14} fill="#666" fontSize="9" textAnchor="end">{data[data.length-1]?.label}</text>
+    <text x="0" y={height+14} fill="#9CA3AF" fontSize="9">{data[0]?.label}</text>
+    <text x={width} y={height+14} fill="#9CA3AF" fontSize="9" textAnchor="end">{data[data.length-1]?.label}</text>
   </svg>;
 }
 
@@ -101,8 +101,8 @@ export function ReportsView({ branches = [] }) {
     loadData(nf);
   };
 
-  if (loading && !data) return <div style={{ padding:20, color:'#888' }}>Cargando reportes...</div>;
-  if (!data) return <div style={{ padding:20, color:'#888' }}>Error cargando reportes</div>;
+  if (loading && !data) return <div style={{ padding:20, color:'#6B7280' }}>Cargando reportes...</div>;
+  if (!data) return <div style={{ padding:20, color:'#6B7280' }}>Error cargando reportes</div>;
 
   const k = data.kpi;
 
@@ -111,7 +111,7 @@ export function ReportsView({ branches = [] }) {
 
     {/* ── Filtros ── */}
     <div style={{ ...card, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:12 }}>
-      <span style={{ fontSize:10, color:'#888', fontWeight:600 }}>FILTROS:</span>
+      <span style={{ fontSize:10, color:'#6B7280', fontWeight:600 }}>FILTROS:</span>
       <input type="date" value={filters.from} onChange={e=>applyFilter('from',e.target.value)} style={inputS} title="Desde"/>
       <input type="date" value={filters.to} onChange={e=>applyFilter('to',e.target.value)} style={inputS} title="Hasta"/>
       <select value={filters.branch_id} onChange={e=>applyFilter('branch_id',e.target.value)} style={selectS}>
@@ -215,7 +215,7 @@ function ModelTab({ data }) {
     <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Ranking por Modelo</h3>
     <RankTable rows={data.by_model} columns={[
       { key:'name', label:'Modelo', bold:true, medal:true },
-      { key:'brand', label:'Marca', color:'#888' },
+      { key:'brand', label:'Marca', color:'#6B7280' },
       { key:'total', label:'Leads' },
       { key:'ganados', label:'Ganados', color:'#10B981', bold:true },
       { key:'perdidos', label:'Perdidos', color:'#EF4444' },
@@ -248,7 +248,7 @@ function SellerTab({ data }) {
     <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Ranking Vendedores</h3>
     <RankTable rows={data.by_seller} columns={[
       { key:'name', label:'Vendedor', bold:true, medal:true, render: r => `${r.first_name||''} ${(r.last_name||'')[0]||''}.` },
-      { key:'branch_code', label:'Suc.', color:'#888' },
+      { key:'branch_code', label:'Suc.', color:'#6B7280' },
       { key:'total', label:'Asignados' },
       { key:'trabajados', label:'Trabajados' },
       { key:'ganados', label:'Ganados', color:'#10B981', bold:true },

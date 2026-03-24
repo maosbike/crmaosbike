@@ -145,7 +145,7 @@ export function StagingImportView() {
             </label>
           </div>
 
-          <div style={{ background: '#111113', border: '1px solid #1E1E1F', borderRadius: 10, padding: 14, fontSize: 12, color: '#555' }}>
+          <div style={{ background: '#111113', border: '1px solid #E5E7EB', borderRadius: 10, padding: 14, fontSize: 12, color: '#555' }}>
             El parser extrae automáticamente: <span style={{ color: '#aaa' }}>marca · modelo · categoría · precio lista · bono todo medio de pago</span>. Después podés revisar y corregir cada fila antes de publicar.
           </div>
         </div>
@@ -167,7 +167,7 @@ export function StagingImportView() {
                 { label: 'Con error', val: errorRows.length, c: '#EF4444' },
                 { label: 'Rechazados', val: rejectedRows.length, c: '#555' },
               ].map(({ label, val, c }) => (
-                <div key={label} style={{ background: '#111113', border: '1px solid #1E1E1F', borderRadius: 10, padding: '10px 16px', textAlign: 'center' }}>
+                <div key={label} style={{ background: '#111113', border: '1px solid #E5E7EB', borderRadius: 10, padding: '10px 16px', textAlign: 'center' }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: c }}>{val}</div>
                   <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase' }}>{label}</div>
                 </div>
@@ -182,10 +182,10 @@ export function StagingImportView() {
             </div>
 
             {/* Tabla */}
-            <div style={{ background: '#111113', border: '1px solid #1E1E1F', borderRadius: 12, overflow: 'auto' }}>
+            <div style={{ background: '#111113', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 700 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #1E1E1F' }}>
+                  <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
                     {['Estado','Marca','Modelo','Cat.','Precio lista','Bono','Match','Acciones'].map(h => (
                       <th key={h} style={{ padding: '9px 10px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#6B6B6B', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
@@ -197,7 +197,7 @@ export function StagingImportView() {
                     const rejected = row.status === 'rejected';
                     const isEditing = editingRow === row.id;
                     return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #1A1A1B', opacity: rejected ? 0.4 : 1, background: isEditing ? '#16161A' : 'transparent' }}>
+                      <tr key={row.id} style={{ borderBottom: '1px solid #F3F4F6', opacity: rejected ? 0.4 : 1, background: isEditing ? '#16161A' : 'transparent' }}>
                         <td style={{ padding: '8px 10px' }}>
                           {rejected
                             ? <span style={{ fontSize: 10, color: '#555' }}>Rechazado</span>
@@ -264,7 +264,7 @@ export function StagingImportView() {
           {batches.length === 0
             ? <div style={{ padding: 40, textAlign: 'center', color: '#555', fontSize: 12 }}>Sin importaciones registradas</div>
             : batches.map(b => (
-              <div key={b.id} style={{ background: '#111113', border: '1px solid #1E1E1F', borderRadius: 10, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div key={b.id} style={{ background: '#111113', border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{b.filename}</div>
                   <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
@@ -274,7 +274,7 @@ export function StagingImportView() {
                     {b.rejected_rows > 0 && <span style={{ color: '#555' }}> · {b.rejected_rows} rechazados</span>}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: b.status === 'published' ? '#0D2B1A' : '#1A1A1B', color: b.status === 'published' ? '#10B981' : '#888', border: `1px solid ${b.status === 'published' ? '#10B98133' : '#252525'}` }}>
+                <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: b.status === 'published' ? '#0D2B1A' : '#F3F4F6', color: b.status === 'published' ? '#10B981' : '#888', border: `1px solid ${b.status === 'published' ? '#10B98133' : '#252525'}` }}>
                   {b.status === 'published' ? 'Publicado' : b.status === 'partial' ? 'Parcial' : 'Pendiente'}
                 </span>
                 {b.status !== 'published' && (

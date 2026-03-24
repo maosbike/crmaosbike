@@ -73,7 +73,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
     <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{background:"#111113",borderRadius:16,width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto",border:"1px solid #222"}}>
         {/* Header imagen */}
-        <div style={{position:"relative",height:200,background:"#0A0A0B",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{position:"relative",height:200,background:"#F5F5F7",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
           {m.image_url
             ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
             :<div style={{color:"#333",fontSize:48}}>🏍</div>
@@ -117,7 +117,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
             <div style={{marginBottom:14}}>
               <div style={{fontSize:10,color:"#555",textTransform:"uppercase",fontWeight:600,marginBottom:6}}>Colores disponibles</div>
               <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                {colors.map(c=><span key={c} style={{fontSize:11,padding:"4px 10px",borderRadius:12,background:"#1A1A1B",color:"#999",border:"1px solid #252526"}}>{c}</span>)}
+                {colors.map(c=><span key={c} style={{fontSize:11,padding:"4px 10px",borderRadius:12,background:"#F3F4F6",color:"#999",border:"1px solid #252526"}}>{c}</span>)}
               </div>
             </div>
           )}
@@ -198,7 +198,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
                 <div style={{fontSize:10,color:"#555",marginBottom:6}}>Colores</div>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
                   {form.colors.map(c=>(
-                    <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#1A1A1B",color:"#999",border:"1px solid #252526",display:"flex",alignItems:"center",gap:4}}>
+                    <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#F3F4F6",color:"#999",border:"1px solid #252526",display:"flex",alignItems:"center",gap:4}}>
                       {c}<button onClick={()=>removeColor(c)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",padding:0,fontSize:12,lineHeight:1}}>×</button>
                     </span>
                   ))}
@@ -262,7 +262,7 @@ function AddModelModal({onClose,onAdded}){
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{background:"#111113",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",border:"1px solid #222"}}>
-        <div style={{padding:"16px 20px",borderBottom:"1px solid #1E1E1F",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #E5E7EB",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{fontWeight:700,fontSize:15}}>Agregar moto al catálogo</div>
           <button onClick={onClose} style={{background:"none",border:"none",color:"#666",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
         </div>
@@ -320,7 +320,7 @@ function AddModelModal({onClose,onAdded}){
             <div style={{fontSize:10,color:"#555",marginBottom:6}}>Colores</div>
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
               {colors.map(c=>(
-                <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#1A1A1B",color:"#999",border:"1px solid #252526",display:"flex",alignItems:"center",gap:4}}>
+                <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#F3F4F6",color:"#999",border:"1px solid #252526",display:"flex",alignItems:"center",gap:4}}>
                   {c}<button type="button" onClick={()=>removeColor(c)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",padding:0,fontSize:12}}>×</button>
                 </span>
               ))}
@@ -422,12 +422,12 @@ export function CatalogView({user}){
               const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":null);
               return(
                 <div key={m.id} onClick={()=>setSelected(m)}
-                  style={{background:"#111113",border:"1px solid #1E1E1F",borderRadius:14,overflow:"hidden",cursor:"pointer",transition:"border-color 0.15s",position:"relative"}}
+                  style={{background:"#111113",border:"1px solid #E5E7EB",borderRadius:14,overflow:"hidden",cursor:"pointer",transition:"border-color 0.15s",position:"relative"}}
                   onMouseEnter={e=>e.currentTarget.style.borderColor="#F2810055"}
-                  onMouseLeave={e=>e.currentTarget.style.borderColor="#1E1E1F"}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor="#E5E7EB"}
                 >
                   {/* Imagen */}
-                  <div style={{height:130,background:"#0A0A0B",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+                  <div style={{height:130,background:"#F5F5F7",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
                     {m.image_url
                       ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                       :<span style={{fontSize:40,opacity:0.15}}>🏍</span>
@@ -448,7 +448,7 @@ export function CatalogView({user}){
 
                     {/* Precio */}
                     {m.price>0&&m.bonus<m.price&&(
-                      <div style={{marginTop:8,borderTop:"1px solid #1E1E1F",paddingTop:8}}>
+                      <div style={{marginTop:8,borderTop:"1px solid #E5E7EB",paddingTop:8}}>
                         <div style={{fontSize:16,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</div>
                         {m.bonus>0&&(
                           <div style={{fontSize:10,color:"#10B981",marginTop:1}}>
@@ -461,8 +461,8 @@ export function CatalogView({user}){
                     {/* Colores */}
                     {colors.length>0&&(
                       <div style={{display:"flex",gap:3,marginTop:8,flexWrap:"wrap"}}>
-                        {colors.slice(0,4).map(c=><span key={c} style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#1A1A1B",color:"#666"}}>{c}</span>)}
-                        {colors.length>4&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#1A1A1B",color:"#444"}}>+{colors.length-4}</span>}
+                        {colors.slice(0,4).map(c=><span key={c} style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#666"}}>{c}</span>)}
+                        {colors.length>4&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#444"}}>+{colors.length-4}</span>}
                       </div>
                     )}
                   </div>
