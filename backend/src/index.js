@@ -27,6 +27,7 @@ app.use('/api/reassignments', require('./routes/reassignments'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/reports', require('./routes/reports'));
 // app.use('/api/pricelist', require('./routes/pricelist')); // DESACTIVADO — reemplazado por priceimport
 app.use('/api/priceimport', require('./routes/priceimport'));
 

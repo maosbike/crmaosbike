@@ -133,6 +133,9 @@ export const api = {
   // Dashboard comercial
   getCommercialStats: () => request('GET', '/dashboard/commercial'),
 
+  // Reportes
+  getReports: (params) => request('GET', `/reports?${new URLSearchParams(params || {})}`),
+
   // Admin
   resetDemoData: () => request('DELETE', '/admin/reset-data'),
   resetImports: () => request('DELETE', '/admin/reset-imports'),

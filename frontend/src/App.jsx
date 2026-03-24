@@ -93,7 +93,7 @@ export default function App(){
           {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches}/>}
           {page==="sales"&&<SalesView leads={leads} user={user}/>}
           {page==="catalog"&&<CatalogView user={user}/>}
-          {page==="reports"&&<ReportsView leads={leads} branches={realBranches}/>}
+          {page==="reports"&&<ReportsView branches={realBranches}/>}
           {page==="admin"&&<AdminView/>}
           {page==="import"&&r==="super_admin"&&<ImportView/>}
           {page==="priceimport"&&r==="super_admin"&&<StagingImportView/>}
