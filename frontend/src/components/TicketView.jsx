@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
 export function TicketView({lead,user,nav,updLead}){
   const[tab,setTab]=useState("datos");
   const[contactForm,setContactForm]=useState({method:"whatsapp",result:"",note:""});
   const m=lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:0,bonus:0,year:lead.year||2025,cc:lead.cc||0,cat:lead.category||'',colors:[]}:null;
-  const s={fn:lead.seller_fn||'',ln:lead.seller_ln||''};
-  const br={name:lead.branch_name||'',code:lead.branch_code||'',addr:lead.branch_addr||''};
+  const s=gU(lead.seller)||{fn:lead.seller_fn||'',ln:lead.seller_ln||''};
+  const br=gB(lead.branch)||{name:lead.branch_name||'',code:lead.branch_code||'',addr:lead.branch_addr||''};
   const isAdmin=["super_admin","admin_comercial"].includes(user.role);
   const[realSellers,setRealSellers]=useState([]);
   const[realModels,setRealModels]=useState([]);
@@ -15,7 +15,7 @@ export function TicketView({lead,user,nav,updLead}){
     if(isAdmin)api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});
     api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
   },[isAdmin]);
-  const sellers=realSellers;
+  const sellers=realSellers.length>0?realSellers:USERS.filter(u=>u.role==="vendedor");
   // SLA calc
   const created=new Date(lead.createdAt).getTime();const now=Date.now();
   const lastC=lead.lastContact?new Date(lead.lastContact).getTime():0;
@@ -76,7 +76,7 @@ export function TicketView({lead,user,nav,updLead}){
             <div><label style={S.lbl}>Marcar como</label><select value={lead.status} onChange={e=>upd("status",e.target.value)} style={{...S.inp,width:"100%",fontSize:11}}>{Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></div>
           </div>
           <div style={{marginTop:8}}><label style={S.lbl}>¿Test ride realizado?</label><div style={{display:"flex",gap:6}}>{[true,false].map(v=><button key={String(v)} onClick={()=>upd("testRide",v)} style={{...S.btn2,padding:"4px 14px",fontSize:11,background:lead.testRide===v?(v?"#10B981":"#333"):"transparent",color:lead.testRide===v?"#fff":"#888",border:lead.testRide===v?"none":"1px solid #333"}}>{v?"SÍ":"NO"}</button>)}</div></div>
-          {isAdmin&&<div style={{marginTop:10}}><label style={S.lbl}>Reasignar vendedor</label><select value={lead.seller_id||lead.seller||""} onChange={e=>{const sl=sellers.find(s=>s.id===e.target.value);const slName=sl?(sl.first_name||sl.fn||'')+" "+(sl.last_name||sl.ln||''):"";updLead(lead.id,{seller:e.target.value,seller_id:e.target.value,timeline:[{id:`tl-${Date.now()}`,type:"system",title:`Reasignado a ${slName.trim()}`,date:new Date().toISOString(),user:`${user.fn} ${user.ln}`},...lead.timeline]});}} style={{...S.inp,width:"100%",fontSize:11}}><option value="">Seleccionar vendedor...</option>{sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||(sl.branch_code)||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}</select></div>}
+          {isAdmin&&<div style={{marginTop:10}}><label style={S.lbl}>Reasignar vendedor</label><select value={lead.seller_id||lead.seller||""} onChange={e=>{const sl=sellers.find(s=>s.id===e.target.value);const slName=sl?(sl.first_name||sl.fn||'')+" "+(sl.last_name||sl.ln||''):"";updLead(lead.id,{seller:e.target.value,seller_id:e.target.value,timeline:[{id:`tl-${Date.now()}`,type:"system",title:`Reasignado a ${slName.trim()}`,date:new Date().toISOString(),user:`${user.fn} ${user.ln}`},...lead.timeline]});}} style={{...S.inp,width:"100%",fontSize:11}}><option value="">Seleccionar vendedor...</option>{sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||(gB(sl.branch)?.code)||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}</select></div>}
         </div>
       </div>
 
@@ -231,4 +231,3 @@ export function TicketView({lead,user,nav,updLead}){
 // ═══════════════════════════════════════════
 // INVENTORY
 // ═══════════════════════════════════════════
-

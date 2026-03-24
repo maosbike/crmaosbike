@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
 export function ReportsView({leads,branches=[]}){
   const[realSellers,setRealSellers]=useState([]);
   useEffect(()=>{api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});},[]);
   const sellersToUse=realSellers.length>0?realSellers:[];
   const rank=sellersToUse.map(s=>({name:`${s.first_name} ${(s.last_name||'')[0]||''}.`,total:leads.filter(l=>l.seller_id===s.id).length,ganados:leads.filter(l=>l.seller_id===s.id&&l.status==="ganado").length,branch:s.branch_code})).filter(r=>r.total>0||sellersToUse.length>0).sort((a,b)=>b.ganados-a.ganados);
-  const byBranch=branches.map(b=>({name:b.name,leads:leads.filter(l=>l.branch_id===b.id||l.branch_code===b.code).length,ganados:leads.filter(l=>(l.branch_id===b.id||l.branch_code===b.code)&&l.status==="ganado").length}));
+  const byBranch=branches.map(b=>({name:b.name,leads:leads.filter(l=>l.branch===b.id||l.branch_code===b.code).length,ganados:leads.filter(l=>(l.branch===b.id||l.branch_code===b.code)&&l.status==="ganado").length}));
   return(<div><h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Reportes</h1><div className="grid-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><div style={S.card}><h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Ranking Vendedores</h3><table style={{width:"100%",fontSize:11,borderCollapse:"collapse"}}><thead><tr>{["Vendedor","Suc.","Total","Ganados","Conv."].map(h=><th key={h} style={{textAlign:"left",padding:"5px 6px",color:"#555",fontSize:9,textTransform:"uppercase",borderBottom:"1px solid #1E1E1F"}}>{h}</th>)}</tr></thead><tbody>{rank.map((r,i)=><tr key={i} style={{borderBottom:"1px solid #1A1A1B"}}><td style={{padding:"6px",fontWeight:600}}>{i<3?["🥇","🥈","🥉"][i]+" ":""}{r.name}</td><td style={{padding:"6px",color:"#555"}}>{r.branch}</td><td style={{padding:"6px"}}>{r.total}</td><td style={{padding:"6px",fontWeight:700,color:"#10B981"}}>{r.ganados}</td><td style={{padding:"6px",color:"#F28100"}}>{r.total>0?((r.ganados/r.total)*100).toFixed(0):0}%</td></tr>)}</tbody></table></div><div style={S.card}><h3 style={{fontSize:12,fontWeight:600,margin:"0 0 10px"}}>Por Sucursal</h3>{byBranch.map(b=><div key={b.name} style={{background:"#0E0E0F",borderRadius:10,padding:12,marginBottom:8}}><div style={{fontWeight:700,marginBottom:4}}>{b.name}</div><div style={{display:"flex",gap:20}}><div><span style={{fontSize:18,fontWeight:800}}>{b.leads}</span><div style={{fontSize:9,color:"#555"}}>Leads</div></div><div><span style={{fontSize:18,fontWeight:800,color:"#10B981"}}>{b.ganados}</span><div style={{fontSize:9,color:"#555"}}>Ganados</div></div><div><span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>{b.leads>0?((b.ganados/b.leads)*100).toFixed(0):0}%</span><div style={{fontSize:9,color:"#555"}}>Conversión</div></div></div></div>)}</div></div></div>);
 }
-
 

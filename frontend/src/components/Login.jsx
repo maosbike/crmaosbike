@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S } from '../ui';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
 export function Login({onLogin}){
   const[identifier,setIdentifier]=useState("");
@@ -11,9 +11,8 @@ export function Login({onLogin}){
     e.preventDefault();
     setErr("");setLoading(true);
     try{
-      const {token,refreshToken,user}=await api.login(identifier,pw);
+      const {token,user}=await api.login(identifier,pw);
       localStorage.setItem("crm_token",token);
-      if(refreshToken) localStorage.setItem("crm_refresh_token",refreshToken);
       localStorage.setItem("crm_user",JSON.stringify(user));
       onLogin(user);
     }catch(ex){
@@ -34,3 +33,7 @@ export function Login({onLogin}){
     </div>
   );
 }
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════

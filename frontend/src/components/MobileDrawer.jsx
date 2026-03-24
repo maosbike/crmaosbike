@@ -1,4 +1,6 @@
-import { Ic, S } from '../ui';
+import { useState, useEffect, useRef } from 'react';
+import { api } from '../services/api';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
 export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogout}){
   return(
@@ -23,3 +25,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
     </>
   );
 }
+
+// ═══════════════════════════════════════════
+// CHANGE PASSWORD MODAL
+// ═══════════════════════════════════════════
