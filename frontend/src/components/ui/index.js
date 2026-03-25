@@ -35,7 +35,7 @@ export const mapTicket=(t)=>{
     seller_id:t.assigned_to||null,
     status:t.status||'abierto',priority:t.priority||'media',
     motoId:null,
-    model_brand:t.moto_brand||null,model_name:t.moto_model||null,
+    model_brand:t.moto_brand||null,model_name:t.moto_model||null,model_image:t.image_url||null,model_category:t.category||null,model_cc:t.cc||null,model_year:t.moto_year||null,
     colorPref:t.color_pref||'',wantsFin:t.wants_financing||false,
     sitLab:t.sit_laboral||'',continuidad:t.continuidad||'',
     renta:t.renta||0,pie:t.pie||0,
