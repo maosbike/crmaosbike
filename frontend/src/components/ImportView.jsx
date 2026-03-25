@@ -9,6 +9,8 @@ export function ImportView() {
   const [result, setResult]     = useState(null);
   const [skipDups, setSkipDups] = useState(true);
   const [filter, setFilter]     = useState('all');
+  const [catalogModels, setCatalogModels] = useState([]);
+  useEffect(()=>{ api.getModels().then(d=>setCatalogModels(Array.isArray(d)?d:[])).catch(()=>{}); },[]);
   const [dragOver, setDragOver] = useState(false);
   const [logs, setLogs]         = useState(null);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -257,13 +259,20 @@ export function ImportView() {
                             <td style={{padding:'6px 10px',color:'#888'}}>{r.telefono||'—'}</td>
                             <td style={{padding:'6px 10px',color:'#888'}}>{r.email||'—'}</td>
                             <td style={{padding:'6px 10px'}}>{r.branch_name||r.sucursal_raw||'—'}</td>
-                            <td style={{padding:'6px 10px',fontSize:11}}>
-                              {r.model_resolved_name
-                                ?<span style={{color:'#10B981',fontWeight:600}}>{r.model_resolved_name}</span>
-                                :r.model_raw
-                                  ?<span style={{color:'#F59E0B'}} title={`Sin match: "${r.model_raw}"`}>⚠ {r.model_raw}</span>
-                                  :<span style={{color:'#6B7280'}}>—</span>
-                              }
+                            <td style={{padding:'4px 8px',fontSize:11,minWidth:180}}>
+                              {r.model_resolved_name&&<div style={{color:'#10B981',fontWeight:600,marginBottom:2}}>{r.model_resolved_name}</div>}
+                              {!r.model_resolved_name&&r.model_raw&&<div style={{color:'#F59E0B',marginBottom:2}}>⚠ {r.model_raw}</div>}
+                              <select
+                                value={r.model_id||''}
+                                onChange={e=>{
+                                  const sel=catalogModels.find(m=>m.id===e.target.value);
+                                  setPreview(p=>({...p,rows:p.rows.map(row=>row===r?{...row,model_id:sel?.id||null,model_resolved_name:sel?`${sel.brand} ${sel.model}`:null}:row)}));
+                                }}
+                                style={{...S.inp,fontSize:10,padding:'2px 4px',width:'100%'}}
+                              >
+                                <option value="">{r.model_resolved_name?'Cambiar modelo...':'Seleccionar modelo...'}</option>
+                                {catalogModels.map(m=><option key={m.id} value={m.id}>{m.brand} {m.model}</option>)}
+                              </select>
                             </td>
                             <td style={{padding:'6px 10px',color:r.errors?.length?'#EF4444':'#555',fontSize:11}}>{obs||'—'}</td>
                           </tr>
