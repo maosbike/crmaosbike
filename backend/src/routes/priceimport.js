@@ -209,6 +209,7 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
     try {
       await client.query('BEGIN');
       for (const row of rows) {
+        await client.query('SAVEPOINT row_save');
         try {
           let model_id = row.model_id;
           if (!model_id) {
@@ -237,7 +238,9 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
             `UPDATE price_staging SET status='approved', model_id=$1, updated_at=NOW() WHERE id=$2`,
             [model_id, row.id]
           );
+          await client.query('RELEASE SAVEPOINT row_save');
         } catch (rowErr) {
+          await client.query('ROLLBACK TO SAVEPOINT row_save');
           stats.errors.push({ model: row.model, error: rowErr.message });
         }
       }
