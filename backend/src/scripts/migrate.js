@@ -4,64 +4,55 @@ const path = require('path');
 const db = require('../config/db');
 const seed = require('../../migrations/002_seed');
 
+// Migrations that should run only ONCE (destructive or data-mutating)
+const ONCE_ONLY = ['010','012','013'];
+
+async function hasRun(name) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      name TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  const { rows } = await db.query('SELECT 1 FROM schema_migrations WHERE name=$1', [name]);
+  return rows.length > 0;
+}
+
+async function markRan(name) {
+  await db.query('INSERT INTO schema_migrations(name) VALUES($1) ON CONFLICT DO NOTHING', [name]);
+}
+
+async function runMigration(num, label, sql) {
+  const onlyOnce = ONCE_ONLY.includes(num);
+  if (onlyOnce && await hasRun(num)) {
+    console.log(`↩ Migration ${num} (${label}) already applied — skipping`);
+    return;
+  }
+  await db.query(sql);
+  if (onlyOnce) await markRan(num);
+  console.log(`✓ Migration ${num} (${label}) applied`);
+}
+
 async function migrate() {
   try {
     console.log('Running migrations...');
-    const sql = fs.readFileSync(path.join(__dirname, '../../migrations/001_schema.sql'), 'utf-8');
-    await db.query(sql);
-    console.log('✓ Schema 001 created');
+    const m = (f) => fs.readFileSync(path.join(__dirname, '../../migrations', f), 'utf-8');
 
-    const sql003 = fs.readFileSync(path.join(__dirname, '../../migrations/003_username.sql'), 'utf-8');
-    await db.query(sql003);
-    console.log('✓ Migration 003 (username) applied');
-
-    const sql004 = fs.readFileSync(path.join(__dirname, '../../migrations/004_password_change.sql'), 'utf-8');
-    await db.query(sql004);
-    console.log('✓ Migration 004 (password_change) applied');
-
-    const sql005 = fs.readFileSync(path.join(__dirname, '../../migrations/005_fix_sla_schema.sql'), 'utf-8');
-    await db.query(sql005);
-    console.log('✓ Migration 005 (fix sla schema + assigned_to + UUID FKs) applied');
-
-    const sql006 = fs.readFileSync(path.join(__dirname, '../../migrations/006_import_logs.sql'), 'utf-8');
-    await db.query(sql006);
-    console.log('✓ Migration 006 (import_logs) applied');
-
-    const sql007 = fs.readFileSync(path.join(__dirname, '../../migrations/007_fin_data.sql'), 'utf-8');
-    await db.query(sql007);
-    console.log('✓ Migration 007 (fin_data JSONB) applied');
-
-    const sql008 = fs.readFileSync(path.join(__dirname, '../../migrations/008_user_branches.sql'), 'utf-8');
-    await db.query(sql008);
-    console.log('✓ Migration 008 (extra_branches para vendedores multi-sucursal) applied');
-
-    const sql009 = fs.readFileSync(path.join(__dirname, '../../migrations/009_moto_catalog_prices.sql'), 'utf-8');
-    await db.query(sql009);
-    console.log('✓ Migration 009 (catálogo maestro + precios por período) applied');
-
-    const sql010 = fs.readFileSync(path.join(__dirname, '../../migrations/010_clean_seed_models.sql'), 'utf-8');
-    await db.query(sql010);
-    console.log('✓ Migration 010 (limpieza de modelos demo) applied');
-
-    const sql011 = fs.readFileSync(path.join(__dirname, '../../migrations/011_catalog_enrich.sql'), 'utf-8');
-    await db.query(sql011);
-    console.log('✓ Migration 011 (catalog enrich: description, spec_url, image_gallery) applied');
-
-    const sql012 = fs.readFileSync(path.join(__dirname, '../../migrations/012_fix_price_list_bug.sql'), 'utf-8');
-    await db.query(sql012);
-    console.log('✓ Migration 012 (fix price_list bug: corrige moto_models.price desde moto_prices) applied');
-
-    const sql013 = fs.readFileSync(path.join(__dirname, '../../migrations/013_clean_prices.sql'), 'utf-8');
-    await db.query(sql013);
-    console.log('✓ Migration 013 (clean precios mal cargados) applied');
-
-    const sql014 = fs.readFileSync(path.join(__dirname, '../../migrations/014_price_staging.sql'), 'utf-8');
-    await db.query(sql014);
-    console.log('✓ Migration 014 (price_staging tables) applied');
-
-    const sql015 = fs.readFileSync(path.join(__dirname, '../../migrations/015_fix_branch_addresses.sql'), 'utf-8');
-    await db.query(sql015);
-    console.log('✓ Migration 015 (fix branch addresses: Movicenter y Mall Plaza Sur) applied');
+    await runMigration('001', 'schema',                      m('001_schema.sql'));
+    await runMigration('003', 'username',                    m('003_username.sql'));
+    await runMigration('004', 'password_change',             m('004_password_change.sql'));
+    await runMigration('005', 'fix sla schema',              m('005_fix_sla_schema.sql'));
+    await runMigration('006', 'import_logs',                 m('006_import_logs.sql'));
+    await runMigration('007', 'fin_data JSONB',              m('007_fin_data.sql'));
+    await runMigration('008', 'user_branches',               m('008_user_branches.sql'));
+    await runMigration('009', 'catálogo + precios período',  m('009_moto_catalog_prices.sql'));
+    await runMigration('010', 'limpieza modelos demo',       m('010_clean_seed_models.sql'));
+    await runMigration('011', 'catalog enrich',              m('011_catalog_enrich.sql'));
+    await runMigration('012', 'fix price_list bug',          m('012_fix_price_list_bug.sql'));
+    await runMigration('013', 'clean precios mal cargados',  m('013_clean_prices.sql'));
+    await runMigration('014', 'price_staging tables',        m('014_price_staging.sql'));
+    await runMigration('015', 'fix branch addresses',        m('015_fix_branch_addresses.sql'));
+    await runMigration('016', 'indexes + soft delete',       m('016_indexes_softdelete.sql'));
 
     await seed(db);
     console.log('✓ All done');
