@@ -5,7 +5,7 @@
 -- Índices faltantes para queries frecuentes
 CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tickets_sla_deadline ON tickets(sla_deadline) WHERE status NOT IN ('ganado','perdido','cerrado');
-CREATE INDEX IF NOT EXISTS idx_reminders_due_date ON reminders(due_date) WHERE completed = false;
+CREATE INDEX IF NOT EXISTS idx_reminders_due_date ON reminders(due_date) WHERE completed_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tickets_sla_status ON tickets(sla_status) WHERE status NOT IN ('ganado','perdido','cerrado');
 CREATE INDEX IF NOT EXISTS idx_tickets_assigned_status ON tickets(assigned_to, status);
