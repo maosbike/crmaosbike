@@ -120,3 +120,5 @@ export const Field=({label,value,onChange,type="text",ph,req,opts,rows,disabled}
   };
   return <div><label style={S.lbl}>{label}</label>{renderInput()}</div>;
 };
+
+export const CAT_COLOR={"Commuter":"#3B82F6","Naked":"#8B5CF6","Sport":"#EF4444","Scooter":"#06B6D4","Adventure":"#10B981","Off-Road":"#F59E0B","Touring":"#6366F1","Eléctrica":"#22C55E","Big Bike":"#EC4899","ATV":"#F97316","Cruiser":"#A78BFA"};
