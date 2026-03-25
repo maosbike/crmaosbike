@@ -139,10 +139,33 @@ function resolveBranch(sucursalRaw, branches) {
 function normalizeStr(s) {
   return (s || '')
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar acentos
-    .replace(/[-_]+/g, ' ')                            // guiones → espacio
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+// Quita prefijos de marca (yzf, xtz, mt) y sufijos de color/variante
+// para obtener el "núcleo" del modelo: "YZF-R15A" → "r15", "FZ-250A AZUL" → "fz250"
+function coreModel(s) {
+  const COLORS = ['azul','rojo','negro','blanca','blanco','verde','gris','plata','roja','negra','amarillo','naranja'];
+  const VARIANTS = ['abs','sp','connected','lw','zr'];
+  return normalizeStr(s)
+    .split(' ')
+    .filter(t => !COLORS.includes(t) && !VARIANTS.includes(t))
+    .join(' ')
+    .replace(/\b(yzf|xtz|xt)\b/g, '') // quitar prefijos de marca Yamaha
+    .replace(/a$/, '')                  // quitar sufijo "a" final (R15A → R15)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Expande números cortos: "25" → "250", "15" → "150" (convención Yamaha cc/10)
+function expandNum(s) {
+  return s.replace(/\b(\d{2})\b/g, (_, n) => {
+    const expanded = parseInt(n) * 10;
+    return `${n}|${expanded}`;
+  });
 }
 
 // Devuelve el registro de moto_models que mejor matchea con modeloRaw,
@@ -151,38 +174,52 @@ function resolveModel(modeloRaw, models) {
   if (!modeloRaw || !models || models.length === 0) return null;
   const raw = normalizeStr(modeloRaw);
   if (!raw) return null;
+  const rawCore = coreModel(modeloRaw);
 
-  // 1. Coincidencia exacta brand+model
+  // 1. Exacta brand+model
   for (const m of models) {
     if (normalizeStr(`${m.brand} ${m.model}`) === raw) return m;
   }
-  // 2. Coincidencia exacta commercial_name
+  // 2. Exacta commercial_name
   for (const m of models) {
     if (m.commercial_name && normalizeStr(m.commercial_name) === raw) return m;
   }
-  // 3. Coincidencia exacta solo model
+  // 3. Exacta solo model
   for (const m of models) {
     if (normalizeStr(m.model) === raw) return m;
   }
-  // 3. Input contiene brand+model completo
+  // 4. Input contiene brand+model completo
   for (const m of models) {
     const full = normalizeStr(`${m.brand} ${m.model}`);
     if (raw.includes(full)) return m;
   }
-  // 4. brand+model contiene el input (el input es parte del nombre)
+  // 5. brand+model contiene el input
   for (const m of models) {
     const full = normalizeStr(`${m.brand} ${m.model}`);
-    if (full.includes(raw) && raw.length >= 4) return m;
-  }
-  // 5. Input contiene solo el model name
-  for (const m of models) {
-    const mn = normalizeStr(m.model);
-    if (mn.length >= 3 && raw.includes(mn)) return m;
+    if (full.includes(raw) && raw.length >= 3) return m;
   }
   // 6. Model name contiene el input
   for (const m of models) {
     const mn = normalizeStr(m.model);
-    if (mn.includes(raw) && raw.length >= 4) return m;
+    if (mn.includes(raw) && raw.length >= 3) return m;
+  }
+  // 7. Core match: quita colores/variantes/prefijos y compara núcleo
+  for (const m of models) {
+    const mc = coreModel(m.model);
+    if (mc && rawCore && mc === rawCore && rawCore.length >= 2) return m;
+  }
+  // 8. Core del input está dentro del core del catálogo (maneja "r15" vs "yzf r15a")
+  for (const m of models) {
+    const mc = coreModel(m.model);
+    if (mc && rawCore && mc.includes(rawCore) && rawCore.length >= 2) return m;
+  }
+  // 9. Expansión de números: "fz 25" → busca "fz 250" (Yamaha usa cc/10 en nombres cortos)
+  const rawExpanded = expandNum(rawCore);
+  for (const m of models) {
+    const mc = coreModel(m.model).replace(/\s/g, '');
+    const pattern = rawExpanded.replace(/\s/g, '');
+    const regex = new RegExp(pattern.replace(/\|/g, '|'));
+    if (regex.test(mc) && rawCore.length >= 2) return m;
   }
   return null;
 }
