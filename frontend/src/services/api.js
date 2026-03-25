@@ -209,4 +209,9 @@ export const api = {
   importConfirm: (data)   => request('POST', '/import/confirm', data),
   getImportLogs: ()       => request('GET',  '/import/logs'),
   getImportTemplate: ()   => `${BASE}/import/template`,
+
+  // Model aliases
+  getAliases:    ()     => request('GET',    '/catalog/aliases'),
+  createAlias:   (data) => request('POST',   '/catalog/aliases', data),
+  deleteAlias:   (id)   => request('DELETE', `/catalog/aliases/${id}`),
 };

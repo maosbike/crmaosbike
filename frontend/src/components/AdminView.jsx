@@ -13,10 +13,31 @@ export function AdminView(){
   const[cleanImportsDone,setCleanImportsDone]=useState(null);
   const[cleaningCatalog,setCleaningCatalog]=useState(false);
   const[cleanCatalogDone,setCleanCatalogDone]=useState(null);
+  const[aliases,setAliases]=useState([]);
+  const[aliasForm,setAliasForm]=useState({alias:'',model_id:''});
+  const[catalogModels,setCatalogModels]=useState([]);
+  const[aliasSaving,setAliasSaving]=useState(false);
   useEffect(()=>{
     api.listUsers().then(setUsers).catch(()=>{}).finally(()=>setLoading(false));
     api.getBranches().then(setBranches).catch(()=>{});
+    api.getAliases().then(setAliases).catch(()=>{});
+    api.getModels().then(d=>setCatalogModels(Array.isArray(d)?d:[])).catch(()=>{});
   },[]);
+  const handleAddAlias=async e=>{
+    e.preventDefault();
+    if(!aliasForm.alias||!aliasForm.model_id)return;
+    setAliasSaving(true);
+    try{
+      const a=await api.createAlias({alias:aliasForm.alias.trim(),model_id:aliasForm.model_id});
+      setAliases(prev=>[...prev.filter(x=>x.alias!==a.alias),{...a,...catalogModels.find(m=>m.id===a.model_id)}]);
+      setAliasForm({alias:'',model_id:''});
+    }catch(ex){alert(ex.message);}
+    finally{setAliasSaving(false);}
+  };
+  const handleDeleteAlias=async id=>{
+    await api.deleteAlias(id).catch(()=>{});
+    setAliases(prev=>prev.filter(a=>a.id!==id));
+  };
   const handleCleanData=async()=>{
     if(!confirm('⚠️ ATENCIÓN: Esto eliminará TODOS los tickets, leads, importaciones e inventario.\n\nUsuarios, sucursales y catálogo de motos se conservan.\n\n¿Confirmar?'))return;
     if(!confirm('Segunda confirmación: ¿Estás seguro? Esta acción NO se puede deshacer.'))return;
@@ -103,6 +124,31 @@ export function AdminView(){
             :<button onClick={handleCleanData} disabled={cleaning} style={{...S.btn,background:"#EF4444",opacity:cleaning?0.7:1,fontSize:12}}>{cleaning?"Limpiando...":"🗑 Borrar TODO (tickets + inventario)"}</button>
           }
         </div>
+      </div>
+
+      {/* ALIASES DE MODELOS */}
+      <div style={{...S.card,marginTop:16}}>
+        <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 4px"}}>Aliases de Modelos</h3>
+        <p style={{fontSize:11,color:"#6B7280",margin:"0 0 12px"}}>Mapea nombres alternativos (como vienen en los leads) al modelo del catálogo. Ej: "R15 V4" → YZF-R15A</p>
+        <form onSubmit={handleAddAlias} style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+          <input value={aliasForm.alias} onChange={e=>setAliasForm(f=>({...f,alias:e.target.value}))} placeholder='Alias del lead (ej: "R15 V4")' style={{...S.inp,flex:1,minWidth:160}}/>
+          <select value={aliasForm.model_id} onChange={e=>setAliasForm(f=>({...f,model_id:e.target.value}))} style={{...S.inp,flex:1,minWidth:200}}>
+            <option value="">Seleccionar modelo del catálogo...</option>
+            {catalogModels.map(m=><option key={m.id} value={m.id}>{m.brand} {m.model}{m.commercial_name&&m.commercial_name!==m.model?` (${m.commercial_name})`:''}</option>)}
+          </select>
+          <button type="submit" disabled={aliasSaving||!aliasForm.alias||!aliasForm.model_id} style={{...S.btn,opacity:aliasSaving?0.7:1}}>Agregar</button>
+        </form>
+        {aliases.length===0
+          ?<div style={{fontSize:12,color:"#6B7280",padding:"8px 0"}}>Sin aliases configurados.</div>
+          :<div style={{display:"flex",flexDirection:"column",gap:4}}>
+            {aliases.map(a=>(
+              <div key={a.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 10px",background:"#F9FAFB",borderRadius:8,fontSize:12}}>
+                <div><span style={{fontWeight:600,color:"#F28100"}}>"{a.alias}"</span><span style={{color:"#6B7280",margin:"0 6px"}}>→</span><span style={{fontWeight:600}}>{a.brand} {a.model}</span>{a.commercial_name&&a.commercial_name!==a.model&&<span style={{color:"#6B7280"}}> ({a.commercial_name})</span>}</div>
+                <button onClick={()=>handleDeleteAlias(a.id)} style={{...S.gh,padding:"2px 8px",fontSize:11,color:"#EF4444"}}>Eliminar</button>
+              </div>
+            ))}
+          </div>
+        }
       </div>
 
       {resetInfo&&(

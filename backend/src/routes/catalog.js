@@ -127,4 +127,38 @@ router.get('/sellers', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+// ── MODEL ALIASES ──
+router.get('/aliases', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT a.id, a.alias, a.model_id, a.created_at,
+              m.brand, m.model, m.commercial_name
+       FROM model_aliases a JOIN moto_models m ON a.model_id = m.id
+       ORDER BY a.alias`
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: 'Error' }); }
+});
+
+router.post('/aliases', async (req, res) => {
+  try {
+    const { alias, model_id } = req.body;
+    if (!alias || !model_id) return res.status(400).json({ error: 'alias y model_id requeridos' });
+    const { rows } = await db.query(
+      `INSERT INTO model_aliases (alias, model_id, created_by) VALUES (lower($1), $2, $3)
+       ON CONFLICT (alias) DO UPDATE SET model_id=$2, created_by=$3
+       RETURNING *`,
+      [alias.trim(), model_id, req.user.id]
+    );
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: 'Error' }); }
+});
+
+router.delete('/aliases/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM model_aliases WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: 'Error' }); }
+});
+
 module.exports = router;

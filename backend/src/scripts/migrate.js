@@ -53,6 +53,7 @@ async function migrate() {
     await runMigration('014', 'price_staging tables',        m('014_price_staging.sql'));
     await runMigration('015', 'fix branch addresses',        m('015_fix_branch_addresses.sql'));
     await runMigration('016', 'indexes + soft delete',       m('016_indexes_softdelete.sql'));
+    await runMigration('017', 'model aliases',               m('017_model_aliases.sql'));
 
     await seed(db);
     console.log('✓ All done');

@@ -170,6 +170,22 @@ function expandNum(s) {
 
 // Devuelve el registro de moto_models que mejor matchea con modeloRaw,
 // o null si no hay coincidencia suficiente.
+async function resolveModelWithAliases(modeloRaw, models) {
+  if (!modeloRaw) return null;
+  // 1. Chequear tabla de aliases primero (más confiable)
+  try {
+    const { rows } = await db.query(
+      `SELECT m.* FROM model_aliases a
+       JOIN moto_models m ON a.model_id = m.id
+       WHERE a.alias = lower($1) AND m.active = true`,
+      [modeloRaw.trim()]
+    );
+    if (rows[0]) return rows[0];
+  } catch (_) {}
+  // 2. Fuzzy matching como fallback
+  return resolveModel(modeloRaw, models);
+}
+
 function resolveModel(modeloRaw, models) {
   if (!modeloRaw || !models || models.length === 0) return null;
   const raw = normalizeStr(modeloRaw);
@@ -445,7 +461,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
 
       // Resolver modelo de moto
       const modeloRaw = r.fin_data?.modelo || '';
-      const motoMatch = resolveModel(modeloRaw, models);
+      const motoMatch = await resolveModelWithAliases(modeloRaw, models);
       r.model_id            = motoMatch?.id   || null;
       r.model_resolved_name = motoMatch ? `${motoMatch.brand} ${motoMatch.model}` : null;
       r.model_raw           = modeloRaw || null;
@@ -529,8 +545,8 @@ router.post('/confirm', async (req, res) => {
         // lo mandó ya resuelto), sino resolverlo ahora desde el catálogo.
         const modeloRaw = r.fin_data?.modelo || r.model_raw || '';
         const motoMatch = r.model_id
-          ? models.find(m => m.id === r.model_id) || resolveModel(modeloRaw, models)
-          : resolveModel(modeloRaw, models);
+          ? models.find(m => m.id === r.model_id) || await resolveModelWithAliases(modeloRaw, models)
+          : await resolveModelWithAliases(modeloRaw, models);
         const resolvedModelId = motoMatch?.id || null;
 
         const { rows: created } = await db.query(
