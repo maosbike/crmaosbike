@@ -241,6 +241,7 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
           await client.query('RELEASE SAVEPOINT row_save');
         } catch (rowErr) {
           await client.query('ROLLBACK TO SAVEPOINT row_save');
+          console.error(`[publish row error] ${row.brand} ${row.model}:`, rowErr.message);
           stats.errors.push({ model: row.model, error: rowErr.message });
         }
       }
