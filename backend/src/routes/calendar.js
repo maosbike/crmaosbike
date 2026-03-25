@@ -32,7 +32,6 @@ router.get('/events', async (req, res) => {
     `;
     const remParams = [start, end];
 
-    // Vendedores solo ven los suyos
     if (req.user.role === 'vendedor') {
       remParams.push(req.user.id);
       remQuery += ` AND r.assigned_to = $${remParams.length}`;
@@ -43,18 +42,21 @@ router.get('/events', async (req, res) => {
 
     const { rows: reminders } = await db.query(remQuery, remParams);
 
+    const colorMap = {
+      pending: '#3B82F6',
+      completed: '#10B981',
+      overdue: '#EF4444'
+    };
+
     for (const r of reminders) {
-      const colorMap = {
-        pending: '#3B82F6',
-        completed: '#10B981',
-        overdue: '#EF4444'
-      };
+      const dateStr = String(r.due_date).split('T')[0];
+      const timeStr = r.due_time ? String(r.due_time).slice(0, 5) : null;
       events.push({
         id: `rem-${r.id}`,
         title: r.title,
-        start: r.due_time
-          ? `${r.due_date}T${r.due_time}`
-          : r.due_date,
+        start: timeStr ? `${dateStr}T${timeStr}` : dateStr,
+        date: dateStr,
+        time: timeStr,
         allDay: !r.due_time,
         color: colorMap[r.status] || '#3B82F6',
         type: 'reminder',
@@ -63,9 +65,11 @@ router.get('/events', async (req, res) => {
         priority: r.priority,
         link_type: 'ticket',
         link_id: r.ticket_id,
+        ticket_id: r.ticket_id,
         reminder_id: r.id,
         meta: {
           assigned_name: r.assigned_name,
+          assigned_to: r.assigned_to,
           ticket_number: r.ticket_number,
           client_name: r.client_name,
           description: r.description
@@ -74,6 +78,20 @@ router.get('/events', async (req, res) => {
     }
 
     // 2. VENCIMIENTOS SLA (tickets activos con SLA próximo)
+    const SLA_LABELS = {
+      normal: 'Sin gestionar',
+      warning: 'Atender ya',
+      breached: 'Vencido',
+      reassigned: 'Reasignado'
+    };
+
+    const slaColors = {
+      normal: '#6B7280',
+      warning: '#F97316',
+      breached: '#EF4444',
+      reassigned: '#8B5CF6'
+    };
+
     let slaQuery = `
       SELECT t.id, t.ticket_num as ticket_number, t.sla_deadline, t.sla_status,
              t.first_name as client_first, t.last_name as client_last,
@@ -104,25 +122,29 @@ router.get('/events', async (req, res) => {
     const { rows: slaTickets } = await db.query(slaQuery, slaParams);
 
     for (const t of slaTickets) {
-      const slaColors = {
-        normal: '#F59E0B',
-        warning: '#F97316',
-        breached: '#EF4444',
-        reassigned: '#8B5CF6'
-      };
+      const dl = t.sla_deadline ? new Date(t.sla_deadline) : null;
+      const dateStr = dl ? dl.toISOString().split('T')[0] : null;
+      const timeStr = dl ? dl.toISOString().split('T')[1].slice(0, 5) : null;
+      const label = SLA_LABELS[t.sla_status] || 'Sin gestionar';
+      const clientName = `${t.client_first || ''} ${t.client_last || ''}`.trim();
       events.push({
         id: `sla-${t.id}`,
-        title: `SLA: ${t.client_first || ''} ${t.client_last || ''} (${t.ticket_number})`,
+        title: `${label}: ${clientName} · ${t.ticket_number}`,
         start: t.sla_deadline,
+        date: dateStr,
+        time: timeStr,
         allDay: false,
-        color: slaColors[t.sla_status] || '#F59E0B',
+        color: slaColors[t.sla_status] || '#6B7280',
         type: 'sla',
         status: t.sla_status,
+        sla_label: label,
         link_type: 'ticket',
         link_id: t.id,
+        ticket_id: t.id,
         meta: {
           seller_name: t.seller_name,
-          ticket_number: t.ticket_number
+          ticket_number: t.ticket_number,
+          client_name: clientName
         }
       });
     }

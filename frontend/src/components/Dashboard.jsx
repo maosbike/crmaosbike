@@ -18,15 +18,20 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
 
       {stats&&<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:14}}>
-          <Stat icon={Ic.alert} ic="#EF4444" ib="rgba(239,68,68,0.1)" label="SLA Vencidos" val={kpi("vencidos","sla_vencidos")} al={kpi("vencidos","sla_vencidos")>0}/>
-          <Stat icon={Ic.clock} ic="#F59E0B" ib="rgba(245,158,11,0.1)" label="Por Vencer" val={kpi("prox_vencer","proximos_vencer")} sub="Próximas 2h"/>
-          <Stat icon={Ic.users} ic="#6B7280" ib="rgba(107,114,128,0.1)" label="Sin Tocar" val={kpi("sin_tocar")} sub="Leads sin gestión"/>
-          <Stat icon={Ic.remind} ic="#8B5CF6" ib="rgba(139,92,246,0.1)" label="Recor. Hoy" val={kpi("recordatorios_hoy")}/>
+          <Stat icon={Ic.alert} ic="#EF4444" ib="rgba(239,68,68,0.1)" label="Sin atender" val={kpi("vencidos","sla_vencidos")} al={kpi("vencidos","sla_vencidos")>0} sub="Vencidos sin gestión"/>
+          <Stat icon={Ic.clock} ic="#F97316" ib="rgba(249,115,22,0.1)" label="Atender ya" val={kpi("prox_vencer","proximos_vencer")} sub="Quedan menos de 2h"/>
+          <Stat icon={Ic.users} ic="#6B7280" ib="rgba(107,114,128,0.1)" label="Sin gestionar" val={kpi("sin_tocar")} sub="Esperando primera acción"/>
+          <Stat icon={Ic.remind} ic="#8B5CF6" ib="rgba(139,92,246,0.1)" label="Tareas hoy" val={kpi("recordatorios_hoy")}/>
           <Stat icon={Ic.bell} ic="#F28100" ib="rgba(242,129,0,0.1)" label="Reasignados" val={kpi("reasignados_hoy")} sub="Hoy"/>
         </div>
         {urgentes.length>0&&<div style={{...S.card,marginBottom:14}}>
-          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px",color:"#EF4444"}}>⚠ Leads urgentes</h3>
-          {urgentes.slice(0,5).map((l,i)=><div key={i} onClick={()=>nav("ticket",String(l.id||l.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.client_name||l.first_name||`${l.fn||""} ${l.ln||""}`.trim()}{l.last_name?` ${l.last_name}`:""}</div><div style={{fontSize:11,color:"#6B7280"}}>{l.seller_name||(l.seller_first?`${l.seller_first} ${l.seller_last||""}`.trim():"")}</div></div><span style={{fontSize:11,color:"#EF4444",fontWeight:600}}>{(l.sla_status==="breached"||l.sla_status==="vencido")?"SLA Vencido":l.hours_left!=null&&l.hours_left<=0?"SLA Vencido":l.hours_left!=null?`${Math.ceil(l.hours_left)}h restantes`:"Sin gestión"}</span></div>)}
+          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px",color:"#EF4444"}}>⚠ Requieren atención</h3>
+          {urgentes.slice(0,5).map((l,i)=>{
+            const st=l.sla_status;
+            const lbl=(st==="breached"||st==="vencido"||l.hours_left!=null&&l.hours_left<=0)?"Vencido":st==="warning"||l.hours_left!=null&&l.hours_left<2?`Atender ya · ${Math.ceil(l.hours_left||0)}h`:l.hours_left!=null?`Quedan ${Math.ceil(l.hours_left)}h`:"Sin gestionar";
+            const lc=(st==="breached"||st==="vencido"||l.hours_left!=null&&l.hours_left<=0)?"#EF4444":st==="reassigned"?"#8B5CF6":l.hours_left!=null&&l.hours_left<2?"#F97316":"#6B7280";
+            return<div key={i} onClick={()=>nav("ticket",String(l.id||l.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.client_name||l.first_name||`${l.fn||""} ${l.ln||""}`.trim()}{l.last_name?` ${l.last_name}`:""}</div><div style={{fontSize:11,color:"#6B7280"}}>{l.seller_name||(l.seller_first?`${l.seller_first} ${l.seller_last||""}`.trim():"")}</div></div><span style={{fontSize:11,color:lc,fontWeight:600}}>{lbl}</span></div>;
+          })}
         </div>}
         {tareasHoy.length>0&&<div style={{...S.card,marginBottom:14}}>
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px"}}>📋 Tareas para hoy</h3>

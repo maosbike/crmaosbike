@@ -11,6 +11,12 @@ export const CONTINUIDAD=["Menos de 6 meses","6 a 12 meses","Mayor a 12 meses","
 export const FIN_STATUS={sin_movimiento:{l:"Sin Movimiento",c:"#6B7280"},en_evaluacion:{l:"En Evaluación",c:"#F59E0B"},aprobado:{l:"Aprobado",c:"#10B981"},rechazado:{l:"Rechazado",c:"#EF4444"},desistido:{l:"Desistido",c:"#6B7280"}};
 export const PAYMENT_TYPES=["Contado","Transferencia","Tarjeta Débito","Tarjeta Crédito","Crédito Autofin","Mixto"];
 export const INV_ST={disponible:{l:"Disponible",c:"#10B981"},reservada:{l:"Reservada",c:"#F59E0B"},vendida:{l:"Vendida",c:"#8B5CF6"},preinscrita:{l:"Preinscrita",c:"#06B6D4"}};
+export const SLA_STATUS={
+  normal:    {l:"Sin gestionar",c:"#6B7280",bg:"rgba(107,114,128,0.12)"},
+  warning:   {l:"Atender ya",   c:"#F97316",bg:"rgba(249,115,22,0.12)"},
+  breached:  {l:"Vencido",      c:"#EF4444",bg:"rgba(239,68,68,0.12)"},
+  reassigned:{l:"Reasignado",   c:"#8B5CF6",bg:"rgba(139,92,246,0.12)"},
+};
 
 // Utils
 export const fmt=(n)=>n?"$"+Number(n).toLocaleString("es-CL"):"$0";
@@ -100,6 +106,8 @@ export const S={
 export const Bdg=({l,c,bg})=><span style={{display:"inline-flex",padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,color:c,background:bg||`${c}18`,whiteSpace:"nowrap"}}>{l}</span>;
 export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}/>:<Bdg l={s} c="#6B6B6B"/>;};
 export const PBdg=({p})=>{const x=PRIORITY[p];return x?<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,color:x.c}}><span style={{width:7,height:7,borderRadius:"50%",background:x.c}}/>{x.l}</span>:null;};
+// SlaBdg: muestra estado SLA en lenguaje comercial. fa = first_action_at (si existe, está atendido a tiempo → sin badge)
+export const SlaBdg=({s,fa})=>{if(!s||s==='normal'&&fa)return null;const x=SLA_STATUS[s];if(!x)return null;return<Bdg l={x.l} c={x.c} bg={x.bg}/>;};
 export const Stat=({icon:Ico,ic,ib,label,val,sub,sc,al})=>(
   <div style={{...S.card,display:"flex",flexDirection:"column",gap:4}}>
     <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div><span style={{fontSize:10,color:"#6B6B6B",textTransform:"uppercase",letterSpacing:"0.04em",fontWeight:600}}>{label}</span></div>
