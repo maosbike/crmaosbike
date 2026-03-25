@@ -156,7 +156,11 @@ function resolveModel(modeloRaw, models) {
   for (const m of models) {
     if (normalizeStr(`${m.brand} ${m.model}`) === raw) return m;
   }
-  // 2. Coincidencia exacta solo model
+  // 2. Coincidencia exacta commercial_name
+  for (const m of models) {
+    if (m.commercial_name && normalizeStr(m.commercial_name) === raw) return m;
+  }
+  // 3. Coincidencia exacta solo model
   for (const m of models) {
     if (normalizeStr(m.model) === raw) return m;
   }
@@ -366,7 +370,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
 
     // ── Cargar sucursales activas y catálogo de motos ─────────
     const { rows: branches } = await db.query('SELECT id, name, code FROM branches WHERE active = true');
-    const { rows: models }   = await db.query('SELECT id, brand, model FROM moto_models WHERE active = true');
+    const { rows: models }   = await db.query('SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true');
 
     // ── Aplicar flags ──────────────────────────────────────────
     for (const r of rows) {
@@ -447,7 +451,7 @@ router.post('/confirm', async (req, res) => {
     let ticketCount = parseInt(countR[0].count);
 
     // ── Cargar catálogo de motos para resolver model_id ────────
-    const { rows: models } = await db.query('SELECT id, brand, model FROM moto_models WHERE active = true');
+    const { rows: models } = await db.query('SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true');
 
     // ── Least-loaded + round-robin por sucursal ────────────────
     // Incluye vendedores con branch_id = branch_id O que tienen branch_id
