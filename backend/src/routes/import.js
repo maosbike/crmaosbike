@@ -61,15 +61,21 @@ const VALID_PRIORITY = ['alta','media','baja'];
 // Normaliza espacios → guiones bajos para que "situacion laboral" == "situacion_laboral"
 function buildHeaderMap(rawHeaders) {
   const map = {};
-  rawHeaders.forEach((h, i) => {
-    const key = (h || '').toString().trim().toLowerCase().replace(/\s+/g, '_');
-    for (const [field, aliases] of Object.entries(COL_ALIASES)) {
-      if (aliases.some(a => key === a || key.includes(a))) {
-        if (map[field] === undefined) map[field] = i;
-        break;
+  // Two-pass: exact matches first, then partial — avoids producto_id stealing producto slot
+  for (const pass of ['exact', 'partial']) {
+    rawHeaders.forEach((h, i) => {
+      const key = (h || '').toString().trim().toLowerCase().replace(/\s+/g, '_');
+      for (const [field, aliases] of Object.entries(COL_ALIASES)) {
+        if (map[field] !== undefined) continue;
+        const exactHit   = aliases.some(a => key === a);
+        const partialHit = aliases.some(a => key.includes(a));
+        if (pass === 'exact' ? exactHit : partialHit) {
+          map[field] = i;
+          break;
+        }
       }
-    }
-  });
+    });
+  }
   return map;
 }
 
