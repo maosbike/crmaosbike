@@ -15,7 +15,7 @@ export function TicketView({lead,user,nav,updLead}){
     if(isAdmin)api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});
     api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
   },[isAdmin]);
-  const sellers=realSellers.length>0?realSellers:USERS.filter(u=>u.role==="vendedor");
+  const sellers=realSellers;
   // SLA calc
   const created=new Date(lead.createdAt).getTime();const now=Date.now();
   const lastC=lead.lastContact?new Date(lead.lastContact).getTime():0;
