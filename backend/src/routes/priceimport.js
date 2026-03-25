@@ -218,7 +218,7 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
                  (brand, model, normalized_model, commercial_name, category, cc, year, price, bonus, active)
                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true) RETURNING id`,
               [row.brand, row.model, normalizeModel(row.model),
-               row.commercial_name || row.model, row.category, row.cc, row.year,
+               row.commercial_name || row.model, row.category, row.cc, row.year || new Date().getFullYear(),
                row.price_list || 0, row.bonus || 0]
             );
             model_id = ins.rows[0].id;
