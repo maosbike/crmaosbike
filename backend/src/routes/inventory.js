@@ -41,15 +41,50 @@ router.get('/counts', async (req, res) => {
 // Create inventory unit
 router.post('/', async (req, res) => {
   try {
-    const { branch_id, year, brand, model, color, chassis, motor_num, status, price } = req.body;
+    const {
+      branch_id, year, brand, model, color, chassis, motor_num, price,
+      // Sale fields (optional — only when added_as_sold = true)
+      added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type
+    } = req.body;
+
     if (!chassis || !brand || !model) return res.status(400).json({ error: 'Marca, modelo y chasis requeridos' });
 
+    const isSold = !!added_as_sold;
+    const finalStatus = isSold ? 'vendida' : 'disponible';
+    const finalSoldAt = isSold ? (sold_at || new Date().toISOString()) : null;
+
     const { rows } = await db.query(
-      `INSERT INTO inventory (branch_id, year, brand, model, color, chassis, motor_num, status, price)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [branch_id, year, brand, model, color, chassis, motor_num, status || 'disponible', price]
+      `INSERT INTO inventory
+         (branch_id, year, brand, model, color, chassis, motor_num, status, price,
+          added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+       RETURNING *`,
+      [
+        branch_id, year, brand, model, color, chassis, motor_num || null,
+        finalStatus, price || 0,
+        isSold, finalSoldAt,
+        sold_by || null, ticket_id || null, sale_notes || null,
+        payment_method || null, sale_type || null, req.user.id
+      ]
     );
-    res.status(201).json(rows[0]);
+
+    const unit = rows[0];
+
+    // Si viene con ticket asociado, registrar en el timeline del ticket
+    if (isSold && ticket_id) {
+      await db.query(
+        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+         VALUES ($1, $2, 'system', $3, $4)`,
+        [
+          ticket_id,
+          req.user.id,
+          `Unidad asociada: ${brand} ${model} · Chasis ${chassis}`,
+          `Unidad agregada manualmente al inventario y marcada como vendida. ${sale_notes || ''}`
+        ]
+      );
+    }
+
+    res.status(201).json(unit);
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Chasis ya existe' });
     console.error(e); res.status(500).json({ error: 'Error' });

@@ -2,18 +2,48 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
+const BLANK_NW=()=>({
+  branch_id:"",year:new Date().getFullYear(),brand:"",model:"",color:"",chassis:"",motor_num:"",price:0,
+  added_as_sold:false,
+  sold_at:new Date().toISOString().split('T')[0],
+  sold_by:"",ticket_id:"",sale_notes:"",payment_method:"",sale_type:"completa",
+});
+
 export function InventoryView({inv,setInv,user,realBranches}){
   const brs=realBranches||[];
   const[brF,setBrF]=useState("");const[stF,setStF]=useState("");const[search,setSearch]=useState("");const[showAdd,setShowAdd]=useState(false);const[viewPhoto,setViewPhoto]=useState(null);const[adding,setAdding]=useState(false);
-  const[nw,setNw]=useState({branch_id:"",year:new Date().getFullYear(),brand:"",model:"",color:"",chassis:"",motor_num:"",status:"disponible",price:0});
+  const[nw,setNw]=useState(BLANK_NW());
+  const[sellers,setSellers]=useState([]);
+  const[openTickets,setOpenTickets]=useState([]);
+
   const f=inv.filter(x=>{if(brF&&x.branch_id!==brF)return false;if(stF&&x.status!==stF)return false;if(search&&!`${x.brand} ${x.model} ${x.chassis} ${x.color}`.toLowerCase().includes(search.toLowerCase()))return false;return true;});
   const counts=Object.fromEntries(Object.keys(INV_ST).map(k=>[k,inv.filter(x=>x.status===k).length]));
   const reload=()=>api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
+
+  useEffect(()=>{
+    if(!showAdd)return;
+    api.getSellers().then(d=>setSellers(Array.isArray(d)?d:[])).catch(()=>{});
+    api.getTickets({status:'ganado,abierto',limit:200}).then(d=>setOpenTickets((d.data||[]).slice(0,200))).catch(()=>{});
+  },[showAdd]);
+
   const handleAdd=async e=>{
     e.preventDefault();setAdding(true);
     try{
-      await api.createInventory({branch_id:nw.branch_id||null,year:Number(nw.year),brand:nw.brand,model:nw.model,color:nw.color,chassis:nw.chassis,motor_num:nw.motor_num,status:nw.status,price:Number(nw.price)});
-      setShowAdd(false);setNw({branch_id:"",year:new Date().getFullYear(),brand:"",model:"",color:"",chassis:"",motor_num:"",status:"disponible",price:0});
+      await api.createInventory({
+        branch_id:nw.branch_id||null,year:Number(nw.year),
+        brand:nw.brand,model:nw.model,color:nw.color,
+        chassis:nw.chassis,motor_num:nw.motor_num||null,price:Number(nw.price),
+        added_as_sold:nw.added_as_sold,
+        ...(nw.added_as_sold?{
+          sold_at:nw.sold_at||null,
+          sold_by:nw.sold_by||null,
+          ticket_id:nw.ticket_id||null,
+          sale_notes:nw.sale_notes||null,
+          payment_method:nw.payment_method||null,
+          sale_type:nw.sale_type||null,
+        }:{})
+      });
+      setShowAdd(false);setNw(BLANK_NW());
       reload();
     }catch(ex){alert(ex.message||"Error al agregar");}
     finally{setAdding(false);}
@@ -61,7 +91,76 @@ export function InventoryView({inv,setInv,user,realBranches}){
 
       {viewPhoto&&<div onClick={()=>setViewPhoto(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:70,cursor:"pointer"}}><div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:16,padding:16,maxWidth:600,width:"90%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><span style={{fontSize:14,fontWeight:600}}>{viewPhoto.title}</span><button onClick={()=>setViewPhoto(null)} style={{...S.gh,padding:4}}><Ic.x size={18}/></button></div><img src={viewPhoto.src} style={{width:"100%",borderRadius:10,maxHeight:400,objectFit:"contain"}}/></div></div>}
 
-      {showAdd&&<Modal onClose={()=>setShowAdd(false)} title="Agregar Moto" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]}/><Field label="Año" value={nw.year} onChange={v=>setNw({...nw,year:v})} type="number"/><Field label="Marca *" value={nw.brand} onChange={v=>setNw({...nw,brand:v})} req/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/><Field label="Color *" value={nw.color} onChange={v=>setNw({...nw,color:v})} req/><Field label="Precio" value={nw.price} onChange={v=>setNw({...nw,price:v})} type="number"/></div><div className="grid-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}><Field label="N° Chasis *" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})} req/><Field label="N° Motor *" value={nw.motor_num} onChange={v=>setNw({...nw,motor_num:v})} req/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowAdd(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Guardando...":"Agregar"}</button></div></form></Modal>}
+      {showAdd&&(
+        <Modal onClose={()=>{setShowAdd(false);setNw(BLANK_NW());}} title="Agregar Moto" wide>
+          <form onSubmit={handleAdd}>
+            {/* Datos base */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+              <Field label="Sucursal *" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]} req/>
+              <Field label="Año" value={nw.year} onChange={v=>setNw({...nw,year:v})} type="number"/>
+              <Field label="Marca *" value={nw.brand} onChange={v=>setNw({...nw,brand:v})} req/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+              <Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/>
+              <Field label="Color *" value={nw.color} onChange={v=>setNw({...nw,color:v})} req/>
+              <Field label="Precio" value={nw.price} onChange={v=>setNw({...nw,price:v})} type="number"/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              <Field label="N° Chasis *" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})} req/>
+              <Field label="N° Motor" value={nw.motor_num} onChange={v=>setNw({...nw,motor_num:v})}/>
+            </div>
+
+            {/* Toggle "Agregar como vendida" */}
+            <div
+              onClick={()=>setNw({...nw,added_as_sold:!nw.added_as_sold})}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:8,marginBottom:nw.added_as_sold?10:16,cursor:"pointer",background:nw.added_as_sold?"rgba(239,68,68,0.06)":"#F9FAFB",border:`1px solid ${nw.added_as_sold?"rgba(239,68,68,0.3)":"#E5E7EB"}`,transition:"all 0.15s"}}
+            >
+              <div style={{width:18,height:18,borderRadius:4,border:nw.added_as_sold?"none":"2px solid #333",background:nw.added_as_sold?"#EF4444":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {nw.added_as_sold&&<Ic.check size={11} color="white"/>}
+              </div>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:nw.added_as_sold?"#EF4444":"#374151"}}>Esta unidad ya está vendida</div>
+                <div style={{fontSize:11,color:"#6B7280"}}>Se registrará en inventario directamente como vendida, sin pasar por stock disponible</div>
+              </div>
+            </div>
+
+            {/* Campos de venta — solo si added_as_sold */}
+            {nw.added_as_sold&&(
+              <div style={{background:"rgba(239,68,68,0.04)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:600,color:"#EF4444",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.05em"}}>Datos de la venta</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <Field label="Vendedor responsable" value={nw.sold_by} onChange={v=>setNw({...nw,sold_by:v})}
+                    opts={[{v:"",l:"Seleccionar..."},...sellers.map(s=>({v:s.id,l:`${s.first_name||''} ${s.last_name||''}`.trim()}))]}/>
+                  <Field label="Fecha de venta" value={nw.sold_at} onChange={v=>setNw({...nw,sold_at:v})} type="date"/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <Field label="Tipo de registro" value={nw.sale_type} onChange={v=>setNw({...nw,sale_type:v})}
+                    opts={[{v:"completa",l:"Documentación completa"},{v:"inscripcion",l:"Solo inscripción"},{v:"entregada",l:"Entregada al cliente"}]}/>
+                  <Field label="Método de pago" value={nw.payment_method} onChange={v=>setNw({...nw,payment_method:v})}
+                    opts={[{v:"",l:"Seleccionar..."},{v:"Contado",l:"Contado"},{v:"Transferencia",l:"Transferencia"},{v:"Tarjeta Débito",l:"Tarjeta Débito"},{v:"Tarjeta Crédito",l:"Tarjeta Crédito"},{v:"Crédito Autofin",l:"Crédito Autofin"},{v:"Mixto",l:"Mixto"}]}/>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <Field label="Lead / Ticket asociado (opcional)" value={nw.ticket_id} onChange={v=>setNw({...nw,ticket_id:v})}
+                    opts={[{v:"",l:"Sin asociar"},...openTickets.map(t=>({v:t.id,l:`${t.ticket_num||''} · ${t.first_name||''} ${t.last_name||''}`.trim()}))]}/>
+                </div>
+                <Field label="Observaciones de venta" value={nw.sale_notes} onChange={v=>setNw({...nw,sale_notes:v})} rows={2} ph="Ej: Venta registrada con retraso, documentación en proceso..."/>
+              </div>
+            )}
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontSize:11,color:"#6B7280"}}>
+                {nw.added_as_sold&&<span style={{color:"#EF4444",fontWeight:600}}>⚠ Se creará como vendida — no aparecerá en stock disponible</span>}
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button type="button" onClick={()=>{setShowAdd(false);setNw(BLANK_NW());}} style={S.btn2}>Cancelar</button>
+                <button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1,background:nw.added_as_sold?"#EF4444":undefined}}>
+                  {adding?"Guardando...":nw.added_as_sold?"Registrar como vendida":"Agregar al inventario"}
+                </button>
+              </div>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
