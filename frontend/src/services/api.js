@@ -162,37 +162,6 @@ export const api = {
   deletePriceBatch: (id) => request('DELETE', `/priceimport/batches/${id}`),
   getPriceTemplate: () => `${BASE}/priceimport/template`,
 
-  // ── Flujo PDF anterior (DESACTIVADO — solo conservado por si acaso) ────────
-  // pricelistDebug: ...
-  pricelistDebug: (formData) => {
-    const token = getToken();
-    return fetch(`${BASE}/pricelist/debug-pdf`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    }).then(async r => {
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || 'Error en debug');
-      return data;
-    });
-  },
-  pricelistPreview: (formData) => {
-    const token = getToken();
-    return fetch(`${BASE}/pricelist/preview`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    }).then(async r => {
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || 'Error en preview');
-      return data;
-    });
-  },
-  pricelistConfirm: (data)   => request('POST', '/pricelist/confirm', data),
-  getPricelistLogs: ()       => request('GET',  '/pricelist/logs'),
-  getPricelistPeriods: ()    => request('GET',  '/pricelist/periods'),
-  getPricelistPrices: (period) => request('GET', `/pricelist/prices?period=${period}`),
-
   // Importación masiva (solo super_admin)
   importPreview: (formData) => {
     const token = getToken();
