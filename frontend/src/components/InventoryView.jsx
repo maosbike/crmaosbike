@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
@@ -8,6 +8,9 @@ const BLANK_NW=()=>({
   sold_at:new Date().toISOString().split('T')[0],
   sold_by:"",ticket_id:"",sale_notes:"",payment_method:"",sale_type:"completa",
 });
+const BLANK_SELL=()=>({sold_by:"",sold_at:new Date().toISOString().split('T')[0],ticket_id:"",payment_method:"",sale_type:"completa",sale_notes:""});
+const HIST_ICONS={created:"🏭",imported:"📊",sold:"💰",status_changed:"🔄",moved:"📦",note:"📝"};
+const HIST_LABELS={created:"Creada",imported:"Importada",sold:"Venta",status_changed:"Cambio estado",moved:"Traslado",note:"Nota"};
 
 export function InventoryView({inv,setInv,user,realBranches}){
   const brs=realBranches||[];
@@ -15,6 +18,15 @@ export function InventoryView({inv,setInv,user,realBranches}){
   const[nw,setNw]=useState(BLANK_NW());
   const[sellers,setSellers]=useState([]);
   const[openTickets,setOpenTickets]=useState([]);
+  // Sell state
+  const[showSell,setShowSell]=useState(false);
+  const[sellUnit,setSellUnit]=useState(null);
+  const[sellForm,setSellForm]=useState(BLANK_SELL());
+  const[selling,setSelling]=useState(false);
+  // History state
+  const[histOpen,setHistOpen]=useState(new Set());
+  const[histData,setHistData]=useState({});
+  const[histLoading,setHistLoading]=useState({});
   // Import state
   const[showImport,setShowImport]=useState(false);
   const[importPreview,setImportPreview]=useState(null);
@@ -28,10 +40,10 @@ export function InventoryView({inv,setInv,user,realBranches}){
   const reload=()=>api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
 
   useEffect(()=>{
-    if(!showAdd)return;
+    if(!showAdd && !showSell)return;
     api.getSellers().then(d=>setSellers(Array.isArray(d)?d:[])).catch(()=>{});
     api.getTickets({status:'ganado,abierto',limit:200}).then(d=>setOpenTickets((d.data||[]).slice(0,200))).catch(()=>{});
-  },[showAdd]);
+  },[showAdd,showSell]);
 
   const handleAdd=async e=>{
     e.preventDefault();setAdding(true);
@@ -90,6 +102,39 @@ export function InventoryView({inv,setInv,user,realBranches}){
   const handleMove=async(id,branch_id)=>{
     setInv(p=>p.map(x=>x.id===id?{...x,branch_id}:x));
     try{await api.updateInventory(id,{branch_id});reload();}catch(ex){alert(ex.message);reload();}
+  };
+  const openSell=(unit)=>{setSellUnit(unit);setSellForm(BLANK_SELL());setShowSell(true);};
+  const handleSell=async e=>{
+    e.preventDefault(); if(!sellUnit||!sellForm.sold_by)return;
+    setSelling(true);
+    try{
+      await api.sellInventory(sellUnit.id,{
+        sold_by:sellForm.sold_by, sold_at:sellForm.sold_at||null,
+        ticket_id:sellForm.ticket_id||null, payment_method:sellForm.payment_method||null,
+        sale_type:sellForm.sale_type||null, sale_notes:sellForm.sale_notes||null,
+      });
+      setShowSell(false); setSellUnit(null);
+      // Refresh history if open
+      if(histOpen.has(sellUnit.id)){
+        api.getInventoryHistory(sellUnit.id).then(d=>setHistData(p=>({...p,[sellUnit.id]:d}))).catch(()=>{});
+      }
+      reload();
+    }catch(ex){alert(ex.message||"Error al registrar venta");}
+    finally{setSelling(false);}
+  };
+  const toggleHist=async(id)=>{
+    const next=new Set(histOpen);
+    if(next.has(id)){next.delete(id);}
+    else{
+      next.add(id);
+      if(!histData[id]){
+        setHistLoading(p=>({...p,[id]:true}));
+        try{const d=await api.getInventoryHistory(id); setHistData(p=>({...p,[id]:d}));}
+        catch(e){}
+        finally{setHistLoading(p=>({...p,[id]:false}));}
+      }
+    }
+    setHistOpen(next);
   };
   // Visual helpers
   const branchColor=(code)=>({MPN:"#3B82F6",MPS:"#10B981",MOV:"#F28100"})[code]||"#6B7280";
@@ -164,7 +209,7 @@ export function InventoryView({inv,setInv,user,realBranches}){
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:1050}}>
           <thead>
             <tr style={{background:"#F9FAFB",borderBottom:"1px solid #E5E7EB"}}>
-              {["Sucursal","Año","Marca / Modelo","Color","N° Chasis","📷","N° Motor","📷","Estado","Precio",""].map(h=>(
+              {["Sucursal","Año","Marca / Modelo","Color","N° Chasis","📷","N° Motor","📷","Estado","Precio","Acciones"].map(h=>(
                 <th key={h} style={{textAlign:"left",padding:"10px 12px",fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{h}</th>
               ))}
             </tr>
@@ -179,9 +224,11 @@ export function InventoryView({inv,setInv,user,realBranches}){
               const stColor=INV_ST[x.status]?.c||"#6B7280";
               const bCode=x.branch_code||brs.find(b=>b.id===x.branch_id)?.code||"";
               const bColor=branchColor(bCode);
+              const isHistOpen=histOpen.has(x.id);
               return(
-                <tr key={x.id}
-                  style={{borderBottom:"1px solid #F3F4F6",borderLeft:`3px solid ${stColor}22`,transition:"background 0.1s"}}
+                <React.Fragment key={x.id}>
+                <tr
+                  style={{borderBottom:isHistOpen?"none":"1px solid #F3F4F6",borderLeft:`3px solid ${stColor}22`,transition:"background 0.1s"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   {/* Sucursal */}
@@ -234,15 +281,70 @@ export function InventoryView({inv,setInv,user,realBranches}){
                   <td style={{padding:"10px 12px",fontWeight:700,fontSize:12,color:"#111827",whiteSpace:"nowrap"}}>
                     {x.price>0?fmt(x.price):<span style={{color:"#D1D5DB",fontWeight:400}}>—</span>}
                   </td>
-                  {/* Acción mover */}
+                  {/* Acciones */}
                   <td style={{padding:"10px 12px"}}>
-                    <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
-                      style={{...S.inp,padding:"4px 8px",fontSize:10,width:60,borderRadius:6}}>
-                      <option value="" disabled>Mover</option>
-                      {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}
-                    </select>
+                    <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"nowrap"}}>
+                      {/* Vender */}
+                      {x.status!=='vendida'&&(
+                        <button onClick={()=>openSell(x)}
+                          style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#10B981",color:"#FFFFFF",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+                          Vender
+                        </button>
+                      )}
+                      {x.status==='vendida'&&(
+                        <span style={{fontSize:10,color:"#10B981",fontWeight:700,whiteSpace:"nowrap"}}>✓ Vendida</span>
+                      )}
+                      {/* Historial */}
+                      <button onClick={()=>toggleHist(x.id)}
+                        title="Ver historial"
+                        style={{padding:"4px 7px",borderRadius:6,border:`1px solid ${isHistOpen?"#6366F1":"#E5E7EB"}`,background:isHistOpen?"#EEF2FF":"#F9FAFB",color:isHistOpen?"#6366F1":"#9CA3AF",fontSize:11,cursor:"pointer"}}>
+                        {histLoading[x.id]?"⏳":"📋"}
+                      </button>
+                      {/* Mover */}
+                      <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
+                        style={{...S.inp,padding:"4px 6px",fontSize:10,width:56,borderRadius:6}}>
+                        <option value="" disabled>Mover</option>
+                        {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}
+                      </select>
+                    </div>
                   </td>
                 </tr>
+                {/* ── HISTORY ROW ── */}
+                {isHistOpen&&(
+                  <tr style={{borderBottom:"1px solid #F3F4F6",background:"#F8F7FF"}}>
+                    <td colSpan={11} style={{padding:"12px 16px 16px"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#6366F1",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+                        📋 Historial de la unidad — {x.chassis}
+                      </div>
+                      {histLoading[x.id]&&<div style={{color:"#9CA3AF",fontSize:11}}>Cargando...</div>}
+                      {!histLoading[x.id]&&(!histData[x.id]||histData[x.id].length===0)&&(
+                        <div style={{color:"#9CA3AF",fontSize:11}}>Sin registros de historial.</div>
+                      )}
+                      {!histLoading[x.id]&&histData[x.id]?.length>0&&(
+                        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          {histData[x.id].map(h=>{
+                            const uName=h.user_fn?`${h.user_fn} ${h.user_ln||''}`.trim():'Sistema';
+                            return(
+                              <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 10px",background:"#FFFFFF",borderRadius:8,border:"1px solid #E9E8FF"}}>
+                                <span style={{fontSize:15,flexShrink:0}}>{HIST_ICONS[h.event_type]||"•"}</span>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                                    <span style={{fontWeight:700,fontSize:11,color:"#374151"}}>{HIST_LABELS[h.event_type]||h.event_type}</span>
+                                    {h.from_status&&h.to_status&&<span style={{fontSize:10,color:"#6B7280"}}>{INV_ST[h.from_status]?.l||h.from_status} → {INV_ST[h.to_status]?.l||h.to_status}</span>}
+                                    <span style={{fontSize:10,color:"#9CA3AF",marginLeft:"auto"}}>{fDT(h.created_at)}</span>
+                                  </div>
+                                  {h.note&&<div style={{fontSize:11,color:"#4B5563",marginTop:3}}>{h.note}</div>}
+                                  <div style={{fontSize:10,color:"#9CA3AF",marginTop:2}}>por {uName}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
           </tbody>
@@ -328,6 +430,50 @@ export function InventoryView({inv,setInv,user,realBranches}){
                   {adding?"Guardando...":nw.added_as_sold?"Registrar como vendida":"Agregar al inventario"}
                 </button>
               </div>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ── SELL MODAL ───────────────────────────────────── */}
+      {showSell&&sellUnit&&(
+        <Modal onClose={()=>{setShowSell(false);setSellUnit(null);}} title={`Registrar venta — ${sellUnit.brand} ${sellUnit.model}`} wide>
+          <form onSubmit={handleSell}>
+            {/* Unit summary */}
+            <div style={{background:"#F9FAFB",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12}}>
+              <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                <span><strong>Chasis:</strong> <code style={{fontSize:11}}>{sellUnit.chassis}</code></span>
+                {sellUnit.motor_num&&<span><strong>Motor:</strong> <code style={{fontSize:11}}>{sellUnit.motor_num}</code></span>}
+                <span><strong>Color:</strong> {sellUnit.color}</span>
+                {sellUnit.price>0&&<span><strong>Precio:</strong> {fmt(sellUnit.price)}</span>}
+              </div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <Field label="Vendedor responsable *" value={sellForm.sold_by} onChange={v=>setSellForm(p=>({...p,sold_by:v}))}
+                opts={[{v:"",l:"Seleccionar..."},...sellers.map(s=>({v:s.id,l:`${s.first_name||''} ${s.last_name||''}`.trim()}))]} req/>
+              <Field label="Fecha de venta" value={sellForm.sold_at} onChange={v=>setSellForm(p=>({...p,sold_at:v}))} type="date"/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <Field label="Tipo de entrega" value={sellForm.sale_type} onChange={v=>setSellForm(p=>({...p,sale_type:v}))}
+                opts={[{v:"completa",l:"Documentación completa"},{v:"inscripcion",l:"Solo inscripción"},{v:"entregada",l:"Entregada al cliente"}]}/>
+              <Field label="Método de pago" value={sellForm.payment_method} onChange={v=>setSellForm(p=>({...p,payment_method:v}))}
+                opts={[{v:"",l:"Seleccionar..."},{v:"Contado",l:"Contado"},{v:"Transferencia",l:"Transferencia"},{v:"Tarjeta Débito",l:"Tarjeta Débito"},{v:"Tarjeta Crédito",l:"Tarjeta Crédito"},{v:"Crédito Autofin",l:"Crédito Autofin"},{v:"Mixto",l:"Mixto"}]}/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <Field label="Lead / Ticket asociado (opcional)" value={sellForm.ticket_id} onChange={v=>setSellForm(p=>({...p,ticket_id:v}))}
+                opts={[{v:"",l:"Sin asociar"},...openTickets.map(t=>({v:t.id,l:`${t.ticket_num||''} · ${t.first_name||''} ${t.last_name||''}`.trim()}))]}/>
+            </div>
+            <div style={{marginBottom:16}}>
+              <Field label="Observaciones" value={sellForm.sale_notes} onChange={v=>setSellForm(p=>({...p,sale_notes:v}))} rows={2} ph="Ej: Documentación en proceso, entrega pactada para el..."/>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+              <button type="button" onClick={()=>{setShowSell(false);setSellUnit(null);}} style={S.btn2}>Cancelar</button>
+              <button type="submit" disabled={selling||!sellForm.sold_by}
+                style={{...S.btn,background:"#10B981",opacity:(selling||!sellForm.sold_by)?0.65:1}}>
+                {selling?"Registrando...":"Registrar venta"}
+              </button>
             </div>
           </form>
         </Modal>

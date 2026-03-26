@@ -87,6 +87,8 @@ export const api = {
     return request('POST', '/inventory/import/preview', fd);
   },
   importInventoryConfirm: (rows) => request('POST', '/inventory/import/confirm', { rows }),
+  sellInventory: (id, data) => request('POST', `/inventory/${id}/sell`, data),
+  getInventoryHistory: (id) => request('GET', `/inventory/${id}/history`),
 
   // Catalog
   getModels: (params) => request('GET', `/catalog/models?${new URLSearchParams(params || {})}`),

@@ -70,17 +70,23 @@ router.post('/', async (req, res) => {
 
     const unit = rows[0];
 
+    // Historial de creación
+    await db.query(
+      `INSERT INTO inventory_history (inventory_id, event_type, to_status, user_id, note, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [unit.id, isSold ? 'sold' : 'created', finalStatus, req.user.id,
+       isSold ? `Unidad creada y registrada como vendida${sale_notes ? `. ${sale_notes}` : ''}` : 'Unidad creada manualmente',
+       isSold ? JSON.stringify({ payment_method, sale_type }) : null]
+    );
+
     // Si viene con ticket asociado, registrar en el timeline del ticket
     if (isSold && ticket_id) {
       await db.query(
         `INSERT INTO timeline (ticket_id, user_id, type, title, note)
          VALUES ($1, $2, 'system', $3, $4)`,
-        [
-          ticket_id,
-          req.user.id,
-          `Unidad asociada: ${brand} ${model} · Chasis ${chassis}`,
-          `Unidad agregada manualmente al inventario y marcada como vendida. ${sale_notes || ''}`
-        ]
+        [ticket_id, req.user.id,
+         `Unidad asociada: ${brand} ${model} · Chasis ${chassis}`,
+         `Unidad agregada manualmente al inventario y marcada como vendida. ${sale_notes || ''}`]
       );
     }
 
@@ -112,6 +118,81 @@ router.put('/:id', async (req, res) => {
     if (!rows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
     res.json(rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
+// ─── SELL ─────────────────────────────────────────────────────────────────────
+
+// GET /inventory/:id/history
+router.get('/:id/history', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT h.*,
+              u.first_name as user_fn, u.last_name as user_ln,
+              sv.first_name as seller_fn, sv.last_name as seller_ln
+       FROM inventory_history h
+       LEFT JOIN users u  ON h.user_id   = u.id
+       LEFT JOIN inventory i ON h.inventory_id = i.id
+       LEFT JOIN users sv ON i.sold_by   = sv.id
+       WHERE h.inventory_id = $1
+       ORDER BY h.created_at ASC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
+// POST /inventory/:id/sell — registrar venta de una unidad existente
+router.post('/:id/sell', async (req, res) => {
+  try {
+    const { sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes } = req.body;
+    if (!sold_by) return res.status(400).json({ error: 'Vendedor requerido' });
+
+    // Verificar unidad existe y no está vendida
+    const { rows: unitRows } = await db.query('SELECT * FROM inventory WHERE id = $1', [req.params.id]);
+    if (!unitRows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
+    const unit = unitRows[0];
+    if (unit.status === 'vendida') return res.status(409).json({ error: 'La unidad ya está registrada como vendida' });
+
+    const finalSoldAt = sold_at || new Date().toISOString();
+    const prevStatus  = unit.status;
+
+    // Actualizar unidad
+    const { rows: updated } = await db.query(
+      `UPDATE inventory SET
+         status='vendida', sold_at=$1, sold_by=$2, ticket_id=$3,
+         payment_method=$4, sale_type=$5, sale_notes=$6, updated_at=NOW()
+       WHERE id=$7 RETURNING *`,
+      [finalSoldAt, sold_by, ticket_id||null, payment_method||null,
+       sale_type||null, sale_notes||null, req.params.id]
+    );
+
+    // Historial
+    await db.query(
+      `INSERT INTO inventory_history
+         (inventory_id, event_type, from_status, to_status, user_id, note, metadata)
+       VALUES ($1,'sold',$2,'vendida',$3,$4,$5)`,
+      [req.params.id, prevStatus, req.user.id,
+       `Venta registrada${sale_notes ? '. ' + sale_notes : ''}`,
+       JSON.stringify({ sold_by, payment_method, sale_type, ticket_id })]
+    );
+
+    // Nombre del vendedor para el timeline
+    const { rows: sv } = await db.query('SELECT first_name, last_name FROM users WHERE id=$1', [sold_by]);
+    const svName = sv[0] ? `${sv[0].first_name} ${sv[0].last_name||''}`.trim() : 'Vendedor';
+
+    // Timeline del ticket si existe
+    if (ticket_id) {
+      await db.query(
+        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+         VALUES ($1,$2,'system',$3,$4)`,
+        [ticket_id, req.user.id,
+         `Moto vendida: ${unit.brand} ${unit.model} · Chasis ${unit.chassis}`,
+         `Vendida por ${svName}. ${payment_method ? 'Pago: ' + payment_method + '. ' : ''}${sale_notes||''}`]
+      );
+    }
+
+    res.json(updated[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al registrar venta: ' + e.message }); }
 });
 
 // ─── IMPORT XLSX ──────────────────────────────────────────────────────────────
