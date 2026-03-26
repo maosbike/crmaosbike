@@ -91,37 +91,176 @@ export function InventoryView({inv,setInv,user,realBranches}){
     setInv(p=>p.map(x=>x.id===id?{...x,branch_id}:x));
     try{await api.updateInventory(id,{branch_id});reload();}catch(ex){alert(ex.message);reload();}
   };
+  // Visual helpers
+  const branchColor=(code)=>({MPN:"#3B82F6",MPS:"#10B981",MOV:"#F28100"})[code]||"#6B7280";
+  const KPI_ICONS={disponible:<Ic.check size={16}/>,reservada:<Ic.clock size={16}/>,vendida:<Ic.sale size={16}/>,preinscrita:<Ic.tag size={16}/>};
+
   return(
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
-        <div><h1 style={{fontSize:18,fontWeight:700,margin:0}}>Inventario</h1><p style={{color:"#6B6B6B",fontSize:12}}>{inv.length} unidades · {counts.disponible} disponibles</p></div>
-        <div style={{display:"flex",gap:8}}>
-          {isAdmin&&<button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}} style={{...S.btn2,display:"flex",alignItems:"center",gap:6,fontSize:12}}><Ic.upload size={14}/>Importar inventario</button>}
-          <button onClick={()=>setShowAdd(true)} style={{...S.btn,display:"flex",alignItems:"center",gap:6,fontSize:12}}><Ic.plus size={15}/>Agregar Moto</button>
+      {/* ── HEADER ── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div>
+          <h1 style={{fontSize:20,fontWeight:800,margin:0,letterSpacing:"-0.3px"}}>Inventario</h1>
+          <p style={{color:"#6B7280",fontSize:12,margin:"3px 0 0"}}>{inv.length} unidades en sistema · <span style={{color:"#10B981",fontWeight:600}}>{counts.disponible} disponibles</span></p>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {isAdmin&&(
+            <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
+              style={{display:"flex",alignItems:"center",gap:7,padding:"8px 16px",borderRadius:8,border:"1px solid #E5E7EB",background:"#FFFFFF",fontSize:12,fontWeight:500,cursor:"pointer",color:"#374151",transition:"all 0.15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.background="#F9FAFB";e.currentTarget.style.borderColor="#D1D5DB";}}
+              onMouseLeave={e=>{e.currentTarget.style.background="#FFFFFF";e.currentTarget.style.borderColor="#E5E7EB";}}>
+              <Ic.upload size={14} color="#6B7280"/>Importar Excel
+            </button>
+          )}
+          <button onClick={()=>setShowAdd(true)}
+            style={{display:"flex",alignItems:"center",gap:7,padding:"8px 18px",borderRadius:8,background:"#F28100",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",color:"#FFFFFF",boxShadow:"0 1px 4px rgba(242,129,0,0.25)"}}>
+            <Ic.plus size={15} color="#FFFFFF"/>Agregar Moto
+          </button>
         </div>
       </div>
-      <div className="grid-4col" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:14}}>{Object.entries(INV_ST).map(([k,v])=><div key={k} onClick={()=>setStF(stF===k?"":k)} style={{...S.card,padding:10,textAlign:"center",cursor:"pointer",border:stF===k?`1px solid ${v.c}`:"1px solid #E5E7EB"}}><div style={{fontSize:20,fontWeight:800,color:v.c}}>{counts[k]}</div><div style={{fontSize:10,color:"#6B6B6B"}}>{v.l}</div></div>)}</div>
-      <div style={{...S.card,padding:10,marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}><div style={{position:"relative",flex:1,minWidth:180}}><Ic.search size={14} color="#555" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{...S.inp,paddingLeft:30,width:"100%"}}/></div><select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp}}><option value="">Todas las sucursales</option>{brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
-      <div className="crm-table-scroll" style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,overflow:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:1050}}><thead><tr style={{borderBottom:"1px solid #E5E7EB"}}>{["Sucursal","Año","Marca","Modelo","Color","N° Chasis","Foto Chasis","N° Motor","Foto Motor","Estado","Precio",""].map(h=><th key={h} style={{textAlign:"left",padding:"9px 8px",fontSize:9,fontWeight:600,color:"#6B6B6B",textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{f.map(x=><tr key={x.id} style={{borderBottom:"1px solid #F3F4F6"}}>
-        <td style={{padding:"8px"}}><Bdg l={x.branch_code||brs.find(b=>b.id===x.branch_id)?.code} c="#6B7280"/></td>
-        <td style={{padding:"8px"}}>{x.year}</td>
-        <td style={{padding:"8px",fontWeight:600}}>{x.brand}</td>
-        <td style={{padding:"8px"}}>{x.model}</td>
-        <td style={{padding:"8px"}}>{x.color}</td>
-        <td style={{padding:"8px",fontFamily:"monospace",fontSize:11}}>{x.chassis}</td>
-        <td style={{padding:"8px"}}>
-          {x.chassis_photo?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:36,height:36,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #D1D5DB"}}/>:<button onClick={()=>handlePhoto(x.id,"chassis_photo")} style={{...S.gh,padding:"4px 8px",fontSize:10,color:"#F28100",border:"1px dashed #333",borderRadius:6}}>📷</button>}
-        </td>
-        <td style={{padding:"8px",fontFamily:"monospace",fontSize:11}}>{x.motor_num}</td>
-        <td style={{padding:"8px"}}>
-          {x.motor_photo?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:36,height:36,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #D1D5DB"}}/>:<button onClick={()=>handlePhoto(x.id,"motor_photo")} style={{...S.gh,padding:"4px 8px",fontSize:10,color:"#F28100",border:"1px dashed #333",borderRadius:6}}>📷</button>}
-        </td>
-        <td style={{padding:"8px"}}><select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)} style={{...S.inp,padding:"3px 6px",fontSize:11,background:"transparent",border:"none",color:INV_ST[x.status]?.c,fontWeight:600,cursor:"pointer"}}>{Object.entries(INV_ST).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></td>
-        <td style={{padding:"8px",fontWeight:600,color:"#F28100"}}>{fmt(x.price)}</td>
-        <td style={{padding:"8px"}}><select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}} style={{...S.inp,padding:"3px 6px",fontSize:10,width:55}}><option value="" disabled>Mover</option>{brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}</select></td>
-      </tr>)}</tbody></table></div>
 
-      {viewPhoto&&<div onClick={()=>setViewPhoto(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:70,cursor:"pointer"}}><div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:16,padding:16,maxWidth:600,width:"90%"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><span style={{fontSize:14,fontWeight:600}}>{viewPhoto.title}</span><button onClick={()=>setViewPhoto(null)} style={{...S.gh,padding:4}}><Ic.x size={18}/></button></div><img src={viewPhoto.src} style={{width:"100%",borderRadius:10,maxHeight:400,objectFit:"contain"}}/></div></div>}
+      {/* ── KPI CARDS ── */}
+      <div className="grid-4col" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {Object.entries(INV_ST).map(([k,v])=>{
+          const active=stF===k;
+          return(
+            <div key={k} onClick={()=>setStF(stF===k?"":k)}
+              style={{background:"#FFFFFF",borderRadius:12,padding:"14px 16px",cursor:"pointer",border:`1.5px solid ${active?v.c:"#E5E7EB"}`,boxShadow:active?`0 0 0 3px ${v.c}22`:"0 1px 3px rgba(0,0,0,0.04)",transition:"all 0.15s",display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:36,height:36,borderRadius:10,background:`${v.c}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:v.c}}>
+                {KPI_ICONS[k]}
+              </div>
+              <div>
+                <div style={{fontSize:22,fontWeight:800,color:v.c,lineHeight:1}}>{counts[k]}</div>
+                <div style={{fontSize:11,color:"#6B7280",marginTop:2,fontWeight:500}}>{v.l}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── SEARCH / FILTER BAR ── */}
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        <div style={{position:"relative",flex:1,minWidth:200}}>
+          <Ic.search size={14} color="#9CA3AF" style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)"}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar marca, modelo, chasis, color…"
+            style={{...S.inp,paddingLeft:34,width:"100%",borderRadius:8,fontSize:12,height:36}}/>
+        </div>
+        <select value={brF} onChange={e=>setBrF(e.target.value)}
+          style={{...S.inp,borderRadius:8,fontSize:12,height:36,minWidth:160,background:"#FFFFFF"}}>
+          <option value="">Todas las sucursales</option>
+          {brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+        {(search||brF||stF)&&(
+          <button onClick={()=>{setSearch("");setBrF("");setStF("");}}
+            style={{padding:"0 14px",height:36,borderRadius:8,border:"1px solid #E5E7EB",background:"#F9FAFB",fontSize:12,cursor:"pointer",color:"#6B7280",display:"flex",alignItems:"center",gap:5}}>
+            <Ic.x size={12}/>Limpiar
+          </button>
+        )}
+        {f.length!==inv.length&&<span style={{fontSize:11,color:"#6B7280",alignSelf:"center",paddingLeft:4}}>{f.length} de {inv.length}</span>}
+      </div>
+
+      {/* ── TABLA ── */}
+      <div style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,overflow:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:1050}}>
+          <thead>
+            <tr style={{background:"#F9FAFB",borderBottom:"1px solid #E5E7EB"}}>
+              {["Sucursal","Año","Marca / Modelo","Color","N° Chasis","📷","N° Motor","📷","Estado","Precio",""].map(h=>(
+                <th key={h} style={{textAlign:"left",padding:"10px 12px",fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {f.length===0&&(
+              <tr><td colSpan={11} style={{padding:"40px 0",textAlign:"center",color:"#9CA3AF",fontSize:13}}>
+                {search||brF||stF?"No hay unidades que coincidan con los filtros.":"No hay unidades en inventario."}
+              </td></tr>
+            )}
+            {f.map(x=>{
+              const stColor=INV_ST[x.status]?.c||"#6B7280";
+              const bCode=x.branch_code||brs.find(b=>b.id===x.branch_id)?.code||"";
+              const bColor=branchColor(bCode);
+              return(
+                <tr key={x.id}
+                  style={{borderBottom:"1px solid #F3F4F6",borderLeft:`3px solid ${stColor}22`,transition:"background 0.1s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  {/* Sucursal */}
+                  <td style={{padding:"10px 12px"}}>
+                    <span style={{display:"inline-flex",alignItems:"center",padding:"3px 8px",borderRadius:6,background:`${bColor}15`,color:bColor,fontSize:11,fontWeight:700}}>
+                      {bCode||"—"}
+                    </span>
+                  </td>
+                  {/* Año */}
+                  <td style={{padding:"10px 12px",color:"#6B7280",fontSize:11}}>{x.year}</td>
+                  {/* Marca / Modelo */}
+                  <td style={{padding:"10px 12px"}}>
+                    <div style={{fontWeight:700,fontSize:12}}>{x.brand}</div>
+                    <div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{x.model}</div>
+                  </td>
+                  {/* Color */}
+                  <td style={{padding:"10px 12px"}}>
+                    <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#374151"}}>
+                      <span style={{width:10,height:10,borderRadius:"50%",background:"#E5E7EB",border:"1px solid #D1D5DB",flexShrink:0}}/>
+                      {x.color}
+                    </span>
+                  </td>
+                  {/* Chasis */}
+                  <td style={{padding:"10px 12px",fontFamily:"monospace",fontSize:10,color:"#374151",letterSpacing:"0.02em"}}>{x.chassis}</td>
+                  {/* Foto chasis */}
+                  <td style={{padding:"10px 12px"}}>
+                    {x.chassis_photo
+                      ?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:34,height:34,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB"}}/>
+                      :<button onClick={()=>handlePhoto(x.id,"chassis_photo")} style={{width:34,height:34,borderRadius:6,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:14,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>}
+                  </td>
+                  {/* Motor */}
+                  <td style={{padding:"10px 12px",fontFamily:"monospace",fontSize:10,color:"#6B7280"}}>{x.motor_num||<span style={{color:"#D1D5DB"}}>—</span>}</td>
+                  {/* Foto motor */}
+                  <td style={{padding:"10px 12px"}}>
+                    {x.motor_photo
+                      ?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:34,height:34,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB"}}/>
+                      :<button onClick={()=>handlePhoto(x.id,"motor_photo")} style={{width:34,height:34,borderRadius:6,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:14,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>}
+                  </td>
+                  {/* Estado */}
+                  <td style={{padding:"10px 12px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{width:7,height:7,borderRadius:"50%",background:stColor,flexShrink:0}}/>
+                      <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
+                        style={{background:"transparent",border:"none",fontSize:11,fontWeight:600,color:stColor,cursor:"pointer",padding:0,outline:"none",fontFamily:"inherit"}}>
+                        {Object.entries(INV_ST).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+                      </select>
+                    </div>
+                  </td>
+                  {/* Precio */}
+                  <td style={{padding:"10px 12px",fontWeight:700,fontSize:12,color:"#111827",whiteSpace:"nowrap"}}>
+                    {x.price>0?fmt(x.price):<span style={{color:"#D1D5DB",fontWeight:400}}>—</span>}
+                  </td>
+                  {/* Acción mover */}
+                  <td style={{padding:"10px 12px"}}>
+                    <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
+                      style={{...S.inp,padding:"4px 8px",fontSize:10,width:60,borderRadius:6}}>
+                      <option value="" disabled>Mover</option>
+                      {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}
+                    </select>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── FOTO LIGHTBOX ── */}
+      {viewPhoto&&(
+        <div onClick={()=>setViewPhoto(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:70,cursor:"pointer",backdropFilter:"blur(2px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#FFFFFF",borderRadius:16,padding:20,maxWidth:600,width:"90%",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <span style={{fontSize:14,fontWeight:700}}>{viewPhoto.title}</span>
+              <button onClick={()=>setViewPhoto(null)} style={{...S.gh,padding:6,borderRadius:8}}><Ic.x size={16}/></button>
+            </div>
+            <img src={viewPhoto.src} style={{width:"100%",borderRadius:10,maxHeight:420,objectFit:"contain"}}/>
+          </div>
+        </div>
+      )}
 
       {showAdd&&(
         <Modal onClose={()=>{setShowAdd(false);setNw(BLANK_NW());}} title="Agregar Moto" wide>
