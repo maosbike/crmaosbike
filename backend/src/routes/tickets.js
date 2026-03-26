@@ -98,6 +98,15 @@ router.post('/', asyncHandler(async (req, res) => {
       [rows[0].id, req.user.id]
     );
 
+    // Log asignación inicial en reassignment_log para trazabilidad
+    if (seller) {
+      await client.query(
+        `INSERT INTO reassignment_log (ticket_id, from_user_id, to_user_id, reason, reassigned_by)
+         VALUES ($1, NULL, $2, 'initial_assignment', $3)`,
+        [rows[0].id, seller, req.user.id]
+      );
+    }
+
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (txErr) {

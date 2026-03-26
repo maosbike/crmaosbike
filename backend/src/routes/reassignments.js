@@ -6,30 +6,132 @@ const SLAService = require('../services/slaService');
 router.use(auth);
 
 // ═══════════════════════════════════════════════════
-// HISTORIAL DE REASIGNACIONES DE UN TICKET
+// HISTORIAL COMPLETO DE ASIGNACIÓN DE UN TICKET
 // GET /api/reassignments/ticket/:ticketId
+// Devuelve timeline unificado: asignación inicial + cada reasignación
+// con duración calculada por período
 // ═══════════════════════════════════════════════════
+const REASON_LABELS = {
+  initial_assignment: 'Asignación inicial',
+  sla_breach:         'SLA vencido (automático)',
+  manual:             'Reasignación manual',
+};
+
+function formatDuration(ms) {
+  if (ms < 0) ms = 0;
+  const min = Math.floor(ms / 60000);
+  const h   = Math.floor(min / 60);
+  const d   = Math.floor(h / 24);
+  if (d > 0) return `${d}d ${h % 24}h`;
+  if (h > 0) return `${h}h ${min % 60}min`;
+  return `${min}min`;
+}
+
 router.get('/ticket/:ticketId', async (req, res) => {
   try {
-    const { rows } = await db.query(
-      `SELECT rl.*,
-              uf.first_name as from_first, uf.last_name as from_last,
-              ut.first_name as to_first, ut.last_name as to_last,
-              ur.first_name as by_first, ur.last_name as by_last
-       FROM reassignment_log rl
-       LEFT JOIN users uf ON rl.from_user_id = uf.id
-       LEFT JOIN users ut ON rl.to_user_id = ut.id
-       LEFT JOIN users ur ON rl.reassigned_by = ur.id
-       WHERE rl.ticket_id = $1
-       ORDER BY rl.created_at DESC`,
+    // 1. Datos base del ticket (vendedor actual)
+    const { rows: tRows } = await db.query(
+      `SELECT t.created_at, t.assigned_to, t.seller_id, t.sla_status,
+              t.first_action_at, t.reassignment_count, t.sla_deadline,
+              u.first_name as cur_fn, u.last_name as cur_ln
+       FROM tickets t
+       LEFT JOIN users u ON t.assigned_to = u.id
+       WHERE t.id = $1`,
       [req.params.ticketId]
     );
-    res.json(rows);
+    if (!tRows[0]) return res.status(404).json({ error: 'Ticket no encontrado' });
+    const tk = tRows[0];
+
+    // 2. Todos los logs de reassignment_log en orden ASC
+    const { rows: logs } = await db.query(
+      `SELECT rl.*,
+              uf.first_name as from_first, uf.last_name as from_last,
+              ut.first_name as to_first,   ut.last_name as to_last,
+              ur.first_name as by_first,   ur.last_name as by_last
+       FROM reassignment_log rl
+       LEFT JOIN users uf ON rl.from_user_id = uf.id
+       LEFT JOIN users ut ON rl.to_user_id   = ut.id
+       LEFT JOIN users ur ON rl.reassigned_by = ur.id
+       WHERE rl.ticket_id = $1
+       ORDER BY rl.created_at ASC`,
+      [req.params.ticketId]
+    );
+
+    // 3. Construir historia unificada
+    const history = [];
+
+    const hasInitLog = logs.length > 0 && logs[0].reason === 'initial_assignment';
+
+    if (hasInitLog) {
+      // Tenemos log explícito de asignación inicial
+      const init = logs[0];
+      history.push({
+        id: init.id, type: 'initial_assignment',
+        from_name: null,
+        to_name: [init.to_first, init.to_last].filter(Boolean).join(' ') || 'Sin asignar',
+        reason: 'initial_assignment',
+        reason_label: REASON_LABELS.initial_assignment,
+        by_name: init.by_first ? `${init.by_first} ${init.by_last||''}`.trim() : 'Sistema',
+        created_at: init.created_at,
+      });
+      for (const r of logs.slice(1)) {
+        history.push(buildEvent(r));
+      }
+    } else {
+      // Sin log inicial — inferir desde los datos del ticket
+      let initName, initUserId;
+      if (logs.length > 0 && logs[0].from_user_id) {
+        // El primer "from" del log es el seller original
+        initName   = [logs[0].from_first, logs[0].from_last].filter(Boolean).join(' ');
+        initUserId = logs[0].from_user_id;
+      } else {
+        // Sin reasignaciones: el asignado actual ES el inicial
+        initName   = [tk.cur_fn, tk.cur_ln].filter(Boolean).join(' ');
+        initUserId = tk.assigned_to || tk.seller_id;
+      }
+      history.push({
+        id: 'initial', type: 'initial_assignment',
+        from_name: null,
+        to_name: initName || 'Sin asignar',
+        to_user_id: initUserId,
+        reason: 'initial_assignment',
+        reason_label: REASON_LABELS.initial_assignment,
+        by_name: 'Sistema',
+        created_at: tk.created_at,
+      });
+      for (const r of logs) history.push(buildEvent(r));
+    }
+
+    // 4. Calcular duración de cada período
+    const now = new Date();
+    for (let i = 0; i < history.length; i++) {
+      const start = new Date(history[i].created_at);
+      const end   = i + 1 < history.length ? new Date(history[i + 1].created_at) : now;
+      history[i].duration_ms    = Math.max(0, end - start);
+      history[i].duration_label = formatDuration(history[i].duration_ms);
+      history[i].is_current     = (i === history.length - 1);
+    }
+
+    res.json(history);
   } catch (e) {
-    console.error('Error listar reasignaciones:', e);
+    console.error('Error historial asignación:', e);
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
+
+function buildEvent(r) {
+  return {
+    id: r.id, type: 'reassignment',
+    from_name: [r.from_first, r.from_last].filter(Boolean).join(' ') || 'Desconocido',
+    to_name:   [r.to_first,   r.to_last  ].filter(Boolean).join(' ') || 'Desconocido',
+    from_user_id: r.from_user_id,
+    to_user_id:   r.to_user_id,
+    reason:       r.reason,
+    reason_label: REASON_LABELS[r.reason] || r.reason || 'Sistema',
+    by_name: r.by_first ? `${r.by_first} ${r.by_last||''}`.trim() : 'Sistema automático',
+    created_at: r.created_at,
+  };
+}
 
 // ═══════════════════════════════════════════════════
 // REASIGNACIÓN MANUAL (solo admins)

@@ -600,6 +600,15 @@ router.post('/confirm', async (req, res) => {
           ]
         );
 
+        // Log asignación inicial para trazabilidad completa
+        if (seller) {
+          await db.query(
+            `INSERT INTO reassignment_log (ticket_id, from_user_id, to_user_id, reason, reassigned_by)
+             VALUES ($1, NULL, $2, 'initial_assignment', $3)`,
+            [created[0].id, seller.id, req.user.id]
+          );
+        }
+
         if (!seller) stats.no_seller++;
         stats.imported++;
         createdNums.push(created[0].ticket_num);

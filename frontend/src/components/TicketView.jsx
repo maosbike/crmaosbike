@@ -219,52 +219,75 @@ export function TicketView({lead,user,nav,updLead}){
 
       {tab==="historial_asignacion"&&isAdmin&&(
         <div style={S.card}>
-          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 4px"}}>Historial de Asignación</h3>
-          <p style={{fontSize:11,color:"#6B7280",margin:"0 0 14px"}}>Solo visible para administradores. Muestra el vendedor inicial y cada reasignación.</p>
-          {/* Asignación actual */}
-          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"rgba(242,129,0,0.06)",border:"1px solid rgba(242,129,0,0.2)",marginBottom:10}}>
-            <div style={{width:8,height:8,borderRadius:"50%",background:"#F28100",flexShrink:0}}/>
-            <div style={{flex:1}}>
-              <div style={{fontSize:12,fontWeight:600}}>Vendedor actual: {s.fn}{s.ln?` ${s.ln}`:''}</div>
-              <div style={{fontSize:11,color:"#6B7280"}}>
-                {slaReassigned?"Asignado por reasignación automática":slaBreach?"SLA vencido":"En gestión"}
-                {lead.sla_deadline?` · SLA hasta ${fDT(lead.sla_deadline)}`:''}
-              </div>
+          {/* Header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div>
+              <h3 style={{fontSize:13,fontWeight:700,margin:0}}>Historial de Asignación</h3>
+              <p style={{fontSize:11,color:"#6B7280",margin:"2px 0 0"}}>Solo visible para administradores · Trazabilidad completa del lead</p>
             </div>
-            <span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:12,background:slaReassigned?"rgba(139,92,246,0.12)":slaBreach?"rgba(239,68,68,0.12)":"rgba(16,185,129,0.12)",color:slaReassigned?"#7C3AED":slaBreach?"#EF4444":"#10B981"}}>
-              {slaReassigned?"Reasignado":slaBreach?"Vencido":"Activo"}
-            </span>
+            {lead.reassignment_count>0&&(
+              <span style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:12,background:"rgba(139,92,246,0.1)",color:"#7C3AED"}}>
+                {lead.reassignment_count} reasignación{lead.reassignment_count!==1?"es":""}
+              </span>
+            )}
           </div>
-          {/* Log de reasignaciones */}
+
+          {/* Timeline */}
           {assignHistory.length===0
-            ?<div style={{padding:"16px 12px",textAlign:"center",color:"#6B7280",fontSize:12,background:"#F9FAFB",borderRadius:8}}>Sin reasignaciones — el lead estuvo siempre con el mismo vendedor.</div>
-            :<div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {assignHistory.map((r,i)=>{
-                const fromName=r.from_first?`${r.from_first} ${r.from_last||''}`.trim():'Desconocido';
-                const toName=r.to_first?`${r.to_first} ${r.to_last||''}`.trim():'Desconocido';
-                const byName=r.by_first?`${r.by_first} ${r.by_last||''}`.trim():null;
-                const reasonLabel=r.reason==='sla_breach'?'SLA vencido':r.reason==='manual'?'Reasignación manual':r.reason||'Sistema';
+            ?<div style={{textAlign:"center",padding:"28px 0",color:"#9CA3AF",fontSize:12}}>Cargando historial...</div>
+            :<div style={{position:"relative",paddingLeft:24}}>
+              {/* Línea vertical */}
+              <div style={{position:"absolute",left:9,top:14,bottom:14,width:2,background:"#E5E7EB",borderRadius:2}}/>
+
+              {assignHistory.map((ev,i)=>{
+                const isInit=ev.type==="initial_assignment";
+                const isSLA=ev.reason==="sla_breach";
+                const isManual=ev.reason==="manual";
+                const isCurrent=ev.is_current;
+                const dotC=isInit?"#3B82F6":isSLA?"#EF4444":isManual?"#8B5CF6":"#6B7280";
+                const cardBg=isInit?"rgba(59,130,246,0.05)":isSLA?"rgba(239,68,68,0.05)":isManual?"rgba(139,92,246,0.05)":"rgba(107,114,128,0.04)";
+                const cardBorder=isInit?"rgba(59,130,246,0.18)":isSLA?"rgba(239,68,68,0.18)":isManual?"rgba(139,92,246,0.18)":"rgba(107,114,128,0.1)";
+                const icon=isInit?"🟢":isSLA?"🔴":isManual?"🟣":"⚙️";
                 return(
-                  <div key={r.id||i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:8,background:"#F9FAFB",border:"1px solid #E5E7EB"}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:r.reason==='sla_breach'?"#EF4444":"#8B5CF6",flexShrink:0,marginTop:4}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:12,fontWeight:600}}>{fromName} → {toName}</div>
-                      <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>
-                        {reasonLabel}{byName?` · por ${byName}`:''}
+                  <div key={ev.id||i} style={{position:"relative",paddingBottom:i<assignHistory.length-1?14:0,paddingLeft:18}}>
+                    {/* Dot */}
+                    <div style={{
+                      position:"absolute",left:-12,top:11,
+                      width:14,height:14,borderRadius:"50%",background:dotC,
+                      border:"2px solid #F5F5F7",
+                      boxShadow:isCurrent?`0 0 0 3px ${dotC}25`:"none",
+                    }}/>
+                    {/* Card */}
+                    <div style={{padding:"10px 14px",borderRadius:10,background:cardBg,border:`1px solid ${cardBorder}`}}>
+                      {/* Fila superior: título + tiempo */}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:5}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#111827",lineHeight:1.3}}>
+                          {isInit
+                            ?<>↳ Asignado a <span style={{color:dotC}}>{ev.to_name}</span></>
+                            :<><span style={{color:"#6B7280"}}>{ev.from_name}</span> <span style={{color:dotC,fontWeight:800}}>→</span> <span style={{color:"#111827"}}>{ev.to_name}</span></>
+                          }
+                          {isCurrent&&<span style={{marginLeft:8,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:8,background:"#F28100",color:"#fff",letterSpacing:"0.02em"}}>ACTUAL</span>}
+                        </div>
+                        <span style={{fontSize:10,color:"#9CA3AF",whiteSpace:"nowrap",flexShrink:0}}>{fDT(ev.created_at)}</span>
+                      </div>
+                      {/* Fila info: razón + ejecutor */}
+                      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",marginBottom:6}}>
+                        <span style={{fontSize:11,color:"#6B7280"}}>{icon} {ev.reason_label}</span>
+                        <span style={{fontSize:11,color:"#9CA3AF"}}>·</span>
+                        <span style={{fontSize:11,color:"#6B7280"}}>por {ev.by_name}</span>
+                      </div>
+                      {/* Duración con ese vendedor */}
+                      <div style={{display:"flex",justifyContent:"flex-end"}}>
+                        <span style={{fontSize:10,color:isCurrent?"#F28100":"#9CA3AF",padding:"2px 8px",borderRadius:6,background:isCurrent?"rgba(242,129,0,0.08)":"rgba(0,0,0,0.04)",fontWeight:isCurrent?600:400}}>
+                          {isCurrent?"⏳ En curso · "+ev.duration_label:"✓ "+ev.duration_label}
+                        </span>
                       </div>
                     </div>
-                    <div style={{fontSize:10,color:"#9CA3AF",flexShrink:0,textAlign:"right"}}>{fDT(r.created_at)}</div>
                   </div>
                 );
               })}
             </div>
           }
-          {/* Resumen de reasignaciones */}
-          {lead.reassignment_count>0&&(
-            <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:"#F3F4F6",fontSize:11,color:"#6B7280"}}>
-              Total reasignaciones: <strong>{lead.reassignment_count}</strong>
-            </div>
-          )}
         </div>
       )}
 
