@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
@@ -157,7 +157,7 @@ export function TicketView({lead,user,nav,updLead}){
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:10}}>
             <Field label="Pie" value={lead.pie} onChange={v=>upd("pie",Number(v))} type="number"/>
-            <div style={{display:"flex",alignItems:"flex-end"}}><button onClick={()=>addTimeline("system","Datos del cliente actualizados","")} style={{...S.btn,fontSize:12}}>Actualizar</button></div>
+            <div style={{display:"flex",alignItems:"flex-end"}}><button onClick={async()=>{try{const e=await api.addTimeline(lead.id,{type:"system",title:"Datos del cliente actualizados",note:null});addTimelineLocal(e);}catch{addTimelineLocal({id:`tl-${Date.now()}`,type:"system",title:"Datos del cliente actualizados",date:new Date().toISOString()});}}} style={{...S.btn,fontSize:12}}>Actualizar</button></div>
           </div>
         </div>
       )}
