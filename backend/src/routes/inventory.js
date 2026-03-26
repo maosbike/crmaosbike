@@ -114,6 +114,121 @@ router.put('/:id', async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
 
+// ─── IMPORT XLSX ──────────────────────────────────────────────────────────────
+
+// Preview: parse xlsx, return rows with status (ok/duplicate/error)
+router.post('/import/preview', upload.single('file'), async (req, res) => {
+  try {
+    if (!['super_admin','admin_comercial'].includes(req.user.role))
+      return res.status(403).json({ error: 'Sin permiso' });
+    if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
+
+    const XLSX = require('xlsx');
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+
+    const preferred = wb.SheetNames.filter(n => !/^(Listas|Copia)/i.test(n));
+    const sheetName = preferred[0] || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    let headerIdx = raw.findIndex(row =>
+      Array.isArray(row) && row.some(c => typeof c === 'string' && /sucursal|chasis|marca/i.test(c))
+    );
+    if (headerIdx === -1) return res.status(400).json({ error: 'No se encontró fila de encabezados' });
+
+    const headers = raw[headerIdx].map(h => (h||'').toString().trim().toLowerCase());
+    const col = (...pats) => { for (const p of pats) { const i = headers.findIndex(h => h.includes(p)); if (i >= 0) return i; } return -1; };
+
+    const C = {
+      branch: col('sucursal'),
+      year:   col('año comercial','año'),
+      brand:  col('marca'),
+      model:  col('modelo'),
+      color:  col('color'),
+      chassis:col('chasis'),
+      motor:  col('motor'),
+      status: col('estado'),
+      price:  col('precio tienda','precio'),
+      notes:  col('observaci'),
+    };
+
+    const { rows: branches } = await db.query('SELECT id, name, code FROM branches');
+    const brMap = {};
+    branches.forEach(b => {
+      brMap[b.name.toLowerCase()] = b.id;
+      brMap[b.code.toLowerCase()] = b.id;
+    });
+    brMap['mall plaza norte'] = brMap['mpn']; brMap['plaza norte'] = brMap['mpn'];
+    brMap['mall plaza sur']   = brMap['mps'];
+    brMap['movicenter']       = brMap['mov'];
+
+    const parsePrice  = v => { const s = String(v||'').replace(/[^0-9]/g,''); return s ? parseInt(s) : 0; };
+    const parseStatus = v => ({ disponible:'disponible', reservada:'reservada', vendida:'vendida', preinscrita:'preinscrita' }[String(v||'').trim().toLowerCase()] || 'disponible');
+
+    const { rows: existing } = await db.query('SELECT lower(chassis) as ch FROM inventory');
+    const existingSet = new Set(existing.map(r => r.ch));
+    const get = (row, idx) => idx >= 0 && row[idx] != null ? String(row[idx]).trim() : '';
+
+    const preview = raw.slice(headerIdx + 1)
+      .filter(row => Array.isArray(row) && row.some(c => c !== null && c !== ''))
+      .map((row, i) => {
+        const chassis   = get(row, C.chassis).replace(/\s/g,'').toUpperCase();
+        const brand     = get(row, C.brand).toUpperCase();
+        const model     = get(row, C.model).toUpperCase();
+        const branchRaw = get(row, C.branch);
+        const branch_id = brMap[branchRaw.toLowerCase()] || null;
+        const errors    = [];
+        if (!chassis)   errors.push('Sin N° Chasis');
+        if (!brand)     errors.push('Sin Marca');
+        if (!model)     errors.push('Sin Modelo');
+        if (!branch_id) errors.push(`Sucursal no reconocida: "${branchRaw}"`);
+        const duplicate = !!chassis && existingSet.has(chassis.toLowerCase());
+        return {
+          _row: headerIdx + 2 + i, _status: duplicate ? 'duplicate' : errors.length ? 'error' : 'ok',
+          _errors: errors, branch_id, branch_raw: branchRaw,
+          year:      parseInt(get(row, C.year)) || new Date().getFullYear(),
+          brand, model,
+          color:     get(row, C.color).toUpperCase() || 'SIN COLOR',
+          chassis,   motor_num: get(row, C.motor) || null,
+          status:    parseStatus(get(row, C.status)),
+          price:     parsePrice(get(row, C.price)),
+          notes:     get(row, C.notes) || null,
+        };
+      });
+
+    res.json({
+      sheet: sheetName, total: preview.length,
+      ok: preview.filter(r => r._status==='ok').length,
+      duplicates: preview.filter(r => r._status==='duplicate').length,
+      errors: preview.filter(r => r._status==='error').length,
+      rows: preview,
+    });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al procesar: ' + e.message }); }
+});
+
+// Confirm: insert ok rows
+router.post('/import/confirm', async (req, res) => {
+  try {
+    if (!['super_admin','admin_comercial'].includes(req.user.role))
+      return res.status(403).json({ error: 'Sin permiso' });
+    const { rows } = req.body;
+    if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'Sin filas' });
+    let inserted = 0, skipped = 0;
+    for (const r of rows) {
+      try {
+        await db.query(
+          `INSERT INTO inventory (branch_id,year,brand,model,color,chassis,motor_num,status,price,notes,created_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (chassis) DO NOTHING`,
+          [r.branch_id, r.year, r.brand, r.model, r.color, r.chassis,
+           r.motor_num||null, r.status, r.price||0, r.notes||null, req.user.id]
+        );
+        inserted++;
+      } catch (e) { if (e.code==='23505') skipped++; else throw e; }
+    }
+    res.json({ inserted, skipped });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al importar: ' + e.message }); }
+});
+
 // Upload photo (chassis or motor)
 router.post('/:id/photo', upload.single('photo'), async (req, res) => {
   try {

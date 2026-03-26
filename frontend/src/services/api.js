@@ -81,6 +81,12 @@ export const api = {
     fd.append('field', field);
     return request('POST', `/inventory/${id}/photo`, fd);
   },
+  importInventoryPreview: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request('POST', '/inventory/import/preview', fd);
+  },
+  importInventoryConfirm: (rows) => request('POST', '/inventory/import/confirm', { rows }),
 
   // Catalog
   getModels: (params) => request('GET', `/catalog/models?${new URLSearchParams(params || {})}`),
