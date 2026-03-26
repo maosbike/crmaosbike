@@ -50,6 +50,7 @@ export const mapTicket=(t)=>{
     createdAt:t.created_at,lastContact:t.last_contact_at||null,
     sla_status:t.sla_status||null,sla_deadline:t.sla_deadline||null,
     first_action_at:t.first_action_at||null,
+    reassignment_count:t.reassignment_count||0,
     postVenta:typeof pv==='string'?JSON.parse(pv):pv,
     timeline:[],fin_data:t.fin_data||null,
   };

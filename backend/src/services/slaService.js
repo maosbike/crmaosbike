@@ -162,7 +162,7 @@ const SLAService = {
              AND t.sla_deadline > NOW()
          )
          RETURNING *, ticket_num as ticket_number,
-                   COALESCE(first_name || ' ' || last_name, 'Sin nombre') as client_name`
+                   NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), '') as client_name`
       );
 
       for (const ticket of warningTickets) {
@@ -182,7 +182,7 @@ const SLAService = {
              AND t.sla_deadline < NOW()
          )
          RETURNING *, ticket_num as ticket_number,
-                   COALESCE(first_name || ' ' || last_name, 'Sin nombre') as client_name`
+                   NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), '') as client_name`
       );
 
       for (const ticket of breachedTickets) {

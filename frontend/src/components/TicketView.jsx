@@ -11,17 +11,22 @@ export function TicketView({lead,user,nav,updLead}){
   const isAdmin=["super_admin","admin_comercial"].includes(user.role);
   const[realSellers,setRealSellers]=useState([]);
   const[realModels,setRealModels]=useState([]);
+  const[assignHistory,setAssignHistory]=useState([]);
   useEffect(()=>{
-    if(isAdmin)api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});
+    if(isAdmin){
+      api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});
+      api.getReassignments(lead.id).then(d=>setAssignHistory(Array.isArray(d)?d:[])).catch(()=>{});
+    }
     api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
-  },[isAdmin]);
+  },[isAdmin,lead.id]);
   const sellers=realSellers;
-  // SLA calc
+  // SLA calc — usa sla_status real de DB (breached/warning/reassigned/normal)
   const created=new Date(lead.createdAt).getTime();const now=Date.now();
   const lastC=lead.lastContact?new Date(lead.lastContact).getTime():0;
   const sinContactoH=Math.floor((lastC?(now-lastC):(now-created))/(1e3*60*60));
-  const slaBreach=lead.sla_status==="vencido"||(sinContactoH>=8&&lead.status==="abierto");
-  const slaWarning=lead.sla_status==="en_riesgo"||(sinContactoH>=6&&sinContactoH<8&&lead.status==="abierto");
+  const slaReassigned=lead.sla_status==="reassigned";
+  const slaBreach=lead.sla_status==="breached";
+  const slaWarning=lead.sla_status==="warning";
 
   const[noteForm,setNoteForm]=useState("");
   const[noteErr,setNoteErr]=useState("");
@@ -53,7 +58,7 @@ export function TicketView({lead,user,nav,updLead}){
   };
   const togglePV=(f)=>updLead(lead.id,{postVenta:{...lead.postVenta,[f]:!lead.postVenta[f]}});
 
-  const tabs=[{id:"datos",l:"Datos Cliente"},{id:"timeline",l:"Timeline"},{id:"recordatorios",l:"Recordatorios"},{id:"financiamiento",l:"Financiamiento"},{id:"postventa",l:"Post Venta"}];
+  const tabs=[{id:"datos",l:"Datos Cliente"},{id:"timeline",l:"Timeline"},{id:"recordatorios",l:"Recordatorios"},{id:"financiamiento",l:"Financiamiento"},{id:"postventa",l:"Post Venta"},...(isAdmin?[{id:"historial_asignacion",l:"Historial Vendedor"}]:[])];
 
   return(
     <div>
@@ -69,7 +74,8 @@ export function TicketView({lead,user,nav,updLead}){
         {/* STATUS PANEL */}
         <div className="crm-status-panel" style={{...S.card,padding:14,minWidth:280}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontSize:12,fontWeight:600}}>Status Ticket</span><TBdg s={lead.status}/></div>
-          {slaBreach&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:11,color:"#EF4444",display:"flex",alignItems:"center",gap:6}}><Ic.alert size={14} color="#EF4444"/><span><strong>Vencido</strong> · {sinContactoH}h sin gestión · Este lead será reasignado automáticamente</span></div>}
+          {slaReassigned&&<div style={{background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.25)",borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:11,color:"#7C3AED",display:"flex",alignItems:"center",gap:6}}><Ic.users size={14} color="#7C3AED"/><span><strong>Reasignado</strong> · Este lead fue reasignado automáticamente a {s.fn}{s.ln?` ${s.ln}`:''}. Nuevo SLA activo.</span></div>}
+          {slaBreach&&!slaReassigned&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:11,color:"#EF4444",display:"flex",alignItems:"center",gap:6}}><Ic.alert size={14} color="#EF4444"/><span><strong>Vencido</strong> · {sinContactoH}h sin gestión · Será reasignado automáticamente en el próximo ciclo</span></div>}
           {slaWarning&&<div style={{background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.25)",borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:11,color:"#F97316",display:"flex",alignItems:"center",gap:6}}><Ic.clock size={14} color="#F97316"/><span><strong>Atender ya</strong> · Quedan {8-sinContactoH}h para la reasignación automática</span></div>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             <div><label style={S.lbl}>Prioridad</label><select value={lead.priority} onChange={e=>upd("priority",e.target.value)} style={{...S.inp,width:"100%",fontSize:11}}>{Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></div>
@@ -208,6 +214,57 @@ export function TicketView({lead,user,nav,updLead}){
       {tab==="recordatorios"&&(
         <div style={S.card}>
           <RemindersTab ticketId={lead.id} user={user}/>
+        </div>
+      )}
+
+      {tab==="historial_asignacion"&&isAdmin&&(
+        <div style={S.card}>
+          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 4px"}}>Historial de Asignación</h3>
+          <p style={{fontSize:11,color:"#6B7280",margin:"0 0 14px"}}>Solo visible para administradores. Muestra el vendedor inicial y cada reasignación.</p>
+          {/* Asignación actual */}
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"rgba(242,129,0,0.06)",border:"1px solid rgba(242,129,0,0.2)",marginBottom:10}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:"#F28100",flexShrink:0}}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600}}>Vendedor actual: {s.fn}{s.ln?` ${s.ln}`:''}</div>
+              <div style={{fontSize:11,color:"#6B7280"}}>
+                {slaReassigned?"Asignado por reasignación automática":slaBreach?"SLA vencido":"En gestión"}
+                {lead.sla_deadline?` · SLA hasta ${fDT(lead.sla_deadline)}`:''}
+              </div>
+            </div>
+            <span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:12,background:slaReassigned?"rgba(139,92,246,0.12)":slaBreach?"rgba(239,68,68,0.12)":"rgba(16,185,129,0.12)",color:slaReassigned?"#7C3AED":slaBreach?"#EF4444":"#10B981"}}>
+              {slaReassigned?"Reasignado":slaBreach?"Vencido":"Activo"}
+            </span>
+          </div>
+          {/* Log de reasignaciones */}
+          {assignHistory.length===0
+            ?<div style={{padding:"16px 12px",textAlign:"center",color:"#6B7280",fontSize:12,background:"#F9FAFB",borderRadius:8}}>Sin reasignaciones — el lead estuvo siempre con el mismo vendedor.</div>
+            :<div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {assignHistory.map((r,i)=>{
+                const fromName=r.from_first?`${r.from_first} ${r.from_last||''}`.trim():'Desconocido';
+                const toName=r.to_first?`${r.to_first} ${r.to_last||''}`.trim():'Desconocido';
+                const byName=r.by_first?`${r.by_first} ${r.by_last||''}`.trim():null;
+                const reasonLabel=r.reason==='sla_breach'?'SLA vencido':r.reason==='manual'?'Reasignación manual':r.reason||'Sistema';
+                return(
+                  <div key={r.id||i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",borderRadius:8,background:"#F9FAFB",border:"1px solid #E5E7EB"}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:r.reason==='sla_breach'?"#EF4444":"#8B5CF6",flexShrink:0,marginTop:4}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:600}}>{fromName} → {toName}</div>
+                      <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>
+                        {reasonLabel}{byName?` · por ${byName}`:''}
+                      </div>
+                    </div>
+                    <div style={{fontSize:10,color:"#9CA3AF",flexShrink:0,textAlign:"right"}}>{fDT(r.created_at)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          }
+          {/* Resumen de reasignaciones */}
+          {lead.reassignment_count>0&&(
+            <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:"#F3F4F6",fontSize:11,color:"#6B7280"}}>
+              Total reasignaciones: <strong>{lead.reassignment_count}</strong>
+            </div>
+          )}
         </div>
       )}
 
