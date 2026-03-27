@@ -101,21 +101,53 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { branch_id, status, color, price, notes } = req.body;
+
+    // Bloquear: vendida solo se puede registrar via POST /:id/sell
+    if (status === 'vendida') {
+      return res.status(400).json({ error: 'Para marcar una unidad como vendida usá el flujo de venta (Registrar venta).' });
+    }
+
+    // Verificar estado actual
+    const { rows: cur } = await db.query('SELECT status FROM inventory WHERE id=$1', [req.params.id]);
+    if (!cur[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
+    if (cur[0].status === 'vendida') {
+      return res.status(400).json({ error: 'Una unidad vendida no puede cambiar de estado.' });
+    }
+
     const sets = [], params = [];
     let idx = 1;
     if (branch_id !== undefined) { sets.push(`branch_id = $${idx++}`); params.push(branch_id); }
-    if (status !== undefined) { sets.push(`status = $${idx++}`); params.push(status); }
-    if (color !== undefined) { sets.push(`color = $${idx++}`); params.push(color); }
-    if (price !== undefined) { sets.push(`price = $${idx++}`); params.push(price); }
-    if (notes !== undefined) { sets.push(`notes = $${idx++}`); params.push(notes); }
+    if (status !== undefined)    { sets.push(`status = $${idx++}`);    params.push(status); }
+    if (color !== undefined)     { sets.push(`color = $${idx++}`);     params.push(color); }
+    if (price !== undefined)     { sets.push(`price = $${idx++}`);     params.push(price); }
+    if (notes !== undefined)     { sets.push(`notes = $${idx++}`);     params.push(notes); }
 
     if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
     params.push(req.params.id);
 
     const { rows } = await db.query(
-      `UPDATE inventory SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params
+      `UPDATE inventory SET ${sets.join(', ')}, updated_at=NOW() WHERE id = $${idx} RETURNING *`, params
     );
     if (!rows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
+
+    // Loguear cambio de estado en historial
+    if (status && status !== cur[0].status) {
+      await db.query(
+        `INSERT INTO inventory_history (inventory_id, event_type, from_status, to_status, user_id, note)
+         VALUES ($1,'status_changed',$2,$3,$4,$5)`,
+        [req.params.id, cur[0].status, status, req.user.id,
+         `Estado cambiado: ${cur[0].status} → ${status}`]
+      );
+    }
+    // Loguear traslado de sucursal en historial
+    if (branch_id) {
+      await db.query(
+        `INSERT INTO inventory_history (inventory_id, event_type, user_id, note)
+         VALUES ($1,'moved',$2,$3)`,
+        [req.params.id, req.user.id, `Unidad trasladada a nueva sucursal`]
+      );
+    }
+
     res.json(rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });

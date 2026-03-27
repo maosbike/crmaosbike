@@ -206,21 +206,32 @@ export function InventoryView({inv,setInv,user,realBranches}){
 
       {/* ── TABLA ── */}
       <div style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,overflow:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:1050}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
           <thead>
-            <tr style={{background:"#F9FAFB",borderBottom:"1px solid #E5E7EB"}}>
-              {["Sucursal","Año","Marca / Modelo","Color","N° Chasis","📷","N° Motor","📷","Estado","Precio","Acciones"].map(h=>(
-                <th key={h} style={{textAlign:"left",padding:"10px 12px",fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{h}</th>
+            <tr style={{background:"#F9FAFB",borderBottom:"2px solid #E5E7EB"}}>
+              {[
+                {l:"Suc.",w:56},
+                {l:"Año",w:46},
+                {l:"Marca / Modelo",w:"auto"},
+                {l:"Color",w:100},
+                {l:"N° Chasis",w:160},
+                {l:"N° Motor",w:130},
+                {l:"Estado",w:130},
+                {l:"Precio",w:110},
+                {l:"",w:180},
+              ].map(h=>(
+                <th key={h.l} style={{textAlign:"left",padding:"10px 12px",fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap",width:h.w}}>{h.l}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {f.length===0&&(
-              <tr><td colSpan={11} style={{padding:"40px 0",textAlign:"center",color:"#9CA3AF",fontSize:13}}>
+              <tr><td colSpan={9} style={{padding:"48px 0",textAlign:"center",color:"#9CA3AF",fontSize:13}}>
                 {search||brF||stF?"No hay unidades que coincidan con los filtros.":"No hay unidades en inventario."}
               </td></tr>
             )}
             {f.map(x=>{
+              const isSold=x.status==='vendida';
               const stColor=INV_ST[x.status]?.c||"#6B7280";
               const bCode=x.branch_code||brs.find(b=>b.id===x.branch_id)?.code||"";
               const bColor=branchColor(bCode);
@@ -228,9 +239,10 @@ export function InventoryView({inv,setInv,user,realBranches}){
               return(
                 <React.Fragment key={x.id}>
                 <tr
-                  style={{borderBottom:isHistOpen?"none":"1px solid #F3F4F6",borderLeft:`3px solid ${stColor}22`,transition:"background 0.1s"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
+                  style={{borderBottom:isHistOpen?"none":"1px solid #F3F4F6",borderLeft:`3px solid ${isSold?"#8B5CF6":stColor}`,opacity:isSold?0.72:1,transition:"background 0.1s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=isSold?"#FDFAFF":"#FAFAFA"}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+
                   {/* Sucursal */}
                   <td style={{padding:"10px 12px"}}>
                     <span style={{display:"inline-flex",alignItems:"center",padding:"3px 8px",borderRadius:6,background:`${bColor}15`,color:bColor,fontSize:11,fontWeight:700}}>
@@ -238,103 +250,119 @@ export function InventoryView({inv,setInv,user,realBranches}){
                     </span>
                   </td>
                   {/* Año */}
-                  <td style={{padding:"10px 12px",color:"#6B7280",fontSize:11}}>{x.year}</td>
+                  <td style={{padding:"10px 12px",color:"#6B7280",fontSize:11,fontWeight:500}}>{x.year}</td>
                   {/* Marca / Modelo */}
                   <td style={{padding:"10px 12px"}}>
-                    <div style={{fontWeight:700,fontSize:12}}>{x.brand}</div>
+                    <div style={{fontWeight:700,fontSize:12,color:"#111827"}}>{x.brand}</div>
                     <div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{x.model}</div>
                   </td>
                   {/* Color */}
                   <td style={{padding:"10px 12px"}}>
                     <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#374151"}}>
-                      <span style={{width:10,height:10,borderRadius:"50%",background:"#E5E7EB",border:"1px solid #D1D5DB",flexShrink:0}}/>
-                      {x.color}
+                      <span style={{width:9,height:9,borderRadius:"50%",background:"#D1D5DB",border:"1px solid #E5E7EB",flexShrink:0}}/>
+                      {x.color||<span style={{color:"#D1D5DB"}}>—</span>}
                     </span>
                   </td>
-                  {/* Chasis */}
-                  <td style={{padding:"10px 12px",fontFamily:"monospace",fontSize:10,color:"#374151",letterSpacing:"0.02em"}}>{x.chassis}</td>
-                  {/* Foto chasis */}
+                  {/* Chasis + foto */}
                   <td style={{padding:"10px 12px"}}>
-                    {x.chassis_photo
-                      ?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:34,height:34,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB"}}/>
-                      :<button onClick={()=>handlePhoto(x.id,"chassis_photo")} style={{width:34,height:34,borderRadius:6,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:14,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>}
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontFamily:"monospace",fontSize:10,color:"#374151",letterSpacing:"0.04em"}}>{x.chassis}</span>
+                      {x.chassis_photo
+                        ?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:22,height:22,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
+                        :<button onClick={()=>handlePhoto(x.id,"chassis_photo")} title="Agregar foto chasis" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:10,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📷</button>}
+                    </div>
                   </td>
-                  {/* Motor */}
-                  <td style={{padding:"10px 12px",fontFamily:"monospace",fontSize:10,color:"#6B7280"}}>{x.motor_num||<span style={{color:"#D1D5DB"}}>—</span>}</td>
-                  {/* Foto motor */}
+                  {/* Motor + foto */}
                   <td style={{padding:"10px 12px"}}>
-                    {x.motor_photo
-                      ?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:34,height:34,borderRadius:6,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB"}}/>
-                      :<button onClick={()=>handlePhoto(x.id,"motor_photo")} style={{width:34,height:34,borderRadius:6,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:14,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>}
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontFamily:"monospace",fontSize:10,color:"#6B7280"}}>{x.motor_num||<span style={{color:"#D1D5DB"}}>—</span>}</span>
+                      {x.motor_photo
+                        ?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:22,height:22,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
+                        :x.motor_num?<button onClick={()=>handlePhoto(x.id,"motor_photo")} title="Agregar foto motor" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:10,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📷</button>:null}
+                    </div>
                   </td>
                   {/* Estado */}
                   <td style={{padding:"10px 12px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{width:7,height:7,borderRadius:"50%",background:stColor,flexShrink:0}}/>
-                      <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
-                        style={{background:"transparent",border:"none",fontSize:11,fontWeight:600,color:stColor,cursor:"pointer",padding:0,outline:"none",fontFamily:"inherit"}}>
-                        {Object.entries(INV_ST).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-                      </select>
-                    </div>
+                    {isSold?(
+                      <div>
+                        <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",borderRadius:20,background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.25)"}}>
+                          <span style={{width:6,height:6,borderRadius:"50%",background:"#8B5CF6",flexShrink:0}}/>
+                          <span style={{fontSize:11,fontWeight:700,color:"#8B5CF6"}}>Vendida</span>
+                        </div>
+                        {x.sold_at&&<div style={{fontSize:9,color:"#9CA3AF",marginTop:3,paddingLeft:2}}>{fD(x.sold_at)}</div>}
+                      </div>
+                    ):(
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{width:7,height:7,borderRadius:"50%",background:stColor,flexShrink:0}}/>
+                        <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
+                          style={{background:"transparent",border:"none",fontSize:11,fontWeight:600,color:stColor,cursor:"pointer",padding:0,outline:"none",fontFamily:"inherit"}}>
+                          {Object.entries(INV_ST).filter(([k])=>k!=='vendida').map(([k,v])=>(
+                            <option key={k} value={k}>{v.l}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </td>
                   {/* Precio */}
                   <td style={{padding:"10px 12px",fontWeight:700,fontSize:12,color:"#111827",whiteSpace:"nowrap"}}>
                     {x.price>0?fmt(x.price):<span style={{color:"#D1D5DB",fontWeight:400}}>—</span>}
                   </td>
                   {/* Acciones */}
-                  <td style={{padding:"10px 12px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"nowrap"}}>
-                      {/* Vender */}
-                      {x.status!=='vendida'&&(
+                  <td style={{padding:"8px 12px"}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {/* CTA principal: Registrar venta — solo si no está vendida */}
+                      {!isSold&&(
                         <button onClick={()=>openSell(x)}
-                          style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#10B981",color:"#FFFFFF",fontSize:10,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
-                          Vender
+                          style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:7,border:"none",background:"#10B981",color:"#FFFFFF",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"0 1px 3px rgba(16,185,129,0.3)"}}>
+                          <span style={{fontSize:12}}>💰</span> Registrar venta
                         </button>
                       )}
-                      {x.status==='vendida'&&(
-                        <span style={{fontSize:10,color:"#10B981",fontWeight:700,whiteSpace:"nowrap"}}>✓ Vendida</span>
-                      )}
-                      {/* Historial */}
-                      <button onClick={()=>toggleHist(x.id)}
-                        title="Ver historial"
-                        style={{padding:"4px 7px",borderRadius:6,border:`1px solid ${isHistOpen?"#6366F1":"#E5E7EB"}`,background:isHistOpen?"#EEF2FF":"#F9FAFB",color:isHistOpen?"#6366F1":"#9CA3AF",fontSize:11,cursor:"pointer"}}>
-                        {histLoading[x.id]?"⏳":"📋"}
-                      </button>
-                      {/* Mover */}
-                      <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
-                        style={{...S.inp,padding:"4px 6px",fontSize:10,width:56,borderRadius:6}}>
-                        <option value="" disabled>Mover</option>
-                        {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}
-                      </select>
+                      {/* Fila secundaria: historial + mover */}
+                      <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                        <button onClick={()=>toggleHist(x.id)} title="Ver historial de la unidad"
+                          style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${isHistOpen?"#6366F1":"#E5E7EB"}`,background:isHistOpen?"#EEF2FF":"#F9FAFB",color:isHistOpen?"#6366F1":"#9CA3AF",fontSize:11,cursor:"pointer",fontWeight:500,whiteSpace:"nowrap"}}>
+                          {histLoading[x.id]?"⏳ ...":"📋 Historial"}
+                        </button>
+                        {!isSold&&brs.filter(b=>b.id!==x.branch_id).length>0&&(
+                          <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
+                            title="Trasladar a otra sucursal"
+                            style={{...S.inp,padding:"4px 6px",fontSize:10,width:60,borderRadius:6,height:28}}>
+                            <option value="" disabled>Mover</option>
+                            {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}
+                          </select>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
                 {/* ── HISTORY ROW ── */}
                 {isHistOpen&&(
-                  <tr style={{borderBottom:"1px solid #F3F4F6",background:"#F8F7FF"}}>
-                    <td colSpan={11} style={{padding:"12px 16px 16px"}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#6366F1",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
-                        📋 Historial de la unidad — {x.chassis}
+                  <tr style={{borderBottom:"1px solid #EDE9FE",background:"#FAF8FF"}}>
+                    <td colSpan={9} style={{padding:"14px 16px 16px"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#6366F1",marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+                        <span>📋</span>
+                        <span>Trazabilidad — {x.brand} {x.model} · Chasis <code style={{fontFamily:"monospace",fontSize:10}}>{x.chassis}</code></span>
                       </div>
-                      {histLoading[x.id]&&<div style={{color:"#9CA3AF",fontSize:11}}>Cargando...</div>}
+                      {histLoading[x.id]&&<div style={{color:"#9CA3AF",fontSize:11,padding:"8px 0"}}>Cargando historial...</div>}
                       {!histLoading[x.id]&&(!histData[x.id]||histData[x.id].length===0)&&(
-                        <div style={{color:"#9CA3AF",fontSize:11}}>Sin registros de historial.</div>
+                        <div style={{color:"#9CA3AF",fontSize:11,padding:"8px 0"}}>Sin registros de historial para esta unidad.</div>
                       )}
                       {!histLoading[x.id]&&histData[x.id]?.length>0&&(
-                        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                          {histData[x.id].map(h=>{
+                        <div style={{display:"flex",flexDirection:"column",gap:6,maxWidth:700}}>
+                          {histData[x.id].map((h,i)=>{
                             const uName=h.user_fn?`${h.user_fn} ${h.user_ln||''}`.trim():'Sistema';
+                            const isLast=i===histData[x.id].length-1;
                             return(
-                              <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 10px",background:"#FFFFFF",borderRadius:8,border:"1px solid #E9E8FF"}}>
-                                <span style={{fontSize:15,flexShrink:0}}>{HIST_ICONS[h.event_type]||"•"}</span>
+                              <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 12px",background:"#FFFFFF",borderRadius:8,border:`1px solid ${h.event_type==='sold'?"rgba(139,92,246,0.3)":"#EDE9FE"}`,boxShadow:h.event_type==='sold'?"0 1px 4px rgba(139,92,246,0.08)":"none"}}>
+                                <span style={{fontSize:16,flexShrink:0,marginTop:1}}>{HIST_ICONS[h.event_type]||"•"}</span>
                                 <div style={{flex:1,minWidth:0}}>
                                   <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                                    <span style={{fontWeight:700,fontSize:11,color:"#374151"}}>{HIST_LABELS[h.event_type]||h.event_type}</span>
-                                    {h.from_status&&h.to_status&&<span style={{fontSize:10,color:"#6B7280"}}>{INV_ST[h.from_status]?.l||h.from_status} → {INV_ST[h.to_status]?.l||h.to_status}</span>}
-                                    <span style={{fontSize:10,color:"#9CA3AF",marginLeft:"auto"}}>{fDT(h.created_at)}</span>
+                                    <span style={{fontWeight:700,fontSize:11,color:h.event_type==='sold'?"#8B5CF6":"#374151"}}>{HIST_LABELS[h.event_type]||h.event_type}</span>
+                                    {h.from_status&&h.to_status&&<span style={{fontSize:10,color:"#6B7280",background:"#F3F4F6",padding:"1px 6px",borderRadius:4}}>{INV_ST[h.from_status]?.l||h.from_status} → {INV_ST[h.to_status]?.l||h.to_status}</span>}
+                                    <span style={{fontSize:10,color:"#9CA3AF",marginLeft:"auto",flexShrink:0}}>{fDT(h.created_at)}</span>
                                   </div>
                                   {h.note&&<div style={{fontSize:11,color:"#4B5563",marginTop:3}}>{h.note}</div>}
-                                  <div style={{fontSize:10,color:"#9CA3AF",marginTop:2}}>por {uName}</div>
+                                  <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>por <strong style={{color:"#6B7280"}}>{uName}</strong></div>
                                 </div>
                               </div>
                             );
@@ -436,48 +464,72 @@ export function InventoryView({inv,setInv,user,realBranches}){
       )}
 
       {/* ── SELL MODAL ───────────────────────────────────── */}
-      {showSell&&sellUnit&&(
-        <Modal onClose={()=>{setShowSell(false);setSellUnit(null);}} title={`Registrar venta — ${sellUnit.brand} ${sellUnit.model}`} wide>
+      {showSell&&sellUnit&&(()=>{
+        const bName=brs.find(b=>b.id===sellUnit.branch_id)?.name||"—";
+        return(
+        <Modal onClose={()=>{setShowSell(false);setSellUnit(null);}} title="Registrar venta" wide>
           <form onSubmit={handleSell}>
-            {/* Unit summary */}
-            <div style={{background:"#F9FAFB",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12}}>
-              <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                <span><strong>Chasis:</strong> <code style={{fontSize:11}}>{sellUnit.chassis}</code></span>
-                {sellUnit.motor_num&&<span><strong>Motor:</strong> <code style={{fontSize:11}}>{sellUnit.motor_num}</code></span>}
-                <span><strong>Color:</strong> {sellUnit.color}</span>
-                {sellUnit.price>0&&<span><strong>Precio:</strong> {fmt(sellUnit.price)}</span>}
+
+            {/* ── Ficha de la unidad ── */}
+            <div style={{background:"linear-gradient(135deg,#f0fdf4,#ecfdf5)",border:"1px solid #86efac",borderRadius:10,padding:"12px 16px",marginBottom:18}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#16a34a",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Unidad a vender</div>
+              <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:12}}>
+                <div>
+                  <div style={{fontWeight:800,fontSize:15,color:"#111827"}}>{sellUnit.brand} {sellUnit.model}</div>
+                  <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>Color: {sellUnit.color} · Año {sellUnit.year}</div>
+                </div>
+                <div style={{fontSize:11,color:"#374151"}}>
+                  <div><span style={{color:"#9CA3AF"}}>Chasis:</span> <code style={{fontFamily:"monospace"}}>{sellUnit.chassis}</code></div>
+                  {sellUnit.motor_num&&<div><span style={{color:"#9CA3AF"}}>Motor:</span> <code style={{fontFamily:"monospace"}}>{sellUnit.motor_num}</code></div>}
+                </div>
+                <div style={{fontSize:11,color:"#374151"}}>
+                  <div><span style={{color:"#9CA3AF"}}>Sucursal:</span> <strong>{bName}</strong></div>
+                  {sellUnit.price>0&&<div><span style={{color:"#9CA3AF"}}>Precio:</span> <strong>{fmt(sellUnit.price)}</strong></div>}
+                </div>
               </div>
             </div>
 
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            {/* ── Datos de la venta ── */}
+            <div style={{fontSize:11,fontWeight:700,color:"#374151",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:10}}>Datos de la venta</div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <Field label="Vendedor responsable *" value={sellForm.sold_by} onChange={v=>setSellForm(p=>({...p,sold_by:v}))}
-                opts={[{v:"",l:"Seleccionar..."},...sellers.map(s=>({v:s.id,l:`${s.first_name||''} ${s.last_name||''}`.trim()}))]} req/>
-              <Field label="Fecha de venta" value={sellForm.sold_at} onChange={v=>setSellForm(p=>({...p,sold_at:v}))} type="date"/>
+                opts={[{v:"",l:"Seleccionar vendedor..."},...sellers.map(s=>({v:s.id,l:`${s.first_name||''} ${s.last_name||''}`.trim()}))]} req/>
+              <Field label="Fecha de venta *" value={sellForm.sold_at} onChange={v=>setSellForm(p=>({...p,sold_at:v}))} type="date"/>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              <Field label="Tipo de entrega" value={sellForm.sale_type} onChange={v=>setSellForm(p=>({...p,sale_type:v}))}
-                opts={[{v:"completa",l:"Documentación completa"},{v:"inscripcion",l:"Solo inscripción"},{v:"entregada",l:"Entregada al cliente"}]}/>
-              <Field label="Método de pago" value={sellForm.payment_method} onChange={v=>setSellForm(p=>({...p,payment_method:v}))}
-                opts={[{v:"",l:"Seleccionar..."},{v:"Contado",l:"Contado"},{v:"Transferencia",l:"Transferencia"},{v:"Tarjeta Débito",l:"Tarjeta Débito"},{v:"Tarjeta Crédito",l:"Tarjeta Crédito"},{v:"Crédito Autofin",l:"Crédito Autofin"},{v:"Mixto",l:"Mixto"}]}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <Field label="Estado de la documentación" value={sellForm.sale_type} onChange={v=>setSellForm(p=>({...p,sale_type:v}))}
+                opts={[{v:"completa",l:"Documentación completa"},{v:"inscripcion",l:"Solo inscripción pendiente"},{v:"entregada",l:"Entregada al cliente"}]}/>
+              <Field label="Método de pago / Financiamiento" value={sellForm.payment_method} onChange={v=>setSellForm(p=>({...p,payment_method:v}))}
+                opts={[{v:"",l:"Seleccionar..."},{v:"Contado",l:"Contado"},{v:"Transferencia",l:"Transferencia bancaria"},{v:"Tarjeta Débito",l:"Tarjeta Débito"},{v:"Tarjeta Crédito",l:"Tarjeta Crédito"},{v:"Crédito Autofin",l:"Crédito Autofin"},{v:"Mixto",l:"Mixto"}]}/>
             </div>
-            <div style={{marginBottom:10}}>
+            <div style={{marginBottom:12}}>
               <Field label="Lead / Ticket asociado (opcional)" value={sellForm.ticket_id} onChange={v=>setSellForm(p=>({...p,ticket_id:v}))}
-                opts={[{v:"",l:"Sin asociar"},...openTickets.map(t=>({v:t.id,l:`${t.ticket_num||''} · ${t.first_name||''} ${t.last_name||''}`.trim()}))]}/>
+                opts={[{v:"",l:"Sin lead asociado"},...openTickets.map(t=>({v:t.id,l:`${t.ticket_num?t.ticket_num+' · ':''}${[t.first_name,t.last_name].filter(Boolean).join(' ')||'Sin nombre'}`}))]}/>
             </div>
-            <div style={{marginBottom:16}}>
-              <Field label="Observaciones" value={sellForm.sale_notes} onChange={v=>setSellForm(p=>({...p,sale_notes:v}))} rows={2} ph="Ej: Documentación en proceso, entrega pactada para el..."/>
+            <div style={{marginBottom:20}}>
+              <Field label="Observaciones" value={sellForm.sale_notes} onChange={v=>setSellForm(p=>({...p,sale_notes:v}))} rows={2} ph="Ej: Entrega pactada para el lunes, documentación en proceso..."/>
             </div>
 
-            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
-              <button type="button" onClick={()=>{setShowSell(false);setSellUnit(null);}} style={S.btn2}>Cancelar</button>
-              <button type="submit" disabled={selling||!sellForm.sold_by}
-                style={{...S.btn,background:"#10B981",opacity:(selling||!sellForm.sold_by)?0.65:1}}>
-                {selling?"Registrando...":"Registrar venta"}
-              </button>
+            {/* ── Aviso ── */}
+            <div style={{background:"rgba(16,185,129,0.06)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#065f46"}}>
+              ✅ Al confirmar, la unidad saldrá del stock disponible y quedará registrada como vendida con trazabilidad completa.
+            </div>
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+              <div style={{fontSize:11,color:"#9CA3AF"}}>* Campos obligatorios</div>
+              <div style={{display:"flex",gap:8}}>
+                <button type="button" onClick={()=>{setShowSell(false);setSellUnit(null);}} style={S.btn2}>Cancelar</button>
+                <button type="submit" disabled={selling||!sellForm.sold_by||!sellForm.sold_at}
+                  style={{...S.btn,background:"#10B981",boxShadow:"0 2px 8px rgba(16,185,129,0.3)",opacity:(selling||!sellForm.sold_by||!sellForm.sold_at)?0.6:1,padding:"8px 20px"}}>
+                  {selling?"Registrando...":"💰 Confirmar venta"}
+                </button>
+              </div>
             </div>
           </form>
         </Modal>
-      )}
+        );
+      })()}
 
       {/* ── IMPORT MODAL ─────────────────────────────────── */}
       {showImport&&(
