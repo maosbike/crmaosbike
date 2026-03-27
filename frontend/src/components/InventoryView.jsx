@@ -142,92 +142,119 @@ export function InventoryView({inv,setInv,user,realBranches}){
 
   return(
     <div>
-      {/* ── HEADER ── */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+
+      {/* ══════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════ */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28,paddingBottom:20,borderBottom:"1px solid #E5E7EB"}}>
         <div>
-          <h1 style={{fontSize:20,fontWeight:800,margin:0,letterSpacing:"-0.3px"}}>Inventario</h1>
-          <p style={{color:"#6B7280",fontSize:12,margin:"3px 0 0"}}>{inv.length} unidades en sistema · <span style={{color:"#10B981",fontWeight:600}}>{counts.disponible} disponibles</span></p>
+          <p style={{margin:"0 0 5px",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:"0.1em",textTransform:"uppercase"}}>
+            Operaciones · Stock
+          </p>
+          <h1 style={{margin:0,fontSize:22,fontWeight:800,color:"#111827",letterSpacing:"-0.5px",lineHeight:1.1}}>
+            Inventario de Unidades
+          </h1>
+          <div style={{display:"flex",gap:6,marginTop:8,alignItems:"center"}}>
+            <span style={{fontSize:12,color:"#6B7280"}}>{inv.length} unidades</span>
+            <span style={{color:"#D1D5DB"}}>·</span>
+            <span style={{fontSize:12,fontWeight:600,color:"#10B981"}}>{counts.disponible} disponibles</span>
+            {counts.reservada>0&&<><span style={{color:"#D1D5DB"}}>·</span><span style={{fontSize:12,fontWeight:600,color:"#F59E0B"}}>{counts.reservada} reservadas</span></>}
+          </div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <div style={{display:"flex",gap:8,paddingTop:4}}>
           {isAdmin&&(
             <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
-              style={{display:"flex",alignItems:"center",gap:7,padding:"8px 16px",borderRadius:8,border:"1px solid #E5E7EB",background:"#FFFFFF",fontSize:12,fontWeight:500,cursor:"pointer",color:"#374151",transition:"all 0.15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.background="#F9FAFB";e.currentTarget.style.borderColor="#D1D5DB";}}
-              onMouseLeave={e=>{e.currentTarget.style.background="#FFFFFF";e.currentTarget.style.borderColor="#E5E7EB";}}>
-              <Ic.upload size={14} color="#6B7280"/>Importar Excel
+              style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderRadius:7,border:"1.5px solid #D1D5DB",background:"#FFFFFF",fontSize:12,fontWeight:500,cursor:"pointer",color:"#374151"}}>
+              <Ic.upload size={13} color="#6B7280"/>Importar Excel
             </button>
           )}
           <button onClick={()=>setShowAdd(true)}
-            style={{display:"flex",alignItems:"center",gap:7,padding:"8px 18px",borderRadius:8,background:"#F28100",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",color:"#FFFFFF",boxShadow:"0 1px 4px rgba(242,129,0,0.25)"}}>
-            <Ic.plus size={15} color="#FFFFFF"/>Agregar Moto
+            style={{display:"flex",alignItems:"center",gap:6,padding:"9px 20px",borderRadius:7,background:"#F28100",border:"1.5px solid #D97706",fontSize:12,fontWeight:600,cursor:"pointer",color:"#FFFFFF"}}>
+            <Ic.plus size={14} color="#FFFFFF"/>Nueva Unidad
           </button>
         </div>
       </div>
 
-      {/* ── KPI CARDS ── */}
-      <div className="grid-4col" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+      {/* ══════════════════════════════════════
+          KPI — 4 métricas de estado
+      ══════════════════════════════════════ */}
+      <div className="grid-4col" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
         {Object.entries(INV_ST).map(([k,v])=>{
           const active=stF===k;
+          const sub={disponible:"En stock, listos para venta",reservada:"Con reserva activa",vendida:"Ventas registradas",preinscrita:"Proceso de pre-inscripción"}[k];
           return(
             <div key={k} onClick={()=>setStF(stF===k?"":k)}
-              style={{background:"#FFFFFF",borderRadius:12,padding:"14px 16px",cursor:"pointer",border:`1.5px solid ${active?v.c:"#E5E7EB"}`,boxShadow:active?`0 0 0 3px ${v.c}22`:"0 1px 3px rgba(0,0,0,0.04)",transition:"all 0.15s",display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:36,height:36,borderRadius:10,background:`${v.c}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:v.c}}>
-                {KPI_ICONS[k]}
-              </div>
-              <div>
-                <div style={{fontSize:22,fontWeight:800,color:v.c,lineHeight:1}}>{counts[k]}</div>
-                <div style={{fontSize:11,color:"#6B7280",marginTop:2,fontWeight:500}}>{v.l}</div>
-              </div>
+              style={{
+                background:"#FFFFFF",borderRadius:10,padding:"18px 20px",cursor:"pointer",
+                borderTop:`3px solid ${v.c}`,
+                border:`1px solid ${active?v.c+"99":"#E5E7EB"}`,
+                boxShadow:active?`0 0 0 3px ${v.c}18,0 4px 12px rgba(0,0,0,0.06)`:"0 1px 4px rgba(0,0,0,0.04)",
+                transition:"all 0.15s",position:"relative",overflow:"hidden",
+              }}>
+              <div style={{fontSize:32,fontWeight:900,color:active?v.c:"#111827",lineHeight:1,letterSpacing:"-1.5px",marginBottom:5}}>{counts[k]}</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:3}}>{v.l}</div>
+              <div style={{fontSize:10,color:"#9CA3AF",lineHeight:1.4}}>{sub}</div>
+              {active&&<div style={{position:"absolute",top:12,right:12,width:7,height:7,borderRadius:"50%",background:v.c}}/>}
             </div>
           );
         })}
       </div>
 
-      {/* ── SEARCH / FILTER BAR ── */}
-      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-        <div style={{position:"relative",flex:1,minWidth:200}}>
-          <Ic.search size={14} color="#9CA3AF" style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)"}}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar marca, modelo, chasis, color…"
-            style={{...S.inp,paddingLeft:34,width:"100%",borderRadius:8,fontSize:12,height:36}}/>
+      {/* ══════════════════════════════════════
+          BARRA DE BÚSQUEDA Y FILTROS
+      ══════════════════════════════════════ */}
+      <div style={{display:"flex",gap:8,marginBottom:16,background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"10px 12px",alignItems:"center",flexWrap:"wrap"}}>
+        <div style={{position:"relative",flex:"1 1 220px",minWidth:160}}>
+          <Ic.search size={13} color="#9CA3AF" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Buscar marca, modelo, chasis, color..."
+            style={{...S.inp,paddingLeft:32,width:"100%",borderRadius:7,fontSize:12,height:34}}/>
         </div>
         <select value={brF} onChange={e=>setBrF(e.target.value)}
-          style={{...S.inp,borderRadius:8,fontSize:12,height:36,minWidth:160,background:"#FFFFFF"}}>
+          style={{...S.inp,borderRadius:7,fontSize:12,height:34,minWidth:155,background:"#FFFFFF"}}>
           <option value="">Todas las sucursales</option>
           {brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
         {(search||brF||stF)&&(
           <button onClick={()=>{setSearch("");setBrF("");setStF("");}}
-            style={{padding:"0 14px",height:36,borderRadius:8,border:"1px solid #E5E7EB",background:"#F9FAFB",fontSize:12,cursor:"pointer",color:"#6B7280",display:"flex",alignItems:"center",gap:5}}>
-            <Ic.x size={12}/>Limpiar
+            style={{padding:"0 12px",height:34,borderRadius:7,border:"1.5px solid #D1D5DB",background:"#FFFFFF",fontSize:11,cursor:"pointer",color:"#6B7280",display:"flex",alignItems:"center",gap:5,fontWeight:500}}>
+            <Ic.x size={11}/>Limpiar filtros
           </button>
         )}
-        {f.length!==inv.length&&<span style={{fontSize:11,color:"#6B7280",alignSelf:"center",paddingLeft:4}}>{f.length} de {inv.length}</span>}
+        {f.length!==inv.length&&(
+          <span style={{fontSize:11,color:"#9CA3AF",marginLeft:"auto",whiteSpace:"nowrap"}}>
+            {f.length} de {inv.length} unidades
+          </span>
+        )}
       </div>
 
-      {/* ── TABLA ── */}
-      <div style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,overflow:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
+      {/* ══════════════════════════════════════
+          TABLA
+      ══════════════════════════════════════ */}
+      <div style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,overflow:"auto",boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:920}}>
           <thead>
-            <tr style={{background:"#F9FAFB",borderBottom:"2px solid #E5E7EB"}}>
+            <tr style={{background:"#F4F5F7",borderBottom:"1.5px solid #E2E4E9"}}>
               {[
-                {l:"Suc.",w:56},
-                {l:"Año",w:46},
-                {l:"Marca / Modelo",w:"auto"},
-                {l:"Color",w:100},
-                {l:"N° Chasis",w:160},
-                {l:"N° Motor",w:130},
-                {l:"Estado",w:130},
-                {l:"Precio",w:110},
-                {l:"",w:180},
+                {l:"Sucursal",  w:80},
+                {l:"Año",       w:50},
+                {l:"Unidad",    w:"auto"},
+                {l:"Color",     w:100},
+                {l:"N° Chasis", w:156},
+                {l:"N° Motor",  w:130},
+                {l:"Estado",    w:136},
+                {l:"Precio",    w:108},
+                {l:"Acciones",  w:170},
               ].map(h=>(
-                <th key={h.l} style={{textAlign:"left",padding:"10px 12px",fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap",width:h.w}}>{h.l}</th>
+                <th key={h.l} style={{textAlign:"left",padding:"12px 16px",fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.07em",whiteSpace:"nowrap",width:h.w}}>{h.l}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {f.length===0&&(
-              <tr><td colSpan={9} style={{padding:"48px 0",textAlign:"center",color:"#9CA3AF",fontSize:13}}>
-                {search||brF||stF?"No hay unidades que coincidan con los filtros.":"No hay unidades en inventario."}
+              <tr><td colSpan={9} style={{padding:"60px 0",textAlign:"center"}}>
+                <div style={{color:"#9CA3AF",fontSize:13,fontWeight:500}}>{search||brF||stF?"Sin resultados para los filtros aplicados.":"No hay unidades registradas en el inventario."}</div>
+                {!search&&!brF&&!stF&&<div style={{fontSize:11,color:"#C4C9D4",marginTop:6}}>Podés agregar unidades manualmente o importar desde Excel.</div>}
               </td></tr>
             )}
             {f.map(x=>{
@@ -239,63 +266,68 @@ export function InventoryView({inv,setInv,user,realBranches}){
               return(
                 <React.Fragment key={x.id}>
                 <tr
-                  style={{borderBottom:isHistOpen?"none":"1px solid #F3F4F6",borderLeft:`3px solid ${isSold?"#8B5CF6":stColor}`,opacity:isSold?0.72:1,transition:"background 0.1s"}}
-                  onMouseEnter={e=>e.currentTarget.style.background=isSold?"#FDFAFF":"#FAFAFA"}
+                  style={{borderBottom:isHistOpen?"none":"1px solid #EBEBEB",transition:"background 0.1s",opacity:isSold?0.68:1}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#FAFBFF"}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
 
-                  {/* Sucursal */}
-                  <td style={{padding:"10px 12px"}}>
-                    <span style={{display:"inline-flex",alignItems:"center",padding:"3px 8px",borderRadius:6,background:`${bColor}15`,color:bColor,fontSize:11,fontWeight:700}}>
-                      {bCode||"—"}
-                    </span>
+                  {/* ── Sucursal ── */}
+                  <td style={{padding:"13px 16px"}}>
+                    {bCode
+                      ?<span style={{display:"inline-block",padding:"3px 10px",borderRadius:5,background:`${bColor}14`,color:bColor,fontSize:10,fontWeight:800,letterSpacing:"0.05em",border:`1px solid ${bColor}28`}}>
+                        {bCode}
+                      </span>
+                      :<span style={{color:"#D1D5DB"}}>—</span>}
                   </td>
-                  {/* Año */}
-                  <td style={{padding:"10px 12px",color:"#6B7280",fontSize:11,fontWeight:500}}>{x.year}</td>
-                  {/* Marca / Modelo */}
-                  <td style={{padding:"10px 12px"}}>
-                    <div style={{fontWeight:700,fontSize:12,color:"#111827"}}>{x.brand}</div>
-                    <div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{x.model}</div>
+
+                  {/* ── Año ── */}
+                  <td style={{padding:"13px 16px",color:"#6B7280",fontSize:11,fontWeight:500}}>{x.year||"—"}</td>
+
+                  {/* ── Unidad: Marca + Modelo ── */}
+                  <td style={{padding:"13px 16px"}}>
+                    <div style={{fontWeight:700,fontSize:13,color:"#111827",letterSpacing:"-0.2px"}}>{x.brand}</div>
+                    <div style={{fontSize:11,color:"#6B7280",marginTop:2,fontWeight:400}}>{x.model}</div>
                   </td>
-                  {/* Color */}
-                  <td style={{padding:"10px 12px"}}>
-                    <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#374151"}}>
-                      <span style={{width:9,height:9,borderRadius:"50%",background:"#D1D5DB",border:"1px solid #E5E7EB",flexShrink:0}}/>
-                      {x.color||<span style={{color:"#D1D5DB"}}>—</span>}
-                    </span>
+
+                  {/* ── Color ── */}
+                  <td style={{padding:"13px 16px"}}>
+                    <span style={{fontSize:11,color:"#374151"}}>{x.color||<span style={{color:"#D1D5DB"}}>—</span>}</span>
                   </td>
-                  {/* Chasis + foto */}
-                  <td style={{padding:"10px 12px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontFamily:"monospace",fontSize:10,color:"#374151",letterSpacing:"0.04em"}}>{x.chassis}</span>
+
+                  {/* ── Chasis + foto ── */}
+                  <td style={{padding:"13px 16px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7}}>
+                      <span style={{fontFamily:"'Courier New',monospace",fontSize:10,color:"#374151",letterSpacing:"0.05em",fontWeight:600}}>{x.chassis}</span>
                       {x.chassis_photo
-                        ?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:22,height:22,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
-                        :<button onClick={()=>handlePhoto(x.id,"chassis_photo")} title="Agregar foto chasis" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:8,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>}
+                        ?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:24,height:24,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
+                        :<button onClick={()=>handlePhoto(x.id,"chassis_photo")} title="Agregar foto de chasis" style={{width:20,height:20,borderRadius:4,border:"1px dashed #C4C9D4",background:"transparent",cursor:"pointer",fontSize:9,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>}
                     </div>
                   </td>
-                  {/* Motor + foto */}
-                  <td style={{padding:"10px 12px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontFamily:"monospace",fontSize:10,color:"#6B7280"}}>{x.motor_num||<span style={{color:"#D1D5DB"}}>—</span>}</span>
+
+                  {/* ── Motor + foto ── */}
+                  <td style={{padding:"13px 16px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7}}>
+                      <span style={{fontFamily:"'Courier New',monospace",fontSize:10,color:"#6B7280"}}>{x.motor_num||<span style={{color:"#D1D5DB"}}>—</span>}</span>
                       {x.motor_photo
-                        ?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:22,height:22,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
-                        :x.motor_num?<button onClick={()=>handlePhoto(x.id,"motor_photo")} title="Agregar foto motor" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:8,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>:null}
+                        ?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:24,height:24,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
+                        :x.motor_num?<button onClick={()=>handlePhoto(x.id,"motor_photo")} title="Agregar foto de motor" style={{width:20,height:20,borderRadius:4,border:"1px dashed #C4C9D4",background:"transparent",cursor:"pointer",fontSize:9,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>:null}
                     </div>
                   </td>
-                  {/* Estado */}
-                  <td style={{padding:"10px 12px"}}>
+
+                  {/* ── Estado ── */}
+                  <td style={{padding:"13px 16px"}}>
                     {isSold?(
                       <div>
-                        <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",borderRadius:20,background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.25)"}}>
-                          <span style={{width:6,height:6,borderRadius:"50%",background:"#8B5CF6",flexShrink:0}}/>
-                          <span style={{fontSize:11,fontWeight:700,color:"#8B5CF6"}}>Vendida</span>
+                        <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:6,background:"rgba(139,92,246,0.08)",border:"1px solid rgba(139,92,246,0.22)"}}>
+                          <span style={{width:5,height:5,borderRadius:"50%",background:"#8B5CF6",flexShrink:0}}/>
+                          <span style={{fontSize:11,fontWeight:700,color:"#7C3AED",letterSpacing:"0.01em"}}>Vendida</span>
                         </div>
-                        {x.sold_at&&<div style={{fontSize:9,color:"#9CA3AF",marginTop:3,paddingLeft:2}}>{fD(x.sold_at)}</div>}
+                        {x.sold_at&&<div style={{fontSize:9,color:"#9CA3AF",marginTop:4}}>{fD(x.sold_at)}</div>}
                       </div>
                     ):(
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <span style={{width:7,height:7,borderRadius:"50%",background:stColor,flexShrink:0}}/>
+                      <div style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 9px",borderRadius:6,background:`${stColor}0f`,border:`1px solid ${stColor}35`}}>
+                        <span style={{width:5,height:5,borderRadius:"50%",background:stColor,flexShrink:0}}/>
                         <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
-                          style={{background:"transparent",border:"none",fontSize:11,fontWeight:600,color:stColor,cursor:"pointer",padding:0,outline:"none",fontFamily:"inherit"}}>
+                          style={{background:"transparent",border:"none",fontSize:11,fontWeight:700,color:stColor,cursor:"pointer",padding:0,outline:"none",fontFamily:"inherit"}}>
                           {Object.entries(INV_ST).filter(([k])=>k!=='vendida').map(([k,v])=>(
                             <option key={k} value={k}>{v.l}</option>
                           ))}
@@ -303,65 +335,96 @@ export function InventoryView({inv,setInv,user,realBranches}){
                       </div>
                     )}
                   </td>
-                  {/* Precio */}
-                  <td style={{padding:"10px 12px",fontWeight:700,fontSize:12,color:"#111827",whiteSpace:"nowrap"}}>
-                    {x.price>0?fmt(x.price):<span style={{color:"#D1D5DB",fontWeight:400}}>—</span>}
+
+                  {/* ── Precio ── */}
+                  <td style={{padding:"13px 16px",whiteSpace:"nowrap"}}>
+                    {x.price>0
+                      ?<span style={{fontWeight:700,fontSize:13,color:"#111827",letterSpacing:"-0.3px"}}>{fmt(x.price)}</span>
+                      :<span style={{color:"#D1D5DB",fontSize:12}}>—</span>}
                   </td>
-                  {/* Acciones */}
-                  <td style={{padding:"8px 12px"}}>
-                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                      {/* CTA principal: Registrar venta — solo si no está vendida */}
-                      {!isSold&&(
+
+                  {/* ── Acciones ── */}
+                  <td style={{padding:"10px 16px"}}>
+                    {!isSold?(
+                      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                        {/* Acción primaria */}
                         <button onClick={()=>openSell(x)}
-                          style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:6,border:"1px solid #059669",background:"#10B981",color:"#FFFFFF",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+                          style={{padding:"6px 12px",borderRadius:6,border:"1.5px solid #059669",background:"#10B981",color:"#FFFFFF",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"0.01em",textAlign:"center"}}>
                           Registrar venta
                         </button>
-                      )}
-                      {/* Fila secundaria: historial + mover */}
-                      <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                        <button onClick={()=>toggleHist(x.id)} title="Ver historial de la unidad"
-                          style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${isHistOpen?"#6366F1":"#E5E7EB"}`,background:isHistOpen?"#EEF2FF":"#F9FAFB",color:isHistOpen?"#6366F1":"#9CA3AF",fontSize:11,cursor:"pointer",fontWeight:500,whiteSpace:"nowrap"}}>
-                          {histLoading[x.id]?"Cargando...":"Historial"}
-                        </button>
-                        {!isSold&&brs.filter(b=>b.id!==x.branch_id).length>0&&(
-                          <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
-                            title="Trasladar a otra sucursal"
-                            style={{...S.inp,padding:"4px 6px",fontSize:10,width:60,borderRadius:6,height:28}}>
-                            <option value="" disabled>Mover</option>
-                            {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}
-                          </select>
-                        )}
+                        {/* Acciones secundarias */}
+                        <div style={{display:"flex",gap:5}}>
+                          <button onClick={()=>toggleHist(x.id)}
+                            style={{flex:1,padding:"5px 8px",borderRadius:6,border:`1.5px solid ${isHistOpen?"#6366F1":"#D1D5DB"}`,background:isHistOpen?"#EEF2FF":"#FFFFFF",color:isHistOpen?"#6366F1":"#6B7280",fontSize:10,cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}}>
+                            {histLoading[x.id]?"...":"Historial"}
+                          </button>
+                          {brs.filter(b=>b.id!==x.branch_id).length>0&&(
+                            <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
+                              style={{...S.inp,padding:"5px 6px",fontSize:10,flex:1,borderRadius:6,height:"auto",border:"1.5px solid #D1D5DB",background:"#FFFFFF",color:"#6B7280",cursor:"pointer"}}>
+                              <option value="" disabled>Mover</option>
+                              {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.code}</option>)}
+                            </select>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    ):(
+                      <button onClick={()=>toggleHist(x.id)}
+                        style={{padding:"6px 12px",borderRadius:6,border:`1.5px solid ${isHistOpen?"#6366F1":"#D1D5DB"}`,background:isHistOpen?"#EEF2FF":"#FFFFFF",color:isHistOpen?"#6366F1":"#6B7280",fontSize:11,cursor:"pointer",fontWeight:600,whiteSpace:"nowrap",width:"100%"}}>
+                        {histLoading[x.id]?"Cargando...":"Ver historial"}
+                      </button>
+                    )}
                   </td>
                 </tr>
-                {/* ── HISTORY ROW ── */}
+
+                {/* ── HISTORIAL EXPANDIBLE ── */}
                 {isHistOpen&&(
-                  <tr style={{borderBottom:"1px solid #EDE9FE",background:"#FAF8FF"}}>
-                    <td colSpan={9} style={{padding:"14px 16px 16px"}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#6366F1",marginBottom:12}}>
-                        Trazabilidad — {x.brand} {x.model} · Chasis <code style={{fontFamily:"monospace",fontSize:10}}>{x.chassis}</code>
+                  <tr style={{borderBottom:"1px solid #E8E4F3",background:"#F8F7FF"}}>
+                    <td colSpan={9} style={{padding:"16px 20px 18px"}}>
+
+                      {/* Header del historial */}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                        <div>
+                          <div style={{fontSize:11,fontWeight:700,color:"#6366F1",letterSpacing:"0.02em"}}>
+                            Trazabilidad de la unidad
+                          </div>
+                          <div style={{fontSize:10,color:"#9CA3AF",marginTop:2}}>
+                            {x.brand} {x.model} · Chasis <span style={{fontFamily:"monospace",fontWeight:600,color:"#6B7280"}}>{x.chassis}</span>
+                          </div>
+                        </div>
+                        <button onClick={()=>toggleHist(x.id)}
+                          style={{padding:"4px 10px",borderRadius:6,border:"1px solid #D1D5DB",background:"transparent",fontSize:10,cursor:"pointer",color:"#6B7280"}}>
+                          Cerrar
+                        </button>
                       </div>
-                      {histLoading[x.id]&&<div style={{color:"#9CA3AF",fontSize:11,padding:"8px 0"}}>Cargando historial...</div>}
+
+                      {histLoading[x.id]&&(
+                        <div style={{color:"#9CA3AF",fontSize:11,padding:"12px 0"}}>Cargando historial...</div>
+                      )}
                       {!histLoading[x.id]&&(!histData[x.id]||histData[x.id].length===0)&&(
-                        <div style={{color:"#9CA3AF",fontSize:11,padding:"8px 0"}}>Sin registros de historial para esta unidad.</div>
+                        <div style={{color:"#9CA3AF",fontSize:11,padding:"12px 0"}}>Sin registros de historial para esta unidad.</div>
                       )}
                       {!histLoading[x.id]&&histData[x.id]?.length>0&&(
-                        <div style={{display:"flex",flexDirection:"column",gap:6,maxWidth:700}}>
-                          {histData[x.id].map((h,i)=>{
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:8,maxWidth:900}}>
+                          {histData[x.id].map(h=>{
                             const uName=h.user_fn?`${h.user_fn} ${h.user_ln||''}`.trim():'Sistema';
-                            const isLast=i===histData[x.id].length-1;
+                            const isSaleEvent=h.event_type==='sold';
                             return(
-                              <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 12px",background:"#FFFFFF",borderRadius:8,border:`1px solid ${h.event_type==='sold'?"rgba(139,92,246,0.3)":"#EDE9FE"}`}}>
-                                <span style={{flexShrink:0,marginTop:2,width:20,height:20,borderRadius:4,background:h.event_type==='sold'?"rgba(139,92,246,0.15)":"rgba(99,102,241,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:h.event_type==='sold'?"#8B5CF6":"#6366F1",letterSpacing:0}}>{HIST_ICONS[h.event_type]||"•"}</span>
+                              <div key={h.id} style={{display:"flex",gap:10,padding:"10px 12px",background:"#FFFFFF",borderRadius:8,border:`1px solid ${isSaleEvent?"#C4B5FD":"#E2E0F5"}`,borderLeft:`3px solid ${isSaleEvent?"#8B5CF6":"#6366F1"}`}}>
+                                <div style={{flexShrink:0,marginTop:1,width:22,height:22,borderRadius:5,background:isSaleEvent?"rgba(139,92,246,0.12)":"rgba(99,102,241,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:900,color:isSaleEvent?"#8B5CF6":"#6366F1",letterSpacing:0,border:`1px solid ${isSaleEvent?"rgba(139,92,246,0.2)":"rgba(99,102,241,0.15)"}`}}>
+                                  {HIST_ICONS[h.event_type]||"·"}
+                                </div>
                                 <div style={{flex:1,minWidth:0}}>
-                                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                                    <span style={{fontWeight:700,fontSize:11,color:h.event_type==='sold'?"#8B5CF6":"#374151"}}>{HIST_LABELS[h.event_type]||h.event_type}</span>
-                                    {h.from_status&&h.to_status&&<span style={{fontSize:10,color:"#6B7280",background:"#F3F4F6",padding:"1px 6px",borderRadius:4}}>{INV_ST[h.from_status]?.l||h.from_status} → {INV_ST[h.to_status]?.l||h.to_status}</span>}
-                                    <span style={{fontSize:10,color:"#9CA3AF",marginLeft:"auto",flexShrink:0}}>{fDT(h.created_at)}</span>
+                                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
+                                    <span style={{fontWeight:700,fontSize:11,color:isSaleEvent?"#7C3AED":"#374151"}}>{HIST_LABELS[h.event_type]||h.event_type}</span>
+                                    {h.from_status&&h.to_status&&(
+                                      <span style={{fontSize:9,color:"#6B7280",background:"#F3F4F6",padding:"1px 6px",borderRadius:4,border:"1px solid #E5E7EB"}}>
+                                        {INV_ST[h.from_status]?.l||h.from_status} → {INV_ST[h.to_status]?.l||h.to_status}
+                                      </span>
+                                    )}
+                                    <span style={{fontSize:9,color:"#9CA3AF",marginLeft:"auto",flexShrink:0}}>{fDT(h.created_at)}</span>
                                   </div>
-                                  {h.note&&<div style={{fontSize:11,color:"#4B5563",marginTop:3}}>{h.note}</div>}
-                                  <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>por <strong style={{color:"#6B7280"}}>{uName}</strong></div>
+                                  {h.note&&<div style={{fontSize:10,color:"#4B5563",marginBottom:3,lineHeight:1.4}}>{h.note}</div>}
+                                  <div style={{fontSize:9,color:"#9CA3AF"}}>por <strong style={{color:"#6B7280",fontWeight:600}}>{uName}</strong></div>
                                 </div>
                               </div>
                             );
