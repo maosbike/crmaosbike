@@ -93,7 +93,7 @@ export function StagingImportView() {
 
   const reset = () => { setStep('upload'); setBatchData(null); setResult(null); setEditingRow(null); };
 
-  const MATCH_LABEL = { exact: '✓ Exacto', fuzzy: '~ Parcial', new: '+ Nuevo', ambiguous: '⚠ Ambiguo', unknown: '—' };
+  const MATCH_LABEL = { exact: 'Exacto', fuzzy: 'Parcial', new: 'Nuevo', ambiguous: 'Ambiguo', unknown: '—' };
   const MATCH_COLOR = { exact: '#10B981', fuzzy: '#F59E0B', new: '#3B82F6', ambiguous: '#EF4444', unknown: '#6B7280' };
   const CAT_OPTS    = ['Commuter','Naked','Sport','Scooter','Adventure','Off-Road','Touring','Eléctrica','Big Bike','ATV','Cruiser'];
 
@@ -202,8 +202,8 @@ export function StagingImportView() {
                           {rejected
                             ? <span style={{ fontSize: 10, color: '#6B7280' }}>Rechazado</span>
                             : hasError
-                            ? <span title={row.validation_errors.join('\n')} style={{ fontSize: 10, color: '#EF4444', cursor: 'help' }}>⚠ Error</span>
-                            : <span style={{ fontSize: 10, color: '#10B981' }}>✓ OK</span>
+                            ? <span title={row.validation_errors.join('\n')} style={{ fontSize: 10, color: '#EF4444', cursor: 'help' }}>Error</span>
+                            : <span style={{ fontSize: 10, color: '#10B981' }}>OK</span>
                           }
                         </td>
                         {isEditing ? (

@@ -300,7 +300,7 @@ export function CalendarView({user,nav}){
               <div style={{display:'flex',gap:8}}>
                 {editEv&&editEv.status!=='completed'&&(
                   <button type="button" onClick={handleComplete} style={{...S.btn2,fontSize:12,color:'#10B981',borderColor:'#10B981'}}>
-                    ✓ Marcar completado
+                    Marcar completado
                   </button>
                 )}
                 {editEv&&(

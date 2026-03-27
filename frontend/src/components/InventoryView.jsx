@@ -9,7 +9,7 @@ const BLANK_NW=()=>({
   sold_by:"",ticket_id:"",sale_notes:"",payment_method:"",sale_type:"completa",
 });
 const BLANK_SELL=()=>({sold_by:"",sold_at:new Date().toISOString().split('T')[0],ticket_id:"",payment_method:"",sale_type:"completa",sale_notes:""});
-const HIST_ICONS={created:"🏭",imported:"📊",sold:"💰",status_changed:"🔄",moved:"📦",note:"📝"};
+const HIST_ICONS={created:"C",imported:"I",sold:"V",status_changed:"E",moved:"T",note:"N"};
 const HIST_LABELS={created:"Creada",imported:"Importada",sold:"Venta",status_changed:"Cambio estado",moved:"Traslado",note:"Nota"};
 
 export function InventoryView({inv,setInv,user,realBranches}){
@@ -269,7 +269,7 @@ export function InventoryView({inv,setInv,user,realBranches}){
                       <span style={{fontFamily:"monospace",fontSize:10,color:"#374151",letterSpacing:"0.04em"}}>{x.chassis}</span>
                       {x.chassis_photo
                         ?<img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{width:22,height:22,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
-                        :<button onClick={()=>handlePhoto(x.id,"chassis_photo")} title="Agregar foto chasis" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:10,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📷</button>}
+                        :<button onClick={()=>handlePhoto(x.id,"chassis_photo")} title="Agregar foto chasis" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:8,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>}
                     </div>
                   </td>
                   {/* Motor + foto */}
@@ -278,7 +278,7 @@ export function InventoryView({inv,setInv,user,realBranches}){
                       <span style={{fontFamily:"monospace",fontSize:10,color:"#6B7280"}}>{x.motor_num||<span style={{color:"#D1D5DB"}}>—</span>}</span>
                       {x.motor_photo
                         ?<img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{width:22,height:22,borderRadius:4,objectFit:"cover",cursor:"pointer",border:"1px solid #E5E7EB",flexShrink:0}}/>
-                        :x.motor_num?<button onClick={()=>handlePhoto(x.id,"motor_photo")} title="Agregar foto motor" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:10,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📷</button>:null}
+                        :x.motor_num?<button onClick={()=>handlePhoto(x.id,"motor_photo")} title="Agregar foto motor" style={{width:22,height:22,borderRadius:4,border:"1.5px dashed #D1D5DB",background:"#F9FAFB",cursor:"pointer",fontSize:8,color:"#9CA3AF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700}}>+</button>:null}
                     </div>
                   </td>
                   {/* Estado */}
@@ -313,15 +313,15 @@ export function InventoryView({inv,setInv,user,realBranches}){
                       {/* CTA principal: Registrar venta — solo si no está vendida */}
                       {!isSold&&(
                         <button onClick={()=>openSell(x)}
-                          style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:7,border:"none",background:"#10B981",color:"#FFFFFF",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"0 1px 3px rgba(16,185,129,0.3)"}}>
-                          <span style={{fontSize:12}}>💰</span> Registrar venta
+                          style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:6,border:"1px solid #059669",background:"#10B981",color:"#FFFFFF",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+                          Registrar venta
                         </button>
                       )}
                       {/* Fila secundaria: historial + mover */}
                       <div style={{display:"flex",gap:5,alignItems:"center"}}>
                         <button onClick={()=>toggleHist(x.id)} title="Ver historial de la unidad"
                           style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${isHistOpen?"#6366F1":"#E5E7EB"}`,background:isHistOpen?"#EEF2FF":"#F9FAFB",color:isHistOpen?"#6366F1":"#9CA3AF",fontSize:11,cursor:"pointer",fontWeight:500,whiteSpace:"nowrap"}}>
-                          {histLoading[x.id]?"⏳ ...":"📋 Historial"}
+                          {histLoading[x.id]?"Cargando...":"Historial"}
                         </button>
                         {!isSold&&brs.filter(b=>b.id!==x.branch_id).length>0&&(
                           <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value="";}}
@@ -339,9 +339,8 @@ export function InventoryView({inv,setInv,user,realBranches}){
                 {isHistOpen&&(
                   <tr style={{borderBottom:"1px solid #EDE9FE",background:"#FAF8FF"}}>
                     <td colSpan={9} style={{padding:"14px 16px 16px"}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#6366F1",marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
-                        <span>📋</span>
-                        <span>Trazabilidad — {x.brand} {x.model} · Chasis <code style={{fontFamily:"monospace",fontSize:10}}>{x.chassis}</code></span>
+                      <div style={{fontSize:11,fontWeight:700,color:"#6366F1",marginBottom:12}}>
+                        Trazabilidad — {x.brand} {x.model} · Chasis <code style={{fontFamily:"monospace",fontSize:10}}>{x.chassis}</code>
                       </div>
                       {histLoading[x.id]&&<div style={{color:"#9CA3AF",fontSize:11,padding:"8px 0"}}>Cargando historial...</div>}
                       {!histLoading[x.id]&&(!histData[x.id]||histData[x.id].length===0)&&(
@@ -353,8 +352,8 @@ export function InventoryView({inv,setInv,user,realBranches}){
                             const uName=h.user_fn?`${h.user_fn} ${h.user_ln||''}`.trim():'Sistema';
                             const isLast=i===histData[x.id].length-1;
                             return(
-                              <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 12px",background:"#FFFFFF",borderRadius:8,border:`1px solid ${h.event_type==='sold'?"rgba(139,92,246,0.3)":"#EDE9FE"}`,boxShadow:h.event_type==='sold'?"0 1px 4px rgba(139,92,246,0.08)":"none"}}>
-                                <span style={{fontSize:16,flexShrink:0,marginTop:1}}>{HIST_ICONS[h.event_type]||"•"}</span>
+                              <div key={h.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 12px",background:"#FFFFFF",borderRadius:8,border:`1px solid ${h.event_type==='sold'?"rgba(139,92,246,0.3)":"#EDE9FE"}`}}>
+                                <span style={{flexShrink:0,marginTop:2,width:20,height:20,borderRadius:4,background:h.event_type==='sold'?"rgba(139,92,246,0.15)":"rgba(99,102,241,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:h.event_type==='sold'?"#8B5CF6":"#6366F1",letterSpacing:0}}>{HIST_ICONS[h.event_type]||"•"}</span>
                                 <div style={{flex:1,minWidth:0}}>
                                   <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                                     <span style={{fontWeight:700,fontSize:11,color:h.event_type==='sold'?"#8B5CF6":"#374151"}}>{HIST_LABELS[h.event_type]||h.event_type}</span>
@@ -450,7 +449,7 @@ export function InventoryView({inv,setInv,user,realBranches}){
 
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{fontSize:11,color:"#6B7280"}}>
-                {nw.added_as_sold&&<span style={{color:"#EF4444",fontWeight:600}}>⚠ Se creará como vendida — no aparecerá en stock disponible</span>}
+                {nw.added_as_sold&&<span style={{color:"#EF4444",fontWeight:600}}>Se creará como vendida — no aparecerá en stock disponible</span>}
               </div>
               <div style={{display:"flex",gap:8}}>
                 <button type="button" onClick={()=>{setShowAdd(false);setNw(BLANK_NW());}} style={S.btn2}>Cancelar</button>
@@ -471,8 +470,8 @@ export function InventoryView({inv,setInv,user,realBranches}){
           <form onSubmit={handleSell}>
 
             {/* ── Ficha de la unidad ── */}
-            <div style={{background:"linear-gradient(135deg,#f0fdf4,#ecfdf5)",border:"1px solid #86efac",borderRadius:10,padding:"12px 16px",marginBottom:18}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#16a34a",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Unidad a vender</div>
+            <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:8,padding:"12px 16px",marginBottom:18}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8}}>Unidad a vender</div>
               <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:12}}>
                 <div>
                   <div style={{fontWeight:800,fontSize:15,color:"#111827"}}>{sellUnit.brand} {sellUnit.model}</div>
@@ -512,8 +511,8 @@ export function InventoryView({inv,setInv,user,realBranches}){
             </div>
 
             {/* ── Aviso ── */}
-            <div style={{background:"rgba(16,185,129,0.06)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#065f46"}}>
-              ✅ Al confirmar, la unidad saldrá del stock disponible y quedará registrada como vendida con trazabilidad completa.
+            <div style={{background:"rgba(16,185,129,0.05)",border:"1px solid rgba(16,185,129,0.18)",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#065f46"}}>
+              Al confirmar, la unidad saldrá del stock disponible y quedará registrada como vendida con trazabilidad completa.
             </div>
 
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
@@ -521,8 +520,8 @@ export function InventoryView({inv,setInv,user,realBranches}){
               <div style={{display:"flex",gap:8}}>
                 <button type="button" onClick={()=>{setShowSell(false);setSellUnit(null);}} style={S.btn2}>Cancelar</button>
                 <button type="submit" disabled={selling||!sellForm.sold_by||!sellForm.sold_at}
-                  style={{...S.btn,background:"#10B981",boxShadow:"0 2px 8px rgba(16,185,129,0.3)",opacity:(selling||!sellForm.sold_by||!sellForm.sold_at)?0.6:1,padding:"8px 20px"}}>
-                  {selling?"Registrando...":"💰 Confirmar venta"}
+                  style={{...S.btn,background:"#10B981",opacity:(selling||!sellForm.sold_by||!sellForm.sold_at)?0.6:1,padding:"8px 20px"}}>
+                  {selling?"Registrando...":"Confirmar venta"}
                 </button>
               </div>
             </div>
@@ -538,8 +537,8 @@ export function InventoryView({inv,setInv,user,realBranches}){
 
           {!importPreview&&!importDone&&(
             <div style={{textAlign:"center",padding:"32px 16px"}}>
-              <div style={{fontSize:40,marginBottom:12}}>📊</div>
-              <p style={{fontSize:13,color:"#374151",marginBottom:6}}>Subí tu plantilla de inventario Excel (.xlsx)</p>
+              <div style={{width:48,height:48,borderRadius:10,background:"#F3F4F6",border:"1px solid #E5E7EB",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",fontSize:11,fontWeight:700,color:"#6B7280",letterSpacing:"0.04em"}}>XLS</div>
+              <p style={{fontSize:13,color:"#374151",marginBottom:6}}>Seleccioná tu plantilla de inventario Excel (.xlsx)</p>
               <p style={{fontSize:11,color:"#6B7280",marginBottom:20}}>
                 Columnas esperadas: <strong>Sucursal · Año · Marca · Modelo · Color · N° Chasis · N° Motor · Estado · Precio</strong>
               </p>
@@ -556,9 +555,9 @@ export function InventoryView({inv,setInv,user,realBranches}){
               <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
                 {[
                   {l:"Total filas",  v:importPreview.total,  c:"#6B7280"},
-                  {l:"✓ Nuevas",     v:importPreview.ok,         c:"#10B981"},
-                  {l:"⟳ Duplicados", v:importPreview.duplicates, c:"#F59E0B"},
-                  {l:"✗ Errores",    v:importPreview.errors,     c:"#EF4444"},
+                  {l:"Nuevas",       v:importPreview.ok,         c:"#10B981"},
+                  {l:"Duplicados",   v:importPreview.duplicates, c:"#F59E0B"},
+                  {l:"Errores",      v:importPreview.errors,     c:"#EF4444"},
                 ].map(({l,v,c})=>(
                   <div key={l} style={{...S.card,padding:"8px 14px",textAlign:"center",flex:1,minWidth:80}}>
                     <div style={{fontSize:20,fontWeight:800,color:c}}>{v}</div>
@@ -591,7 +590,7 @@ export function InventoryView({inv,setInv,user,realBranches}){
                           <td style={{padding:"5px 8px"}}>{r.status}</td>
                           <td style={{padding:"5px 8px"}}>{r.price?fmt(r.price):'-'}</td>
                           <td style={{padding:"5px 8px",color:ic,fontSize:10,fontWeight:600}}>
-                            {r._status==='ok'?"✓ Nueva":r._status==='duplicate'?"⟳ Ya existe":r._errors?.join(', ')}
+                            {r._status==='ok'?"Nueva":r._status==='duplicate'?"Ya existe":r._errors?.join(', ')}
                           </td>
                         </tr>
                       );
@@ -617,7 +616,7 @@ export function InventoryView({inv,setInv,user,realBranches}){
 
           {importDone&&(
             <div style={{textAlign:"center",padding:"32px 16px"}}>
-              <div style={{fontSize:40,marginBottom:12}}>✅</div>
+              <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(16,185,129,0.1)",border:"1.5px solid rgba(16,185,129,0.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",fontSize:11,fontWeight:700,color:"#10B981"}}>OK</div>
               <h3 style={{fontSize:16,fontWeight:700,marginBottom:8}}>Importación completada</h3>
               <p style={{fontSize:13,color:"#374151",marginBottom:4}}><strong>{importDone.inserted}</strong> unidades agregadas al inventario</p>
               {importDone.skipped>0&&<p style={{fontSize:12,color:"#F59E0B"}}>{importDone.skipped} duplicadas omitidas</p>}

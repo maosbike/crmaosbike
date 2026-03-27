@@ -25,7 +25,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <Stat icon={Ic.bell} ic="#F28100" ib="rgba(242,129,0,0.1)" label="Reasignados" val={kpi("reasignados_hoy")} sub="Hoy"/>
         </div>
         {urgentes.length>0&&<div style={{...S.card,marginBottom:14}}>
-          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px",color:"#EF4444"}}>⚠ Requieren atención</h3>
+          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px",color:"#EF4444"}}>Requieren atención</h3>
           {urgentes.slice(0,5).map((l,i)=>{
             const st=l.sla_status;
             const lbl=(st==="breached"||st==="vencido"||l.hours_left!=null&&l.hours_left<=0)?"Vencido":st==="warning"||l.hours_left!=null&&l.hours_left<2?`Atender ya · ${Math.ceil(l.hours_left||0)}h`:l.hours_left!=null?`Quedan ${Math.ceil(l.hours_left)}h`:"Sin gestionar";
@@ -34,7 +34,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           })}
         </div>}
         {tareasHoy.length>0&&<div style={{...S.card,marginBottom:14}}>
-          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px"}}>📋 Tareas para hoy</h3>
+          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px"}}>Tareas para hoy</h3>
           {tareasHoy.slice(0,5).map((t,i)=><div key={i} onClick={()=>t.ticket_id&&nav("ticket",String(t.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{t.title}</div><div style={{fontSize:11,color:"#6B7280"}}>{t.client_name||""}</div></div><span style={{fontSize:10,color:"#F28100"}}>{t.reminder_time||fD(t.reminder_date)}</span></div>)}
         </div>}
       </>}

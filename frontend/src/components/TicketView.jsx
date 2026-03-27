@@ -206,8 +206,8 @@ export function TicketView({lead,user,nav,updLead}){
             <div><label style={S.lbl}>Estado</label><select value={lead.finStatus} onChange={e=>upd("finStatus",e.target.value)} style={{...S.inp,width:"100%"}}>{Object.entries(FIN_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}</select></div>
             <div><label style={S.lbl}>Motivo Rechazo</label><select value={lead.rechazoMotivo||""} onChange={e=>upd("rechazoMotivo",e.target.value)} style={{...S.inp,width:"100%"}} disabled={lead.finStatus!=="rechazado"}><option value="">Seleccionar...</option>{RECHAZO_MOTIVOS.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
           </div>
-          {lead.finStatus==="rechazado"&&lead.rechazoMotivo&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:10,marginBottom:14,fontSize:12,color:"#EF4444"}}>⚠ Rechazado: {lead.rechazoMotivo}</div>}
-          {lead.finStatus==="aprobado"&&<div style={{background:"rgba(16,185,129,0.08)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:8,padding:10,marginBottom:14,fontSize:12,color:"#10B981"}}>✓ Financiamiento aprobado</div>}
+          {lead.finStatus==="rechazado"&&lead.rechazoMotivo&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:10,marginBottom:14,fontSize:12,color:"#EF4444"}}>Rechazado: {lead.rechazoMotivo}</div>}
+          {lead.finStatus==="aprobado"&&<div style={{background:"rgba(16,185,129,0.08)",border:"1px solid rgba(16,185,129,0.2)",borderRadius:8,padding:10,marginBottom:14,fontSize:12,color:"#10B981"}}>Financiamiento aprobado</div>}
           <div style={{marginTop:8}}><label style={S.lbl}>Observaciones (exclusivo Autofin)</label><textarea value="" onChange={()=>{}} rows={3} style={{...S.inp,width:"100%",resize:"vertical"}} placeholder="Notas internas sobre evaluación..."/></div>
         </div>
       )}
@@ -248,7 +248,7 @@ export function TicketView({lead,user,nav,updLead}){
                 const dotC=isInit?"#3B82F6":isSLA?"#EF4444":isManual?"#8B5CF6":"#6B7280";
                 const cardBg=isInit?"rgba(59,130,246,0.05)":isSLA?"rgba(239,68,68,0.05)":isManual?"rgba(139,92,246,0.05)":"rgba(107,114,128,0.04)";
                 const cardBorder=isInit?"rgba(59,130,246,0.18)":isSLA?"rgba(239,68,68,0.18)":isManual?"rgba(139,92,246,0.18)":"rgba(107,114,128,0.1)";
-                const icon=isInit?"🟢":isSLA?"🔴":isManual?"🟣":"⚙️";
+                const icon=null;
                 return(
                   <div key={ev.id||i} style={{position:"relative",paddingBottom:i<assignHistory.length-1?14:0,paddingLeft:18}}>
                     {/* Dot */}
@@ -273,14 +273,14 @@ export function TicketView({lead,user,nav,updLead}){
                       </div>
                       {/* Fila info: razón + ejecutor */}
                       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",marginBottom:6}}>
-                        <span style={{fontSize:11,color:"#6B7280"}}>{icon} {ev.reason_label}</span>
+                        <span style={{fontSize:11,color:"#6B7280"}}>{ev.reason_label}</span>
                         <span style={{fontSize:11,color:"#9CA3AF"}}>·</span>
                         <span style={{fontSize:11,color:"#6B7280"}}>por {ev.by_name}</span>
                       </div>
                       {/* Duración con ese vendedor */}
                       <div style={{display:"flex",justifyContent:"flex-end"}}>
                         <span style={{fontSize:10,color:isCurrent?"#F28100":"#9CA3AF",padding:"2px 8px",borderRadius:6,background:isCurrent?"rgba(242,129,0,0.08)":"rgba(0,0,0,0.04)",fontWeight:isCurrent?600:400}}>
-                          {isCurrent?"⏳ En curso · "+ev.duration_label:"✓ "+ev.duration_label}
+                          {isCurrent?"En curso · "+ev.duration_label:ev.duration_label}
                         </span>
                       </div>
                     </div>

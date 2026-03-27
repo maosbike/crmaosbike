@@ -261,7 +261,7 @@ export function ImportView() {
                             <td style={{padding:'6px 10px'}}>{r.branch_name||r.sucursal_raw||'—'}</td>
                             <td style={{padding:'4px 8px',fontSize:11,minWidth:180}}>
                               {r.model_resolved_name&&<div style={{color:'#10B981',fontWeight:600,marginBottom:2}}>{r.model_resolved_name}</div>}
-                              {!r.model_resolved_name&&r.model_raw&&<div style={{color:'#F59E0B',marginBottom:2}}>⚠ {r.model_raw}</div>}
+                              {!r.model_resolved_name&&r.model_raw&&<div style={{color:'#F59E0B',marginBottom:2}}>{r.model_raw}</div>}
                               <select
                                 value={r.model_id||''}
                                 onChange={e=>{
@@ -299,7 +299,7 @@ export function ImportView() {
           {step==='result'&&result&&(
             <div style={{display:'flex',flexDirection:'column',gap:16}}>
               <div style={{...S.card,textAlign:'center',padding:'32px 24px'}}>
-                <div style={{fontSize:40,marginBottom:8}}>✓</div>
+                <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(16,185,129,0.12)",border:"1.5px solid rgba(16,185,129,0.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px",fontSize:18,color:"#10B981",fontWeight:700}}>OK</div>
                 <h3 style={{fontSize:18,fontWeight:700,margin:'0 0 6px',color:'#10B981'}}>Importación completada</h3>
                 <div style={{fontSize:13,color:'#888'}}>{preview?.filename}</div>
               </div>

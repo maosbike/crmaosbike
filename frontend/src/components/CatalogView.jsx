@@ -76,7 +76,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
         <div style={{position:"relative",height:200,background:"#F5F5F7",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
           {m.image_url
             ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-            :<div style={{color:"#1F2937",fontSize:48}}>🏍</div>
+            :<div style={{color:"#D1D5DB",fontSize:13,fontWeight:500,letterSpacing:"0.05em"}}>SIN IMAGEN</div>
           }
           {canEdit&&(
             <label style={{position:"absolute",bottom:10,right:10,background:"rgba(255,255,255,0.9)",border:"1px solid #D1D5DB",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer",color:"#374151"}}>

@@ -39,7 +39,7 @@ export function AdminView(){
     setAliases(prev=>prev.filter(a=>a.id!==id));
   };
   const handleCleanData=async()=>{
-    if(!confirm('⚠️ ATENCIÓN: Esto eliminará TODOS los tickets, leads, importaciones e inventario.\n\nUsuarios, sucursales y catálogo de motos se conservan.\n\n¿Confirmar?'))return;
+    if(!confirm('ATENCIÓN: Esto eliminará TODOS los tickets, leads, importaciones e inventario.\n\nUsuarios, sucursales y catálogo de motos se conservan.\n\n¿Confirmar?'))return;
     if(!confirm('Segunda confirmación: ¿Estás seguro? Esta acción NO se puede deshacer.'))return;
     setCleaning(true);
     try{
@@ -49,7 +49,7 @@ export function AdminView(){
     finally{setCleaning(false);}
   };
   const handleCleanCatalog=async()=>{
-    if(!confirm('⚠️ ATENCIÓN: Esto eliminará TODO el catálogo de motos y todos los precios importados.\n\nTickets, inventario y usuarios se conservan.\n\n¿Confirmar?'))return;
+    if(!confirm('ATENCIÓN: Esto eliminará TODO el catálogo de motos y todos los precios importados.\n\nTickets, inventario y usuarios se conservan.\n\n¿Confirmar?'))return;
     if(!confirm('Segunda confirmación: ¿Seguro? Esta acción NO se puede deshacer.'))return;
     setCleaningCatalog(true);
     try{
