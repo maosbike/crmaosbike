@@ -53,16 +53,35 @@ const SLAService = {
     return rows.map(r => r.id);
   },
 
-  // Algoritmo Least-Loaded: elegir vendedor con menos tickets activos
-  async findBestSeller(branch_id, exclude_user_id) {
+  // Lógica oficial de asignación: least-loaded considerando branch_id + extra_branches
+  // Usada tanto para leads manuales como importados
+  async assignSeller(branch_id) {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
-              COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) as active_tickets
+              COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) AS active_tickets
        FROM users u
        LEFT JOIN tickets t ON t.assigned_to = u.id
        WHERE u.role = 'vendedor'
          AND u.active = true
-         AND u.branch_id = $1
+         AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
+       GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
+       ORDER BY active_tickets ASC
+       LIMIT 1`,
+      [branch_id]
+    );
+    return rows[0] || null;
+  },
+
+  // Least-loaded excluyendo un vendedor (para reasignación por SLA)
+  async findBestSeller(branch_id, exclude_user_id) {
+    const { rows } = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
+              COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) AS active_tickets
+       FROM users u
+       LEFT JOIN tickets t ON t.assigned_to = u.id
+       WHERE u.role = 'vendedor'
+         AND u.active = true
+         AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
          AND u.id != $2
        GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
        ORDER BY active_tickets ASC

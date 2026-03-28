@@ -4,6 +4,7 @@ const { auth, roleCheck } = require('../middleware/auth');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const TelegramService = require('../services/telegramService');
+const SLAService = require('../services/slaService');
 
 // ─── Multer config ────────────────────────────────────────────
 const upload = multer({
@@ -508,10 +509,10 @@ router.post('/confirm', async (req, res) => {
     const { rows: models } = await db.query('SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true');
 
     // ── Least-loaded + round-robin por sucursal ────────────────
-    // Incluye vendedores con branch_id = branch_id O que tienen branch_id
-    // en extra_branches (ej: Camila cubre MPS y MPN)
+    // Usa SLAService.assignSeller como lógica oficial (branch_id + extra_branches)
+    // El caché local evita queries repetidas durante importaciones masivas
     const sellerCache = {};
-    async function assignSeller(branch_id) {
+    async function assignSellerForImport(branch_id) {
       if (!sellerCache[branch_id]) {
         const { rows: sellers } = await db.query(
           `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
@@ -539,7 +540,7 @@ router.post('/confirm', async (req, res) => {
 
     for (const r of toImport) {
       try {
-        const seller = r.branch_id ? await assignSeller(r.branch_id) : null;
+        const seller = r.branch_id ? await assignSellerForImport(r.branch_id) : null;
         const num    = `SCM-${247001 + ticketCount++}`;
 
         // Resolver model_id: primero el que viene del preview (si el cliente

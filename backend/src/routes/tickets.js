@@ -66,15 +66,10 @@ router.post('/', asyncHandler(async (req, res) => {
   const branch = branch_id || req.user.branch_id;
   let seller = req.user.role === 'vendedor' ? req.user.id : null;
 
-  // Auto-assign: vendedor with fewest open tickets in that branch
+  // Auto-assign: lógica unificada con importación (branch_id + extra_branches, least-loaded)
   if (!seller && branch) {
-    const { rows: sellers } = await db.query(
-      `SELECT u.id, COUNT(t.id) as cnt FROM users u
-       LEFT JOIN tickets t ON t.assigned_to = u.id AND t.status NOT IN ('ganado','perdido','cerrado')
-       WHERE u.branch_id = $1 AND u.role = 'vendedor' AND u.active = true
-       GROUP BY u.id ORDER BY cnt ASC LIMIT 1`, [branch]
-    );
-    if (sellers[0]) seller = sellers[0].id;
+    const assigned = await SLAService.assignSeller(branch);
+    if (assigned) seller = assigned.id;
   }
 
   // Transacción: ticket + timeline deben crearse juntos
