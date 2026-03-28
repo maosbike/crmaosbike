@@ -24,7 +24,8 @@ router.get('/events', async (req, res) => {
              r.priority, r.status, r.reminder_type, r.ticket_id,
              r.assigned_to,
              u.first_name as assigned_name,
-             t.ticket_num as ticket_number, t.first_name as client_name
+             t.ticket_num as ticket_number,
+             NULLIF(TRIM(CONCAT_WS(' ', t.first_name, t.last_name)), '') as client_name
       FROM reminders r
       LEFT JOIN users u ON r.assigned_to = u.id
       LEFT JOIN tickets t ON r.ticket_id = t.id

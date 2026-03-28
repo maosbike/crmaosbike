@@ -204,7 +204,7 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
     // Notificación in-app
     const NotificationService = require('../services/notificationService');
     await NotificationService.reassigned(
-      { ...ticket, client_name: `${ticket.first_name || ''} ${ticket.last_name || ''}` },
+      ticket,
       to_user_id,
       fromName
     );

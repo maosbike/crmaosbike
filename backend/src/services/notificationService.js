@@ -1,5 +1,14 @@
 const db = require('../config/db');
 
+// Fuente oficial del nombre visible de un lead.
+// Prioriza first_name + last_name reales. Nunca devuelve "Sin nombre".
+function dn(ticket) {
+  return [ticket.first_name, ticket.last_name].filter(Boolean).join(' ').trim()
+    || ticket.ticket_num
+    || ticket.ticket_number
+    || '—';
+}
+
 const NotificationService = {
   // Crear una notificación
   async create({ user_id, type, title, message, link_type, link_id }) {
@@ -24,31 +33,29 @@ const NotificationService = {
     return this.create({
       user_id: seller_id,
       type: 'new_lead',
-      title: `Nuevo lead asignado: ${ticket.client_name || 'Sin nombre'}`,
-      message: `Ticket #${ticket.ticket_number} - Tienes 3 horas para gestionarlo`,
+      title: `Nuevo lead asignado: ${dn(ticket)}`,
+      message: `Ticket #${ticket.ticket_num || ticket.ticket_number} - Tienes 3 horas para gestionarlo`,
       link_type: 'ticket',
       link_id: ticket.id
     });
   },
 
-  // Notificar SLA warning (6h)
+  // Notificar SLA warning
   async slaWarning(ticket, seller_id, admin_ids = []) {
     const notifs = [];
-    // Al vendedor
     notifs.push(this.create({
       user_id: seller_id,
       type: 'sla_warning',
-      title: `⚠ Lead próximo a vencer: ${ticket.client_name || ticket.ticket_number}`,
-      message: `Queda menos de 1 hora para gestionar el ticket #${ticket.ticket_number}`,
+      title: `⚠ Lead próximo a vencer: ${dn(ticket)}`,
+      message: `Queda menos de 1 hora para gestionar el ticket #${ticket.ticket_num || ticket.ticket_number}`,
       link_type: 'ticket',
       link_id: ticket.id
     }));
-    // A los admins
     for (const aid of admin_ids) {
       notifs.push(this.create({
         user_id: aid,
         type: 'sla_warning',
-        title: `⚠ Lead próximo a vencer: ${ticket.ticket_number}`,
+        title: `⚠ Lead próximo a vencer: ${dn(ticket)}`,
         message: `El vendedor no ha gestionado este lead`,
         link_type: 'ticket',
         link_id: ticket.id
@@ -63,8 +70,8 @@ const NotificationService = {
     notifs.push(this.create({
       user_id: seller_id,
       type: 'sla_breach',
-      title: `🔴 SLA vencido: ${ticket.client_name || ticket.ticket_number}`,
-      message: `No gestionaste el ticket #${ticket.ticket_number} a tiempo. Será reasignado.`,
+      title: `🔴 SLA vencido: ${dn(ticket)}`,
+      message: `No gestionaste el ticket #${ticket.ticket_num || ticket.ticket_number} a tiempo. Será reasignado.`,
       link_type: 'ticket',
       link_id: ticket.id
     }));
@@ -72,7 +79,7 @@ const NotificationService = {
       notifs.push(this.create({
         user_id: aid,
         type: 'sla_breach',
-        title: `🔴 SLA vencido: ${ticket.ticket_number}`,
+        title: `🔴 SLA vencido: ${dn(ticket)}`,
         message: `Lead no gestionado, se procederá con reasignación automática`,
         link_type: 'ticket',
         link_id: ticket.id
@@ -86,8 +93,8 @@ const NotificationService = {
     return this.create({
       user_id: new_seller_id,
       type: 'reassigned',
-      title: `Lead reasignado a ti: ${ticket.client_name || ticket.ticket_number}`,
-      message: `Ticket #${ticket.ticket_number} fue reasignado desde ${old_seller_name}. Tienes 3 horas.`,
+      title: `Lead reasignado a ti: ${dn(ticket)}`,
+      message: `Ticket #${ticket.ticket_num || ticket.ticket_number} fue reasignado desde ${old_seller_name}. Tienes 3 horas.`,
       link_type: 'ticket',
       link_id: ticket.id
     });
@@ -133,8 +140,8 @@ const NotificationService = {
   async leadWon(ticket, backoffice_ids = []) {
     return this.notifyMany(backoffice_ids, {
       type: 'lead_won',
-      title: `🎉 Venta cerrada: ${ticket.client_name || ticket.ticket_number}`,
-      message: `Ticket #${ticket.ticket_number} ganado. Iniciar post-venta.`,
+      title: `🎉 Venta cerrada: ${dn(ticket)}`,
+      message: `Ticket #${ticket.ticket_num || ticket.ticket_number} ganado. Iniciar post-venta.`,
       link_type: 'ticket',
       link_id: ticket.id
     });
