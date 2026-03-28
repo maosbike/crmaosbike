@@ -64,7 +64,7 @@ router.post('/', roleCheck('super_admin'), async (req, res) => {
 
 router.put('/:id', roleCheck('super_admin'), async (req, res) => {
   try {
-    const { first_name, last_name, email, phone, role, branch_id, active } = req.body;
+    const { first_name, last_name, email, phone, role, branch_id, active, telegram_chat_id } = req.body;
     const check = await db.query('SELECT id FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
     if (email) {
@@ -74,9 +74,10 @@ router.put('/:id', roleCheck('super_admin'), async (req, res) => {
     const { rows } = await db.query(
       `UPDATE users SET first_name=COALESCE($1,first_name), last_name=COALESCE($2,last_name),
        email=COALESCE($3,email), phone=COALESCE($4,phone), role=COALESCE($5,role),
-       branch_id=$6, active=COALESCE($7,active) WHERE id=$8
-       RETURNING id, email, first_name, last_name, phone, role, branch_id, active`,
-      [first_name, last_name, email?.toLowerCase().trim(), phone, role, branch_id || null, active, req.params.id]
+       branch_id=$6, active=COALESCE($7,active),
+       telegram_chat_id=COALESCE($8,telegram_chat_id) WHERE id=$9
+       RETURNING id, email, first_name, last_name, phone, role, branch_id, active, telegram_chat_id`,
+      [first_name, last_name, email?.toLowerCase().trim(), phone, role, branch_id || null, active, telegram_chat_id || null, req.params.id]
     );
     res.json(rows[0]);
   } catch (e) { console.error('Error editar usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }

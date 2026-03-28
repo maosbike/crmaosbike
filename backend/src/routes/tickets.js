@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { auth } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const SLAService = require('../services/slaService');
+const TelegramService = require('../services/telegramService');
 
 router.use(auth);
 
@@ -108,7 +109,29 @@ router.post('/', asyncHandler(async (req, res) => {
     }
 
     await client.query('COMMIT');
-    res.status(201).json(rows[0]);
+    const createdTicket = rows[0];
+    res.status(201).json(createdTicket);
+
+    // Telegram notification (fire-and-forget, after response sent)
+    if (seller) {
+      db.query(
+        `SELECT u.telegram_chat_id, b.name AS branch_name,
+                m.brand AS moto_brand, m.model AS moto_model
+         FROM users u
+         LEFT JOIN branches b ON b.id = $2
+         LEFT JOIN moto_models m ON m.id = $3
+         WHERE u.id = $1`,
+        [seller, branch, createdTicket.model_id]
+      )
+        .then(({ rows: [r] }) => {
+          if (!r?.telegram_chat_id) return;
+          return TelegramService.notifyNewLead(
+            { ...createdTicket, branch_name: r.branch_name, moto_brand: r.moto_brand, moto_model: r.moto_model },
+            r
+          );
+        })
+        .catch((e) => console.warn('[Telegram] notifyNewLead error:', e.message));
+    }
   } catch (txErr) {
     await client.query('ROLLBACK');
     throw txErr;

@@ -1,6 +1,7 @@
 const logger = require("../config/logger");
 const db = require('../config/db');
 const NotificationService = require('./notificationService');
+const TelegramService = require('./telegramService');
 
 const SLAService = {
   // Acciones que cuentan como "primera gestión válida"
@@ -55,7 +56,7 @@ const SLAService = {
   // Algoritmo Least-Loaded: elegir vendedor con menos tickets activos
   async findBestSeller(branch_id, exclude_user_id) {
     const { rows } = await db.query(
-      `SELECT u.id, u.first_name, u.last_name,
+      `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
               COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) as active_tickets
        FROM users u
        LEFT JOIN tickets t ON t.assigned_to = u.id
@@ -63,7 +64,7 @@ const SLAService = {
          AND u.active = true
          AND u.branch_id = $1
          AND u.id != $2
-       GROUP BY u.id, u.first_name, u.last_name
+       GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
        ORDER BY active_tickets ASC
        LIMIT 1`,
       [branch_id, exclude_user_id]
@@ -133,6 +134,10 @@ const SLAService = {
     // Notificaciones
     await NotificationService.reassigned(ticket, newSeller.id, oldSellerName);
 
+    // Telegram (fire-and-forget)
+    TelegramService.notifyReassigned(ticket, newSeller, oldSellerName, reason)
+      .catch((e) => logger.warn('[Telegram] reassignTicket error:', e.message));
+
     logger.info(`[SLA] Ticket #${ticket.ticket_number} reasignado de ${oldSellerName} a ${newSeller.first_name} ${newSeller.last_name}`);
     return newSeller;
   },
@@ -168,6 +173,14 @@ const SLAService = {
       for (const ticket of warningTickets) {
         const adminIds = await this.getAdminIds(ticket.branch_id);
         await NotificationService.slaWarning(ticket, ticket.assigned_to, adminIds);
+
+        // Telegram SLA warning (fire-and-forget)
+        db.query('SELECT telegram_chat_id FROM users WHERE id = $1', [ticket.assigned_to])
+          .then(({ rows: [u] }) => u?.telegram_chat_id
+            ? TelegramService.notifySlaWarning(ticket, u)
+            : null)
+          .catch((e) => logger.warn('[Telegram] slaWarning error:', e.message));
+
         logger.info(`[SLA] WARNING: Ticket #${ticket.ticket_number}`);
       }
 

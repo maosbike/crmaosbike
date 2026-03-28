@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
 const multer = require('multer');
 const xlsx = require('xlsx');
+const TelegramService = require('../services/telegramService');
 
 // ─── Multer config ────────────────────────────────────────────
 const upload = multer({
@@ -513,13 +514,13 @@ router.post('/confirm', async (req, res) => {
     async function assignSeller(branch_id) {
       if (!sellerCache[branch_id]) {
         const { rows: sellers } = await db.query(
-          `SELECT u.id,
+          `SELECT u.id, u.telegram_chat_id,
                   COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) AS active_tickets
            FROM users u
            LEFT JOIN tickets t ON t.assigned_to = u.id
            WHERE u.role = 'vendedor' AND u.active = true
              AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
-           GROUP BY u.id
+           GROUP BY u.id, u.telegram_chat_id
            ORDER BY active_tickets ASC`,
           [branch_id]
         );
@@ -607,6 +608,24 @@ router.post('/confirm', async (req, res) => {
              VALUES ($1, NULL, $2, 'initial_assignment', $3)`,
             [created[0].id, seller.id, req.user.id]
           );
+        }
+
+        // Telegram notification (fire-and-forget)
+        if (seller?.telegram_chat_id) {
+          TelegramService.notifyNewLead(
+            {
+              id: created[0].id,
+              ticket_num: num,
+              first_name: r.nombre,
+              last_name: r.apellido || null,
+              phone: r.telefono || null,
+              priority: r.prioridad || 'media',
+              branch_name: r.branch_name || null,
+              moto_brand: motoMatch?.brand || null,
+              moto_model: motoMatch?.model || null,
+            },
+            seller
+          ).catch((e) => console.warn('[Telegram] import notifyNewLead error:', e.message));
         }
 
         if (!seller) stats.no_seller++;

@@ -145,15 +145,23 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
       return res.status(400).json({ error: 'ticket_id y to_user_id son requeridos' });
     }
 
-    // Obtener ticket
-    const { rows: tickets } = await db.query('SELECT * FROM tickets WHERE id = $1', [ticket_id]);
+    // Obtener ticket (enriquecido con branch y moto para notificaciones)
+    const { rows: tickets } = await db.query(
+      `SELECT t.*, b.name AS branch_name,
+              m.brand AS moto_brand, m.model AS moto_model
+       FROM tickets t
+       LEFT JOIN branches b ON b.id = t.branch_id
+       LEFT JOIN moto_models m ON m.id = t.model_id
+       WHERE t.id = $1`,
+      [ticket_id]
+    );
     if (!tickets[0]) return res.status(404).json({ error: 'Ticket no encontrado' });
 
     const ticket = tickets[0];
 
     // Obtener nombres
     const { rows: fromUser } = await db.query('SELECT first_name, last_name FROM users WHERE id = $1', [ticket.assigned_to]);
-    const { rows: toUser } = await db.query('SELECT first_name, last_name FROM users WHERE id = $1', [to_user_id]);
+    const { rows: toUser } = await db.query('SELECT first_name, last_name, telegram_chat_id FROM users WHERE id = $1', [to_user_id]);
 
     if (!toUser[0]) return res.status(404).json({ error: 'Vendedor destino no encontrado' });
 
@@ -193,13 +201,20 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
       ]
     );
 
-    // Notificación
+    // Notificación in-app
     const NotificationService = require('../services/notificationService');
     await NotificationService.reassigned(
       { ...ticket, client_name: `${ticket.first_name || ''} ${ticket.last_name || ''}` },
       to_user_id,
       fromName
     );
+
+    // Telegram (fire-and-forget)
+    if (toUser[0]?.telegram_chat_id) {
+      const TelegramService = require('../services/telegramService');
+      TelegramService.notifyReassigned(ticket, toUser[0], fromName, 'manual')
+        .catch((e) => console.warn('[Telegram] manual reassign error:', e.message));
+    }
 
     res.json({ ok: true, message: `Reasignado a ${toName}` });
   } catch (e) {
