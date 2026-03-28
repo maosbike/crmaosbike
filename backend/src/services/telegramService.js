@@ -35,9 +35,12 @@ function clientName(ticket) {
   return esc([ticket.first_name, ticket.last_name].filter(Boolean).join(' ') || 'Sin nombre');
 }
 
-function modelName(ticket) {
-  if (ticket.moto_brand && ticket.moto_model) return esc(`${ticket.moto_brand} ${ticket.moto_model}`);
-  return esc(ticket.model_name || '—');
+function modelLines(ticket) {
+  if (ticket.moto_brand && ticket.moto_model) {
+    return `🏭 Marca: ${esc(ticket.moto_brand)}\n🛵 Modelo: ${esc(ticket.moto_model)}`;
+  }
+  const full = ticket.model_name || '—';
+  return `🛵 Modelo: ${esc(full)}`;
 }
 
 function branchName(ticket) {
@@ -108,7 +111,7 @@ const TelegramService = {
       `🚨 *Nuevo lead asignado*\n\n` +
       `👤 Vendedor: ${sellerName(seller)}\n` +
       `🧑 Cliente: ${clientName(ticket)}\n` +
-      `🛵 Modelo: ${modelName(ticket)}\n` +
+      `${modelLines(ticket)}\n` +
       `🏢 Sucursal: ${branchName(ticket)}\n` +
       `📅 Cotizó: ${formatDateTime(ticket.created_at)}` +
       financing;
@@ -124,7 +127,7 @@ const TelegramService = {
       `🔄 *Lead reasignado*\n\n` +
       `👤 Vendedor: ${sellerName(newSeller)}\n` +
       `🧑 Cliente: ${clientName(ticket)}\n` +
-      `🛵 Modelo: ${modelName(ticket)}\n` +
+      `${modelLines(ticket)}\n` +
       `🏢 Sucursal: ${branchName(ticket)}`;
 
     return sendMessage(newSeller.telegram_chat_id, text, crmButton(ticket.id));
@@ -138,7 +141,7 @@ const TelegramService = {
       `⚠️ *Lead reasignado por falta de gestión*\n\n` +
       `👤 Vendedor: ${sellerName(oldSeller)}\n` +
       `🧑 Cliente: ${clientName(ticket)}\n` +
-      `🛵 Modelo: ${modelName(ticket)}\n` +
+      `${modelLines(ticket)}\n` +
       `🏢 Sucursal: ${branchName(ticket)}`;
 
     return sendMessage(oldSeller.telegram_chat_id, text, crmButton(ticket.id));
