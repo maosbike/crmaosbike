@@ -6,13 +6,9 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 
 // ── Validación de variables de entorno requeridas ──────────────────────────
-// El servidor no arranca si faltan variables críticas de seguridad
-const missingVars = [];
-if (!process.env.JWT_SECRET)         missingVars.push('JWT_SECRET');
-if (!process.env.JWT_REFRESH_SECRET) missingVars.push('JWT_REFRESH_SECRET');
-if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) missingVars.push('FRONTEND_URL');
-if (missingVars.length > 0) {
-  console.error(`FATAL: Variables de entorno requeridas no configuradas: ${missingVars.join(', ')}`);
+// JWT secrets son obligatorios — sin ellos el sistema de auth no funciona
+if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+  console.error('FATAL: JWT_SECRET y JWT_REFRESH_SECRET son requeridos');
   process.exit(1);
 }
 
@@ -21,8 +17,9 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 // Middleware
-// En producción, FRONTEND_URL es obligatorio (validado arriba) — nunca '*'
-const corsOrigin = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? '*' : null);
+// Frontend y backend comparten el mismo origen en Railway — CORS solo aplica a cross-origin.
+// Si FRONTEND_URL está seteada se usa como origen permitido, si no se permite same-origin.
+const corsOrigin = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? false : '*');
 app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
