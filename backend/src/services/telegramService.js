@@ -98,11 +98,14 @@ const TelegramService = {
     const branchName = ticket.branch_name || '—';
     const crmLink = `${FRONTEND_URL}/leads/${ticket.id}`;
 
+    const financiamiento = ticket.wants_financing ? `\n💳 Financiamiento: Sí` : '';
+
     const text =
       `🚨 *Nuevo lead asignado*\n\n` +
-      `Cliente: ${esc(clientName)}\n` +
-      `Modelo: ${esc(modelName)}\n` +
-      `Sucursal: ${esc(branchName)}`;
+      `👤 Cliente: ${esc(clientName)}\n` +
+      `🛵 Modelo: ${esc(modelName)}\n` +
+      `🏢 Sucursal: ${esc(branchName)}` +
+      financiamiento;
 
     const keyboard = [
       [{ text: 'Abrir CRM', url: crmLink }],
