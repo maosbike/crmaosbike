@@ -5,12 +5,25 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 
+// ── Validación de variables de entorno requeridas ──────────────────────────
+// El servidor no arranca si faltan variables críticas de seguridad
+const missingVars = [];
+if (!process.env.JWT_SECRET)         missingVars.push('JWT_SECRET');
+if (!process.env.JWT_REFRESH_SECRET) missingVars.push('JWT_REFRESH_SECRET');
+if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) missingVars.push('FRONTEND_URL');
+if (missingVars.length > 0) {
+  console.error(`FATAL: Variables de entorno requeridas no configuradas: ${missingVars.join(', ')}`);
+  process.exit(1);
+}
+
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 // Middleware
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
+// En producción, FRONTEND_URL es obligatorio (validado arriba) — nunca '*'
+const corsOrigin = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? '*' : null);
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 

@@ -36,6 +36,14 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // Get single ticket with timeline
 router.get('/:id', asyncHandler(async (req, res) => {
+  // Vendedores solo pueden ver sus propios tickets
+  const params = [req.params.id];
+  let ownershipClause = '';
+  if (req.user.role === 'vendedor') {
+    ownershipClause = 'AND (t.seller_id = $2 OR t.assigned_to = $2)';
+    params.push(req.user.id);
+  }
+
   const { rows } = await db.query(
     `SELECT t.*, u.first_name as seller_fn, u.last_name as seller_ln, u.email as seller_email,
             b.name as branch_name, b.code as branch_code, b.address as branch_addr,
@@ -45,7 +53,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
      LEFT JOIN users u ON t.assigned_to = u.id
      LEFT JOIN branches b ON t.branch_id = b.id
      LEFT JOIN moto_models m ON t.model_id = m.id
-     WHERE t.id = $1`, [req.params.id]
+     WHERE t.id = $1 ${ownershipClause}`, params
   );
   if (!rows[0]) return res.status(404).json({ error: 'Ticket no encontrado' });
 
@@ -138,6 +146,15 @@ router.post('/', asyncHandler(async (req, res) => {
 
 // Update ticket
 router.put('/:id', asyncHandler(async (req, res) => {
+  // Vendedores solo pueden modificar sus propios tickets
+  if (req.user.role === 'vendedor') {
+    const check = await db.query(
+      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
+      [req.params.id, req.user.id]
+    );
+    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para modificar este ticket' });
+  }
+
   const fields = ['first_name','last_name','rut','birthdate','email','phone','comuna','source',
                    'model_id','color_pref','status','priority','wants_financing','sit_laboral',
                    'continuidad','renta','pie','test_ride','fin_status','fin_institution',
@@ -147,6 +164,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
   for (const f of fields) {
     if (req.body[f] !== undefined) {
+      // Vendedores no pueden cambiar seller_id — la reasignación es exclusiva de roles altos
+      if (f === 'seller_id' && req.user.role === 'vendedor') continue;
       if (f === 'post_venta') {
         sets.push(`${f} = $${idx++}::jsonb`);
         params.push(JSON.stringify(req.body[f]));

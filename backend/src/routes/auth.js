@@ -51,7 +51,7 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   );
   const refreshToken = jwt.sign(
     { uid: user.id },
-    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh',
+    process.env.JWT_REFRESH_SECRET,
     { expiresIn: '7d' }
   );
 
@@ -97,10 +97,9 @@ router.post('/refresh', asyncHandler(async (req, res) => {
   const refreshToken = req.cookies?.crt;
   if (!refreshToken) return res.status(401).json({ error: 'Sesión expirada' });
 
-  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh';
   let payload;
   try {
-    payload = jwt.verify(refreshToken, secret);
+    payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
   } catch {
     return res.status(401).json({ error: 'Sesión expirada' });
   }
@@ -122,7 +121,7 @@ router.post('/refresh', asyncHandler(async (req, res) => {
   // Rotar la cookie de refresh también (buena práctica)
   const newRefreshToken = jwt.sign(
     { uid: rows[0].id },
-    secret,
+    process.env.JWT_REFRESH_SECRET,
     { expiresIn: '7d' }
   );
   res.cookie('crt', newRefreshToken, REFRESH_COOKIE_OPTS);
