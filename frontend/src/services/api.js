@@ -1,22 +1,25 @@
 const BASE = '/api';
 
-const getToken = () => localStorage.getItem('crm_token');
-const getRefreshToken = () => localStorage.getItem('crm_refresh_token');
+// Access token en memoria — nunca en localStorage
+// XSS no puede leerlo vía storage APIs (document.cookie o localStorage)
+let _token = null;
+
+export const setToken = (t) => { _token = t; };
+export const clearToken = () => { _token = null; };
 
 let _refreshing = null;
 
 const tryRefresh = async () => {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
   try {
+    // El refresh token viaja como cookie httpOnly — el browser la envía automáticamente
+    // credentials: 'include' es necesario para que las cookies same-site se incluyan
     const res = await fetch(`${BASE}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
     if (!res.ok) return false;
     const { token } = await res.json();
-    localStorage.setItem('crm_token', token);
+    _token = token; // Almacenado solo en memoria
     return true;
   } catch {
     return false;
@@ -25,28 +28,26 @@ const tryRefresh = async () => {
 
 const request = async (method, path, body, _retry = false) => {
   const headers = { 'Content-Type': 'application/json' };
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (_token) headers['Authorization'] = `Bearer ${_token}`;
 
-  const opts = { method, headers };
+  const opts = { method, headers, credentials: 'include' };
   if (body && !(body instanceof FormData)) opts.body = JSON.stringify(body);
   if (body instanceof FormData) {
     delete headers['Content-Type'];
-    if (token) opts.headers = { 'Authorization': `Bearer ${token}` };
+    opts.headers = _token ? { 'Authorization': `Bearer ${_token}` } : {};
     opts.body = body;
   }
 
   const res = await fetch(`${BASE}${path}`, opts);
 
   if (res.status === 401 && !_retry) {
-    // Intentar renovar el token (una sola vez)
+    // Intentar renovar silenciosamente (una sola vez, deduplicado)
     if (!_refreshing) _refreshing = tryRefresh();
     const ok = await _refreshing;
     _refreshing = null;
     if (ok) return request(method, path, body, true);
     // Refresh falló — limpiar sesión
-    localStorage.removeItem('crm_token');
-    localStorage.removeItem('crm_refresh_token');
+    _token = null;
     localStorage.removeItem('crm_user');
     window.location.reload();
     throw new Error('Sesión expirada');
@@ -60,6 +61,7 @@ const request = async (method, path, body, _retry = false) => {
 export const api = {
   // Auth
   login: (identifier, password) => request('POST', '/auth/login', { email: identifier, password }),
+  logout: () => request('POST', '/auth/logout'),
   me: () => request('GET', '/auth/me'),
 
   // Tickets
@@ -151,10 +153,10 @@ export const api = {
 
   // ── Nuevo flujo: importación CSV/Excel con staging (super_admin) ──────────
   uploadPriceFile: (formData) => {
-    const token = getToken();
     return fetch(`${BASE}/priceimport/upload`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: _token ? { Authorization: `Bearer ${_token}` } : {},
+      credentials: 'include',
       body: formData,
     }).then(async r => {
       const data = await r.json();
@@ -172,10 +174,10 @@ export const api = {
 
   // Importación masiva (solo super_admin)
   importPreview: (formData) => {
-    const token = getToken();
     return fetch(`${BASE}/import/preview`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: _token ? { Authorization: `Bearer ${_token}` } : {},
+      credentials: 'include',
       body: formData,
     }).then(async r => {
       const data = await r.json();

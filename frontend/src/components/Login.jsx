@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api } from '../services/api';
+import { api, setToken } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
 export function Login({onLogin}){
@@ -12,8 +12,8 @@ export function Login({onLogin}){
     setErr("");setLoading(true);
     try{
       const {token,user}=await api.login(identifier,pw);
-      localStorage.setItem("crm_token",token);
-      localStorage.setItem("crm_user",JSON.stringify(user));
+      setToken(token);                                    // Token en memoria, no en localStorage
+      localStorage.setItem("crm_user",JSON.stringify(user)); // Solo metadata de UI
       onLogin(user);
     }catch(ex){
       setErr(ex.message||"Credenciales inválidas");

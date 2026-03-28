@@ -15,6 +15,15 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Opciones de cookie para el refresh token — httpOnly impide lectura por JS (protección XSS)
+const REFRESH_COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production', // Solo HTTPS en prod
+  sameSite: 'strict',
+  path: '/api/auth',    // Cookie solo viaja a /api/auth/* — no a toda la API
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en ms
+};
+
 router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const identifier = (email || '').trim();
@@ -34,12 +43,24 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-  const token = jwt.sign({ uid: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
-  const refreshToken = jwt.sign({ uid: user.id }, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh', { expiresIn: '7d' });
+  // Access token corto (15min) — se renueva silenciosamente vía refresh cookie
+  const token = jwt.sign(
+    { uid: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+  const refreshToken = jwt.sign(
+    { uid: user.id },
+    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh',
+    { expiresIn: '7d' }
+  );
 
+  // Refresh token en cookie httpOnly — JavaScript nunca puede leerla
+  res.cookie('crt', refreshToken, REFRESH_COOKIE_OPTS);
+
+  // Solo se devuelve el access token en el body — refresh token NO viaja en JSON
   res.json({
     token,
-    refreshToken,
     user: {
       id: user.id,
       email: user.email,
@@ -70,17 +91,18 @@ router.get('/me', auth, asyncHandler(async (req, res) => {
   });
 }));
 
-// Endpoint para renovar el access token usando el refresh token
+// Renovar access token usando el refresh token desde la cookie httpOnly
 router.post('/refresh', asyncHandler(async (req, res) => {
-  const { refreshToken } = req.body;
-  if (!refreshToken) return res.status(401).json({ error: 'Refresh token requerido' });
+  // Lee desde cookie httpOnly — JavaScript del frontend nunca tuvo acceso a este valor
+  const refreshToken = req.cookies?.crt;
+  if (!refreshToken) return res.status(401).json({ error: 'Sesión expirada' });
 
   const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh';
   let payload;
   try {
     payload = jwt.verify(refreshToken, secret);
   } catch {
-    return res.status(401).json({ error: 'Refresh token inválido o expirado' });
+    return res.status(401).json({ error: 'Sesión expirada' });
   }
 
   const { rows } = await db.query(
@@ -91,8 +113,32 @@ router.post('/refresh', asyncHandler(async (req, res) => {
   );
   if (!rows[0]) return res.status(401).json({ error: 'Usuario no encontrado' });
 
-  const newToken = jwt.sign({ uid: rows[0].id, role: rows[0].role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+  const newToken = jwt.sign(
+    { uid: rows[0].id, role: rows[0].role },
+    process.env.JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+
+  // Rotar la cookie de refresh también (buena práctica)
+  const newRefreshToken = jwt.sign(
+    { uid: rows[0].id },
+    secret,
+    { expiresIn: '7d' }
+  );
+  res.cookie('crt', newRefreshToken, REFRESH_COOKIE_OPTS);
+
   res.json({ token: newToken });
+}));
+
+// Cerrar sesión — elimina la cookie del refresh token
+router.post('/logout', asyncHandler(async (req, res) => {
+  res.clearCookie('crt', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/auth',
+  });
+  res.json({ ok: true });
 }));
 
 module.exports = router;
