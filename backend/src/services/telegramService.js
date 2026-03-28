@@ -94,26 +94,18 @@ const TelegramService = {
     const modelName =
       ticket.moto_brand && ticket.moto_model
         ? `${ticket.moto_brand} ${ticket.moto_model}`
-        : ticket.model_name || null;
-    const branchName = ticket.branch_name || '';
-    const ticketNum = ticket.ticket_num || ticket.ticket_number || '';
-    const waLink = buildWALink(ticket.phone, clientName, modelName);
+        : ticket.model_name || '—';
+    const branchName = ticket.branch_name || '—';
     const crmLink = `${FRONTEND_URL}/leads/${ticket.id}`;
 
     const text =
-      `🏍️ *Nuevo Lead Asignado*\n` +
-      `────────────────────\n` +
-      `👤 *${esc(clientName)}*\n` +
-      (ticket.phone ? `📱 ${esc(ticket.phone)}\n` : '') +
-      (modelName ? `🛵 ${esc(modelName)}\n` : '') +
-      (branchName ? `🏢 ${esc(branchName)}\n` : '') +
-      `⚡ Prioridad: *${priorityLabel(ticket.priority)}*\n` +
-      `🕐 SLA: 8 horas disponibles\n\n` +
-      `Ticket: \`${esc(ticketNum)}\``;
+      `🚨 *Nuevo lead asignado*\n\n` +
+      `Cliente: ${esc(clientName)}\n` +
+      `Modelo: ${esc(modelName)}\n` +
+      `Sucursal: ${esc(branchName)}`;
 
     const keyboard = [
-      [{ text: '🔗 Ver Lead en CRM', url: crmLink }],
-      ...(waLink ? [[{ text: '💬 Abrir WhatsApp', url: waLink }]] : []),
+      [{ text: 'Abrir CRM', url: crmLink }],
     ];
 
     return sendMessage(seller.telegram_chat_id, text, keyboard);
