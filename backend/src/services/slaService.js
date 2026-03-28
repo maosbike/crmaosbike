@@ -72,8 +72,9 @@ const SLAService = {
     return rows[0] || null;
   },
 
-  // Least-loaded excluyendo un vendedor (para reasignación por SLA)
-  async findBestSeller(branch_id, exclude_user_id) {
+  // Least-loaded excluyendo un conjunto de vendedores (para reasignación por SLA)
+  // excluded_ids: array de UUIDs a excluir (puede ser vacío → sin exclusión)
+  async findBestSeller(branch_id, excluded_ids = []) {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
               COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) AS active_tickets
@@ -82,18 +83,38 @@ const SLAService = {
        WHERE u.role = 'vendedor'
          AND u.active = true
          AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
-         AND u.id != $2
+         AND u.id != ALL($2::uuid[])
        GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
        ORDER BY active_tickets ASC
        LIMIT 1`,
-      [branch_id, exclude_user_id]
+      [branch_id, excluded_ids]
     );
     return rows[0] || null;
   },
 
-  // Reasignar un ticket
+  // Reasignar un ticket (infinite rotation: todos los vendedores de la sucursal, rotando)
   async reassignTicket(ticket, reason = 'sla_breach', reassigned_by = null) {
-    const newSeller = await this.findBestSeller(ticket.branch_id, ticket.assigned_to);
+    // Construir la lista completa de vendedores que ya tuvieron este ticket
+    const { rows: logRows } = await db.query(
+      `SELECT from_user_id, to_user_id FROM reassignment_log WHERE ticket_id = $1`,
+      [ticket.id]
+    );
+    const seen = new Set();
+    logRows.forEach(r => {
+      if (r.from_user_id) seen.add(r.from_user_id);
+      if (r.to_user_id) seen.add(r.to_user_id);
+    });
+    if (ticket.assigned_to) seen.add(ticket.assigned_to);
+    const excludedAll = [...seen];
+
+    // Intento 1: alguien de la sucursal que aún no tuvo el ticket
+    let newSeller = await this.findBestSeller(ticket.branch_id, excludedAll);
+
+    // Intento 2: todos ya lo tuvieron — reiniciar rotación, solo excluir al holder actual
+    if (!newSeller && excludedAll.length > 1) {
+      logger.info(`[SLA] Rotación completa para ticket #${ticket.ticket_number}, reiniciando ciclo`);
+      newSeller = await this.findBestSeller(ticket.branch_id, [ticket.assigned_to]);
+    }
 
     if (!newSeller) {
       logger.info(`[SLA] No hay vendedor disponible para reasignar ticket #${ticket.id}`);
@@ -192,13 +213,14 @@ const SLAService = {
       logger.info(`[SLA] Iniciando chequeo - ${now.toISOString()}`);
 
       // 1. Tickets WARNING — update atómico con RETURNING para evitar doble procesamiento
+      // Incluye tickets 'reassigned' — el nuevo vendedor también merece aviso de 1h
       const { rows: warningTickets } = await db.query(
         `UPDATE tickets SET sla_status = 'warning'
          WHERE id IN (
            SELECT t.id FROM tickets t
            WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
              AND t.first_action_at IS NULL
-             AND t.sla_status = 'normal'
+             AND t.sla_status IN ('normal', 'reassigned')
              AND t.sla_deadline - INTERVAL '1 hour' < NOW()
              AND t.sla_deadline > NOW()
          )
@@ -221,13 +243,14 @@ const SLAService = {
       }
 
       // 2. Tickets BREACH — update atómico con RETURNING
+      // Incluye 'reassigned' directamente: si el cron saltó la ventana de warning, igual reasigna
       const { rows: breachedTickets } = await db.query(
         `UPDATE tickets SET sla_status = 'breached'
          WHERE id IN (
            SELECT t.id FROM tickets t
            WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
              AND t.first_action_at IS NULL
-             AND t.sla_status IN ('normal', 'warning')
+             AND t.sla_status IN ('normal', 'warning', 'reassigned')
              AND t.sla_deadline < NOW()
          )
          RETURNING *, ticket_num as ticket_number,
