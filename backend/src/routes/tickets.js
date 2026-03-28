@@ -115,7 +115,8 @@ router.post('/', asyncHandler(async (req, res) => {
     // Telegram notification (fire-and-forget, after response sent)
     if (seller) {
       db.query(
-        `SELECT u.telegram_chat_id, b.name AS branch_name,
+        `SELECT u.telegram_chat_id, u.first_name, u.last_name,
+                b.name AS branch_name,
                 m.brand AS moto_brand, m.model AS moto_model
          FROM users u
          LEFT JOIN branches b ON b.id = $2

@@ -90,13 +90,14 @@ const SLAService = {
       return null;
     }
 
-    // Obtener nombre del vendedor anterior
+    // Obtener datos del vendedor anterior (incluye telegram para notificarle la pérdida)
     const { rows: oldSellerRows } = await db.query(
-      'SELECT first_name, last_name FROM users WHERE id = $1',
+      'SELECT first_name, last_name, telegram_chat_id FROM users WHERE id = $1',
       [ticket.assigned_to]
     );
-    const oldSellerName = oldSellerRows[0]
-      ? `${oldSellerRows[0].first_name} ${oldSellerRows[0].last_name}`
+    const oldSeller = oldSellerRows[0] || null;
+    const oldSellerName = oldSeller
+      ? `${oldSeller.first_name} ${oldSeller.last_name}`
       : 'Desconocido';
 
     const newDeadline = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
@@ -134,9 +135,25 @@ const SLAService = {
     // Notificaciones
     await NotificationService.reassigned(ticket, newSeller.id, oldSellerName);
 
-    // Telegram (fire-and-forget)
-    TelegramService.notifyReassigned(ticket, newSeller, oldSellerName, reason)
-      .catch((e) => logger.warn('[Telegram] reassignTicket error:', e.message));
+    // Enriquecer ticket con branch y modelo para las notificaciones
+    const { rows: [ticketEnriched] } = await db.query(
+      `SELECT t.*, b.name AS branch_name, m.brand AS moto_brand, m.model AS moto_model
+       FROM tickets t
+       LEFT JOIN branches b ON b.id = t.branch_id
+       LEFT JOIN moto_models m ON m.id = t.model_id
+       WHERE t.id = $1`, [ticket.id]
+    );
+    const ticketForNotif = ticketEnriched || ticket;
+
+    // Telegram al nuevo vendedor (fire-and-forget)
+    TelegramService.notifyReassigned(ticketForNotif, newSeller, oldSellerName, reason)
+      .catch((e) => logger.warn('[Telegram] notifyReassigned error:', e.message));
+
+    // Telegram al vendedor que perdió el lead (solo por SLA breach)
+    if (reason === 'sla_breach' && oldSeller?.telegram_chat_id) {
+      TelegramService.notifyLostLead(ticketForNotif, oldSeller)
+        .catch((e) => logger.warn('[Telegram] notifyLostLead error:', e.message));
+    }
 
     logger.info(`[SLA] Ticket #${ticket.ticket_number} reasignado de ${oldSellerName} a ${newSeller.first_name} ${newSeller.last_name}`);
     return newSeller;

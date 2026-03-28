@@ -514,13 +514,13 @@ router.post('/confirm', async (req, res) => {
     async function assignSeller(branch_id) {
       if (!sellerCache[branch_id]) {
         const { rows: sellers } = await db.query(
-          `SELECT u.id, u.telegram_chat_id,
+          `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
                   COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) AS active_tickets
            FROM users u
            LEFT JOIN tickets t ON t.assigned_to = u.id
            WHERE u.role = 'vendedor' AND u.active = true
              AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
-           GROUP BY u.id, u.telegram_chat_id
+           GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
            ORDER BY active_tickets ASC`,
           [branch_id]
         );

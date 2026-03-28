@@ -3,33 +3,49 @@ const logger = require('../config/logger');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://crmaosbike.cl';
 
-// Normalize phone to wa.me format (digits only, with country code)
-function normalizePhoneForWA(phone) {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 9 && digits.startsWith('9')) return `56${digits}`;
-  if (digits.length === 10 && digits.startsWith('09')) return `56${digits.slice(1)}`;
-  if (digits.length >= 11) return digits;
-  return digits.length >= 8 ? digits : null;
-}
-
-function buildWALink(phone, clientName, modelName) {
-  const normalized = normalizePhoneForWA(phone);
-  if (!normalized) return null;
-  const modelPart = modelName ? `la cotización de tu ${modelName}` : 'nuestra oferta';
-  const msg = `Hola ${clientName || ''}, te contactamos desde AOS Bike para coordinar ${modelPart}. ¿Tienes un momento?`;
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`;
-}
-
-function priorityLabel(p) {
-  const map = { alta: '🔴 Alta', media: '🟡 Media', baja: '🟢 Baja' };
-  return map[p] || '🟡 Media';
-}
-
 // Escape Markdown v1 special chars
 function esc(str) {
-  if (!str) return '';
+  if (!str) return '—';
   return String(str).replace(/[_*`[]/g, '\\$&');
+}
+
+// Format date as dd/mm/yyyy HH:MM (Santiago time)
+function formatDateTime(date) {
+  if (!date) return '—';
+  try {
+    return new Date(date).toLocaleString('es-CL', {
+      timeZone: 'America/Santiago',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function sellerName(seller) {
+  return esc([seller?.first_name, seller?.last_name].filter(Boolean).join(' ') || 'Sin asignar');
+}
+
+function clientName(ticket) {
+  return esc([ticket.first_name, ticket.last_name].filter(Boolean).join(' ') || 'Sin nombre');
+}
+
+function modelName(ticket) {
+  if (ticket.moto_brand && ticket.moto_model) return esc(`${ticket.moto_brand} ${ticket.moto_model}`);
+  return esc(ticket.model_name || '—');
+}
+
+function branchName(ticket) {
+  return esc(ticket.branch_name || '—');
+}
+
+function crmButton(ticketId) {
+  return [[{ text: 'Abrir CRM', url: `${FRONTEND_URL}/leads/${ticketId}` }]];
 }
 
 function sendMessage(chatId, text, inlineKeyboard) {
@@ -74,7 +90,7 @@ function sendMessage(chatId, text, inlineKeyboard) {
     );
     req.on('error', (e) => {
       logger.warn(`[Telegram] Request error: ${e.message}`);
-      resolve(null); // never throw — notifications must not break main flow
+      resolve(null);
     });
     req.write(body);
     req.end();
@@ -82,107 +98,64 @@ function sendMessage(chatId, text, inlineKeyboard) {
 }
 
 const TelegramService = {
-  /**
-   * Notify vendedor of a new lead assigned to them.
-   * @param {object} ticket - ticket row + optional moto_brand, moto_model, branch_name
-   * @param {object} seller - user row, must include telegram_chat_id
-   */
+  // ─── 1. Lead nuevo asignado ────────────────────────────────
   async notifyNewLead(ticket, seller) {
     if (!seller?.telegram_chat_id) return;
 
-    const clientName = [ticket.first_name, ticket.last_name].filter(Boolean).join(' ') || 'Sin nombre';
-    const modelName =
-      ticket.moto_brand && ticket.moto_model
-        ? `${ticket.moto_brand} ${ticket.moto_model}`
-        : ticket.model_name || '—';
-    const branchName = ticket.branch_name || '—';
-    const crmLink = `${FRONTEND_URL}/leads/${ticket.id}`;
-
-    const financiamiento = ticket.wants_financing ? `\n💳 Financiamiento: Sí` : '';
+    const financing = ticket.wants_financing ? `\n💳 Financiamiento: Sí` : '';
 
     const text =
       `🚨 *Nuevo lead asignado*\n\n` +
-      `👤 Cliente: ${esc(clientName)}\n` +
-      `🛵 Modelo: ${esc(modelName)}\n` +
-      `🏢 Sucursal: ${esc(branchName)}` +
-      financiamiento;
+      `Vendedor: ${sellerName(seller)}\n` +
+      `Cliente: ${clientName(ticket)}\n` +
+      `Modelo: ${modelName(ticket)}\n` +
+      `Sucursal: ${branchName(ticket)}\n` +
+      `Cotizó: ${formatDateTime(ticket.created_at)}` +
+      financing;
 
-    const keyboard = [
-      [{ text: 'Abrir CRM', url: crmLink }],
-    ];
-
-    return sendMessage(seller.telegram_chat_id, text, keyboard);
+    return sendMessage(seller.telegram_chat_id, text, crmButton(ticket.id));
   },
 
-  /**
-   * Notify vendedor that a lead was reassigned to them.
-   * @param {object} ticket - ticket row + optional branch_name
-   * @param {object} newSeller - user row with telegram_chat_id
-   * @param {string} fromName - name of previous seller
-   * @param {string} reason - 'sla_breach' | 'manual'
-   */
-  async notifyReassigned(ticket, newSeller, fromName, reason = 'sla_breach') {
+  // ─── 2. Lead reasignado — mensaje al nuevo vendedor ────────
+  async notifyReassigned(ticket, newSeller, _fromName, _reason) {
     if (!newSeller?.telegram_chat_id) return;
 
-    const clientName = [ticket.first_name, ticket.last_name].filter(Boolean).join(' ') || 'Sin nombre';
-    const modelName =
-      ticket.moto_brand && ticket.moto_model
-        ? `${ticket.moto_brand} ${ticket.moto_model}`
-        : ticket.model_name || null;
-    const branchName = ticket.branch_name || '';
-    const ticketNum = ticket.ticket_num || ticket.ticket_number || '';
-    const waLink = buildWALink(ticket.phone, clientName, modelName);
-    const crmLink = `${FRONTEND_URL}/leads/${ticket.id}`;
-    const reasonLabel = reason === 'manual' ? 'Reasignación manual' : 'SLA vencido (auto)';
-
     const text =
-      `🔄 *Lead Reasignado a Ti*\n` +
-      `────────────────────\n` +
-      `👤 *${esc(clientName)}*\n` +
-      (ticket.phone ? `📱 ${esc(ticket.phone)}\n` : '') +
-      (modelName ? `🛵 ${esc(modelName)}\n` : '') +
-      (branchName ? `🏢 ${esc(branchName)}\n` : '') +
-      `⚡ Prioridad: *${priorityLabel(ticket.priority)}*\n` +
-      `📋 Motivo: ${esc(reasonLabel)}\n` +
-      (fromName ? `↩️ Antes: ${esc(fromName)}\n` : '') +
-      `🕐 SLA: 8 horas disponibles\n\n` +
-      `Ticket: \`${esc(ticketNum)}\``;
+      `🔄 *Lead reasignado*\n\n` +
+      `Vendedor: ${sellerName(newSeller)}\n` +
+      `Cliente: ${clientName(ticket)}\n` +
+      `Modelo: ${modelName(ticket)}\n` +
+      `Sucursal: ${branchName(ticket)}`;
 
-    const keyboard = [
-      [{ text: '🔗 Ver Lead en CRM', url: crmLink }],
-      ...(waLink ? [[{ text: '💬 Abrir WhatsApp', url: waLink }]] : []),
-    ];
-
-    return sendMessage(newSeller.telegram_chat_id, text, keyboard);
+    return sendMessage(newSeller.telegram_chat_id, text, crmButton(ticket.id));
   },
 
-  /**
-   * Notify vendedor that their SLA is about to expire (< 2h remaining).
-   * @param {object} ticket - ticket row
-   * @param {object} seller - user row with telegram_chat_id
-   */
+  // ─── 3. Lead perdido por falta de gestión — al vendedor que lo pierde ──
+  async notifyLostLead(ticket, oldSeller) {
+    if (!oldSeller?.telegram_chat_id) return;
+
+    const text =
+      `⚠️ *Lead reasignado por falta de gestión*\n\n` +
+      `Vendedor: ${sellerName(oldSeller)}\n` +
+      `Cliente: ${clientName(ticket)}\n` +
+      `Modelo: ${modelName(ticket)}\n` +
+      `Sucursal: ${branchName(ticket)}`;
+
+    return sendMessage(oldSeller.telegram_chat_id, text, crmButton(ticket.id));
+  },
+
+  // ─── SLA warning — sin cambios de formato por ahora ────────
   async notifySlaWarning(ticket, seller) {
     if (!seller?.telegram_chat_id) return;
 
-    const clientName = [ticket.first_name, ticket.last_name].filter(Boolean).join(' ') || 'Sin nombre';
-    const ticketNum = ticket.ticket_num || ticket.ticket_number || '';
-    const waLink = buildWALink(ticket.phone, clientName, null);
-    const crmLink = `${FRONTEND_URL}/leads/${ticket.id}`;
-
     const text =
-      `⚠️ *SLA Próximo a Vencer*\n` +
-      `────────────────────\n` +
-      `Quedan *menos de 2 horas* para gestionar:\n\n` +
-      `👤 *${esc(clientName)}*\n` +
-      (ticket.phone ? `📱 ${esc(ticket.phone)}\n` : '') +
-      `\nTicket: \`${esc(ticketNum)}\``;
+      `⏰ *SLA próximo a vencer*\n\n` +
+      `Vendedor: ${sellerName(seller)}\n` +
+      `Cliente: ${clientName(ticket)}\n` +
+      `Sucursal: ${branchName(ticket)}\n` +
+      `Quedan menos de 2 horas para gestionar este lead.`;
 
-    const keyboard = [
-      [{ text: '🔗 Gestionar ahora', url: crmLink }],
-      ...(waLink ? [[{ text: '💬 Abrir WhatsApp', url: waLink }]] : []),
-    ];
-
-    return sendMessage(seller.telegram_chat_id, text, keyboard);
+    return sendMessage(seller.telegram_chat_id, text, crmButton(ticket.id));
   },
 };
 
