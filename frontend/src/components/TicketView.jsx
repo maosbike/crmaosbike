@@ -95,7 +95,7 @@ export function TicketView({lead,user,nav,updLead}){
           {m?(<>
             <div style={{display:"flex",gap:14}}>
               <div style={{width:100,height:80,borderRadius:8,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{m.image?<img src={m.image} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:10,color:"#6B7280"}}>Sin imagen</span>}</div>
-              <div><div style={{fontSize:16,fontWeight:700}}>{m.brand} {m.model}</div><div style={{fontSize:12,color:"#888",marginTop:2}}>{m.year} · {m.cc}cc · {m.cat}</div><div style={{marginTop:6}}><span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>Desde {fmt(m.price-m.bonus)}</span></div><div style={{fontSize:11,color:"#888"}}>{fmt(m.price)} precio de lista</div></div>
+              <div><div style={{fontSize:16,fontWeight:700}}>{m.brand} {m.model}</div><div style={{fontSize:12,color:"#888",marginTop:2}}>{m.year} · {m.cc}cc · {m.cat}</div><div style={{marginTop:6}}>{m.price>0&&<span style={{fontSize:18,fontWeight:800,color:"#F28100"}}>Desde {fmt(m.price-m.bonus)}</span>}</div>{m.price>0&&<div style={{fontSize:11,color:"#888"}}>{fmt(m.price)} precio de lista</div>}</div>
             </div>
             <div style={{marginTop:10,display:"flex",gap:12,fontSize:11,color:"#888"}}>
               <span>📄 Ficha Técnica: <span style={{color:"#3B82F6",cursor:"pointer"}}>Descargar</span></span>
