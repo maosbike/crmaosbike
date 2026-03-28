@@ -100,7 +100,7 @@ const SLAService = {
       ? `${oldSeller.first_name} ${oldSeller.last_name}`
       : 'Desconocido';
 
-    const newDeadline = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+    const newDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
 
     // Actualizar ticket
     await db.query(
@@ -180,7 +180,7 @@ const SLAService = {
            WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
              AND t.first_action_at IS NULL
              AND t.sla_status = 'normal'
-             AND t.sla_deadline - INTERVAL '2 hours' < NOW()
+             AND t.sla_deadline - INTERVAL '1 hour' < NOW()
              AND t.sla_deadline > NOW()
          )
          RETURNING *, ticket_num as ticket_number,

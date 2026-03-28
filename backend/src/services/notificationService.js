@@ -25,7 +25,7 @@ const NotificationService = {
       user_id: seller_id,
       type: 'new_lead',
       title: `Nuevo lead asignado: ${ticket.client_name || 'Sin nombre'}`,
-      message: `Ticket #${ticket.ticket_number} - Tienes 8 horas para gestionarlo`,
+      message: `Ticket #${ticket.ticket_number} - Tienes 3 horas para gestionarlo`,
       link_type: 'ticket',
       link_id: ticket.id
     });
@@ -39,7 +39,7 @@ const NotificationService = {
       user_id: seller_id,
       type: 'sla_warning',
       title: `⚠ Lead próximo a vencer: ${ticket.client_name || ticket.ticket_number}`,
-      message: `Quedan menos de 2 horas para gestionar el ticket #${ticket.ticket_number}`,
+      message: `Queda menos de 1 hora para gestionar el ticket #${ticket.ticket_number}`,
       link_type: 'ticket',
       link_id: ticket.id
     }));
@@ -87,7 +87,7 @@ const NotificationService = {
       user_id: new_seller_id,
       type: 'reassigned',
       title: `Lead reasignado a ti: ${ticket.client_name || ticket.ticket_number}`,
-      message: `Ticket #${ticket.ticket_number} fue reasignado desde ${old_seller_name}. Tienes 8 horas.`,
+      message: `Ticket #${ticket.ticket_number} fue reasignado desde ${old_seller_name}. Tienes 3 horas.`,
       link_type: 'ticket',
       link_id: ticket.id
     });

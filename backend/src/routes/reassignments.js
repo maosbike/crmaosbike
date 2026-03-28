@@ -165,7 +165,7 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
 
     if (!toUser[0]) return res.status(404).json({ error: 'Vendedor destino no encontrado' });
 
-    const newDeadline = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+    const newDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
 
     // Actualizar ticket
     await db.query(

@@ -89,7 +89,7 @@ router.post('/', asyncHandler(async (req, res) => {
       `INSERT INTO tickets (ticket_num, first_name, last_name, rut, email, phone, comuna, source,
                             branch_id, seller_id, assigned_to, model_id, priority, color_pref,
                             sla_deadline)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW() + INTERVAL '8 hours') RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW() + INTERVAL '3 hours') RETURNING *`,
       [num, first_name, last_name, rut, email, phone, comuna, source || 'presencial',
        branch, seller, seller, model_id, priority || 'media', color_pref]
     );

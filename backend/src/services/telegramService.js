@@ -106,11 +106,11 @@ const TelegramService = {
 
     const text =
       `🚨 *Nuevo lead asignado*\n\n` +
-      `Vendedor: ${sellerName(seller)}\n` +
-      `Cliente: ${clientName(ticket)}\n` +
-      `Modelo: ${modelName(ticket)}\n` +
-      `Sucursal: ${branchName(ticket)}\n` +
-      `Cotizó: ${formatDateTime(ticket.created_at)}` +
+      `👤 Vendedor: ${sellerName(seller)}\n` +
+      `🧑 Cliente: ${clientName(ticket)}\n` +
+      `🛵 Modelo: ${modelName(ticket)}\n` +
+      `🏢 Sucursal: ${branchName(ticket)}\n` +
+      `📅 Cotizó: ${formatDateTime(ticket.created_at)}` +
       financing;
 
     return sendMessage(seller.telegram_chat_id, text, crmButton(ticket.id));
@@ -122,10 +122,10 @@ const TelegramService = {
 
     const text =
       `🔄 *Lead reasignado*\n\n` +
-      `Vendedor: ${sellerName(newSeller)}\n` +
-      `Cliente: ${clientName(ticket)}\n` +
-      `Modelo: ${modelName(ticket)}\n` +
-      `Sucursal: ${branchName(ticket)}`;
+      `👤 Vendedor: ${sellerName(newSeller)}\n` +
+      `🧑 Cliente: ${clientName(ticket)}\n` +
+      `🛵 Modelo: ${modelName(ticket)}\n` +
+      `🏢 Sucursal: ${branchName(ticket)}`;
 
     return sendMessage(newSeller.telegram_chat_id, text, crmButton(ticket.id));
   },
@@ -136,10 +136,10 @@ const TelegramService = {
 
     const text =
       `⚠️ *Lead reasignado por falta de gestión*\n\n` +
-      `Vendedor: ${sellerName(oldSeller)}\n` +
-      `Cliente: ${clientName(ticket)}\n` +
-      `Modelo: ${modelName(ticket)}\n` +
-      `Sucursal: ${branchName(ticket)}`;
+      `👤 Vendedor: ${sellerName(oldSeller)}\n` +
+      `🧑 Cliente: ${clientName(ticket)}\n` +
+      `🛵 Modelo: ${modelName(ticket)}\n` +
+      `🏢 Sucursal: ${branchName(ticket)}`;
 
     return sendMessage(oldSeller.telegram_chat_id, text, crmButton(ticket.id));
   },
@@ -150,10 +150,10 @@ const TelegramService = {
 
     const text =
       `⏰ *SLA próximo a vencer*\n\n` +
-      `Vendedor: ${sellerName(seller)}\n` +
-      `Cliente: ${clientName(ticket)}\n` +
-      `Sucursal: ${branchName(ticket)}\n` +
-      `Quedan menos de 2 horas para gestionar este lead.`;
+      `👤 Vendedor: ${sellerName(seller)}\n` +
+      `🧑 Cliente: ${clientName(ticket)}\n` +
+      `🏢 Sucursal: ${branchName(ticket)}\n` +
+      `Queda menos de 1 hora para gestionar este lead.`;
 
     return sendMessage(seller.telegram_chat_id, text, crmButton(ticket.id));
   },

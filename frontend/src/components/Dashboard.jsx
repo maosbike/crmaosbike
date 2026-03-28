@@ -28,7 +28,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px",color:"#EF4444"}}>Requieren atención</h3>
           {urgentes.slice(0,5).map((l,i)=>{
             const st=l.sla_status;
-            const lbl=(st==="breached"||st==="vencido"||l.hours_left!=null&&l.hours_left<=0)?"Vencido":st==="warning"||l.hours_left!=null&&l.hours_left<2?`Atender ya · ${Math.ceil(l.hours_left||0)}h`:l.hours_left!=null?`Quedan ${Math.ceil(l.hours_left)}h`:"Sin gestionar";
+            const lbl=(st==="breached"||st==="vencido"||l.hours_left!=null&&l.hours_left<=0)?"Vencido":st==="warning"||l.hours_left!=null&&l.hours_left<1?`Atender ya · ${Math.ceil(l.hours_left||0)}h`:l.hours_left!=null?`Quedan ${Math.ceil(l.hours_left)}h`:"Sin gestionar";
             const lc=(st==="breached"||st==="vencido"||l.hours_left!=null&&l.hours_left<=0)?"#EF4444":st==="reassigned"?"#8B5CF6":l.hours_left!=null&&l.hours_left<2?"#F97316":"#6B7280";
             return<div key={i} onClick={()=>nav("ticket",String(l.id||l.ticket_id))} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.client_name||l.first_name||`${l.fn||""} ${l.ln||""}`.trim()}{l.last_name?` ${l.last_name}`:""}</div><div style={{fontSize:11,color:"#6B7280"}}>{l.seller_name||(l.seller_first?`${l.seller_first} ${l.seller_last||""}`.trim():"")}</div></div><span style={{fontSize:11,color:lc,fontWeight:600}}>{lbl}</span></div>;
           })}
