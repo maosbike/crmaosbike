@@ -49,8 +49,9 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
     process.env.JWT_SECRET,
     { expiresIn: '15m' }
   );
+  // sv (session_version) en el refresh token — permite invalidar tokens al cambiar contraseña
   const refreshToken = jwt.sign(
-    { uid: user.id },
+    { uid: user.id, sv: user.session_version || 0 },
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: '7d' }
   );
@@ -114,15 +115,21 @@ router.post('/refresh', asyncHandler(async (req, res) => {
   );
   if (!rows[0]) return res.status(401).json({ error: 'Usuario no encontrado' });
 
+  // Verificar session_version — si el usuario cambió contraseña, el token queda inválido
+  const currentSv = rows[0].session_version || 0;
+  if ((payload.sv ?? 0) !== currentSv) {
+    return res.status(401).json({ error: 'Sesión expirada, inicia sesión nuevamente' });
+  }
+
   const newToken = jwt.sign(
     { uid: rows[0].id, role: rows[0].role },
     process.env.JWT_SECRET,
     { expiresIn: '15m' }
   );
 
-  // Rotar la cookie de refresh también (buena práctica)
+  // Rotar la cookie de refresh con sv actualizado
   const newRefreshToken = jwt.sign(
-    { uid: rows[0].id },
+    { uid: rows[0].id, sv: currentSv },
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: '7d' }
   );

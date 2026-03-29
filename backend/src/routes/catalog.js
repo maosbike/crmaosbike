@@ -5,7 +5,15 @@ const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
 router.use(auth);
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
+  },
+});
 
 // ── CATALOG ──
 router.get('/models', async (req, res) => {

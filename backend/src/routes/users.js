@@ -19,7 +19,7 @@ router.put('/change-password', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
     const newHash = await bcrypt.hash(new_password, 10);
     await db.query(
-      'UPDATE users SET password_hash = $1, force_password_change = false, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = $1, force_password_change = false, session_version = session_version + 1, updated_at = NOW() WHERE id = $2',
       [newHash, req.user.id]
     );
     res.json({ message: 'Contraseña actualizada correctamente' });
@@ -93,7 +93,7 @@ router.put('/:id/reset-password', roleCheck('super_admin'), async (req, res) => 
     const tempPassword = Array.from(bytes).map(b => chars[b % chars.length]).join('');
     const hash = await bcrypt.hash(tempPassword, 10);
     await db.query(
-      'UPDATE users SET password_hash = $1, force_password_change = true, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = $1, force_password_change = true, session_version = session_version + 1, updated_at = NOW() WHERE id = $2',
       [hash, req.params.id]
     );
     const u = check.rows[0];

@@ -5,6 +5,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 // ── Validación de variables de entorno requeridas ──────────────────────────
 // JWT secrets son obligatorios — sin ellos el sistema de auth no funciona
@@ -15,6 +16,13 @@ if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
 
 const app = express();
 app.set('trust proxy', 1);
+
+// ── Security headers ───────────────────────────────────────────────────────
+// CSP desactivado — React SPA usa Cloudinary para imágenes + assets dinámicos;
+// configurar CSP completo requiere inventario de fuentes (fase posterior).
+// El resto de las protecciones de helmet sí aplican: HSTS, X-Frame-Options,
+// X-Content-Type-Options, Referrer-Policy, etc.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 const PORT = process.env.PORT || 4000;
 
 // ── Rate limiting global ───────────────────────────────────────────────────

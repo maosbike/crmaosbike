@@ -5,7 +5,32 @@ const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
 router.use(auth);
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+const ALLOWED_IMG = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ALLOWED_XLS = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     'application/vnd.ms-excel', 'text/csv'];
+
+// Upload de fotos (chasis / motor)
+const uploadPhoto = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_IMG.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
+  },
+});
+
+// Upload de archivo xlsx para importación de inventario
+const uploadFile = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const okMime = ALLOWED_XLS.includes(file.mimetype);
+    const okExt  = /\.(xlsx|xls|csv)$/i.test(file.originalname);
+    if (okMime || okExt) cb(null, true);
+    else cb(new Error('Solo se permiten archivos Excel o CSV (.xlsx, .xls, .csv)'));
+  },
+});
 
 // List inventory
 router.get('/', async (req, res) => {
@@ -230,7 +255,7 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
 // ─── IMPORT XLSX ──────────────────────────────────────────────────────────────
 
 // Preview: parse xlsx, return rows with status (ok/duplicate/error)
-router.post('/import/preview', upload.single('file'), async (req, res) => {
+router.post('/import/preview', uploadFile.single('file'), async (req, res) => {
   try {
     if (!['super_admin','admin_comercial'].includes(req.user.role))
       return res.status(403).json({ error: 'Sin permiso' });
@@ -343,7 +368,7 @@ router.post('/import/confirm', async (req, res) => {
 });
 
 // Upload photo (chassis or motor)
-router.post('/:id/photo', upload.single('photo'), async (req, res) => {
+router.post('/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
   try {
     const { field } = req.body; // 'chassis_photo' or 'motor_photo'
     if (!['chassis_photo', 'motor_photo'].includes(field))
