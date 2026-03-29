@@ -18,11 +18,19 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ── Security headers ───────────────────────────────────────────────────────
-// CSP desactivado — React SPA usa Cloudinary para imágenes + assets dinámicos;
-// configurar CSP completo requiere inventario de fuentes (fase posterior).
-// El resto de las protecciones de helmet sí aplican: HSTS, X-Frame-Options,
-// X-Content-Type-Options, Referrer-Policy, etc.
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "https://res.cloudinary.com", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 const PORT = process.env.PORT || 4000;
 
 // ── Rate limiting global ───────────────────────────────────────────────────

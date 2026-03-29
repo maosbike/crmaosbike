@@ -48,7 +48,6 @@ const request = async (method, path, body, _retry = false) => {
     if (ok) return request(method, path, body, true);
     // Refresh falló — limpiar sesión
     _token = null;
-    localStorage.removeItem('crm_user');
     window.location.reload();
     throw new Error('Sesión expirada');
   }

@@ -48,6 +48,13 @@ router.get('/ticket/:ticketId', async (req, res) => {
         return res.status(403).json({ error: 'Sin permiso para ver este ticket' });
       }
     }
+    // admin_comercial solo puede ver historial de tickets de su sucursal
+    if (req.user.role === 'admin_comercial') {
+      const tk = tRows[0];
+      if (tk.branch_id !== req.user.branch_id) {
+        return res.status(403).json({ error: 'Sin permiso para ver este ticket' });
+      }
+    }
     const tk = tRows[0];
 
     // 2. Todos los logs de reassignment_log en orden ASC
@@ -238,6 +245,13 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
 router.get('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
+    const params = [limit];
+    let branchFilter = '';
+    // admin_comercial solo ve reasignaciones de tickets de su propia sucursal
+    if (req.user.role === 'admin_comercial') {
+      params.push(req.user.branch_id);
+      branchFilter = `AND t.branch_id = $${params.length}`;
+    }
     const { rows } = await db.query(
       `SELECT rl.*,
               t.ticket_num as ticket_number,
@@ -249,9 +263,10 @@ router.get('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) =>
        LEFT JOIN users uf ON rl.from_user_id = uf.id
        LEFT JOIN users ut ON rl.to_user_id = ut.id
        LEFT JOIN users ur ON rl.reassigned_by = ur.id
+       WHERE 1=1 ${branchFilter}
        ORDER BY rl.created_at DESC
        LIMIT $1`,
-      [limit]
+      params
     );
     res.json(rows);
   } catch (e) {

@@ -111,7 +111,24 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Título y fecha son requeridos' });
     }
 
-    const assignee = assigned_to || req.user.id;
+    // Vendedores solo pueden asignarse recordatorios a sí mismos
+    if (req.user.role === 'vendedor') {
+      if (assigned_to && assigned_to !== req.user.id) {
+        return res.status(403).json({ error: 'No puedes asignar recordatorios a otros usuarios' });
+      }
+    }
+
+    // Admins que asignan a otro usuario: verificar que ese usuario exista y esté activo
+    let assignee = assigned_to || req.user.id;
+    if (assigned_to && assigned_to !== req.user.id) {
+      const { rows: targetRows } = await db.query(
+        'SELECT id FROM users WHERE id = $1 AND active = true',
+        [assigned_to]
+      );
+      if (!targetRows[0]) {
+        return res.status(400).json({ error: 'El usuario destino no existe o está inactivo' });
+      }
+    }
 
     const { rows } = await db.query(
       `INSERT INTO reminders (ticket_id, title, description, due_date, due_time, priority, reminder_type, created_by, assigned_to)
@@ -169,6 +186,22 @@ router.put('/:id', async (req, res) => {
     // Solo el creador o admins pueden editar
     if (rem.created_by !== req.user.id && !['super_admin', 'admin_comercial'].includes(req.user.role)) {
       return res.status(403).json({ error: 'No tienes permiso para editar este recordatorio' });
+    }
+
+    // Vendedores no pueden cambiar el destinatario
+    if (req.user.role === 'vendedor' && assigned_to && assigned_to !== req.user.id) {
+      return res.status(403).json({ error: 'No puedes reasignar recordatorios a otros usuarios' });
+    }
+
+    // Admins que reasignan: verificar que el usuario destino exista y esté activo
+    if (assigned_to && assigned_to !== rem.assigned_to) {
+      const { rows: targetRows } = await db.query(
+        'SELECT id FROM users WHERE id = $1 AND active = true',
+        [assigned_to]
+      );
+      if (!targetRows[0]) {
+        return res.status(400).json({ error: 'El usuario destino no existe o está inactivo' });
+      }
     }
 
     const { rows } = await db.query(

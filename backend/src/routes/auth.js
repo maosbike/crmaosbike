@@ -37,8 +37,7 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
     [identifier]
   );
   const user = rows[0];
-  if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
-  if (!user.active) return res.status(401).json({ error: 'Usuario desactivado' });
+  if (!user || !user.active) return res.status(401).json({ error: 'Credenciales inválidas' });
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Credenciales inválidas' });

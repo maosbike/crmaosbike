@@ -1,8 +1,9 @@
 const router = require('express').Router();
 const db = require('../config/db');
-const { auth } = require('../middleware/auth');
+const { auth, roleCheck } = require('../middleware/auth');
 
 router.use(auth);
+router.use(roleCheck('super_admin', 'admin_comercial', 'vendedor'));
 
 // ═══════════════════════════════════════════════════
 // GET /api/reports?from=&to=&branch_id=&seller_id=&brand=&model=&status=&fin_status=&color=

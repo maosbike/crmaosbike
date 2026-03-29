@@ -180,7 +180,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), as
 // ─── SELL ─────────────────────────────────────────────────────────────────────
 
 // GET /inventory/:id/history
-router.get('/:id/history', async (req, res) => {
+router.get('/:id/history', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT h.*,
@@ -255,10 +255,8 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
 // ─── IMPORT XLSX ──────────────────────────────────────────────────────────────
 
 // Preview: parse xlsx, return rows with status (ok/duplicate/error)
-router.post('/import/preview', uploadFile.single('file'), async (req, res) => {
+router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uploadFile.single('file'), async (req, res) => {
   try {
-    if (!['super_admin','admin_comercial'].includes(req.user.role))
-      return res.status(403).json({ error: 'Sin permiso' });
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
     const XLSX = require('xlsx');
@@ -345,10 +343,8 @@ router.post('/import/preview', uploadFile.single('file'), async (req, res) => {
 });
 
 // Confirm: insert ok rows
-router.post('/import/confirm', async (req, res) => {
+router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
-    if (!['super_admin','admin_comercial'].includes(req.user.role))
-      return res.status(403).json({ error: 'Sin permiso' });
     const { rows } = req.body;
     if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'Sin filas' });
     let inserted = 0, skipped = 0;

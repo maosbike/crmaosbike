@@ -43,7 +43,10 @@ router.post('/', roleCheck('super_admin'), async (req, res) => {
     const { email, username, password, first_name, last_name, phone, role, branch_id } = req.body;
     if ((!email && !username) || !password || !first_name || !last_name || !role)
       return res.status(400).json({ error: 'Faltan campos obligatorios (username o email, password, nombre, rol)' });
-    if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener mínimo 6 caracteres' });
+    const VALID_ROLES = ['super_admin', 'admin_comercial', 'vendedor', 'backoffice'];
+    if (!VALID_ROLES.includes(role))
+      return res.status(400).json({ error: 'Rol inválido' });
+    if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener mínimo 8 caracteres' });
     if (email) {
       const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
       if (existing.rows.length > 0) return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
@@ -68,6 +71,11 @@ router.put('/:id', roleCheck('super_admin'), async (req, res) => {
     const { first_name, last_name, email, phone, role, branch_id, active, telegram_chat_id } = req.body;
     const check = await db.query('SELECT id FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (role !== undefined) {
+      const VALID_ROLES = ['super_admin', 'admin_comercial', 'vendedor', 'backoffice'];
+      if (!VALID_ROLES.includes(role))
+        return res.status(400).json({ error: 'Rol inválido' });
+    }
     if (email) {
       const dup = await db.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email.toLowerCase().trim(), req.params.id]);
       if (dup.rows.length > 0) return res.status(400).json({ error: 'Ya existe otro usuario con ese email' });
