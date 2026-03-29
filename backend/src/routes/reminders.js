@@ -85,7 +85,14 @@ router.get('/:id', async (req, res) => {
       [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Recordatorio no encontrado' });
-    res.json(rows[0]);
+
+    const rem = rows[0];
+    if (rem.created_by !== req.user.id && rem.assigned_to !== req.user.id &&
+        !['super_admin', 'admin_comercial'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'No tienes permiso para ver este recordatorio' });
+    }
+
+    res.json(rem);
   } catch (e) {
     console.error('Error obtener reminder:', e);
     res.status(500).json({ error: 'Error del servidor' });
@@ -190,6 +197,15 @@ router.put('/:id', async (req, res) => {
 // ═══════════════════════════════════════════════════
 router.put('/:id/complete', async (req, res) => {
   try {
+    const check = await db.query('SELECT * FROM reminders WHERE id = $1', [req.params.id]);
+    if (!check.rows[0]) return res.status(404).json({ error: 'Recordatorio no encontrado' });
+
+    const rem = check.rows[0];
+    if (rem.created_by !== req.user.id && rem.assigned_to !== req.user.id &&
+        !['super_admin', 'admin_comercial'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'No tienes permiso para completar este recordatorio' });
+    }
+
     const { rows } = await db.query(
       `UPDATE reminders SET status = 'completed', completed_at = NOW()
        WHERE id = $1 RETURNING *`,

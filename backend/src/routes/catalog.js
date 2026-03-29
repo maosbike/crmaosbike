@@ -100,7 +100,7 @@ router.get('/branches', async (req, res) => {
 });
 
 // ── USERS ──
-router.get('/users', async (req, res) => {
+router.get('/users', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
     const { role, branch_id } = req.query;
     let where = ['1=1'], params = [], idx = 1;
@@ -140,7 +140,7 @@ router.get('/aliases', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
-router.post('/aliases', async (req, res) => {
+router.post('/aliases', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
     const { alias, model_id } = req.body;
     if (!alias || !model_id) return res.status(400).json({ error: 'alias y model_id requeridos' });
@@ -154,7 +154,7 @@ router.post('/aliases', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
-router.delete('/aliases/:id', async (req, res) => {
+router.delete('/aliases/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
     await db.query('DELETE FROM model_aliases WHERE id=$1', [req.params.id]);
     res.json({ ok: true });

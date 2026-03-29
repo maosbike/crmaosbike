@@ -40,6 +40,14 @@ router.get('/ticket/:ticketId', async (req, res) => {
       [req.params.ticketId]
     );
     if (!tRows[0]) return res.status(404).json({ error: 'Ticket no encontrado' });
+
+    // Ownership check: vendedor solo puede ver historial de sus propios tickets
+    if (req.user.role === 'vendedor') {
+      const tk = tRows[0];
+      if (tk.seller_id !== req.user.id && tk.assigned_to !== req.user.id) {
+        return res.status(403).json({ error: 'Sin permiso para ver este ticket' });
+      }
+    }
     const tk = tRows[0];
 
     // 2. Todos los logs de reassignment_log en orden ASC

@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db = require('../config/db');
-const { auth } = require('../middleware/auth');
+const { auth, roleCheck } = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
@@ -39,7 +39,7 @@ router.get('/counts', async (req, res) => {
 });
 
 // Create inventory unit
-router.post('/', async (req, res) => {
+router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
     const {
       branch_id, year, brand, model, color, chassis, motor_num, price,
@@ -98,7 +98,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update inventory unit
-router.put('/:id', async (req, res) => {
+router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
     const { branch_id, status, color, price, notes } = req.body;
 
@@ -174,7 +174,7 @@ router.get('/:id/history', async (req, res) => {
 });
 
 // POST /inventory/:id/sell — registrar venta de una unidad existente
-router.post('/:id/sell', async (req, res) => {
+router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
     const { sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes } = req.body;
     if (!sold_by) return res.status(400).json({ error: 'Vendedor requerido' });

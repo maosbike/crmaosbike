@@ -197,6 +197,14 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
 // Add timeline entry
 router.post('/:id/timeline', asyncHandler(async (req, res) => {
+  if (req.user.role === 'vendedor') {
+    const check = await db.query(
+      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
+      [req.params.id, req.user.id]
+    );
+    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para este ticket' });
+  }
+
   const { type, title, note, method } = req.body;
 
   if (!type || !title) return res.status(400).json({ error: 'type y title son requeridos' });
