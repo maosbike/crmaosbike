@@ -7,6 +7,7 @@
  */
 const router = require('express').Router();
 const multer = require('multer');
+const xlsx   = require('xlsx');
 const db     = require('../config/db');
 const { auth, roleCheck }          = require('../middleware/auth');
 const { extractFromPDF, normalizeModel } = require('../services/pdfExtractor');

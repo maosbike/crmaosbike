@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 // ── Validación de variables de entorno requeridas ──────────────────────────
 // JWT secrets son obligatorios — sin ellos el sistema de auth no funciona
@@ -15,6 +16,18 @@ if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
+
+// ── Rate limiting global ───────────────────────────────────────────────────
+// 300 req / 15 min por IP — razonable para uso normal del CRM,
+// protege contra scraping y abuso básico.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes, intenta en unos minutos' },
+});
+app.use('/api/', apiLimiter);
 
 // Middleware
 // Frontend y backend comparten el mismo origen en Railway — CORS solo aplica a cross-origin.

@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
 
@@ -88,8 +89,8 @@ router.put('/:id/reset-password', roleCheck('super_admin'), async (req, res) => 
     const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let tempPassword = '';
-    for (let i = 0; i < 10; i++) tempPassword += chars[Math.floor(Math.random() * chars.length)];
+    const bytes = crypto.randomBytes(10);
+    const tempPassword = Array.from(bytes).map(b => chars[b % chars.length]).join('');
     const hash = await bcrypt.hash(tempPassword, 10);
     await db.query(
       'UPDATE users SET password_hash = $1, force_password_change = true, updated_at = NOW() WHERE id = $2',

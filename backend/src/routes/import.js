@@ -502,8 +502,7 @@ router.post('/confirm', async (req, res) => {
       return res.status(400).json({ error: 'No hay filas válidas para importar con la configuración actual' });
     }
 
-    const { rows: countR } = await db.query('SELECT COUNT(*) FROM tickets');
-    let ticketCount = parseInt(countR[0].count);
+    // ticket_num generado por secuencia PostgreSQL — sin race conditions
 
     // ── Cargar catálogo de motos para resolver model_id ────────
     const { rows: models } = await db.query('SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true');
@@ -541,7 +540,8 @@ router.post('/confirm', async (req, res) => {
     for (const r of toImport) {
       try {
         const seller = r.branch_id ? await assignSellerForImport(r.branch_id) : null;
-        const num    = `SCM-${247001 + ticketCount++}`;
+        const { rows: seqR } = await db.query("SELECT 'SCM-' || nextval('ticket_num_seq') AS num");
+        const num = seqR[0].num;
 
         // Resolver model_id: primero el que viene del preview (si el cliente
         // lo mandó ya resuelto), sino resolverlo ahora desde el catálogo.

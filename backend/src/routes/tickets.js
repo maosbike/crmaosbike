@@ -85,8 +85,8 @@ router.post('/', asyncHandler(async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const countR = await client.query('SELECT COUNT(*) FROM tickets');
-    const num = `SCM-${247001 + parseInt(countR.rows[0].count)}`;
+    const seqR = await client.query("SELECT 'SCM-' || nextval('ticket_num_seq') AS num");
+    const num = seqR.rows[0].num;
 
     const { rows } = await client.query(
       `INSERT INTO tickets (ticket_num, first_name, last_name, rut, email, phone, comuna, source,
