@@ -12,8 +12,7 @@ export function Login({onLogin}){
     setErr("");setLoading(true);
     try{
       const {token,user}=await api.login(identifier,pw);
-      setToken(token);                                    // Token en memoria, no en localStorage
-      localStorage.setItem("crm_user",JSON.stringify(user)); // Solo metadata de UI
+      setToken(token); // Token en memoria, nunca en localStorage
       onLogin(user);
     }catch(ex){
       setErr(ex.message||"Credenciales inválidas");

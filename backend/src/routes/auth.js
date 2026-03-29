@@ -79,6 +79,7 @@ router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
 router.get('/me', auth, asyncHandler(async (req, res) => {
   const { rows } = await db.query(
     `SELECT u.id, u.email, u.username, u.first_name, u.last_name, u.role, u.branch_id,
+            u.force_password_change,
             b.name as branch_name, b.code as branch_code
      FROM users u LEFT JOIN branches b ON u.branch_id = b.id WHERE u.id = $1`,
     [req.user.id]
@@ -88,6 +89,7 @@ router.get('/me', auth, asyncHandler(async (req, res) => {
     id: u.id, email: u.email, username: u.username,
     fn: u.first_name, ln: u.last_name, role: u.role, branch: u.branch_id,
     branchName: u.branch_name, branchCode: u.branch_code,
+    forceChange: u.force_password_change || false,
   });
 }));
 
