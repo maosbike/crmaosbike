@@ -57,7 +57,8 @@ async function migrate() {
     await runMigration('018', 'restore ticket assignments',  m('018_restore_ticket_assignments.sql'));
     await runMigration('019', 'inventory sale fields',       m('019_inventory_sale_fields.sql'));
     await runMigration('020', 'inventory history log',       m('020_inventory_history.sql'));
-    await runMigration('021', 'ticket_num sequence',          m('021_ticket_num_seq.sql'));
+    await runMigration('021', 'telegram chat id',              m('021_telegram_chat_id.sql'));
+    await runMigration('022', 'ticket_num sequence',          m('022_ticket_num_seq.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');
