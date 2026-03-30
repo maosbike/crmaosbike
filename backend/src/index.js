@@ -68,6 +68,7 @@ app.use('/api/calendar', require('./routes/calendar'));
 app.use('/api/reassignments', require('./routes/reassignments'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
+app.use('/api/sales',  require('./routes/sales'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/priceimport', require('./routes/priceimport'));

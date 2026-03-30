@@ -192,4 +192,17 @@ export const api = {
   getAliases:    ()     => request('GET',    '/catalog/aliases'),
   createAlias:   (data) => request('POST',   '/catalog/aliases', data),
   deleteAlias:   (id)   => request('DELETE', `/catalog/aliases/${id}`),
+
+  // Ventas
+  getSales:       (params) => request('GET',   `/sales?${new URLSearchParams(params || {})}`),
+  getSalesStats:  (params) => request('GET',   `/sales/stats?${new URLSearchParams(params || {})}`),
+  getSale:        (id)     => request('GET',   `/sales/${id}`),
+  createSale:     (data)   => request('POST',  '/sales', data),
+  updateSale:     (id, data) => request('PATCH', `/sales/${id}`, data),
+  uploadSaleDoc:  (id, field, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('field', field);
+    return request('POST', `/sales/${id}/doc`, fd);
+  },
 };
