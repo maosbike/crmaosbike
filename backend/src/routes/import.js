@@ -5,6 +5,7 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const TelegramService = require('../services/telegramService');
 const SLAService = require('../services/slaService');
+const { calcSlaDeadline } = require('../utils/slaUtils');
 
 // ─── Multer config ────────────────────────────────────────────
 const upload = multer({
@@ -563,7 +564,7 @@ router.post('/confirm', async (req, res) => {
              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
              $12,$13,$14,
              $15,$16,$17,$18,$19,$20,$21,
-             NOW() + INTERVAL '3 hours', 'abierto'
+             $22, 'abierto'
            ) RETURNING id, ticket_num`,
           [
             num,
@@ -587,6 +588,7 @@ router.post('/confirm', async (req, res) => {
             r.renta            || null,
             r.pie              || null,
             r.fin_data ? JSON.stringify(r.fin_data) : null,
+            calcSlaDeadline().toISOString(),           // $22 sla_deadline
           ]
         );
 

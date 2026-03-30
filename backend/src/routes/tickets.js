@@ -4,6 +4,7 @@ const { auth } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const SLAService = require('../services/slaService');
 const TelegramService = require('../services/telegramService');
+const { calcSlaDeadline } = require('../utils/slaUtils');
 
 router.use(auth);
 
@@ -92,9 +93,10 @@ router.post('/', asyncHandler(async (req, res) => {
       `INSERT INTO tickets (ticket_num, first_name, last_name, rut, email, phone, comuna, source,
                             branch_id, seller_id, assigned_to, model_id, priority, color_pref,
                             sla_deadline)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW() + INTERVAL '3 hours') RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
       [num, first_name, last_name, rut, email, phone, comuna, source || 'presencial',
-       branch, seller, seller, model_id, priority || 'media', color_pref]
+       branch, seller, seller, model_id, priority || 'media', color_pref,
+       calcSlaDeadline().toISOString()]
     );
 
     await client.query(

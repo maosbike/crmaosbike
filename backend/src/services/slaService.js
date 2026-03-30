@@ -2,6 +2,7 @@ const logger = require("../config/logger");
 const db = require('../config/db');
 const NotificationService = require('./notificationService');
 const TelegramService = require('./telegramService');
+const { calcSlaDeadline, isNowBusinessHour } = require('../utils/slaUtils');
 
 const SLAService = {
   // Acciones que cuentan como "primera gestión válida"
@@ -140,7 +141,7 @@ const SLAService = {
       ? `${oldSeller.first_name} ${oldSeller.last_name}`
       : 'Desconocido';
 
-    const newDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+    const newDeadline = calcSlaDeadline().toISOString();
 
     // Actualizar ticket
     await db.query(
@@ -203,6 +204,10 @@ const SLAService = {
 
   // Chequeo completo de SLA (llamado por el cron)
   async checkAll() {
+    if (!isNowBusinessHour()) {
+      logger.info('[SLA] Fuera de horario hábil (09:00–19:00 America/Santiago), saltando chequeo');
+      return;
+    }
     if (this._running) {
       logger.info('[SLA] Chequeo anterior aún en curso, saltando...');
       return;
