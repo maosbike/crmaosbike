@@ -2,14 +2,29 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { S, Modal, PAYMENT_TYPES, fmt } from '../ui.jsx';
 
+// Normaliza para comparar brand/model sin importar mayúsculas ni espacios extra
+const normalize = s => (s || '').trim().toLowerCase();
+
 export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }) {
-  const [inv, setInv]       = useState([]);
+  const [inv, setInv]         = useState([]);
   const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
 
-  const defaultClientName = lead ? `${lead.fn||''} ${lead.ln||''}`.trim() : '';
+  // ── Producto cotizado en el ticket (historial, no se toca) ──────────────
+  const quoted = lead?.model_brand ? {
+    brand: lead.model_brand,
+    model: lead.model_name  || '',
+    price: lead.model_price || 0,
+    bonus: lead.model_bonus || 0,
+    year:  lead.model_year  || '',
+    image: lead.model_image || null,
+  } : null;
+
+  const defaultClientName = lead ? `${lead.fn || ''} ${lead.ln || ''}`.trim() : '';
   const defaultSellerId   = lead?.seller_id || user.id;
+  // Pre-popula precio con el precio de cotización como referencia
+  const defaultPrice = quoted && quoted.price > 0 ? String(quoted.price - quoted.bonus) : '';
 
   const [form, setForm] = useState({
     inventory_id:   '',
@@ -18,7 +33,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
     payment_method: '',
     sale_type:      'completa',
     sale_notes:     '',
-    sale_price:     '',
+    sale_price:     defaultPrice,
     cost_price:     '',
     invoice_amount: '',
     client_name:    defaultClientName,
@@ -32,33 +47,55 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
     Promise.all([
       api.getInventory({ status: 'disponible' }),
       api.getSellers(),
-    ]).then(([inv, sels]) => {
-      setInv(Array.isArray(inv) ? inv : []);
+    ]).then(([invData, sels]) => {
+      setInv(Array.isArray(invData) ? invData : []);
       setSellers(Array.isArray(sels) ? sels : []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  // ── Unidad seleccionada ─────────────────────────────────────────────────
+  const selectedUnit = inv.find(u => u.id === form.inventory_id) || null;
+
+  // ── Detección de diferencia cotizado vs vendido ──────────────────────────
+  const isMismatch = !!(quoted && selectedUnit && (
+    normalize(selectedUnit.brand) !== normalize(quoted.brand) ||
+    normalize(selectedUnit.model) !== normalize(quoted.model)
+  ));
+  const isMatch = !!(quoted && selectedUnit && !isMismatch);
+
+  // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async e => {
     e.preventDefault();
     if (!form.inventory_id) { alert('Seleccioná una unidad de inventario'); return; }
     if (!form.sold_by)      { alert('Seleccioná el vendedor'); return; }
     setSaving(true);
     try {
+      // Si hay diferencia, la anotamos automáticamente en sale_notes
+      // para que quede trazabilidad en el historial
+      let notes = form.sale_notes || '';
+      if (isMismatch) {
+        const diff = `Cotizado: ${quoted.brand} ${quoted.model} → Vendido: ${selectedUnit.brand} ${selectedUnit.model} (${selectedUnit.color || ''})`;
+        notes = notes ? `${notes} | ${diff}` : diff;
+      }
+
       await api.sellInventory(form.inventory_id, {
         sold_by:        form.sold_by,
         sold_at:        form.sold_at        || null,
         ticket_id:      ticketId,
         payment_method: form.payment_method || null,
         sale_type:      form.sale_type      || null,
-        sale_notes:     form.sale_notes     || null,
+        sale_notes:     notes               || null,
         sale_price:     form.sale_price     ? Number(form.sale_price)     : null,
         cost_price:     form.cost_price     ? Number(form.cost_price)     : null,
         invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
         client_name:    form.client_name    || null,
         client_rut:     form.client_rut     || null,
       });
-      // Marcar ticket como ganado automáticamente
+
+      // Marcar ticket como ganado (el backend también lo hace, pero lo
+      // actualizamos en cliente de inmediato para que la UI responda)
       if (ticketId) await api.updateTicket(ticketId, { status: 'ganado' });
+
       onSuccess && onSuccess();
       onClose();
     } catch (ex) {
@@ -70,15 +107,61 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
   return (
     <Modal onClose={onClose} title="Registrar Venta" wide>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* Unidad de inventario */}
+        {/* ═══════════════════════════════════════════════════
+            BLOQUE 1 — PRODUCTO COTIZADO (solo lectura)
+            Es el modelo registrado en el ticket; no cambia.
+        ═══════════════════════════════════════════════════ */}
         <div>
-          <label style={S.lbl}>Unidad de Inventario *</label>
+          <div style={sectionLabel}>
+            📋 Producto Cotizado
+            <span style={{ fontWeight: 400, color: '#9CA3AF', textTransform: 'none', letterSpacing: 0 }}>
+              {' '}· historial del ticket, no se modifica
+            </span>
+          </div>
+          {quoted ? (
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: '#F9FAFB', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 12 }}>
+              {quoted.image && (
+                <img
+                  src={quoted.image} alt=""
+                  style={{ width: 52, height: 38, objectFit: 'cover', borderRadius: 5, background: '#F3F4F6', flexShrink: 0 }}
+                />
+              )}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                  {quoted.brand} {quoted.model}{quoted.year ? ` ${quoted.year}` : ''}
+                </div>
+                {quoted.price > 0 && (
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                    Lista: {fmt(quoted.price)}
+                    {quoted.bonus > 0 && (
+                      <> · Con bono: <span style={{ fontWeight: 600, color: '#F28100' }}>{fmt(quoted.price - quoted.bonus)}</span></>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 12, color: '#9CA3AF' }}>
+              Sin modelo cotizado registrado en este ticket
+            </div>
+          )}
+        </div>
+
+        {/* ═══════════════════════════════════════════════════
+            BLOQUE 2 — UNIDAD VENDIDA (inventario real)
+            El vendedor elige la unidad física que se va.
+        ═══════════════════════════════════════════════════ */}
+        <div>
+          <div style={sectionLabel}>🏍️ Unidad Vendida · del inventario real</div>
+
           {loading ? (
-            <div style={{ fontSize: 12, color: '#6B7280', padding: '8px 0' }}>Cargando inventario disponible...</div>
+            <div style={{ fontSize: 12, color: '#6B7280', padding: '8px 0' }}>
+              Cargando unidades disponibles...
+            </div>
           ) : inv.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#EF4444', padding: '8px 0' }}>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
               No hay unidades disponibles en stock. Registrá la unidad primero en Inventario.
             </div>
           ) : (
@@ -88,7 +171,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               style={{ ...S.inp, width: '100%' }}
               required
             >
-              <option value="">Seleccionar unidad...</option>
+              <option value="">Seleccionar unidad de inventario...</option>
               {inv.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.brand} {u.model} {u.year} · {u.color} · Chasis: {u.chassis}
@@ -97,152 +180,188 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               ))}
             </select>
           )}
-        </div>
 
-        {/* Vendedor + Fecha */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <label style={S.lbl}>Vendedor *</label>
-            <select
-              value={form.sold_by}
-              onChange={e => set('sold_by', e.target.value)}
-              style={{ ...S.inp, width: '100%' }}
-              required
-            >
-              <option value="">Seleccionar vendedor...</option>
-              {sellers.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.first_name||s.fn||''} {s.last_name||s.ln||''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={S.lbl}>Fecha de Venta</label>
-            <input
-              type="date"
-              value={form.sold_at}
-              onChange={e => set('sold_at', e.target.value)}
-              style={{ ...S.inp, width: '100%' }}
-            />
-          </div>
-        </div>
-
-        {/* Forma de pago + Tipo */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <label style={S.lbl}>Forma de Pago</label>
-            <select
-              value={form.payment_method}
-              onChange={e => set('payment_method', e.target.value)}
-              style={{ ...S.inp, width: '100%' }}
-            >
-              <option value="">Seleccionar...</option>
-              {PAYMENT_TYPES.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={S.lbl}>Tipo de Venta</label>
-            <select
-              value={form.sale_type}
-              onChange={e => set('sale_type', e.target.value)}
-              style={{ ...S.inp, width: '100%' }}
-            >
-              <option value="completa">Contado / Completa</option>
-              <option value="financiada">Financiada</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Cliente */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div>
-            <label style={S.lbl}>Nombre Cliente</label>
-            <input
-              value={form.client_name}
-              onChange={e => set('client_name', e.target.value)}
-              style={{ ...S.inp, width: '100%' }}
-              placeholder="Nombre completo"
-            />
-          </div>
-          <div>
-            <label style={S.lbl}>RUT Cliente</label>
-            <input
-              value={form.client_rut}
-              onChange={e => set('client_rut', e.target.value)}
-              style={{ ...S.inp, width: '100%' }}
-              placeholder="12.345.678-9"
-            />
-          </div>
-        </div>
-
-        {/* Precio venta */}
-        <div>
-          <label style={S.lbl}>Precio de Venta (CLP)</label>
-          <input
-            type="number"
-            value={form.sale_price}
-            onChange={e => set('sale_price', e.target.value)}
-            style={{ ...S.inp, width: '100%' }}
-            placeholder="0"
-            min="0"
-          />
-        </div>
-
-        {/* Campos admin */}
-        {isAdmin && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '10px 12px', background: 'rgba(242,129,0,0.04)', borderRadius: 8, border: '1px solid rgba(242,129,0,0.15)' }}>
-            <div>
-              <label style={{ ...S.lbl, color: '#9CA3AF' }}>Costo Interno</label>
-              <input
-                type="number"
-                value={form.cost_price}
-                onChange={e => set('cost_price', e.target.value)}
-                style={{ ...S.inp, width: '100%' }}
-                placeholder="Solo visible para admin"
-                min="0"
-              />
+          {/* Detalle de la unidad seleccionada */}
+          {selectedUnit && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 7, background: '#F0FDF4', border: '1px solid #BBF7D0', fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model} {selectedUnit.year}</span>
+              <span style={{ color: '#166534' }}>· {selectedUnit.color}</span>
+              <span style={{ color: '#4B5563' }}>· Chasis: {selectedUnit.chassis}</span>
+              {selectedUnit.motor_num && <span style={{ color: '#4B5563' }}>· Motor: {selectedUnit.motor_num}</span>}
+              {selectedUnit.branch_code && <span style={{ color: '#4B5563', marginLeft: 'auto' }}>📍 {selectedUnit.branch_code}</span>}
             </div>
-            <div>
-              <label style={{ ...S.lbl, color: '#9CA3AF' }}>Monto Factura</label>
-              <input
-                type="number"
-                value={form.invoice_amount}
-                onChange={e => set('invoice_amount', e.target.value)}
-                style={{ ...S.inp, width: '100%' }}
-                placeholder="0"
-                min="0"
-              />
+          )}
+        </div>
+
+        {/* ═══════════════════════════════════════════════════
+            BLOQUE 3 — COMPARACIÓN / ALERTAS
+        ═══════════════════════════════════════════════════ */}
+
+        {/* ⚠️  Diferencia detectada */}
+        {isMismatch && (
+          <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.4)' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
+              ⚠️ El producto vendido es distinto al cotizado
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ padding: '8px 10px', borderRadius: 6, background: '#FFF7ED', border: '1px solid #FED7AA' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Cotizado</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{quoted.brand} {quoted.model}</div>
+              </div>
+              <div style={{ padding: '8px 10px', borderRadius: 6, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Vendido</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model}</div>
+                <div style={{ fontSize: 11, color: '#374151' }}>{selectedUnit.color} · {selectedUnit.chassis}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: '#92400E', marginTop: 8, lineHeight: 1.5 }}>
+              La cotización original queda en el historial del ticket. La diferencia se registrará automáticamente en las notas de la venta.
             </div>
           </div>
         )}
 
-        {/* Notas */}
-        <div>
-          <label style={S.lbl}>Notas de la Venta</label>
-          <textarea
-            value={form.sale_notes}
-            onChange={e => set('sale_notes', e.target.value)}
-            rows={2}
-            style={{ ...S.inp, width: '100%', resize: 'vertical' }}
-            placeholder="Observaciones, acuerdos especiales..."
-          />
+        {/* ✓  Coincidencia confirmada */}
+        {isMatch && (
+          <div style={{ padding: '7px 12px', borderRadius: 7, background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.3)', fontSize: 11, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ✓ La unidad coincide con el modelo cotizado
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════
+            BLOQUE 4 — DATOS DE LA VENTA
+        ═══════════════════════════════════════════════════ */}
+        <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 12 }}>
+          <div style={{ ...sectionLabel, marginBottom: 10 }}>📝 Datos de la Venta</div>
+
+          {/* Vendedor + Fecha */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={S.lbl}>Vendedor *</label>
+              <select value={form.sold_by} onChange={e => set('sold_by', e.target.value)} style={{ ...S.inp, width: '100%' }} required>
+                <option value="">Seleccionar vendedor...</option>
+                {sellers.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.first_name || s.fn || ''} {s.last_name || s.ln || ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={S.lbl}>Fecha de Venta</label>
+              <input type="date" value={form.sold_at} onChange={e => set('sold_at', e.target.value)} style={{ ...S.inp, width: '100%' }} />
+            </div>
+          </div>
+
+          {/* Forma de pago + Tipo */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={S.lbl}>Forma de Pago</label>
+              <select value={form.payment_method} onChange={e => set('payment_method', e.target.value)} style={{ ...S.inp, width: '100%' }}>
+                <option value="">Seleccionar...</option>
+                {PAYMENT_TYPES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={S.lbl}>Tipo de Venta</label>
+              <select value={form.sale_type} onChange={e => set('sale_type', e.target.value)} style={{ ...S.inp, width: '100%' }}>
+                <option value="completa">Contado / Completa</option>
+                <option value="financiada">Financiada</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Cliente */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={S.lbl}>Nombre Cliente</label>
+              <input value={form.client_name} onChange={e => set('client_name', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Nombre completo" />
+            </div>
+            <div>
+              <label style={S.lbl}>RUT Cliente</label>
+              <input value={form.client_rut} onChange={e => set('client_rut', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="12.345.678-9" />
+            </div>
+          </div>
+
+          {/* Precio de venta */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={S.lbl}>
+              Precio de Venta (CLP)
+              {quoted && quoted.price > 0 && (
+                <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6 }}>
+                  · cotizado: {fmt(quoted.price - quoted.bonus)}
+                </span>
+              )}
+            </label>
+            <input
+              type="number"
+              value={form.sale_price}
+              onChange={e => set('sale_price', e.target.value)}
+              style={{ ...S.inp, width: '100%' }}
+              placeholder="0"
+              min="0"
+            />
+          </div>
+
+          {/* Campos solo admin */}
+          {isAdmin && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'rgba(242,129,0,0.04)', borderRadius: 8, border: '1px solid rgba(242,129,0,0.15)' }}>
+              <div>
+                <label style={{ ...S.lbl, color: '#9CA3AF' }}>Costo Interno</label>
+                <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Solo visible para admin" min="0" />
+              </div>
+              <div>
+                <label style={{ ...S.lbl, color: '#9CA3AF' }}>Monto Factura</label>
+                <input type="number" value={form.invoice_amount} onChange={e => set('invoice_amount', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="0" min="0" />
+              </div>
+            </div>
+          )}
+
+          {/* Notas */}
+          <div>
+            <label style={S.lbl}>
+              Notas de la Venta
+              {isMismatch && <span style={{ fontWeight: 400, color: '#B45309', marginLeft: 6 }}>· la diferencia cotizado/vendido se añadirá automáticamente</span>}
+            </label>
+            <textarea
+              value={form.sale_notes}
+              onChange={e => set('sale_notes', e.target.value)}
+              rows={2}
+              style={{ ...S.inp, width: '100%', resize: 'vertical' }}
+              placeholder="Observaciones, acuerdos especiales..."
+            />
+          </div>
         </div>
 
         {/* Acciones */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, borderTop: '1px solid #F3F4F6', marginTop: 4 }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, borderTop: '1px solid #F3F4F6' }}>
           <button type="button" onClick={onClose} style={{ ...S.btn2, padding: '8px 18px' }}>
             Cancelar
           </button>
           <button
             type="submit"
             disabled={saving || (inv.length === 0 && !loading)}
-            style={{ ...S.btn, padding: '8px 20px', background: '#10B981', borderColor: '#059669', opacity: (saving || (inv.length === 0 && !loading)) ? 0.6 : 1 }}
+            style={{
+              ...S.btn, padding: '8px 20px',
+              background: '#10B981', borderColor: '#059669',
+              opacity: (saving || (inv.length === 0 && !loading)) ? 0.6 : 1,
+            }}
           >
-            {saving ? 'Registrando...' : '✓ Registrar Venta'}
+            {saving ? 'Registrando...' : '✓ Confirmar Venta'}
           </button>
         </div>
+
       </form>
     </Modal>
   );
 }
+
+// ── Estilos locales reutilizables ─────────────────────────────────────────────
+const sectionLabel = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: '#374151',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  marginBottom: 7,
+  display: 'block',
+};
