@@ -201,7 +201,11 @@ router.get('/:id/history', roleCheck('super_admin', 'admin_comercial', 'backoffi
 // POST /inventory/:id/sell — registrar venta de una unidad existente
 router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
-    const { sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes } = req.body;
+    const {
+      sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes,
+      // Nuevos campos (migración 024)
+      sale_price, cost_price, invoice_amount, client_name, client_rut,
+    } = req.body;
     if (!sold_by) return res.status(400).json({ error: 'Vendedor requerido' });
 
     // Verificar unidad existe y no está vendida
@@ -213,14 +217,20 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     const finalSoldAt = sold_at || new Date().toISOString();
     const prevStatus  = unit.status;
 
-    // Actualizar unidad
+    // Actualizar unidad — incluye campos extendidos de 024
     const { rows: updated } = await db.query(
       `UPDATE inventory SET
          status='vendida', sold_at=$1, sold_by=$2, ticket_id=$3,
-         payment_method=$4, sale_type=$5, sale_notes=$6, updated_at=NOW()
-       WHERE id=$7 RETURNING *`,
+         payment_method=$4, sale_type=$5, sale_notes=$6,
+         sale_price=$7, cost_price=$8, invoice_amount=$9,
+         client_name=$10, client_rut=$11,
+         updated_at=NOW()
+       WHERE id=$12 RETURNING *`,
       [finalSoldAt, sold_by, ticket_id||null, payment_method||null,
-       sale_type||null, sale_notes||null, req.params.id]
+       sale_type||null, sale_notes||null,
+       sale_price||null, cost_price||null, invoice_amount||null,
+       client_name||null, client_rut||null,
+       req.params.id]
     );
 
     // Historial
@@ -230,7 +240,7 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
        VALUES ($1,'sold',$2,'vendida',$3,$4,$5)`,
       [req.params.id, prevStatus, req.user.id,
        `Venta registrada${sale_notes ? '. ' + sale_notes : ''}`,
-       JSON.stringify({ sold_by, payment_method, sale_type, ticket_id })]
+       JSON.stringify({ sold_by, payment_method, sale_type, ticket_id, sale_price })]
     );
 
     // Nombre del vendedor para el timeline
@@ -245,6 +255,11 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
         [ticket_id, req.user.id,
          `Moto vendida: ${unit.brand} ${unit.model} · Chasis ${unit.chassis}`,
          `Vendida por ${svName}. ${payment_method ? 'Pago: ' + payment_method + '. ' : ''}${sale_notes||''}`]
+      );
+      // También marcar el ticket como ganado si no lo está aún
+      await db.query(
+        `UPDATE tickets SET status='ganado', updated_at=NOW() WHERE id=$1 AND status != 'ganado'`,
+        [ticket_id]
       );
     }
 

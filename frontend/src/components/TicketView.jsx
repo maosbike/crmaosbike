@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
+import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 export function TicketView({lead,user,nav,updLead}){
   const[tab,setTab]=useState("datos");
@@ -29,6 +30,7 @@ export function TicketView({lead,user,nav,updLead}){
   const slaBreach=lead.sla_status==="breached";
   const slaWarning=lead.sla_status==="warning";
 
+  const[showSell,setShowSell]=useState(false);
   const[noteForm,setNoteForm]=useState("");
   const[noteErr,setNoteErr]=useState("");
   const upd=(field,val)=>updLead(lead.id,{[field]:val});
@@ -57,9 +59,7 @@ export function TicketView({lead,user,nav,updLead}){
     }
     setNoteForm("");
   };
-  const togglePV=(f)=>updLead(lead.id,{postVenta:{...lead.postVenta,[f]:!lead.postVenta[f]}});
-
-  const tabs=[{id:"datos",l:"Datos Cliente"},{id:"timeline",l:"Timeline"},{id:"recordatorios",l:"Recordatorios"},{id:"financiamiento",l:"Financiamiento"},{id:"postventa",l:"Post Venta"},...(isAdmin?[{id:"historial_asignacion",l:"Historial Vendedor"}]:[])];
+  const tabs=[{id:"datos",l:"Datos Cliente"},{id:"timeline",l:"Timeline"},{id:"recordatorios",l:"Recordatorios"},{id:"financiamiento",l:"Financiamiento"},...(isAdmin?[{id:"historial_asignacion",l:"Historial Vendedor"}]:[])];
 
   return(
     <div>
@@ -84,6 +84,20 @@ export function TicketView({lead,user,nav,updLead}){
           </div>
           <div style={{marginTop:8}}><label style={S.lbl}>¿Test ride realizado?</label><div style={{display:"flex",gap:6}}>{[true,false].map(v=><button key={String(v)} onClick={()=>upd("testRide",v)} style={{...S.btn2,padding:"4px 14px",fontSize:11,background:lead.testRide===v?(v?"#10B981":"#333"):"transparent",color:lead.testRide===v?"#fff":"#888",border:lead.testRide===v?"none":"1px solid #333"}}>{v?"SÍ":"NO"}</button>)}</div></div>
           {isAdmin&&<div style={{marginTop:10}}><label style={S.lbl}>Reasignar vendedor</label><select value={lead.seller_id||lead.seller||""} onChange={e=>{const sl=sellers.find(s=>s.id===e.target.value);const slName=sl?(sl.first_name||sl.fn||'')+" "+(sl.last_name||sl.ln||''):"";updLead(lead.id,{seller:e.target.value,seller_id:e.target.value,timeline:[{id:`tl-${Date.now()}`,type:"system",title:`Reasignado a ${slName.trim()}`,date:new Date().toISOString(),user:`${user.fn} ${user.ln}`},...lead.timeline]});}} style={{...S.inp,width:"100%",fontSize:11}}><option value="">Seleccionar vendedor...</option>{sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}</select></div>}
+          {lead.status!=="ganado"&&lead.status!=="perdido"&&(
+            <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #F3F4F6"}}>
+              <button onClick={()=>setShowSell(true)} style={{...S.btn,width:"100%",background:"#10B981",borderColor:"#059669",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 14px"}}>
+                <Ic.sale size={14} color="#fff"/>Registrar Venta
+              </button>
+            </div>
+          )}
+          {lead.status==="ganado"&&(
+            <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #F3F4F6"}}>
+              <button onClick={()=>setShowSell(true)} style={{...S.btn2,width:"100%",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 14px",color:"#10B981",border:"1px solid #10B981"}}>
+                <Ic.sale size={14} color="#10B981"/>Registrar otra unidad
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -292,19 +306,7 @@ export function TicketView({lead,user,nav,updLead}){
         </div>
       )}
 
-      {tab==="postventa"&&(
-        <div style={S.card}>
-          <h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Documentación / Entrega</h3>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            {[["factura","Factura emitida"],["pagoReg","Pago registrado"],["homSol","Homologación solicitada"],["homRec","Homologación recibida"],["enrolada","Moto enrolada"],["entregada","Entrega realizada"]].map(([key,label])=>(
-              <div key={key} onClick={()=>togglePV(key)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"#F9FAFB",cursor:"pointer",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="#F9FAFB"}>
-                <div style={{width:22,height:22,borderRadius:6,border:lead.postVenta[key]?"none":"2px solid #333",background:lead.postVenta[key]?"#10B981":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{lead.postVenta[key]&&<Ic.check size={13} color="white"/>}</div>
-                <span style={{fontSize:13,color:lead.postVenta[key]?"#1a1a1a":"#888"}}>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {showSell&&<SellFromTicketModal ticketId={lead.id} lead={lead} user={user} onClose={()=>setShowSell(false)} onSuccess={()=>{updLead(lead.id,{status:"ganado"});}}/>}
     </div>
   );
 }
