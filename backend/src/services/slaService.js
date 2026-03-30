@@ -219,6 +219,15 @@ const SLAService = {
 
       // 1. Tickets WARNING — update atómico con RETURNING para evitar doble procesamiento
       // Incluye tickets 'reassigned' — el nuevo vendedor también merece aviso de 1h
+      //
+      // Por qué el SQL es correcto aunque la lógica de horario esté en slaUtils.js:
+      //   - sla_deadline es un timestamp UTC absoluto calculado por calcSlaDeadline().
+      //     Ya tiene la lógica de horario hábil "horneada" — no hay que re-aplicarla aquí.
+      //   - sla_deadline - INTERVAL '1 hour' es aritmética UTC pura (siempre 3600 s,
+      //     immune a DST). Significa "1 hora de reloj antes del vencimiento".
+      //   - El guard isNowBusinessHour() al inicio de checkAll() garantiza que esta
+      //     query solo corre dentro del horario hábil, por lo que "1 hora antes" siempre
+      //     cae dentro de la ventana operativa (con el edge case documentado en slaUtils.js).
       const { rows: warningTickets } = await db.query(
         `UPDATE tickets SET sla_status = 'warning'
          WHERE id IN (
@@ -249,6 +258,11 @@ const SLAService = {
 
       // 2. Tickets BREACH — update atómico con RETURNING
       // Incluye 'reassigned' directamente: si el cron saltó la ventana de warning, igual reasigna
+      //
+      // sla_deadline < NOW() es una comparación UTC simple: "¿ya pasó el deadline?"
+      // Los tickets vencidos fuera de horario (e.g. deadline a las 11:00 pero el cron
+      // no corrió) quedan pendientes y se procesan en la primera ejecución hábil siguiente,
+      // gracias al guard isNowBusinessHour() al inicio de checkAll().
       const { rows: breachedTickets } = await db.query(
         `UPDATE tickets SET sla_status = 'breached'
          WHERE id IN (

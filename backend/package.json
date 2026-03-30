@@ -5,7 +5,8 @@
     "start": "node src/scripts/migrate.js && node src/index.js",
     "dev": "node --watch src/index.js",
     "migrate": "node src/scripts/migrate.js",
-    "seed": "node src/scripts/seed.js"
+    "seed": "node src/scripts/seed.js",
+    "test": "node src/utils/__tests__/slaUtils.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

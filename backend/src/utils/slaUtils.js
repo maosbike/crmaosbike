@@ -83,15 +83,40 @@ function calcSlaDeadline(createdAt = new Date()) {
 }
 
 /**
+ * Retorna true si `date` (UTC) cae dentro del horario hábil 09:00–19:00 Santiago.
+ * Exportada para poder testearla con fechas arbitrarias.
+ *
+ * Nota sobre el SQL de warning/breach en slaService.js:
+ *   Las comparaciones `sla_deadline - INTERVAL '1 hour' < NOW()` y `sla_deadline < NOW()`
+ *   son pura aritmética UTC — correctas e independientes del timezone del server.
+ *   Funcionan porque:
+ *     a) sla_deadline ya es un timestamp UTC absoluto calculado por calcSlaDeadline(),
+ *        que encapsula toda la lógica de horario hábil.
+ *     b) INTERVAL '1 hour' en PostgreSQL es siempre exactamente 3600 s (immune a DST).
+ *     c) isNowBusinessHour() bloquea checkAll() antes de llegar al SQL, garantizando
+ *        que warnings y breaches solo se procesan dentro del horario hábil.
+ *   Edge case conocido: si el deadline queda muy cerca de las 09:00 del día siguiente
+ *   (lead creado cerca del cierre), la ventana de warning de "1 hora antes" puede caer
+ *   antes de las 09:00. El guard lo frena y el warning se emite al abrir, cerca del breach.
+ *   Es un comportamiento aceptable — no es un bug.
+ *
+ * @param {Date} date - Momento a evaluar (Date UTC)
+ * @returns {boolean}
+ */
+function isBusinessHour(date) {
+  const dt = DateTime.fromJSDate(date).setZone(TZ);
+  const h  = dt.hour + dt.minute / 60;
+  return h >= BIZ_START && h < BIZ_END;
+}
+
+/**
  * Retorna true si el instante actual está dentro del horario hábil 09:00–19:00 Santiago.
  * Usado por el checker de SLA para no ejecutar reasignaciones fuera de horario.
  *
  * @returns {boolean}
  */
 function isNowBusinessHour() {
-  const now = DateTime.now().setZone(TZ);
-  const h   = now.hour + now.minute / 60;
-  return h >= BIZ_START && h < BIZ_END;
+  return isBusinessHour(new Date());
 }
 
-module.exports = { calcSlaDeadline, isNowBusinessHour };
+module.exports = { calcSlaDeadline, isBusinessHour, isNowBusinessHour };
