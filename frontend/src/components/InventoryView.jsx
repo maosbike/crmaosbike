@@ -354,29 +354,18 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
 
                   {/* ── SUCURSAL — strip izquierdo de color ── */}
                   <div style={{
-                    width:82, flexShrink:0,
+                    width:72, flexShrink:0,
                     background: bCode ? bCfg.color : '#E5E7EB',
-                    display:'flex', flexDirection:'column',
-                    alignItems:'center', justifyContent:'center',
-                    padding:'16px 8px', gap:4,
+                    display:'flex', alignItems:'center', justifyContent:'center',
                   }}>
-                    <span style={{ fontSize:15, fontWeight:900, color:'#FFFFFF', letterSpacing:'0.04em', lineHeight:1 }}>
+                    <span style={{ fontSize:16, fontWeight:900, color:'#FFFFFF', letterSpacing:'0.06em' }}>
                       {bCode || '—'}
                     </span>
-                    {bCfg.label && (
-                      <span style={{ fontSize:9, fontWeight:600, color:'rgba(255,255,255,0.75)', letterSpacing:'0.1em', textTransform:'uppercase' }}>
-                        {bCfg.label}
-                      </span>
-                    )}
-                    {/* Año */}
-                    {x.year && (
-                      <span style={{ fontSize:9, color:'rgba(255,255,255,0.55)', marginTop:4 }}>{x.year}</span>
-                    )}
                   </div>
 
-                  {/* ── UNIDAD — foto · marca · modelo · color ── */}
+                  {/* ── UNIDAD — foto · marca · modelo · año · color ── */}
                   <div style={{
-                    flex:'0 0 260px', padding:'12px 16px',
+                    flex:'0 0 290px', padding:'10px 16px',
                     borderRight:'1px solid #F1F3F5',
                     display:'flex', alignItems:'center', gap:14,
                   }}>
@@ -386,46 +375,57 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
                         ? <img
                             src={x.unit_photo}
                             onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
-                            style={{ width:72, height:72, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
+                            style={{ width:92, height:92, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
                           />
                         : <button
                             onClick={()=>handlePhoto(x.id,'unit_photo')}
                             title="Agregar foto de la moto"
                             style={{
-                              width:72, height:72, borderRadius:10,
+                              width:92, height:92, borderRadius:10,
                               border:'1.5px dashed #D1D5DB', background:'#F8FAFC',
                               cursor:'pointer', display:'flex', flexDirection:'column',
-                              alignItems:'center', justifyContent:'center', gap:4, padding:0,
+                              alignItems:'center', justifyContent:'center', gap:5, padding:0,
                             }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                               <circle cx="12" cy="13" r="4"/>
                             </svg>
-                            <span style={{ fontSize:9, color:'#CBD5E1', fontWeight:600, letterSpacing:'0.04em' }}>FOTO</span>
+                            <span style={{ fontSize:9, color:'#C9D0D8', fontWeight:700, letterSpacing:'0.08em' }}>FOTO</span>
                           </button>
                       }
                     </div>
-                    {/* Texto */}
+                    {/* Info */}
                     <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center' }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
-                        Unidad
-                      </div>
-                      <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {/* Marca */}
+                      <div style={{ fontSize:18, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                         {x.brand}
                       </div>
-                      <div style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:7, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {/* Modelo */}
+                      <div style={{ fontSize:12, fontWeight:600, color:'#475569', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                         {x.model}
                       </div>
-                      {x.color && (
-                        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                      {/* Año */}
+                      {x.year && (
+                        <div style={{ marginBottom:7 }}>
                           <span style={{
-                            width:10, height:10, borderRadius:'50%', flexShrink:0,
+                            fontSize:13, fontWeight:800, color:'#4F46E5',
+                            background:'#EEF2FF', padding:'2px 10px', borderRadius:6,
+                            border:'1px solid #C7D2FE', letterSpacing:'0.02em',
+                          }}>
+                            {x.year}
+                          </span>
+                        </div>
+                      )}
+                      {/* Color */}
+                      {x.color && (
+                        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                          <span style={{
+                            display:'inline-block', width:22, height:14, borderRadius:4, flexShrink:0,
                             background: cDot || '#E5E7EB',
-                            border: !cDot || cDot==='#FFFFFF'||cDot==='#F9FAFB'
-                              ? '1.5px solid #D1D5DB' : 'none',
-                            boxShadow:'0 0 0 1px rgba(0,0,0,0.08)',
+                            border: !cDot || cDot==='#FFFFFF' ? '1px solid #D1D5DB' : '1px solid rgba(0,0,0,0.12)',
+                            boxShadow: cDot ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
                           }}/>
-                          <span style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>{x.color}</span>
+                          <span style={{ fontSize:11, color:'#6B7280', fontWeight:600 }}>{x.color}</span>
                         </div>
                       )}
                     </div>
