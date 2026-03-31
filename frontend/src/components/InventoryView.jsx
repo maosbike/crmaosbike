@@ -54,6 +54,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [sellUnit,  setSellUnit]   = useState(null);
   const [sellForm,  setSellForm]   = useState(BLANK_SELL());
   const [selling,   setSelling]    = useState(false);
+  const [ticketSearch, setTicketSearch] = useState('');
   const [histOpen,  setHistOpen]   = useState(new Set());
   const [histData,  setHistData]   = useState({});
   const [histLoading,setHistLoading] = useState({});
@@ -142,7 +143,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     setInv(p => p.map(x => x.id===id ? {...x,branch_id} : x));
     try { await api.updateInventory(id, {branch_id}); reload(); } catch(ex) { alert(ex.message); reload(); }
   };
-  const openSell = unit => { setSellUnit(unit); setSellForm(BLANK_SELL()); setShowSell(true); };
+  const openSell = (unit, preTicketId) => { setSellUnit(unit); setSellForm({...BLANK_SELL(), ticket_id: preTicketId||''}); setTicketSearch(''); setShowSell(true); };
   const handleSell = async e => {
     e.preventDefault(); if (!sellUnit||!sellForm.sold_by) return;
     setSelling(true);
@@ -802,48 +803,84 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </div>
               {/* ── Lead asociado ── */}
               <div style={{ marginBottom:12 }}>
-                <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:4 }}>Lead asociado <span style={{ color:'#9CA3AF',fontWeight:400 }}>(opcional)</span></label>
+                <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:6 }}>
+                  Lead asociado <span style={{ color:'#9CA3AF',fontWeight:400 }}>(opcional)</span>
+                </label>
                 {(() => {
                   const selT = sellForm.ticket_id ? openTickets.find(t=>String(t.id)===String(sellForm.ticket_id)) : null;
+                  const q = ticketSearch.trim().toLowerCase();
+                  const results = q.length >= 2
+                    ? openTickets.filter(t =>
+                        `${t.ticket_num||''} ${t.first_name||''} ${t.last_name||''} ${t.phone||''} ${t.rut||''}`
+                          .toLowerCase().includes(q)
+                      ).slice(0, 8)
+                    : [];
+
+                  // ── Ticket ya seleccionado (manual o auto-asociado) ──
+                  if (selT) return (
+                    <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 13px',borderRadius:9,background:'#EFF6FF',border:'1.5px solid #BFDBFE' }}>
+                      <div>
+                        <div style={{ fontSize:11,fontWeight:700,color:'#1E40AF',marginBottom:2 }}>
+                          {selT.ticket_num && <span style={{ marginRight:7,background:'#DBEAFE',padding:'2px 7px',borderRadius:4,fontSize:10,fontWeight:800 }}>{selT.ticket_num}</span>}
+                          {[selT.first_name,selT.last_name].filter(Boolean).join(' ')||'Sin nombre'}
+                        </div>
+                        {selT.phone && <div style={{ fontSize:10,color:'#3B82F6' }}>{selT.phone}</div>}
+                      </div>
+                      <div style={{ display:'flex',gap:6,flexShrink:0 }}>
+                        {nav && (
+                          <button type="button"
+                            onClick={()=>{ setShowSell(false); setSellUnit(null); nav('ticket', selT.id); }}
+                            style={{ padding:'5px 10px',borderRadius:7,border:'1px solid #93C5FD',background:'#FFFFFF',color:'#2563EB',fontSize:11,fontWeight:700,cursor:'pointer' }}>
+                            Ver lead →
+                          </button>
+                        )}
+                        <button type="button"
+                          onClick={()=>{ setSellForm(p=>({...p,ticket_id:''})); setTicketSearch(''); }}
+                          style={{ padding:'5px 9px',borderRadius:7,border:'1px solid #E2E8F0',background:'#FFFFFF',color:'#6B7280',fontSize:11,cursor:'pointer' }}>
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  );
+
+                  // ── Sin ticket seleccionado: campo de búsqueda ──
                   return (
-                    <div>
-                      <select
-                        value={sellForm.ticket_id}
-                        onChange={e=>setSellForm(p=>({...p,ticket_id:e.target.value}))}
-                        style={{...S.inp,width:'100%',marginBottom: selT ? 8 : 0}}
-                      >
-                        <option value="">— Sin lead asociado —</option>
-                        {openTickets.length === 0
-                          ? <option disabled>Cargando leads...</option>
-                          : openTickets.map(t=>(
-                              <option key={t.id} value={t.id}>
-                                {[t.ticket_num, [t.first_name,t.last_name].filter(Boolean).join(' '), t.phone].filter(Boolean).join(' · ')}
-                              </option>
-                            ))
-                        }
-                      </select>
-                      {selT && (
-                        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderRadius:8,background:'#EFF6FF',border:'1px solid #BFDBFE' }}>
-                          <div>
-                            <div style={{ fontSize:11,fontWeight:700,color:'#1E40AF' }}>
-                              {selT.ticket_num && <span style={{ marginRight:6,background:'#DBEAFE',padding:'1px 7px',borderRadius:4,fontSize:10 }}>{selT.ticket_num}</span>}
-                              {[selT.first_name,selT.last_name].filter(Boolean).join(' ')||'Sin nombre'}
-                            </div>
-                            {selT.phone && <div style={{ fontSize:10,color:'#3B82F6',marginTop:2 }}>{selT.phone}</div>}
-                          </div>
-                          {nav && (
-                            <button
-                              type="button"
-                              onClick={()=>{ setShowSell(false); setSellUnit(null); nav('ticket', selT.id); }}
-                              style={{ padding:'5px 11px',borderRadius:7,border:'1px solid #93C5FD',background:'#FFFFFF',color:'#2563EB',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0 }}
+                    <div style={{ position:'relative' }}>
+                      <input
+                        type="text"
+                        value={ticketSearch}
+                        onChange={e=>setTicketSearch(e.target.value)}
+                        placeholder="Buscar por nombre, teléfono o N° ticket..."
+                        style={{...S.inp, width:'100%'}}
+                      />
+                      {q.length > 0 && q.length < 2 && (
+                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>Escribe al menos 2 caracteres para buscar</div>
+                      )}
+                      {q.length >= 2 && results.length === 0 && (
+                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>Sin resultados para "{ticketSearch}"</div>
+                      )}
+                      {results.length > 0 && (
+                        <div style={{ position:'absolute',top:'100%',left:0,right:0,zIndex:20,background:'#FFFFFF',border:'1px solid #E2E8F0',borderRadius:9,boxShadow:'0 4px 16px rgba(0,0,0,0.1)',marginTop:3,overflow:'hidden' }}>
+                          {results.map(t=>(
+                            <button key={t.id} type="button"
+                              onClick={()=>{ setSellForm(p=>({...p,ticket_id:String(t.id)})); setTicketSearch(''); }}
+                              style={{ width:'100%',textAlign:'left',padding:'9px 13px',background:'transparent',border:'none',borderBottom:'1px solid #F3F4F6',cursor:'pointer',display:'flex',flexDirection:'column',gap:2 }}
+                              onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'}
+                              onMouseLeave={e=>e.currentTarget.style.background='transparent'}
                             >
-                              Ver lead →
+                              <div style={{ fontSize:12,fontWeight:700,color:'#0F172A' }}>
+                                {t.ticket_num && <span style={{ marginRight:7,color:'#6366F1',fontSize:10,fontWeight:800 }}>{t.ticket_num}</span>}
+                                {[t.first_name,t.last_name].filter(Boolean).join(' ')||'Sin nombre'}
+                              </div>
+                              <div style={{ fontSize:10,color:'#94A3B8' }}>
+                                {[t.phone, t.status].filter(Boolean).join(' · ')}
+                              </div>
                             </button>
-                          )}
+                          ))}
                         </div>
                       )}
-                      {!selT && openTickets.length === 0 && (
-                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>No hay leads activos cargados</div>
+                      {!ticketSearch && (
+                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>Sin lead asociado — deja vacío o busca uno</div>
                       )}
                     </div>
                   );
