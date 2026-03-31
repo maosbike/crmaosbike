@@ -381,8 +381,8 @@ router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), asyn
 // Upload photo (chassis or motor)
 router.post('/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
   try {
-    const { field } = req.body; // 'chassis_photo' or 'motor_photo'
-    if (!['chassis_photo', 'motor_photo'].includes(field))
+    const { field } = req.body; // 'chassis_photo', 'motor_photo', or 'unit_photo'
+    if (!['chassis_photo', 'motor_photo', 'unit_photo'].includes(field))
       return res.status(400).json({ error: 'Campo inválido' });
 
     if (!req.file) return res.status(400).json({ error: 'Foto requerida' });

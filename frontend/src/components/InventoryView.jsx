@@ -374,84 +374,110 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
                     )}
                   </div>
 
-                  {/* ── UNIDAD — marca · modelo · color ── */}
+                  {/* ── UNIDAD — foto · marca · modelo · color ── */}
                   <div style={{
-                    flex:'0 0 200px', padding:'16px 18px',
+                    flex:'0 0 260px', padding:'12px 16px',
                     borderRight:'1px solid #F1F3F5',
-                    display:'flex', flexDirection:'column', justifyContent:'center',
+                    display:'flex', alignItems:'center', gap:14,
                   }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
-                      Unidad
+                    {/* Foto de la moto */}
+                    <div style={{ flexShrink:0 }}>
+                      {x.unit_photo
+                        ? <img
+                            src={x.unit_photo}
+                            onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
+                            style={{ width:72, height:72, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
+                          />
+                        : <button
+                            onClick={()=>handlePhoto(x.id,'unit_photo')}
+                            title="Agregar foto de la moto"
+                            style={{
+                              width:72, height:72, borderRadius:10,
+                              border:'1.5px dashed #D1D5DB', background:'#F8FAFC',
+                              cursor:'pointer', display:'flex', flexDirection:'column',
+                              alignItems:'center', justifyContent:'center', gap:4, padding:0,
+                            }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                              <circle cx="12" cy="13" r="4"/>
+                            </svg>
+                            <span style={{ fontSize:9, color:'#CBD5E1', fontWeight:600, letterSpacing:'0.04em' }}>FOTO</span>
+                          </button>
+                      }
                     </div>
-                    <div style={{ fontSize:18, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:4 }}>
-                      {x.brand}
-                    </div>
-                    <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginBottom:8 }}>
-                      {x.model}
-                    </div>
-                    {/* Color */}
-                    {x.color && (
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{
-                          width:12, height:12, borderRadius:'50%', flexShrink:0,
-                          background: cDot || '#E5E7EB',
-                          border: !cDot || cDot==='#FFFFFF'||cDot==='#F9FAFB'
-                            ? '1.5px solid #D1D5DB' : 'none',
-                          boxShadow:'0 0 0 1px rgba(0,0,0,0.08)',
-                        }}/>
-                        <span style={{ fontSize:12, color:'#6B7280', fontWeight:500 }}>{x.color}</span>
+                    {/* Texto */}
+                    <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center' }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
+                        Unidad
                       </div>
-                    )}
+                      <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        {x.brand}
+                      </div>
+                      <div style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:7, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        {x.model}
+                      </div>
+                      {x.color && (
+                        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                          <span style={{
+                            width:10, height:10, borderRadius:'50%', flexShrink:0,
+                            background: cDot || '#E5E7EB',
+                            border: !cDot || cDot==='#FFFFFF'||cDot==='#F9FAFB'
+                              ? '1.5px solid #D1D5DB' : 'none',
+                            boxShadow:'0 0 0 1px rgba(0,0,0,0.08)',
+                          }}/>
+                          <span style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>{x.color}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* ── IDENTIFICADORES — chasis · motor ── */}
                   <div style={{
-                    flex:1, padding:'16px 20px',
+                    flex:1, padding:'14px 20px',
                     borderRight:'1px solid #F1F3F5',
-                    display:'flex', flexDirection:'column', justifyContent:'center', gap:10,
+                    display:'flex', flexDirection:'column', justifyContent:'center', gap:12,
                   }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em' }}>
                       Identificación
                     </div>
                     {/* Chasis */}
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.08em', textTransform:'uppercase', width:38, flexShrink:0 }}>Chasis</span>
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Chasis</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:7 }}>
                         <span style={{
-                          fontFamily:"'SF Mono','Fira Code','Fira Mono','Roboto Mono',Consolas,monospace",
-                          fontSize:12, fontWeight:700, letterSpacing:'0.08em',
-                          color:'#1E293B', background:'#F1F5F9',
-                          padding:'3px 10px', borderRadius:6,
-                          border:'1px solid #CBD5E1',
+                          fontSize:12, fontWeight:700, color:'#1E293B',
+                          background:'#F1F5F9', padding:'4px 11px', borderRadius:7,
+                          border:'1px solid #E2E8F0', letterSpacing:'0.03em',
                         }}>
                           {x.chassis}
                         </span>
                         {x.chassis_photo
                           ? <img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})}
-                              style={{ width:28,height:28,borderRadius:6,objectFit:'cover',cursor:'pointer',border:'2px solid #E5E7EB',flexShrink:0 }}/>
+                              style={{ width:26,height:26,borderRadius:6,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0',flexShrink:0 }}/>
                           : <button onClick={()=>handlePhoto(x.id,'chassis_photo')} title="Agregar foto de chasis"
-                              style={{ width:26,height:26,borderRadius:6,border:'1.5px dashed #CBD5E1',background:'transparent',cursor:'pointer',fontSize:13,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,padding:0 }}>+</button>
+                              style={{ width:24,height:24,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,padding:0 }}>+</button>
                         }
                       </div>
                     </div>
                     {/* Motor */}
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.08em', textTransform:'uppercase', width:38, flexShrink:0 }}>Motor</span>
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Motor</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:7 }}>
                         {x.motor_num
                           ? <>
                               <span style={{
-                                fontFamily:"'SF Mono','Fira Code','Fira Mono','Roboto Mono',Consolas,monospace",
-                                fontSize:11, fontWeight:500, letterSpacing:'0.05em', color:'#475569',
+                                fontSize:12, fontWeight:600, color:'#475569',
+                                background:'#F8FAFC', padding:'3px 10px', borderRadius:6,
+                                border:'1px solid #E9EAEC', letterSpacing:'0.02em',
                               }}>{x.motor_num}</span>
                               {x.motor_photo
                                 ? <img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})}
-                                    style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'2px solid #E5E7EB' }}/>
+                                    style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0' }}/>
                                 : <button onClick={()=>handlePhoto(x.id,'motor_photo')} title="Agregar foto de motor"
-                                    style={{ width:22,height:22,borderRadius:5,border:'1.5px dashed #CBD5E1',background:'transparent',cursor:'pointer',fontSize:12,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
+                                    style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                               }
                             </>
-                          : <span style={{ fontSize:11, color:'#CBD5E1' }}>—</span>
+                          : <span style={{ fontSize:12, color:'#D1D5DB', fontWeight:400 }}>—</span>
                         }
                       </div>
                     </div>
