@@ -114,7 +114,7 @@ export default function App(){
           {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches}/>}
           {page==="pipeline"&&<PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/>}
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
-          {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches}/>}
+          {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/>}
           {page==="sales"&&<SalesView user={user} realBranches={realBranches}/>}
           {page==="catalog"&&<CatalogView user={user}/>}
           {page==="reports"&&<ReportsView branches={realBranches}/>}

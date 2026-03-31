@@ -38,7 +38,7 @@ const getColorCss = c => COLOR_CSS[(c||'').toLowerCase().trim()] || null;
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 
-export function InventoryView({ inv, setInv, user, realBranches }) {
+export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const brs = realBranches || [];
   const [brF,    setBrF]    = useState('');
   const [stF,    setStF]    = useState('');
@@ -81,7 +81,12 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
   useEffect(() => {
     if (!showAdd && !showSell) return;
     api.getSellers().then(d => setSellers(Array.isArray(d) ? d : [])).catch(() => {});
-    api.getTickets({ status:'ganado,abierto', limit:200 }).then(d => setOpenTickets((d.data||[]).slice(0,200))).catch(() => {});
+    // Fetching without status filter — backend only supports exact match, not comma-separated.
+    // Filter out definitively closed statuses on the frontend.
+    api.getTickets({ limit:300 }).then(d => {
+      const all = d.data || [];
+      setOpenTickets(all.filter(t => !['perdido','cerrado'].includes(t.status)));
+    }).catch(() => {});
   }, [showAdd, showSell]);
 
   // ── Handlers (sin cambios de lógica) ────────────────────────────────────────
@@ -795,8 +800,54 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
                 <Field label="Estado documentación" value={sellForm.sale_type} onChange={v=>setSellForm(p=>({...p,sale_type:v}))} opts={[{v:'completa',l:'Documentación completa'},{v:'inscripcion',l:'Solo inscripción pendiente'},{v:'entregada',l:'Entregada al cliente'}]}/>
                 <Field label="Método de pago" value={sellForm.payment_method} onChange={v=>setSellForm(p=>({...p,payment_method:v}))} opts={[{v:'',l:'Seleccionar...'},{v:'Contado',l:'Contado'},{v:'Transferencia',l:'Transferencia bancaria'},{v:'Tarjeta Débito',l:'Tarjeta Débito'},{v:'Tarjeta Crédito',l:'Tarjeta Crédito'},{v:'Crédito Autofin',l:'Crédito Autofin'},{v:'Mixto',l:'Mixto'}]}/>
               </div>
+              {/* ── Lead asociado ── */}
               <div style={{ marginBottom:12 }}>
-                <Field label="Ticket asociado (opcional)" value={sellForm.ticket_id} onChange={v=>setSellForm(p=>({...p,ticket_id:v}))} opts={[{v:'',l:'Sin lead asociado'},...openTickets.map(t=>({v:t.id,l:`${t.ticket_num?t.ticket_num+' · ':''}${[t.first_name,t.last_name].filter(Boolean).join(' ')||'Sin nombre'}`}))]}/>
+                <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:4 }}>Lead asociado <span style={{ color:'#9CA3AF',fontWeight:400 }}>(opcional)</span></label>
+                {(() => {
+                  const selT = sellForm.ticket_id ? openTickets.find(t=>String(t.id)===String(sellForm.ticket_id)) : null;
+                  return (
+                    <div>
+                      <select
+                        value={sellForm.ticket_id}
+                        onChange={e=>setSellForm(p=>({...p,ticket_id:e.target.value}))}
+                        style={{...S.inp,width:'100%',marginBottom: selT ? 8 : 0}}
+                      >
+                        <option value="">— Sin lead asociado —</option>
+                        {openTickets.length === 0
+                          ? <option disabled>Cargando leads...</option>
+                          : openTickets.map(t=>(
+                              <option key={t.id} value={t.id}>
+                                {[t.ticket_num, [t.first_name,t.last_name].filter(Boolean).join(' '), t.phone].filter(Boolean).join(' · ')}
+                              </option>
+                            ))
+                        }
+                      </select>
+                      {selT && (
+                        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderRadius:8,background:'#EFF6FF',border:'1px solid #BFDBFE' }}>
+                          <div>
+                            <div style={{ fontSize:11,fontWeight:700,color:'#1E40AF' }}>
+                              {selT.ticket_num && <span style={{ marginRight:6,background:'#DBEAFE',padding:'1px 7px',borderRadius:4,fontSize:10 }}>{selT.ticket_num}</span>}
+                              {[selT.first_name,selT.last_name].filter(Boolean).join(' ')||'Sin nombre'}
+                            </div>
+                            {selT.phone && <div style={{ fontSize:10,color:'#3B82F6',marginTop:2 }}>{selT.phone}</div>}
+                          </div>
+                          {nav && (
+                            <button
+                              type="button"
+                              onClick={()=>{ setShowSell(false); setSellUnit(null); nav('ticket', selT.id); }}
+                              style={{ padding:'5px 11px',borderRadius:7,border:'1px solid #93C5FD',background:'#FFFFFF',color:'#2563EB',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0 }}
+                            >
+                              Ver lead →
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {!selT && openTickets.length === 0 && (
+                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>No hay leads activos cargados</div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ marginBottom:18 }}>
                 <Field label="Observaciones" value={sellForm.sale_notes} onChange={v=>setSellForm(p=>({...p,sale_notes:v}))} rows={2} ph="Ej: Entrega pactada para el lunes..."/>
