@@ -195,7 +195,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Moto — igual que zona unidad en Inventario */}
-                <div style={{flex:'0 0 260px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',alignItems:'center',gap:14}}>
+                <div style={{flex:'0 0 260px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',alignItems:'flex-start',gap:14}}>
                   {x.model_image
                     ?<img src={x.model_image} alt="" style={{width:80,height:56,objectFit:'cover',borderRadius:9,border:'1.5px solid #E2E8F0',flexShrink:0}}/>
                     :<div style={{width:80,height:56,borderRadius:9,border:'1.5px dashed #D1D5DB',background:'#F8FAFC',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -220,57 +220,54 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Cliente */}
-                <div style={{flex:'0 0 220px',padding:'14px 18px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'center',gap:8}}>
-                  <div style={sectionLbl}>Cliente</div>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <Initials fn={x.fn} ln={x.ln} size={34}/>
-                    <div style={{minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:700,color:'#0F172A',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
-                      {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:2}}>{x.phone}</div>}
-                      {x.rut&&<div style={{fontSize:10,color:'#94A3B8',marginTop:1,fontVariantNumeric:'tabular-nums'}}>{x.rut}</div>}
-                    </div>
-                  </div>
-                  {x.source&&<div style={{display:'inline-flex',alignItems:'center'}}>
+                <div style={{flex:'0 0 210px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                  <div style={{...sectionLbl,marginBottom:7}}>Cliente</div>
+                  <div style={{fontSize:14,fontWeight:700,color:'#0F172A',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
+                  {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:4}}>{x.phone}</div>}
+                  {x.rut&&<div style={{fontSize:10,color:'#94A3B8',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{x.rut}</div>}
+                  {x.source&&<div style={{marginTop:6}}>
                     <span style={{fontSize:9,fontWeight:700,color:'#64748B',background:'#F1F5F9',padding:'2px 8px',borderRadius:5,border:'1px solid #E2E8F0',textTransform:'uppercase',letterSpacing:'0.06em'}}>{SRC_SHORT[x.source]||x.source}</span>
                   </div>}
                 </div>
 
                 {/* Zona Estado / Prioridad */}
-                <div style={{flex:'0 0 150px',padding:'14px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'center',gap:10}}>
-                  <div style={sectionLbl}>Estado</div>
+                <div style={{flex:'0 0 145px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                  <div style={{...sectionLbl,marginBottom:7}}>Estado</div>
                   <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'5px 11px',borderRadius:20,fontSize:11,fontWeight:700,color:stCfg.c,background:`${stCfg.c}18`,border:`1px solid ${stCfg.c}40`,whiteSpace:'nowrap',alignSelf:'flex-start'}}>
                     <span style={{width:6,height:6,borderRadius:'50%',background:stCfg.c,flexShrink:0}}/>
                     {stCfg.l}
                   </span>
-                  <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:6,fontSize:10,fontWeight:700,color:prCfg.c,background:`${prCfg.c}12`,border:`1px solid ${prCfg.c}30`,textTransform:'uppercase',letterSpacing:'0.04em',alignSelf:'flex-start'}}>
-                    <span style={{width:5,height:5,borderRadius:'50%',background:prCfg.c}}/>
-                    {prCfg.l}
-                  </span>
+                  <div style={{marginTop:8}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:6,fontSize:10,fontWeight:700,color:prCfg.c,background:`${prCfg.c}12`,border:`1px solid ${prCfg.c}30`,textTransform:'uppercase',letterSpacing:'0.04em'}}>
+                      <span style={{width:5,height:5,borderRadius:'50%',background:prCfg.c}}/>
+                      {prCfg.l}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Zona Vendedor */}
-                <div style={{flex:1,padding:'14px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'center',gap:8}}>
-                  <div style={sectionLbl}>Vendedor</div>
+                <div style={{flex:1,padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                  <div style={{...sectionLbl,marginBottom:7}}>Vendedor</div>
                   {x.seller_fn?(
-                    <div style={{display:'flex',alignItems:'center',gap:9}}>
-                      <Initials fn={x.seller_fn} ln={x.seller_ln} size={30}/>
-                      <div style={{minWidth:0}}>
-                        <div style={{fontSize:12,fontWeight:600,color:'#1E293B',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.seller_fn} {x.seller_ln}</div>
-                        {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{brName}</div>}
-                      </div>
-                    </div>
+                    <>
+                      <div style={{fontSize:12,fontWeight:600,color:'#1E293B',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.seller_fn} {x.seller_ln}</div>
+                      {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>{brName}</div>}
+                    </>
                   ):(
-                    <div>
+                    <>
                       <div style={{fontSize:11,color:'#CBD5E1'}}>Sin asignar</div>
-                      {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{brName}</div>}
-                    </div>
+                      {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>{brName}</div>}
+                    </>
                   )}
                 </div>
 
                 {/* Zona Fecha */}
-                <div style={{flex:'0 0 90px',padding:'14px 14px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'flex-end'}}>
-                  <div style={{fontSize:16,fontWeight:800,color:'#374151',letterSpacing:'-0.5px'}}>{ago(x.createdAt)}</div>
-                  <div style={{fontSize:9,color:'#94A3B8',marginTop:4,textAlign:'right',lineHeight:1.4}}>{fD(x.createdAt)}</div>
+                <div style={{flex:'0 0 108px',padding:'12px 14px',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                  <div style={{...sectionLbl,marginBottom:7}}>Creación</div>
+                  <div style={{fontSize:13,fontWeight:700,color:'#1E293B',lineHeight:1.2}}>{fD(x.createdAt)}</div>
+                  <div style={{display:'inline-flex',alignItems:'center',marginTop:6}}>
+                    <span style={{fontSize:10,fontWeight:700,color:'#64748B',background:'#F1F5F9',padding:'2px 8px',borderRadius:5,border:'1px solid #E2E8F0'}}>{ago(x.createdAt)}</span>
+                  </div>
                 </div>
               </div>
             );
