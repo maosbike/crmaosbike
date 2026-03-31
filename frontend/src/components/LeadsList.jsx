@@ -134,123 +134,114 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
         </div>
       </div>
 
-      {/* Tabla */}
-      <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,overflow:'hidden'}}>
-        <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
-          <colgroup>
-            <col style={{width:82}}/>  {/* # */}
-            <col style={{width:'22%'}}/> {/* Moto */}
-            <col style={{width:'22%'}}/> {/* Cliente */}
-            <col style={{width:'18%'}}/> {/* Estado + prio */}
-            <col/>                       {/* Vendedor + sucursal */}
-            <col style={{width:80}}/>    {/* Fecha */}
-          </colgroup>
-          <thead>
-            <tr style={{background:'#F9FAFB',borderBottom:'2px solid #E5E7EB'}}>
-              <th style={{...TH}}>#</th>
-              <th style={{...TH}}>Moto cotizada</th>
-              <th style={{...TH}}>Cliente</th>
-              <th style={{...TH}}>Estado / Prio</th>
-              <th style={{...TH}}>Vendedor · Sucursal</th>
-              <th style={{...TH,textAlign:'right'}}>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {f.map((l,i)=>{
-              const pColor=(PRIORITY[l.priority]||{}).c||'#E5E7EB';
-              const isHov=hov===l.id;
-              const brName=brs.find(b=>String(b.id)===String(l.branch_id))?.name||l.branch_code||null;
-              return(
-                <tr
-                  key={l.id}
-                  onClick={()=>nav("ticket",l.id)}
-                  onMouseEnter={()=>setHov(l.id)}
-                  onMouseLeave={()=>setHov(null)}
-                  style={{
-                    borderBottom: i<f.length-1?'1px solid #F3F4F6':'none',
-                    cursor:'pointer',
-                    background: isHov?'#F8FAFF':'#FFFFFF',
-                    borderLeft:`3px solid ${isHov?pColor:'transparent'}`,
-                    transition:'background 0.12s',
-                  }}
-                >
-                  {/* # */}
-                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
-                    <span style={{display:'inline-block',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:6,padding:'3px 7px',fontSize:11,fontWeight:700,color:'#EA580C',letterSpacing:'0.02em'}}>
-                      {l.num||'—'}
-                    </span>
-                    {l.source&&<div style={{marginTop:4,fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.04em'}}>{SRC_SHORT[l.source]||l.source}</div>}
-                  </td>
+      {/* Listado tipo registro operativo */}
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {f.length===0&&(
+          <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'40px 24px',textAlign:'center',color:'#9CA3AF',fontSize:13}}>
+            No se encontraron tickets
+          </div>
+        )}
+        {f.map(l=>{
+          const pCfg=PRIORITY[l.priority]||{c:'#9CA3AF',l:'—'};
+          const stCfg=TICKET_STATUS[l.status]||{c:'#9CA3AF',l:l.status};
+          const brName=brs.find(b=>String(b.id)===String(l.branch_id))?.name||l.branch_code||null;
+          const isHov=hov===l.id;
+          return(
+            <div
+              key={l.id}
+              onClick={()=>nav("ticket",l.id)}
+              onMouseEnter={()=>setHov(l.id)}
+              onMouseLeave={()=>setHov(null)}
+              style={{
+                display:'grid',
+                gridTemplateColumns:'80px 1fr 1fr 140px 160px 90px',
+                alignItems:'stretch',
+                background:'#FFFFFF',
+                border:`1px solid ${isHov?pCfg.c+'60':'#E5E7EB'}`,
+                borderRadius:10,
+                overflow:'hidden',
+                cursor:'pointer',
+                boxShadow: isHov?`0 2px 8px ${pCfg.c}20`:'0 1px 2px rgba(0,0,0,0.04)',
+                transition:'border-color 0.12s,box-shadow 0.12s',
+                borderLeft:`4px solid ${pCfg.c}`,
+              }}
+            >
+              {/* Z1 — Ticket + Origen */}
+              <div style={{padding:'14px 10px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',borderRight:'1px solid #F3F4F6',background:isHov?'#FAFAFA':'#F9FAFB',gap:6,textAlign:'center'}}>
+                <span style={{display:'inline-block',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:6,padding:'3px 6px',fontSize:12,fontWeight:800,color:'#EA580C',letterSpacing:'0.01em',lineHeight:1}}>
+                  {l.num||'#'}
+                </span>
+                {l.source&&<span style={{fontSize:8,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.06em',lineHeight:1}}>{SRC_SHORT[l.source]||l.source}</span>}
+              </div>
 
-                  {/* Moto */}
-                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
-                    {l.model_brand?(
-                      <div style={{display:'flex',alignItems:'center',gap:9}}>
-                        {l.model_image&&<img src={l.model_image} alt="" style={{width:56,height:38,objectFit:'cover',borderRadius:6,background:'#F3F4F6',flexShrink:0,border:'1px solid #E5E7EB'}}/>}
-                        <div style={{minWidth:0}}>
-                          <div style={{fontSize:12,fontWeight:800,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.model_brand}</div>
-                          <div style={{fontSize:11,fontWeight:500,color:'#374151',lineHeight:1.3,marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.model_name}</div>
-                          <div style={{fontSize:10,color:'#9CA3AF',marginTop:2,display:'flex',gap:6}}>
-                            {l.model_cc&&<span>{l.model_cc}cc</span>}
-                            {l.model_price>0&&<span style={{color:'#059669',fontWeight:700}}>{fmt(l.model_price)}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    ):(
-                      <span style={{fontSize:11,color:'#D1D5DB',fontStyle:'italic'}}>Sin moto</span>
-                    )}
-                  </td>
-
-                  {/* Cliente */}
-                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
-                    <div style={{display:'flex',alignItems:'flex-start',gap:8}}>
-                      <Initials fn={l.fn} ln={l.ln}/>
-                      <div style={{minWidth:0}}>
-                        <div style={{fontSize:13,fontWeight:700,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.fn} {l.ln}</div>
-                        {l.phone&&<div style={{fontSize:10,color:'#374151',marginTop:2,fontWeight:500}}>{l.phone}</div>}
-                        {l.rut&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:1,fontVariantNumeric:'tabular-nums'}}>{l.rut}</div>}
-                        {l.email&&<div style={{fontSize:10,color:'#6B7280',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.email}</div>}
-                      </div>
+              {/* Z2 — Moto */}
+              <div style={{padding:'14px 14px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10}}>
+                {l.model_image
+                  ?<img src={l.model_image} alt="" style={{width:64,height:44,objectFit:'cover',borderRadius:7,background:'#F3F4F6',flexShrink:0,border:'1px solid #E5E7EB'}}/>
+                  :<div style={{width:64,height:44,borderRadius:7,background:'#F3F4F6',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    <span style={{fontSize:18,opacity:0.2}}>🏍</span>
+                  </div>
+                }
+                {l.model_brand?(
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:11,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',lineHeight:1}}>{l.model_brand}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:'#111827',lineHeight:1.3,marginTop:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.model_name}</div>
+                    <div style={{display:'flex',gap:8,marginTop:4,alignItems:'center'}}>
+                      {l.model_year&&<span style={{fontSize:10,fontWeight:600,color:'#6366F1',background:'#EEF2FF',padding:'1px 6px',borderRadius:4}}>{l.model_year}</span>}
+                      {l.model_cc&&<span style={{fontSize:10,color:'#9CA3AF'}}>{l.model_cc}cc</span>}
+                      {l.model_price>0&&<span style={{fontSize:11,fontWeight:800,color:'#059669'}}>{fmt(l.model_price)}</span>}
                     </div>
-                  </td>
+                  </div>
+                ):(
+                  <div>
+                    <div style={{fontSize:12,color:'#D1D5DB',fontStyle:'italic'}}>Sin moto asignada</div>
+                  </div>
+                )}
+              </div>
 
-                  {/* Estado + Prioridad */}
-                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
-                    <StatusPill s={l.status}/>
-                    <div style={{marginTop:6}}><PriorityChip p={l.priority}/></div>
-                  </td>
+              {/* Z3 — Cliente */}
+              <div style={{padding:'14px 14px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10}}>
+                <Initials fn={l.fn} ln={l.ln}/>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:700,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.fn} {l.ln}</div>
+                  {l.phone&&<div style={{fontSize:11,color:'#374151',marginTop:3,fontWeight:600}}>{l.phone}</div>}
+                  {l.email&&<div style={{fontSize:10,color:'#6B7280',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.email}</div>}
+                  {l.rut&&<div style={{fontSize:9,color:'#9CA3AF',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{l.rut}</div>}
+                </div>
+              </div>
 
-                  {/* Vendedor + Sucursal */}
-                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
-                    {l.seller_fn?(
-                      <div style={{display:'flex',alignItems:'center',gap:7}}>
-                        <Initials fn={l.seller_fn} ln={l.seller_ln}/>
-                        <div style={{minWidth:0}}>
-                          <div style={{fontSize:12,fontWeight:600,color:'#374151',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.seller_fn} {l.seller_ln}</div>
-                          {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:1}}>{brName}</div>}
-                        </div>
-                      </div>
-                    ):(
-                      <div>
-                        <span style={{fontSize:11,color:'#D1D5DB'}}>Sin asignar</span>
-                        {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{brName}</div>}
-                      </div>
-                    )}
-                  </td>
+              {/* Z4 — Estado + Prioridad */}
+              <div style={{padding:'14px 12px',borderRight:'1px solid #F3F4F6',display:'flex',flexDirection:'column',justifyContent:'center',gap:7}}>
+                <StatusPill s={l.status}/>
+                <PriorityChip p={l.priority}/>
+              </div>
 
-                  {/* Fecha */}
-                  <td style={{...TD,paddingTop:12,paddingBottom:12,textAlign:'right'}}>
-                    <div style={{fontSize:11,fontWeight:700,color:'#374151'}}>{ago(l.createdAt)}</div>
-                    <div style={{fontSize:9,color:'#9CA3AF',marginTop:2}}>{fD(l.createdAt)}</div>
-                  </td>
-                </tr>
-              );
-            })}
-            {f.length===0&&(
-              <tr><td colSpan={6} style={{padding:'40px 24px',textAlign:'center',color:'#9CA3AF',fontSize:13}}>No se encontraron tickets</td></tr>
-            )}
-          </tbody>
-        </table>
+              {/* Z5 — Vendedor + Sucursal */}
+              <div style={{padding:'14px 12px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:8}}>
+                {l.seller_fn?(
+                  <>
+                    <Initials fn={l.seller_fn} ln={l.seller_ln}/>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:600,color:'#374151',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.seller_fn} {l.seller_ln}</div>
+                      {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{brName}</div>}
+                    </div>
+                  </>
+                ):(
+                  <div>
+                    <div style={{fontSize:11,color:'#D1D5DB'}}>Sin asignar</div>
+                    {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{brName}</div>}
+                  </div>
+                )}
+              </div>
+
+              {/* Z6 — Fecha */}
+              <div style={{padding:'14px 12px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'flex-end'}}>
+                <div style={{fontSize:13,fontWeight:800,color:'#374151'}}>{ago(l.createdAt)}</div>
+                <div style={{fontSize:9,color:'#9CA3AF',marginTop:3,textAlign:'right'}}>{fD(l.createdAt)}</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
