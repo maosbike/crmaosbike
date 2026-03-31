@@ -2,45 +2,36 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
-// ── Helpers locales ──────────────────────────────────────────────────────────
+// ── Helpers y constantes visuales (mismo lenguaje que InventoryView) ─────────
 const SRC_SHORT={web:"Web",redes_sociales:"RRSS",whatsapp:"WA",presencial:"Pres.",referido:"Ref.",evento:"Ev.",llamada:"Tel."};
 
-function Initials({fn,ln}){
+// Colores de estado alineados con TICKET_STATUS
+const ST_STRIP = {
+  abierto:       { color:'#2563EB', light:'#EFF6FF' },
+  en_gestion:    { color:'#D97706', light:'#FFFBEB' },
+  cotizado:      { color:'#7C3AED', light:'#F5F3FF' },
+  financiamiento:{ color:'#F28100', light:'#FFF7ED' },
+  ganado:        { color:'#15803D', light:'#F0FDF4' },
+  perdido:       { color:'#EF4444', light:'#FEF2F2' },
+  cerrado:       { color:'#6B7280', light:'#F9FAFB' },
+};
+
+const selectCtrl={height:32,borderRadius:7,border:'1.5px solid #E5E7EB',background:'#FFFFFF',color:'#374151',fontSize:12,padding:'0 8px',cursor:'pointer',fontFamily:'inherit',outline:'none'};
+const filterLabel={fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'};
+const sectionLbl={fontSize:10,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6};
+const divider=<div style={{width:1,height:28,background:'#E5E7EB',flexShrink:0}}/>;
+
+function Initials({fn,ln,size=30}){
   const a=(fn||'').charAt(0).toUpperCase();
   const b=(ln||'').charAt(0).toUpperCase();
   const colors=['#2563EB','#059669','#D97706','#7C3AED','#DB2777','#0891B2'];
-  const idx=(a.charCodeAt(0)+b.charCodeAt(0))%colors.length;
+  const idx=((a.charCodeAt(0)||0)+(b.charCodeAt(0)||0))%colors.length;
   return(
-    <div style={{width:28,height:28,borderRadius:'50%',background:colors[idx],display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#fff',flexShrink:0}}>
-      {a}{b}
+    <div style={{width:size,height:size,borderRadius:'50%',background:colors[idx],display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.37,fontWeight:700,color:'#fff',flexShrink:0,letterSpacing:'-0.5px'}}>
+      {a}{b||'?'}
     </div>
   );
 }
-
-function StatusPill({s}){
-  const x=TICKET_STATUS[s];
-  if(!x)return<span style={{fontSize:11,color:'#6B7280'}}>{s}</span>;
-  return(
-    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 10px',borderRadius:20,fontSize:11,fontWeight:700,color:x.c,background:`${x.c}18`,border:`1px solid ${x.c}40`,whiteSpace:'nowrap'}}>
-      <span style={{width:6,height:6,borderRadius:'50%',background:x.c,flexShrink:0}}/>
-      {x.l}
-    </span>
-  );
-}
-
-function PriorityChip({p}){
-  const x=PRIORITY[p];
-  if(!x)return null;
-  return(
-    <span style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 8px',borderRadius:6,fontSize:10,fontWeight:700,color:x.c,background:`${x.c}12`,textTransform:'uppercase',letterSpacing:'0.03em'}}>
-      <span style={{width:5,height:5,borderRadius:'50%',background:x.c}}/>
-      {x.l}
-    </span>
-  );
-}
-
-const TH={textAlign:'left',padding:'10px 14px',fontSize:10,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.05em',whiteSpace:'nowrap'};
-const TD={padding:'0 14px',verticalAlign:'middle'};
 
 export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
   const brs=realBranches||[];
@@ -59,8 +50,8 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
     if(user.role==="vendedor"&&l.seller_id!==user.id)return false;
     return true;
   });
+  const hasFilters=!!(search||stF||brF||prF||srcF||selF);
   const[adding,setAdding]=useState(false);
-  const[hov,setHov]=useState(null);
   const handleAdd=async e=>{
     e.preventDefault();setAdding(true);
     try{
@@ -75,13 +66,13 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
 
   return(
     <div>
-      {/* Header */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+      {/* ── Header ── */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
         <div>
-          <h1 style={{fontSize:20,fontWeight:800,margin:0,color:'#111827',letterSpacing:'-0.3px'}}>Leads / Tickets</h1>
-          <p style={{color:'#6B7280',fontSize:12,margin:'2px 0 0',fontWeight:500}}>
-            {f.length} {f.length===1?'ticket':'tickets'}
-            {(stF||brF||prF||srcF||selF||search)&&<span style={{color:'#F28100',marginLeft:6,fontWeight:700}}>· filtrado</span>}
+          <h1 style={{fontSize:20,fontWeight:800,margin:0,color:'#0F172A',letterSpacing:'-0.4px'}}>Leads / Tickets</h1>
+          <p style={{color:'#94A3B8',fontSize:12,margin:'3px 0 0',fontWeight:500}}>
+            {f.length} registro{f.length!==1?'s':''}
+            {hasFilters&&<span style={{color:'#F28100',marginLeft:6,fontWeight:700}}>· filtrado</span>}
           </p>
         </div>
         <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
@@ -89,160 +80,203 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
         </button>
       </div>
 
-      {/* Filtros */}
-      <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:10,padding:'10px 12px',marginBottom:14}}>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
-          <div style={{position:'relative',flex:'1 1 220px',minWidth:180}}>
-            <Ic.search size={13} color="#9CA3AF" style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)'}}/>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nombre, RUT, teléfono, #ticket..." style={{...S.inp,paddingLeft:30,width:'100%'}}/>
-          </div>
-          <select value={stF} onChange={e=>setStF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:140}}>
-            <option value="">Estado</option>
-            {Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-          </select>
-          <select value={prF} onChange={e=>setPrF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:120}}>
-            <option value="">Prioridad</option>
-            {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-          </select>
-          <select value={srcF} onChange={e=>setSrcF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:120}}>
-            <option value="">Origen</option>
-            {Object.entries(SRC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-          </select>
-          {brs.length>0&&<select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:130}}>
-            <option value="">Sucursal</option>
-            {brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>}
-          {sellers.length>0&&<select value={selF} onChange={e=>setSelF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:130}}>
-            <option value="">Vendedor</option>
-            {sellers.map(s=><option key={s.id} value={s.id}>{s.fn} {s.ln}</option>)}
-          </select>}
-          {(stF||brF||prF||srcF||selF||search)&&
-            <button onClick={()=>{setSearch("");setStF("");setBrF("");setPrF("");setSrcF("");setSelF("");}} style={{...S.btn2,fontSize:11,padding:'5px 10px',flexShrink:0}}>
-              Limpiar
-            </button>
-          }
-        </div>
-        {/* Contadores rápidos por estado */}
-        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-          {Object.entries(TICKET_STATUS).map(([k,v])=>{
-            const cnt=leads.filter(l=>l.status===k&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
-            if(!cnt)return null;
-            return<button key={k} onClick={()=>setStF(stF===k?'':k)} style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 9px',borderRadius:12,fontSize:10,fontWeight:700,cursor:'pointer',border:`1px solid ${stF===k?v.c:'#E5E7EB'}`,background:stF===k?`${v.c}15`:'#F9FAFB',color:stF===k?v.c:'#6B7280',transition:'all 0.1s'}}>
-              <span style={{width:5,height:5,borderRadius:'50%',background:v.c}}/>{v.l}<span style={{background:stF===k?v.c:'#E5E7EB',color:stF===k?'#fff':'#6B7280',borderRadius:8,padding:'0 5px',fontSize:9,fontWeight:800,marginLeft:2}}>{cnt}</span>
-            </button>;
-          })}
-        </div>
-      </div>
-
-      {/* Listado tipo registro operativo */}
-      <div style={{display:'flex',flexDirection:'column',gap:6}}>
-        {f.length===0&&(
-          <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'40px 24px',textAlign:'center',color:'#9CA3AF',fontSize:13}}>
-            No se encontraron tickets
-          </div>
-        )}
-        {f.map(l=>{
-          const pCfg=PRIORITY[l.priority]||{c:'#9CA3AF',l:'—'};
-          const stCfg=TICKET_STATUS[l.status]||{c:'#9CA3AF',l:l.status};
-          const brName=brs.find(b=>String(b.id)===String(l.branch_id))?.name||l.branch_code||null;
-          const isHov=hov===l.id;
+      {/* ── KPI rápidos por estado ── */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:18}}>
+        {Object.entries(TICKET_STATUS).map(([k,v])=>{
+          const cnt=leads.filter(l=>l.status===k&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
+          const strip=ST_STRIP[k]||{color:v.c,light:'#F9FAFB'};
+          const active=stF===k;
           return(
-            <div
-              key={l.id}
-              onClick={()=>nav("ticket",l.id)}
-              onMouseEnter={()=>setHov(l.id)}
-              onMouseLeave={()=>setHov(null)}
-              style={{
-                display:'grid',
-                gridTemplateColumns:'80px 1fr 1fr 140px 160px 90px',
-                alignItems:'stretch',
-                background:'#FFFFFF',
-                border:`1px solid ${isHov?pCfg.c+'60':'#E5E7EB'}`,
-                borderRadius:10,
-                overflow:'hidden',
-                cursor:'pointer',
-                boxShadow: isHov?`0 2px 8px ${pCfg.c}20`:'0 1px 2px rgba(0,0,0,0.04)',
-                transition:'border-color 0.12s,box-shadow 0.12s',
-                borderLeft:`4px solid ${pCfg.c}`,
-              }}
-            >
-              {/* Z1 — Ticket + Origen */}
-              <div style={{padding:'14px 10px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',borderRight:'1px solid #F3F4F6',background:isHov?'#FAFAFA':'#F9FAFB',gap:6,textAlign:'center'}}>
-                <span style={{display:'inline-block',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:6,padding:'3px 6px',fontSize:12,fontWeight:800,color:'#EA580C',letterSpacing:'0.01em',lineHeight:1}}>
-                  {l.num||'#'}
-                </span>
-                {l.source&&<span style={{fontSize:8,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.06em',lineHeight:1}}>{SRC_SHORT[l.source]||l.source}</span>}
-              </div>
-
-              {/* Z2 — Moto */}
-              <div style={{padding:'14px 14px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10}}>
-                {l.model_image
-                  ?<img src={l.model_image} alt="" style={{width:64,height:44,objectFit:'cover',borderRadius:7,background:'#F3F4F6',flexShrink:0,border:'1px solid #E5E7EB'}}/>
-                  :<div style={{width:64,height:44,borderRadius:7,background:'#F3F4F6',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <span style={{fontSize:18,opacity:0.2}}>🏍</span>
-                  </div>
-                }
-                {l.model_brand?(
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:11,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',lineHeight:1}}>{l.model_brand}</div>
-                    <div style={{fontSize:14,fontWeight:700,color:'#111827',lineHeight:1.3,marginTop:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.model_name}</div>
-                    <div style={{display:'flex',gap:8,marginTop:4,alignItems:'center'}}>
-                      {l.model_year&&<span style={{fontSize:10,fontWeight:600,color:'#6366F1',background:'#EEF2FF',padding:'1px 6px',borderRadius:4}}>{l.model_year}</span>}
-                      {l.model_cc&&<span style={{fontSize:10,color:'#9CA3AF'}}>{l.model_cc}cc</span>}
-                      {l.model_price>0&&<span style={{fontSize:11,fontWeight:800,color:'#059669'}}>{fmt(l.model_price)}</span>}
-                    </div>
-                  </div>
-                ):(
-                  <div>
-                    <div style={{fontSize:12,color:'#D1D5DB',fontStyle:'italic'}}>Sin moto asignada</div>
-                  </div>
-                )}
-              </div>
-
-              {/* Z3 — Cliente */}
-              <div style={{padding:'14px 14px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10}}>
-                <Initials fn={l.fn} ln={l.ln}/>
-                <div style={{minWidth:0}}>
-                  <div style={{fontSize:14,fontWeight:700,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.fn} {l.ln}</div>
-                  {l.phone&&<div style={{fontSize:11,color:'#374151',marginTop:3,fontWeight:600}}>{l.phone}</div>}
-                  {l.email&&<div style={{fontSize:10,color:'#6B7280',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.email}</div>}
-                  {l.rut&&<div style={{fontSize:9,color:'#9CA3AF',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{l.rut}</div>}
-                </div>
-              </div>
-
-              {/* Z4 — Estado + Prioridad */}
-              <div style={{padding:'14px 12px',borderRight:'1px solid #F3F4F6',display:'flex',flexDirection:'column',justifyContent:'center',gap:7}}>
-                <StatusPill s={l.status}/>
-                <PriorityChip p={l.priority}/>
-              </div>
-
-              {/* Z5 — Vendedor + Sucursal */}
-              <div style={{padding:'14px 12px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:8}}>
-                {l.seller_fn?(
-                  <>
-                    <Initials fn={l.seller_fn} ln={l.seller_ln}/>
-                    <div style={{minWidth:0}}>
-                      <div style={{fontSize:12,fontWeight:600,color:'#374151',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.seller_fn} {l.seller_ln}</div>
-                      {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{brName}</div>}
-                    </div>
-                  </>
-                ):(
-                  <div>
-                    <div style={{fontSize:11,color:'#D1D5DB'}}>Sin asignar</div>
-                    {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{brName}</div>}
-                  </div>
-                )}
-              </div>
-
-              {/* Z6 — Fecha */}
-              <div style={{padding:'14px 12px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'flex-end'}}>
-                <div style={{fontSize:13,fontWeight:800,color:'#374151'}}>{ago(l.createdAt)}</div>
-                <div style={{fontSize:9,color:'#9CA3AF',marginTop:3,textAlign:'right'}}>{fD(l.createdAt)}</div>
-              </div>
-            </div>
+            <button key={k} onClick={()=>setStF(stF===k?'':k)} style={{
+              position:'relative',overflow:'hidden',padding:'14px 16px',borderRadius:12,border:'none',cursor:'pointer',
+              textAlign:'left',fontFamily:'inherit',
+              background:active?strip.light:'#FFFFFF',
+              outline:active?`2px solid ${strip.color}`:'1px solid #E5E7EB',
+              outlineOffset:active?1:0,
+              boxShadow:active?`0 3px 14px ${strip.color}22`:'0 1px 3px rgba(0,0,0,0.04)',
+              transition:'all 0.13s',
+            }}>
+              <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:strip.color,borderRadius:'12px 12px 0 0'}}/>
+              <div style={{fontSize:28,fontWeight:900,color:active?strip.color:'#0F172A',letterSpacing:'-1px',lineHeight:1,marginBottom:4}}>{cnt}</div>
+              <div style={{fontSize:11,fontWeight:700,color:active?strip.color:'#374151'}}>{v.l}</div>
+            </button>
           );
         })}
       </div>
+
+      {/* ── Barra de filtros — mismo estilo que Inventario ── */}
+      <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'14px 18px',marginBottom:20,display:'flex',gap:12,flexWrap:'wrap',alignItems:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}}>
+        <div style={{position:'relative',flex:'1 1 200px',minWidth:160}}>
+          <Ic.search size={14} color="#9CA3AF" style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)'}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nombre, RUT, teléfono, ticket..." style={{...S.inp,paddingLeft:34,width:'100%',height:36,borderRadius:8,fontSize:12}}/>
+        </div>
+        {divider}
+        <div style={{display:'flex',flexDirection:'column',gap:2}}>
+          <label style={filterLabel}>Estado</label>
+          <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+            {Object.entries(TICKET_STATUS).map(([k,v])=>{
+              const strip=ST_STRIP[k]||{color:v.c};
+              return<button key={k} onClick={()=>setStF(stF===k?'':k)} style={{padding:'4px 10px',borderRadius:20,fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit',background:stF===k?strip.color:'transparent',color:stF===k?'#FFFFFF':'#6B7280',border:`1.5px solid ${stF===k?strip.color:'#E5E7EB'}`,transition:'all 0.12s'}}>{v.l}</button>;
+            })}
+          </div>
+        </div>
+        {divider}
+        <div style={{display:'flex',flexDirection:'column',gap:2}}>
+          <label style={filterLabel}>Prioridad</label>
+          <select value={prF} onChange={e=>setPrF(e.target.value)} style={selectCtrl}>
+            <option value="">Todas</option>
+            {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+          </select>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:2}}>
+          <label style={filterLabel}>Origen</label>
+          <select value={srcF} onChange={e=>setSrcF(e.target.value)} style={selectCtrl}>
+            <option value="">Todos</option>
+            {Object.entries(SRC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        {brs.length>0&&<div style={{display:'flex',flexDirection:'column',gap:2}}>
+          <label style={filterLabel}>Sucursal</label>
+          <select value={brF} onChange={e=>setBrF(e.target.value)} style={selectCtrl}>
+            <option value="">Todas</option>
+            {brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>}
+        {sellers.length>0&&<div style={{display:'flex',flexDirection:'column',gap:2}}>
+          <label style={filterLabel}>Vendedor</label>
+          <select value={selF} onChange={e=>setSelF(e.target.value)} style={selectCtrl}>
+            <option value="">Todos</option>
+            {sellers.map(s=><option key={s.id} value={s.id}>{s.fn} {s.ln}</option>)}
+          </select>
+        </div>}
+        {hasFilters&&<>
+          {divider}
+          <div style={{display:'flex',flexDirection:'column',gap:2}}>
+            <label style={{...filterLabel,color:'transparent'}}>·</label>
+            <button onClick={()=>{setSearch('');setStF('');setBrF('');setPrF('');setSrcF('');setSelF('');}} style={{height:32,padding:'0 12px',borderRadius:8,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:11,cursor:'pointer',color:'#6B7280',display:'flex',alignItems:'center',gap:5,fontWeight:500,fontFamily:'inherit'}}>
+              <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
+            </button>
+          </div>
+        </>}
+      </div>
+
+      {/* ── Contador ── */}
+      {f.length>0&&<div style={{fontSize:11,color:'#94A3B8',fontWeight:500,paddingLeft:2,marginBottom:6}}>
+        {f.length} ticket{f.length!==1?'s':''}{hasFilters?` (de ${leads.filter(l=>user.role!=="vendedor"||l.seller_id===user.id).length} total)`:''}
+      </div>}
+
+      {/* ── Lista de registros — mismo patrón visual que Inventario ── */}
+      {f.length===0?(
+        <div style={{background:'#FFFFFF',borderRadius:14,border:'1px dashed #E5E7EB',padding:'60px 0',textAlign:'center'}}>
+          <div style={{fontSize:36,marginBottom:12}}>📋</div>
+          <div style={{fontSize:14,fontWeight:700,color:'#374151',marginBottom:4}}>{hasFilters?'Sin resultados con estos filtros':'Sin tickets registrados'}</div>
+          <div style={{fontSize:12,color:'#9CA3AF'}}>
+            {hasFilters&&<button onClick={()=>{setSearch('');setStF('');setBrF('');setPrF('');setSrcF('');setSelF('');}} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button>}
+          </div>
+        </div>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {f.map(x=>{
+            const stStrip=ST_STRIP[x.status]||{color:'#6B7280',light:'#F9FAFB'};
+            const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280'};
+            const prCfg=PRIORITY[x.priority]||{l:'—',c:'#9CA3AF'};
+            const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_code||null;
+            return(
+              <div key={x.id}
+                onClick={()=>nav("ticket",x.id)}
+                onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)'}
+                onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 6px rgba(0,0,0,0.06)'}
+                style={{display:'flex',alignItems:'stretch',background:'#FFFFFF',borderRadius:14,border:'1px solid #E2E5EA',overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.06)',cursor:'pointer',transition:'box-shadow 0.15s'}}
+              >
+                {/* Strip izquierdo — color de estado (igual que sucursal en Inventario) */}
+                <div style={{width:72,flexShrink:0,background:stStrip.color,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,padding:'10px 4px'}}>
+                  <span style={{fontSize:10,fontWeight:900,color:'#FFFFFF',letterSpacing:'0.04em',textAlign:'center',lineHeight:1.2,textTransform:'uppercase'}}>{stCfg.l}</span>
+                  {x.num&&<span style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,0.7)',letterSpacing:'0.03em'}}>{x.num}</span>}
+                </div>
+
+                {/* Zona Moto — igual que zona unidad en Inventario */}
+                <div style={{flex:'0 0 260px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',alignItems:'center',gap:14}}>
+                  {x.model_image
+                    ?<img src={x.model_image} alt="" style={{width:80,height:56,objectFit:'cover',borderRadius:9,border:'1.5px solid #E2E8F0',flexShrink:0}}/>
+                    :<div style={{width:80,height:56,borderRadius:9,border:'1.5px dashed #D1D5DB',background:'#F8FAFC',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
+                    </div>
+                  }
+                  <div style={{flex:1,minWidth:0}}>
+                    {x.model_brand?(
+                      <>
+                        <div style={{fontSize:17,fontWeight:900,color:'#0F172A',letterSpacing:'-0.4px',lineHeight:1.1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_brand}</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#475569',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_name}</div>
+                        <div style={{display:'flex',gap:6,marginTop:5,alignItems:'center',flexWrap:'wrap'}}>
+                          {x.model_year&&<span style={{fontSize:12,fontWeight:800,color:'#4F46E5',background:'#EEF2FF',padding:'2px 8px',borderRadius:6,border:'1px solid #C7D2FE'}}>{x.model_year}</span>}
+                          {x.model_cc&&<span style={{fontSize:10,color:'#94A3B8'}}>{x.model_cc}cc</span>}
+                          {x.model_price>0&&<span style={{fontSize:11,fontWeight:800,color:'#15803D',background:'#F0FDF4',padding:'2px 7px',borderRadius:5,border:'1px solid #86EFAC'}}>{fmt(x.model_price)}</span>}
+                        </div>
+                      </>
+                    ):(
+                      <div style={{fontSize:12,color:'#CBD5E1',fontStyle:'italic',marginTop:4}}>Sin moto asignada</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Zona Cliente */}
+                <div style={{flex:'0 0 220px',padding:'14px 18px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'center',gap:8}}>
+                  <div style={sectionLbl}>Cliente</div>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <Initials fn={x.fn} ln={x.ln} size={34}/>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:700,color:'#0F172A',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
+                      {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:2}}>{x.phone}</div>}
+                      {x.rut&&<div style={{fontSize:10,color:'#94A3B8',marginTop:1,fontVariantNumeric:'tabular-nums'}}>{x.rut}</div>}
+                    </div>
+                  </div>
+                  {x.source&&<div style={{display:'inline-flex',alignItems:'center'}}>
+                    <span style={{fontSize:9,fontWeight:700,color:'#64748B',background:'#F1F5F9',padding:'2px 8px',borderRadius:5,border:'1px solid #E2E8F0',textTransform:'uppercase',letterSpacing:'0.06em'}}>{SRC_SHORT[x.source]||x.source}</span>
+                  </div>}
+                </div>
+
+                {/* Zona Estado / Prioridad */}
+                <div style={{flex:'0 0 150px',padding:'14px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'center',gap:10}}>
+                  <div style={sectionLbl}>Estado</div>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'5px 11px',borderRadius:20,fontSize:11,fontWeight:700,color:stCfg.c,background:`${stCfg.c}18`,border:`1px solid ${stCfg.c}40`,whiteSpace:'nowrap',alignSelf:'flex-start'}}>
+                    <span style={{width:6,height:6,borderRadius:'50%',background:stCfg.c,flexShrink:0}}/>
+                    {stCfg.l}
+                  </span>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:6,fontSize:10,fontWeight:700,color:prCfg.c,background:`${prCfg.c}12`,border:`1px solid ${prCfg.c}30`,textTransform:'uppercase',letterSpacing:'0.04em',alignSelf:'flex-start'}}>
+                    <span style={{width:5,height:5,borderRadius:'50%',background:prCfg.c}}/>
+                    {prCfg.l}
+                  </span>
+                </div>
+
+                {/* Zona Vendedor */}
+                <div style={{flex:1,padding:'14px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'center',gap:8}}>
+                  <div style={sectionLbl}>Vendedor</div>
+                  {x.seller_fn?(
+                    <div style={{display:'flex',alignItems:'center',gap:9}}>
+                      <Initials fn={x.seller_fn} ln={x.seller_ln} size={30}/>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1E293B',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.seller_fn} {x.seller_ln}</div>
+                        {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{brName}</div>}
+                      </div>
+                    </div>
+                  ):(
+                    <div>
+                      <div style={{fontSize:11,color:'#CBD5E1'}}>Sin asignar</div>
+                      {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{brName}</div>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Zona Fecha */}
+                <div style={{flex:'0 0 90px',padding:'14px 14px',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'flex-end'}}>
+                  <div style={{fontSize:16,fontWeight:800,color:'#374151',letterSpacing:'-0.5px'}}>{ago(x.createdAt)}</div>
+                  <div style={{fontSize:9,color:'#94A3B8',marginTop:4,textAlign:'right',lineHeight:1.4}}>{fD(x.createdAt)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/></div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
     </div>
