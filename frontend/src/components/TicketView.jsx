@@ -77,9 +77,9 @@ export function TicketView({lead,user,nav,updLead}){
 
   const submitContact=async()=>{
     setCfErr('');
-    if(!cf.result){setCfErr('Seleccioná un resultado.');return;}
+    if(!cf.result){setCfErr('Selecciona un resultado antes de continuar.');return;}
     if(needsEvidence){
-      if(cf.evMode==='file'&&!evFile){setCfErr('Debés subir una captura de pantalla o cambiar a nota.');return;}
+      if(cf.evMode==='file'&&!evFile){setCfErr('Debes subir una captura de pantalla o cambiar a nota detallada.');return;}
       if(cf.evMode==='note'&&cf.note.trim().length<50){setCfErr(`La nota debe tener al menos 50 caracteres (${cf.note.trim().length}/50).`);return;}
     }
     if(needsNote&&cf.note.trim().length<40){setCfErr(`Para este resultado la nota es obligatoria (mín. 40 caracteres, ${cf.note.trim().length}/40).`);return;}
@@ -655,7 +655,7 @@ export function TicketView({lead,user,nav,updLead}){
                         <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Nota detallada <span style={{ color:'#EF4444' }}>*</span> (mín. 50 caracteres)</div>
                         <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
                           rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
-                          placeholder="Describí detalladamente el contacto: qué se habló, qué acordaron, próximos pasos..."/>
+                          placeholder="Describe el contacto en detalle: qué se habló, qué se acordó, próximos pasos..."/>
                         <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=50?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/50</div>
                       </div>
                     )}
@@ -670,7 +670,7 @@ export function TicketView({lead,user,nav,updLead}){
                     </div>
                     <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
                       rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
-                      placeholder="Ej: Llamé a las 14:30, entró al buzón. Reintentaré mañana a las 11hs..."/>
+                      placeholder="Ej: Llamé a las 14:30, entró al buzón. Volver a intentar mañana a las 11:00..."/>
                     <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=40?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/40</div>
                   </div>
                 )}

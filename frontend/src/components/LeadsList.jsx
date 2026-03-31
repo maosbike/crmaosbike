@@ -186,7 +186,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 onClick={()=>nav("ticket",x.id)}
                 onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)'}
                 onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 6px rgba(0,0,0,0.06)'}
-                style={{display:'flex',alignItems:'stretch',background:'#FFFFFF',borderRadius:14,border:'1px solid #E2E5EA',overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.06)',cursor:'pointer',transition:'box-shadow 0.15s'}}
+                style={{display:'flex',alignItems:'stretch',background:'#FFFFFF',borderRadius:14,border:'1px solid #E2E5EA',overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.06)',cursor:'pointer',transition:'box-shadow 0.15s',minWidth:0}}
               >
                 {/* Strip izquierdo — color de estado (igual que sucursal en Inventario) */}
                 <div style={{width:72,flexShrink:0,background:stStrip.color,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,padding:'10px 4px'}}>
@@ -220,7 +220,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Cliente */}
-                <div style={{flex:'0 0 210px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                <div style={{flex:'0 0 210px',minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Cliente</div>
                   <div style={{fontSize:14,fontWeight:700,color:'#0F172A',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
                   {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:4}}>{x.phone}</div>}
@@ -246,7 +246,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Vendedor */}
-                <div style={{flex:1,padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                <div style={{flex:1,minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Vendedor</div>
                   {x.seller_fn?(
                     <>
