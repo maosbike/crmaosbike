@@ -365,9 +365,10 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
 
                   {/* ── UNIDAD — foto · marca · modelo · año · color ── */}
                   <div style={{
-                    flex:'0 0 290px', padding:'10px 16px',
+                    flex:'0 0 290px', minWidth:0, padding:'10px 16px',
                     borderRight:'1px solid #F1F3F5',
                     display:'flex', alignItems:'center', gap:14,
+                    overflow:'hidden',
                   }}>
                     {/* Foto de la moto */}
                     <div style={{ flexShrink:0 }}>
