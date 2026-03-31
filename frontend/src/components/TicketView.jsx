@@ -102,7 +102,7 @@ export function TicketView({lead,user,nav,updLead}){
         background:'#FFFFFF', borderRadius:14,
         border:'1px solid #E5E7EB',
         boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
-        display:'grid', gridTemplateColumns:'252px 1fr 310px',
+        display:'grid', gridTemplateColumns:'minmax(220px,252px) 1fr minmax(280px,310px)',
         overflow:'hidden', marginBottom:12,
       }}>
 
@@ -185,11 +185,11 @@ export function TicketView({lead,user,nav,updLead}){
                   {m.price>0 ? (
                     <div>
                       <div style={{ fontSize:22, fontWeight:900, color:'#F28100', letterSpacing:'-0.8px', lineHeight:1 }}>
-                        Desde {fmt(m.price-m.bonus)}
+                        {fmt(m.price)}
                       </div>
                       {m.bonus>0&&(
                         <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>
-                          {fmt(m.price)} lista · ahorra {fmt(m.bonus)}
+                          Desde {fmt(m.price-m.bonus)} · ahorra {fmt(m.bonus)}
                         </div>
                       )}
                     </div>
@@ -201,7 +201,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
                 {lead.colorPref&&(
                   <span style={{ fontSize:10, background:'#F3F4F6', borderRadius:5, padding:'3px 9px', color:'#6B7280', fontWeight:500, border:'1px solid #E5E7EB' }}>
-                    🎨 {lead.colorPref}
+                    Color: {lead.colorPref}
                   </span>
                 )}
                 {br.addr&&(
