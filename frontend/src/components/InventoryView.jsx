@@ -754,10 +754,16 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
                 </div>
                 <div style={{ flex:'1 1 160px' }}>
                   <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Identificación</div>
-                  <div style={{ fontSize:11,color:'#374151',marginBottom:2 }}>
-                    Chasis{' '}<span style={{ fontFamily:"'SF Mono',Consolas,monospace",fontWeight:700,background:'#F1F5F9',padding:'1px 6px',borderRadius:4,border:'1px solid #CBD5E1' }}>{sellUnit.chassis}</span>
+                  <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
+                    <span style={{ fontSize:9,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'0.08em',width:34,flexShrink:0 }}>Chasis</span>
+                    <span style={{ fontSize:11,fontWeight:700,color:'#1E293B',background:'#F1F5F9',padding:'3px 9px',borderRadius:6,border:'1px solid #E2E8F0',letterSpacing:'0.02em' }}>{sellUnit.chassis}</span>
                   </div>
-                  {sellUnit.motor_num&&<div style={{ fontSize:11,color:'#374151' }}>Motor <span style={{ fontFamily:"'SF Mono',Consolas,monospace" }}>{sellUnit.motor_num}</span></div>}
+                  {sellUnit.motor_num && (
+                    <div style={{ display:'flex',alignItems:'center',gap:6 }}>
+                      <span style={{ fontSize:9,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'0.08em',width:34,flexShrink:0 }}>Motor</span>
+                      <span style={{ fontSize:11,fontWeight:600,color:'#475569',background:'#F8FAFC',padding:'3px 9px',borderRadius:6,border:'1px solid #E9EAEC',letterSpacing:'0.02em' }}>{sellUnit.motor_num}</span>
+                    </div>
+                  )}
                 </div>
                 <div style={{ flex:'1 1 120px' }}>
                   <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Sucursal / Precio</div>
@@ -767,7 +773,22 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
               </div>
               <div style={{ fontSize:11,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:12 }}>Datos de la venta</div>
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>
-                <Field label="Vendedor responsable *" value={sellForm.sold_by} onChange={v=>setSellForm(p=>({...p,sold_by:v}))} opts={[{v:'',l:'Seleccionar vendedor...'},...sellers.map(s=>({v:s.id,l:`${s.first_name||''} ${s.last_name||''}`.trim()}))]} req/>
+                <div>
+                  <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:4 }}>Vendedor responsable *</label>
+                  {sellers.length > 0
+                    ? <select value={sellForm.sold_by} onChange={e=>setSellForm(p=>({...p,sold_by:e.target.value}))} style={{...S.inp,width:'100%'}}>
+                        <option value="">Seleccionar vendedor...</option>
+                        {sellers.map(s=>(
+                          <option key={s.id} value={s.id}>
+                            {`${s.first_name||''} ${s.last_name||''}`.trim()}{s.branch_code?` · ${s.branch_code}`:''}
+                          </option>
+                        ))}
+                      </select>
+                    : <div style={{ padding:'8px 12px',borderRadius:8,border:'1px solid #FCD34D',background:'#FFFBEB',fontSize:11,color:'#92400E',fontWeight:500 }}>
+                        No se encontraron vendedores activos
+                      </div>
+                  }
+                </div>
                 <Field label="Fecha de venta *" value={sellForm.sold_at} onChange={v=>setSellForm(p=>({...p,sold_at:v}))} type="date"/>
               </div>
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>

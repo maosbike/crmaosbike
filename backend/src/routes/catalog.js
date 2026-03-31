@@ -124,7 +124,7 @@ router.get('/users', roleCheck('super_admin', 'admin_comercial'), async (req, re
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
-router.get('/sellers', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
+router.get('/sellers', async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.branch_id, b.code as branch_code
