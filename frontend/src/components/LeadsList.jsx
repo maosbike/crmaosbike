@@ -44,11 +44,21 @@ const TD={padding:'0 14px',verticalAlign:'middle'};
 
 export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
   const brs=realBranches||[];
-  const[search,setSearch]=useState("");const[stF,setStF]=useState("");const[brF,setBrF]=useState("");const[showNew,setShowNew]=useState(false);
+  const[search,setSearch]=useState("");const[stF,setStF]=useState("");const[brF,setBrF]=useState("");const[prF,setPrF]=useState("");const[srcF,setSrcF]=useState("");const[selF,setSelF]=useState("");const[showNew,setShowNew]=useState(false);
   const[catalogModels,setCatalogModels]=useState([]);
   useEffect(()=>{api.getModels().then(d=>setCatalogModels(Array.isArray(d)?d:[])).catch(()=>{});},[]);
   const[nw,setNw]=useState({fn:"",ln:"",phone:"",email:"",rut:"",comuna:"",source:"presencial",motoId:"",branch_id:user.branch||"",priority:"media"});
-  const f=leads.filter(l=>{if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;if(stF&&l.status!==stF)return false;if(brF&&l.branch_id!==brF&&l.branch!==brF)return false;if(user.role==="vendedor"&&l.seller_id!==user.id)return false;return true;});
+  const sellers=user.role!=="vendedor"?[...new Map(leads.filter(l=>l.seller_id).map(l=>[l.seller_id,{id:l.seller_id,fn:l.seller_fn,ln:l.seller_ln}])).values()]:[];
+  const f=leads.filter(l=>{
+    if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;
+    if(stF&&l.status!==stF)return false;
+    if(brF&&l.branch_id!==brF&&l.branch!==brF)return false;
+    if(prF&&l.priority!==prF)return false;
+    if(srcF&&l.source!==srcF)return false;
+    if(selF&&String(l.seller_id)!==String(selF))return false;
+    if(user.role==="vendedor"&&l.seller_id!==user.id)return false;
+    return true;
+  });
   const[adding,setAdding]=useState(false);
   const[hov,setHov]=useState(null);
   const handleAdd=async e=>{
@@ -66,10 +76,13 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
   return(
     <div>
       {/* Header */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
         <div>
           <h1 style={{fontSize:20,fontWeight:800,margin:0,color:'#111827',letterSpacing:'-0.3px'}}>Leads / Tickets</h1>
-          <p style={{color:'#6B7280',fontSize:12,margin:'2px 0 0',fontWeight:500}}>{f.length} {f.length===1?'ticket':'tickets'}</p>
+          <p style={{color:'#6B7280',fontSize:12,margin:'2px 0 0',fontWeight:500}}>
+            {f.length} {f.length===1?'ticket':'tickets'}
+            {(stF||brF||prF||srcF||selF||search)&&<span style={{color:'#F28100',marginLeft:6,fontWeight:700}}>· filtrado</span>}
+          </p>
         </div>
         <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
           <Ic.plus size={14}/>Nuevo Ticket
@@ -77,39 +90,76 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
       </div>
 
       {/* Filtros */}
-      <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:10,padding:'10px 12px',marginBottom:14,display:'flex',gap:8,flexWrap:'wrap'}}>
-        <div style={{position:'relative',flex:1,minWidth:200}}>
-          <Ic.search size={13} color="#9CA3AF" style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)'}}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nombre, RUT, ticket..." style={{...S.inp,paddingLeft:30,width:'100%'}}/>
+      <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:10,padding:'10px 12px',marginBottom:14}}>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
+          <div style={{position:'relative',flex:'1 1 220px',minWidth:180}}>
+            <Ic.search size={13} color="#9CA3AF" style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)'}}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nombre, RUT, teléfono, #ticket..." style={{...S.inp,paddingLeft:30,width:'100%'}}/>
+          </div>
+          <select value={stF} onChange={e=>setStF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:140}}>
+            <option value="">Estado</option>
+            {Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+          </select>
+          <select value={prF} onChange={e=>setPrF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:120}}>
+            <option value="">Prioridad</option>
+            {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+          </select>
+          <select value={srcF} onChange={e=>setSrcF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:120}}>
+            <option value="">Origen</option>
+            {Object.entries(SRC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+          </select>
+          {brs.length>0&&<select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:130}}>
+            <option value="">Sucursal</option>
+            {brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>}
+          {sellers.length>0&&<select value={selF} onChange={e=>setSelF(e.target.value)} style={{...S.inp,flex:'0 0 auto',minWidth:130}}>
+            <option value="">Vendedor</option>
+            {sellers.map(s=><option key={s.id} value={s.id}>{s.fn} {s.ln}</option>)}
+          </select>}
+          {(stF||brF||prF||srcF||selF||search)&&
+            <button onClick={()=>{setSearch("");setStF("");setBrF("");setPrF("");setSrcF("");setSelF("");}} style={{...S.btn2,fontSize:11,padding:'5px 10px',flexShrink:0}}>
+              Limpiar
+            </button>
+          }
         </div>
-        <select value={stF} onChange={e=>setStF(e.target.value)} style={{...S.inp,minWidth:150}}>
-          <option value="">Todos los estados</option>
-          {Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-        </select>
-        <select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp,minWidth:150}}>
-          <option value="">Todas las sucursales</option>
-          {brs.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-        </select>
+        {/* Contadores rápidos por estado */}
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {Object.entries(TICKET_STATUS).map(([k,v])=>{
+            const cnt=leads.filter(l=>l.status===k&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
+            if(!cnt)return null;
+            return<button key={k} onClick={()=>setStF(stF===k?'':k)} style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 9px',borderRadius:12,fontSize:10,fontWeight:700,cursor:'pointer',border:`1px solid ${stF===k?v.c:'#E5E7EB'}`,background:stF===k?`${v.c}15`:'#F9FAFB',color:stF===k?v.c:'#6B7280',transition:'all 0.1s'}}>
+              <span style={{width:5,height:5,borderRadius:'50%',background:v.c}}/>{v.l}<span style={{background:stF===k?v.c:'#E5E7EB',color:stF===k?'#fff':'#6B7280',borderRadius:8,padding:'0 5px',fontSize:9,fontWeight:800,marginLeft:2}}>{cnt}</span>
+            </button>;
+          })}
+        </div>
       </div>
 
       {/* Tabla */}
       <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,overflow:'hidden'}}>
-        <table style={{width:'100%',borderCollapse:'collapse'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
+          <colgroup>
+            <col style={{width:82}}/>  {/* # */}
+            <col style={{width:'22%'}}/> {/* Moto */}
+            <col style={{width:'22%'}}/> {/* Cliente */}
+            <col style={{width:'18%'}}/> {/* Estado + prio */}
+            <col/>                       {/* Vendedor + sucursal */}
+            <col style={{width:80}}/>    {/* Fecha */}
+          </colgroup>
           <thead>
             <tr style={{background:'#F9FAFB',borderBottom:'2px solid #E5E7EB'}}>
-              <th style={{...TH,width:72}}>#</th>
+              <th style={{...TH}}>#</th>
               <th style={{...TH}}>Moto cotizada</th>
               <th style={{...TH}}>Cliente</th>
-              <th style={{...TH,width:130}}>Estado</th>
-              <th style={{...TH,width:100}}>Prioridad</th>
-              <th style={{...TH,width:140}}>Vendedor</th>
-              <th style={{...TH,width:70,textAlign:'right'}}>Hace</th>
+              <th style={{...TH}}>Estado / Prio</th>
+              <th style={{...TH}}>Vendedor · Sucursal</th>
+              <th style={{...TH,textAlign:'right'}}>Fecha</th>
             </tr>
           </thead>
           <tbody>
             {f.map((l,i)=>{
               const pColor=(PRIORITY[l.priority]||{}).c||'#E5E7EB';
               const isHov=hov===l.id;
+              const brName=brs.find(b=>String(b.id)===String(l.branch_id))?.name||l.branch_code||null;
               return(
                 <tr
                   key={l.id}
@@ -121,76 +171,83 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                     cursor:'pointer',
                     background: isHov?'#F8FAFF':'#FFFFFF',
                     borderLeft:`3px solid ${isHov?pColor:'transparent'}`,
-                    transition:'background 0.1s,border-color 0.1s',
+                    transition:'background 0.12s',
                   }}
                 >
-                  {/* Ticket # */}
-                  <td style={{...TD,paddingTop:14,paddingBottom:14}}>
+                  {/* # */}
+                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
                     <span style={{display:'inline-block',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:6,padding:'3px 7px',fontSize:11,fontWeight:700,color:'#EA580C',letterSpacing:'0.02em'}}>
                       {l.num||'—'}
                     </span>
+                    {l.source&&<div style={{marginTop:4,fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.04em'}}>{SRC_SHORT[l.source]||l.source}</div>}
                   </td>
 
                   {/* Moto */}
-                  <td style={{...TD,paddingTop:14,paddingBottom:14,minWidth:200}}>
+                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
                     {l.model_brand?(
-                      <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        {l.model_image&&(
-                          <img src={l.model_image} alt="" style={{width:52,height:36,objectFit:'cover',borderRadius:6,background:'#F3F4F6',flexShrink:0,border:'1px solid #E5E7EB'}}/>
-                        )}
-                        <div>
-                          <div style={{fontSize:13,fontWeight:800,color:'#111827',lineHeight:1.2}}>{l.model_brand}</div>
-                          <div style={{fontSize:12,fontWeight:500,color:'#374151',lineHeight:1.3,marginTop:1}}>{l.model_name}</div>
-                          {l.model_cc&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{l.model_cc}cc{l.model_category?` · ${l.model_category}`:''}</div>}
+                      <div style={{display:'flex',alignItems:'center',gap:9}}>
+                        {l.model_image&&<img src={l.model_image} alt="" style={{width:56,height:38,objectFit:'cover',borderRadius:6,background:'#F3F4F6',flexShrink:0,border:'1px solid #E5E7EB'}}/>}
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:800,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.model_brand}</div>
+                          <div style={{fontSize:11,fontWeight:500,color:'#374151',lineHeight:1.3,marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.model_name}</div>
+                          <div style={{fontSize:10,color:'#9CA3AF',marginTop:2,display:'flex',gap:6}}>
+                            {l.model_cc&&<span>{l.model_cc}cc</span>}
+                            {l.model_price>0&&<span style={{color:'#059669',fontWeight:700}}>{fmt(l.model_price)}</span>}
+                          </div>
                         </div>
                       </div>
                     ):(
-                      <span style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic'}}>Sin moto asignada</span>
+                      <span style={{fontSize:11,color:'#D1D5DB',fontStyle:'italic'}}>Sin moto</span>
                     )}
                   </td>
 
                   {/* Cliente */}
-                  <td style={{...TD,paddingTop:14,paddingBottom:14,minWidth:160}}>
-                    <div style={{fontSize:13,fontWeight:700,color:'#111827',lineHeight:1.2}}>{l.fn} {l.ln}</div>
-                    {l.rut&&<div style={{fontSize:10,color:'#6B7280',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{l.rut}</div>}
-                    {l.phone&&<div style={{fontSize:10,color:'#6B7280',marginTop:1}}>{l.phone}</div>}
-                    {l.source&&<div style={{fontSize:9,color:'#9CA3AF',marginTop:3,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.04em'}}>{SRC_SHORT[l.source]||l.source}</div>}
+                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
+                    <div style={{display:'flex',alignItems:'flex-start',gap:8}}>
+                      <Initials fn={l.fn} ln={l.ln}/>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:700,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.fn} {l.ln}</div>
+                        {l.phone&&<div style={{fontSize:10,color:'#374151',marginTop:2,fontWeight:500}}>{l.phone}</div>}
+                        {l.rut&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:1,fontVariantNumeric:'tabular-nums'}}>{l.rut}</div>}
+                        {l.email&&<div style={{fontSize:10,color:'#6B7280',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.email}</div>}
+                      </div>
+                    </div>
                   </td>
 
-                  {/* Estado */}
-                  <td style={{...TD,paddingTop:14,paddingBottom:14}}>
+                  {/* Estado + Prioridad */}
+                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
                     <StatusPill s={l.status}/>
+                    <div style={{marginTop:6}}><PriorityChip p={l.priority}/></div>
                   </td>
 
-                  {/* Prioridad */}
-                  <td style={{...TD,paddingTop:14,paddingBottom:14}}>
-                    <PriorityChip p={l.priority}/>
-                  </td>
-
-                  {/* Vendedor */}
-                  <td style={{...TD,paddingTop:14,paddingBottom:14}}>
+                  {/* Vendedor + Sucursal */}
+                  <td style={{...TD,paddingTop:12,paddingBottom:12}}>
                     {l.seller_fn?(
                       <div style={{display:'flex',alignItems:'center',gap:7}}>
                         <Initials fn={l.seller_fn} ln={l.seller_ln}/>
-                        <div>
-                          <div style={{fontSize:12,fontWeight:600,color:'#374151',lineHeight:1.2}}>{l.seller_fn}</div>
-                          {l.seller_ln&&<div style={{fontSize:10,color:'#9CA3AF'}}>{l.seller_ln}</div>}
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:600,color:'#374151',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{l.seller_fn} {l.seller_ln}</div>
+                          {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:1}}>{brName}</div>}
                         </div>
                       </div>
                     ):(
-                      <span style={{fontSize:11,color:'#9CA3AF'}}>Sin asignar</span>
+                      <div>
+                        <span style={{fontSize:11,color:'#D1D5DB'}}>Sin asignar</span>
+                        {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{brName}</div>}
+                      </div>
                     )}
                   </td>
 
-                  {/* Hace */}
-                  <td style={{...TD,paddingTop:14,paddingBottom:14,textAlign:'right'}}>
-                    <span style={{fontSize:11,fontWeight:600,color:'#6B7280'}}>{ago(l.createdAt)}</span>
+                  {/* Fecha */}
+                  <td style={{...TD,paddingTop:12,paddingBottom:12,textAlign:'right'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#374151'}}>{ago(l.createdAt)}</div>
+                    <div style={{fontSize:9,color:'#9CA3AF',marginTop:2}}>{fD(l.createdAt)}</div>
                   </td>
                 </tr>
               );
             })}
             {f.length===0&&(
-              <tr><td colSpan={7} style={{padding:'40px 24px',textAlign:'center',color:'#9CA3AF',fontSize:13}}>No se encontraron tickets</td></tr>
+              <tr><td colSpan={6} style={{padding:'40px 24px',textAlign:'center',color:'#9CA3AF',fontSize:13}}>No se encontraron tickets</td></tr>
             )}
           </tbody>
         </table>
