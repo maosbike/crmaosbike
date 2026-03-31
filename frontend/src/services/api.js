@@ -69,6 +69,7 @@ export const api = {
   createTicket: (data) => request('POST', '/tickets', data),
   updateTicket: (id, data) => request('PUT', `/tickets/${id}`, data),
   addTimeline: (id, data) => request('POST', `/tickets/${id}/timeline`, data),
+  addEvidence: (id, formData) => request('POST', `/tickets/${id}/evidence`, formData),
   dashboardStats: () => request('GET', '/tickets/stats/dashboard'),
 
   // Inventory

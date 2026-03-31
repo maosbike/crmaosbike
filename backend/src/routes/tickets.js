@@ -5,6 +5,13 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const SLAService = require('../services/slaService');
 const TelegramService = require('../services/telegramService');
 const { calcSlaDeadline } = require('../utils/slaUtils');
+const multer = require('multer');
+const cloudinary = require('../config/cloudinary');
+
+const uploadEvidence = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Estados que requieren evidencia de contacto antes de poder ser seteados
+const EVIDENCE_REQUIRED_STATES = ['en_gestion', 'cotizado', 'financiamiento'];
 
 router.use(auth);
 
@@ -180,6 +187,29 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
   if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
 
+  // Guardia de evidencia: si se intenta cambiar a estado que requiere contacto real,
+  // verificar que exista un contact_registered o contact_evidence en los últimos 30 días
+  if (req.body.status && EVIDENCE_REQUIRED_STATES.includes(req.body.status)) {
+    const cur = await db.query('SELECT status FROM tickets WHERE id = $1', [req.params.id]);
+    const oldStatus = cur.rows[0]?.status;
+    if (oldStatus !== req.body.status) {
+      const ev = await db.query(
+        `SELECT id FROM timeline
+         WHERE ticket_id = $1
+           AND type IN ('contact_registered', 'contact_evidence')
+           AND created_at > NOW() - INTERVAL '30 days'
+         LIMIT 1`,
+        [req.params.id]
+      );
+      if (!ev.rows[0]) {
+        return res.status(400).json({
+          error: 'evidencia_requerida',
+          message: 'Debes registrar un contacto o subir evidencia antes de cambiar a este estado.',
+        });
+      }
+    }
+  }
+
   params.push(req.params.id);
   const { rows } = await db.query(
     `UPDATE tickets SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params
@@ -231,6 +261,49 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
   } else if (type === 'note_added') {
     await SLAService.registerAction(req.params.id, 'note_added');
   }
+
+  res.status(201).json(rows[0]);
+}));
+
+// Upload evidence for a ticket contact
+router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (req, res) => {
+  if (req.user.role === 'vendedor') {
+    const check = await db.query(
+      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
+      [req.params.id, req.user.id]
+    );
+    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para este ticket' });
+  }
+
+  const { note, ev_type } = req.body;
+  const hasFile = !!req.file;
+  const hasNote = note && note.trim().length >= 50;
+
+  if (!hasFile && !hasNote) {
+    return res.status(400).json({ error: 'Debes subir un archivo o escribir una nota de al menos 50 caracteres.' });
+  }
+
+  let evidence_url = null;
+  if (hasFile) {
+    const b64 = Buffer.from(req.file.buffer).toString('base64');
+    const result = await cloudinary.uploader.upload(
+      `data:${req.file.mimetype};base64,${b64}`,
+      { folder: 'crmaosbike/evidence', resource_type: 'image' }
+    );
+    evidence_url = result.secure_url;
+  }
+
+  const evidence_type = ev_type || (hasFile ? 'archivo' : 'nota');
+  const typeLabels = { screenshot_whatsapp: 'WhatsApp', screenshot_llamada: 'Llamada', archivo: 'Archivo adjunto', nota: 'Nota detallada' };
+  const title = `Evidencia registrada — ${typeLabels[evidence_type] || evidence_type}`;
+
+  const { rows } = await db.query(
+    `INSERT INTO timeline (ticket_id, user_id, type, title, note, evidence_url, evidence_type)
+     VALUES ($1, $2, 'contact_evidence', $3, $4, $5, $6) RETURNING *`,
+    [req.params.id, req.user.id, title, note || null, evidence_url, evidence_type]
+  );
+
+  await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
 
   res.status(201).json(rows[0]);
 }));

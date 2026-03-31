@@ -17,8 +17,17 @@ const secTitle = (color='#374151') => ({
   paddingBottom:7, marginBottom:10, borderBottom:`2px solid ${color}22`,
 });
 
+// Resultados que exigen evidencia (screenshot o nota ≥50 chars)
+const EVIDENCE_RESULTS=['Contactado','Interesado','Agendó visita','Cotización entregada','Envió documentos','No interesado'];
+// Resultados que solo exigen nota ≥40 chars (intento fallido)
+const NOTE_RESULTS=['No contesta','Buzón de voz'];
+const EV_TYPES=[
+  {v:'screenshot_whatsapp',l:'WhatsApp'},
+  {v:'screenshot_llamada',  l:'Llamada'},
+  {v:'archivo',             l:'Otro archivo'},
+];
+
 export function TicketView({lead,user,nav,updLead}){
-  const[contactForm,setContactForm]=useState({method:"whatsapp",result:"",note:""});
   const[histOpen,setHistOpen]=useState(false);
   const m=lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:lead.model_price||0,bonus:lead.model_bonus||0,year:lead.model_year||2025,cc:lead.model_cc||0,cat:lead.model_category||'',colors:[],image:lead.model_image||null}:null;
   const s={fn:lead.seller_fn||'',ln:lead.seller_ln||''};
@@ -46,20 +55,64 @@ export function TicketView({lead,user,nav,updLead}){
   const[showSell,setShowSell]=useState(false);
   const[noteForm,setNoteForm]=useState("");
   const[noteErr,setNoteErr]=useState("");
+
+  // ── Modal Registrar Contacto ──
+  const[showContact,setShowContact]=useState(false);
+  const[cf,setCf]=useState({method:'whatsapp',result:'',note:'',evMode:'file',evType:'screenshot_whatsapp'});
+  const[evFile,setEvFile]=useState(null);
+  const[evPreview,setEvPreview]=useState(null);
+  const[cfErr,setCfErr]=useState('');
+  const[cfSaving,setCfSaving]=useState(false);
+  const[cfDone,setCfDone]=useState(false);
+
+  const needsEvidence=EVIDENCE_RESULTS.includes(cf.result);
+  const needsNote=NOTE_RESULTS.includes(cf.result);
+  const noteMinLen=needsEvidence?50:needsNote?40:0;
+
+  const resetContact=()=>{
+    setCf({method:'whatsapp',result:'',note:'',evMode:'file',evType:'screenshot_whatsapp'});
+    setEvFile(null);setEvPreview(null);setCfErr('');setCfDone(false);
+  };
+  const closeContact=()=>{setShowContact(false);resetContact();};
+
+  const submitContact=async()=>{
+    setCfErr('');
+    if(!cf.result){setCfErr('Seleccioná un resultado.');return;}
+    if(needsEvidence){
+      if(cf.evMode==='file'&&!evFile){setCfErr('Debés subir una captura de pantalla o cambiar a nota.');return;}
+      if(cf.evMode==='note'&&cf.note.trim().length<50){setCfErr(`La nota debe tener al menos 50 caracteres (${cf.note.trim().length}/50).`);return;}
+    }
+    if(needsNote&&cf.note.trim().length<40){setCfErr(`Para este resultado la nota es obligatoria (mín. 40 caracteres, ${cf.note.trim().length}/40).`);return;}
+    setCfSaving(true);
+    try{
+      // Si hay evidencia con archivo, subirla como entrada de evidencia
+      if(needsEvidence&&cf.evMode==='file'&&evFile){
+        const fd=new FormData();
+        fd.append('file',evFile);
+        fd.append('ev_type',cf.evType);
+        if(cf.note.trim())fd.append('note',cf.note.trim());
+        await api.addEvidence(lead.id,fd);
+      } else if(needsEvidence&&cf.evMode==='note'){
+        const fd=new FormData();
+        fd.append('note',cf.note.trim());
+        fd.append('ev_type','nota');
+        await api.addEvidence(lead.id,fd);
+      }
+      // Registrar el contacto en timeline
+      const title=`${cf.method.charAt(0).toUpperCase()+cf.method.slice(1)}: ${cf.result}`;
+      const noteForTimeline=(needsEvidence||needsNote)?null:cf.note.trim()||null;
+      const entry=await api.addTimeline(lead.id,{type:'contact_registered',method:cf.method,title,note:noteForTimeline});
+      addTimelineLocal(entry);
+      setCfDone(true);
+      setTimeout(()=>closeContact(),2200);
+    }catch(e){
+      setCfErr(e.message||'Error al guardar. Intentá de nuevo.');
+    }finally{setCfSaving(false);}
+  };
+
   const upd=(field,val)=>updLead(lead.id,{[field]:val});
   const addTimelineLocal=(entry)=>{updLead(lead.id,{timeline:[entry,...(lead.timeline||[])],first_action_at:lead.first_action_at||entry.created_at||entry.date,lastContact:new Date().toISOString()});};
-  const submitContact=async e=>{
-    e.preventDefault();
-    if(!contactForm.result)return;
-    const title=`${contactForm.method.toUpperCase()}: ${contactForm.result}`;
-    try{
-      const entry=await api.addTimeline(lead.id,{type:"contact_registered",method:contactForm.method,title,note:contactForm.note||null});
-      addTimelineLocal(entry);
-    }catch{
-      addTimelineLocal({id:`tl-${Date.now()}`,type:"contact_registered",title,note:contactForm.note,date:new Date().toISOString(),user_fn:user.fn,user_ln:user.ln,method:contactForm.method});
-    }
-    setContactForm({method:"whatsapp",result:"",note:""});
-  };
+
   const submitNote=async e=>{
     e.preventDefault();
     if(noteForm.trim().length<20){setNoteErr("La nota debe tener al menos 20 caracteres");return;}
@@ -78,8 +131,8 @@ export function TicketView({lead,user,nav,updLead}){
   return(
     <div style={{ width:'100%' }}>
 
-      {/* ── BREADCRUMB ── */}
-      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:12 }}>
+      {/* ── BREADCRUMB + ACCIONES ── */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:14 }}>
         <button onClick={()=>nav("leads")}
           style={{ ...S.gh, display:'flex', alignItems:'center', gap:5, padding:'4px 10px',
             fontSize:12, fontWeight:500, color:'#6B7280',
@@ -90,6 +143,29 @@ export function TicketView({lead,user,nav,updLead}){
         <span style={{ fontSize:12, color:'#9CA3AF' }}>#{lead.num}</span>
         <span style={{ color:'#D1D5DB' }}>›</span>
         <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>{lead.fn} {lead.ln}</span>
+        {/* Acciones principales — derecha */}
+        <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
+          {!isPerdido&&!isGanado&&(
+            <button onClick={()=>{resetContact();setShowContact(true);}}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
+                background:'#2563EB', color:'#fff', border:'none', borderRadius:8,
+                fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
+              <Ic.phone size={13} color="#fff"/>Registrar contacto
+            </button>
+          )}
+          {!isPerdido&&(
+            <button onClick={()=>setShowSell(true)}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
+                background: isGanado?'transparent':'#10B981', color: isGanado?'#10B981':'#fff',
+                border: isGanado?'1.5px solid #6EE7B7':'none', borderRadius:8,
+                fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                boxShadow: isGanado?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
+              <Ic.sale size={13} color={isGanado?"#10B981":"#fff"}/>
+              {isGanado?'Registrar otra unidad':'Registrar venta'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════
@@ -159,52 +235,29 @@ export function TicketView({lead,user,nav,updLead}){
           </div>
         </div>
 
-        {/* Z3: CONTACTO */}
-        <div style={{ ...zoneDiv, padding:'18px 16px', display:'flex', flexDirection:'column' }}>
-          <div style={lbl9}>Registrar Contacto</div>
-          <form onSubmit={submitContact} style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
-            <div style={{ display:'flex', gap:3, flexWrap:'wrap' }}>
-              {["whatsapp","llamada","email","presencial","sms"].map(mt=>(
-                <button key={mt} type="button" onClick={()=>setContactForm({...contactForm,method:mt})}
-                  style={{ padding:'4px 9px', fontSize:10, fontWeight:600, fontFamily:'inherit', cursor:'pointer', borderRadius:5, border:'none',
-                    background: contactForm.method===mt?'#F28100':'#F3F4F6', color: contactForm.method===mt?'#fff':'#6B7280' }}>
-                  {mt.charAt(0).toUpperCase()+mt.slice(1)}
-                </button>
-              ))}
-            </div>
-            <select value={contactForm.result} onChange={e=>setContactForm({...contactForm,result:e.target.value})}
-              style={{ ...S.inp, width:'100%', fontSize:11 }} required>
-              <option value="">Seleccionar resultado...</option>
-              <option value="Contactado">Contactado</option>
-              <option value="No contesta">No contesta</option>
-              <option value="Buzón de voz">Buzón de voz</option>
-              <option value="Número equivocado">Número equivocado</option>
-              <option value="Interesado">Interesado</option>
-              <option value="Agendó visita">Agendó visita</option>
-              <option value="Cotización entregada">Cotización entregada</option>
-              <option value="Envió documentos">Envió documentos</option>
-              <option value="No interesado">No interesado</option>
-            </select>
-            <textarea value={contactForm.note} onChange={e=>setContactForm({...contactForm,note:e.target.value})}
-              rows={3} style={{ ...S.inp, width:'100%', resize:'none', fontSize:11, flex:1 }} placeholder="Nota / Comentario..."/>
-            <button type="submit" style={{ ...S.btn, width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:5, fontSize:11, padding:'8px' }}>
-              <Ic.send size={12}/>Registrar Contacto
-            </button>
-          </form>
-          <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #F1F3F5', display:'flex', flexDirection:'column', gap:6 }}>
+        {/* Z3: OBSERVACIONES */}
+        <div style={{ ...zoneDiv, padding:'18px 16px', display:'flex', flexDirection:'column', gap:12 }}>
+          <div style={lbl9}>Observaciones</div>
+          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:10 }}>
             <div>
               <label style={lbl9}>Obs. Vendedor</label>
-              <textarea value={lead.obsVendedor||""} onChange={e=>upd("obsVendedor",e.target.value)} rows={1}
-                style={{ ...S.inp, width:'100%', resize:'none', fontSize:11 }} placeholder="Notas del vendedor..."/>
+              <textarea value={lead.obsVendedor||""} onChange={e=>upd("obsVendedor",e.target.value)} rows={4}
+                style={{ ...S.inp, width:'100%', resize:'none', fontSize:11 }} placeholder="Notas internas del vendedor..."/>
             </div>
             {isAdmin&&(
               <div>
                 <label style={lbl9}>Obs. Supervisor</label>
-                <textarea value={lead.obsSupervisor||""} onChange={e=>upd("obsSupervisor",e.target.value)} rows={1}
+                <textarea value={lead.obsSupervisor||""} onChange={e=>upd("obsSupervisor",e.target.value)} rows={4}
                   style={{ ...S.inp, width:'100%', resize:'none', fontSize:11 }} placeholder="Notas del supervisor..."/>
               </div>
             )}
           </div>
+          {lead.lastContact&&(
+            <div style={{ marginTop:'auto', paddingTop:10, borderTop:'1px solid #F1F3F5' }}>
+              <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:3 }}>Último contacto</div>
+              <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{fDT(lead.lastContact)}</div>
+            </div>
+          )}
         </div>
 
         {/* Z4: STATUS */}
@@ -258,19 +311,6 @@ export function TicketView({lead,user,nav,updLead}){
                 <option value="">Seleccionar...</option>
                 {sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}
               </select>
-            </div>
-          )}
-          {!isPerdido&&(
-            <div style={{ marginTop:'auto', paddingTop:8 }}>
-              <button onClick={()=>setShowSell(true)}
-                style={{ width:'100%', padding:'10px', borderRadius:8,
-                  background: isGanado?'transparent':'#10B981', color: isGanado?'#10B981':'#fff',
-                  border: isGanado?'1.5px solid #6EE7B7':'none', fontSize:12, fontWeight:700,
-                  cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-                  boxShadow: isGanado?'none':'0 2px 10px rgba(16,185,129,0.25)' }}>
-                <Ic.sale size={13} color={isGanado?"#10B981":"#fff"}/>
-                {isGanado?"Registrar otra unidad":"Registrar Venta"}
-              </button>
             </div>
           )}
         </div>
@@ -496,6 +536,175 @@ export function TicketView({lead,user,nav,updLead}){
       )}
 
       {showSell&&<SellFromTicketModal ticketId={lead.id} lead={lead} user={user} onClose={()=>setShowSell(false)} onSuccess={()=>{updLead(lead.id,{status:"ganado"});}}/>}
+
+      {/* ══ MODAL REGISTRAR CONTACTO ══════════════════════════════ */}
+      {showContact&&(
+        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
+          onClick={e=>{if(e.target===e.currentTarget)closeContact();}}>
+          <div style={{ background:'#fff',borderRadius:16,width:'100%',maxWidth:520,boxShadow:'0 20px 60px rgba(0,0,0,0.18)',overflow:'hidden' }}>
+
+            {/* Header */}
+            <div style={{ padding:'18px 22px',borderBottom:'1px solid #E5E7EB',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#FAFBFC' }}>
+              <div>
+                <div style={{ fontSize:15,fontWeight:800,color:'#0F172A' }}>Registrar contacto</div>
+                <div style={{ fontSize:11,color:'#9CA3AF',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
+              </div>
+              <button onClick={closeContact} style={{ background:'none',border:'none',cursor:'pointer',padding:4,borderRadius:6,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>
+            </div>
+
+            {/* Contenido */}
+            {cfDone?(
+              /* ── Estado de éxito ── */
+              <div style={{ padding:'40px 24px',textAlign:'center' }}>
+                <div style={{ fontSize:44,marginBottom:12 }}>✅</div>
+                <div style={{ fontSize:16,fontWeight:800,color:'#0F172A',marginBottom:6 }}>Contacto guardado</div>
+                <div style={{ fontSize:13,color:'#6B7280' }}>Ticket <strong>#{lead.num}</strong> actualizado correctamente.</div>
+              </div>
+            ):(
+              <div style={{ padding:'20px 22px',display:'flex',flexDirection:'column',gap:16 }}>
+
+                {/* Canal */}
+                <div>
+                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Canal de contacto</div>
+                  <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
+                    {["whatsapp","llamada","email","presencial","sms"].map(mt=>(
+                      <button key={mt} type="button" onClick={()=>setCf(p=>({...p,method:mt}))}
+                        style={{ padding:'6px 12px',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:6,
+                          background:cf.method===mt?'#2563EB':'#F3F4F6',
+                          color:cf.method===mt?'#fff':'#6B7280',
+                          border:cf.method===mt?'none':'1px solid #E5E7EB' }}>
+                        {mt.charAt(0).toUpperCase()+mt.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Resultado */}
+                <div>
+                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Resultado del contacto</div>
+                  <select value={cf.result} onChange={e=>setCf(p=>({...p,result:e.target.value,note:'',evMode:'file'}))}
+                    style={{ ...S.inp,width:'100%',fontSize:12 }}>
+                    <option value="">Seleccionar resultado...</option>
+                    <optgroup label="— Contacto real">
+                      <option value="Contactado">Contactado</option>
+                      <option value="Interesado">Interesado</option>
+                      <option value="Agendó visita">Agendó visita</option>
+                      <option value="Cotización entregada">Cotización entregada</option>
+                      <option value="Envió documentos">Envió documentos</option>
+                      <option value="No interesado">No interesado</option>
+                    </optgroup>
+                    <optgroup label="— Intento fallido">
+                      <option value="No contesta">No contesta</option>
+                      <option value="Buzón de voz">Buzón de voz</option>
+                      <option value="Número equivocado">Número equivocado</option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* EVIDENCIA — solo si result requiere evidencia */}
+                {needsEvidence&&(
+                  <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'14px 16px' }}>
+                    <div style={{ fontSize:11,fontWeight:700,color:'#92400E',marginBottom:10 }}>
+                      ⚠️ Este resultado exige evidencia de contacto real
+                    </div>
+                    {/* Toggle file/note */}
+                    <div style={{ display:'flex',gap:6,marginBottom:12 }}>
+                      {[{v:'file',l:'📎 Subir captura'},{v:'note',l:'✏️ Nota detallada'}].map(o=>(
+                        <button key={o.v} type="button" onClick={()=>setCf(p=>({...p,evMode:o.v}))}
+                          style={{ flex:1,padding:'7px',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:7,
+                            background:cf.evMode===o.v?'#2563EB':'#fff',
+                            color:cf.evMode===o.v?'#fff':'#374151',
+                            border:`1.5px solid ${cf.evMode===o.v?'#2563EB':'#E5E7EB'}` }}>
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+
+                    {cf.evMode==='file'?(
+                      <div>
+                        <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Tipo de captura</div>
+                        <div style={{ display:'flex',gap:5,marginBottom:10 }}>
+                          {EV_TYPES.map(t=>(
+                            <button key={t.v} type="button" onClick={()=>setCf(p=>({...p,evType:t.v}))}
+                              style={{ padding:'4px 10px',fontSize:10,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:5,
+                                background:cf.evType===t.v?'#1D4ED8':'#F1F5F9',
+                                color:cf.evType===t.v?'#fff':'#374151',border:'none' }}>
+                              {t.l}
+                            </button>
+                          ))}
+                        </div>
+                        {evPreview?(
+                          <div style={{ position:'relative',marginBottom:6 }}>
+                            <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:140,objectFit:'cover',borderRadius:8,border:'1px solid #E5E7EB' }}/>
+                            <button onClick={()=>{setEvFile(null);setEvPreview(null);}}
+                              style={{ position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.5)',color:'#fff',border:'none',borderRadius:4,padding:'2px 7px',fontSize:11,cursor:'pointer' }}>✕</button>
+                          </div>
+                        ):(
+                          <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,padding:'18px',borderRadius:8,border:'2px dashed #CBD5E1',background:'#F8FAFC',cursor:'pointer',fontSize:12,color:'#64748B' }}>
+                            <span style={{ fontSize:22 }}>📎</span>
+                            <span>Hacer clic para seleccionar imagen</span>
+                            <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{
+                              const f=e.target.files[0];if(!f)return;
+                              setEvFile(f);setEvPreview(URL.createObjectURL(f));
+                            }}/>
+                          </label>
+                        )}
+                      </div>
+                    ):(
+                      <div>
+                        <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Nota detallada <span style={{ color:'#EF4444' }}>*</span> (mín. 50 caracteres)</div>
+                        <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
+                          rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                          placeholder="Describí detalladamente el contacto: qué se habló, qué acordaron, próximos pasos..."/>
+                        <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=50?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/50</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NOTA OBLIGATORIA — para intentos fallidos */}
+                {needsNote&&(
+                  <div>
+                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>
+                      Nota obligatoria <span style={{ color:'#EF4444' }}>*</span> (mín. 40 caracteres)
+                    </div>
+                    <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
+                      rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                      placeholder="Ej: Llamé a las 14:30, entró al buzón. Reintentaré mañana a las 11hs..."/>
+                    <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=40?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/40</div>
+                  </div>
+                )}
+
+                {/* NOTA OPCIONAL — otros resultados */}
+                {!needsEvidence&&!needsNote&&cf.result&&(
+                  <div>
+                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Nota adicional (opcional)</div>
+                    <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
+                      rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                      placeholder="Comentario adicional..."/>
+                  </div>
+                )}
+
+                {/* Error */}
+                {cfErr&&(
+                  <div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>
+                    ⚠ {cfErr}
+                  </div>
+                )}
+
+                {/* Acciones */}
+                <div style={{ display:'flex',gap:8,justifyContent:'flex-end',paddingTop:4 }}>
+                  <button onClick={closeContact} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>
+                  <button onClick={submitContact} disabled={cfSaving||!cf.result}
+                    style={{ ...S.btn,padding:'9px 20px',fontSize:12,fontWeight:700,opacity:(cfSaving||!cf.result)?0.6:1 }}>
+                    {cfSaving?'Guardando...':'Guardar contacto'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
