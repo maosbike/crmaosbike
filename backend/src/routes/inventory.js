@@ -40,6 +40,7 @@ router.get('/', async (req, res) => {
 
     if (branch_id) { where.push(`i.branch_id = $${idx++}`); params.push(branch_id); }
     if (status) { where.push(`i.status = $${idx++}`); params.push(status); }
+    else { where.push(`i.status != 'vendida'`); }
     if (search) { where.push(`(i.brand ILIKE $${idx} OR i.model ILIKE $${idx} OR i.chassis ILIKE $${idx} OR i.color ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
 
     const { rows } = await db.query(

@@ -433,9 +433,10 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
 
                   {/* ── IDENTIFICADORES — chasis · motor ── */}
                   <div style={{
-                    flex:1, padding:'14px 20px',
+                    flex:1, minWidth:0, padding:'14px 20px',
                     borderRight:'1px solid #F1F3F5',
                     display:'flex', flexDirection:'column', justifyContent:'center', gap:12,
+                    overflow:'hidden',
                   }}>
                     <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em' }}>
                       Identificación
@@ -443,11 +444,12 @@ export function InventoryView({ inv, setInv, user, realBranches }) {
                     {/* Chasis */}
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                       <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Chasis</span>
-                      <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
                         <span style={{
                           fontSize:12, fontWeight:700, color:'#1E293B',
                           background:'#F1F5F9', padding:'4px 11px', borderRadius:7,
                           border:'1px solid #E2E8F0', letterSpacing:'0.03em',
+                          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0,
                         }}>
                           {x.chassis}
                         </span>
