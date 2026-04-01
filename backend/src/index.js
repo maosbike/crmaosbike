@@ -72,6 +72,7 @@ app.use('/api/sales',  require('./routes/sales'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/priceimport', require('./routes/priceimport'));
+app.use('/api/telegram',  require('./routes/telegram'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'CRMaosBike API v2.0' }));
@@ -102,4 +103,7 @@ app.listen(PORT, () => {
   // Iniciar cron jobs de seguimiento comercial
   require('./jobs/slaChecker').start();
   require('./jobs/reminderChecker').start();
+
+  // Registrar webhook de Telegram (no-op si TELEGRAM_WEBHOOK_URL no está configurada)
+  require('./services/telegramService').setupWebhook();
 });
