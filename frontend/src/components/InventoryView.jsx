@@ -535,19 +535,30 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </div>
 
                   {/* ── PRECIO ── */}
-                  <div style={{
-                    flex:'0 0 130px', padding:'16px 18px',
-                    borderRight:'1px solid #F1F3F5',
-                    display:'flex', flexDirection:'column', justifyContent:'center',
-                  }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>
-                      Precio
-                    </div>
-                    {x.price > 0
-                      ? <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px' }}>{fmt(x.price)}</div>
-                      : <div style={{ fontSize:13, color:'#CBD5E1' }}>—</div>
-                    }
-                  </div>
+                  {(() => {
+                    const ownPrice  = Number(x.price)        || 0;
+                    const catPrice  = Number(x.catalog_price) || 0;
+                    const showPrice = ownPrice > 0 ? ownPrice : catPrice;
+                    const isCatalog = ownPrice === 0 && catPrice > 0;
+                    return (
+                      <div style={{
+                        flex:'0 0 130px', padding:'16px 18px',
+                        borderRight:'1px solid #F1F3F5',
+                        display:'flex', flexDirection:'column', justifyContent:'center',
+                      }}>
+                        <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>
+                          Precio
+                        </div>
+                        {showPrice > 0
+                          ? <>
+                              <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px' }}>{fmt(showPrice)}</div>
+                              {isCatalog && <div style={{ fontSize:9, color:'#94A3B8', marginTop:3 }}>catálogo</div>}
+                            </>
+                          : <div style={{ fontSize:13, color:'#CBD5E1' }}>—</div>
+                        }
+                      </div>
+                    );
+                  })()}
 
                   {/* ── ACCIONES ── */}
                   <div style={{
@@ -774,7 +785,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <div style={{ flex:'1 1 120px' }}>
                   <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Sucursal / Precio</div>
                   <div style={{ fontWeight:700,fontSize:12,color:'#374151' }}>{bName}</div>
-                  {sellUnit.price>0&&<div style={{ fontSize:15,fontWeight:900,color:'#F28100',marginTop:4 }}>{fmt(sellUnit.price)}</div>}
+                  {(() => { const p = Number(sellUnit.price)||0 || Number(sellUnit.catalog_price)||0; return p>0 ? <div style={{ fontSize:15,fontWeight:900,color:'#F28100',marginTop:4 }}>{fmt(p)}</div> : null; })()}
                 </div>
               </div>
               <div style={{ fontSize:11,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:12 }}>Datos de la venta</div>

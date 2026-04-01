@@ -44,8 +44,17 @@ router.get('/', async (req, res) => {
     if (search) { where.push(`(i.brand ILIKE $${idx} OR i.model ILIKE $${idx} OR i.chassis ILIKE $${idx} OR i.color ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
 
     const { rows } = await db.query(
-      `SELECT i.*, b.name as branch_name, b.code as branch_code
-       FROM inventory i LEFT JOIN branches b ON i.branch_id = b.id
+      `SELECT i.*, b.name as branch_name, b.code as branch_code,
+              cat.price AS catalog_price
+       FROM inventory i
+       LEFT JOIN branches b ON i.branch_id = b.id
+       LEFT JOIN LATERAL (
+         SELECT price FROM moto_models
+         WHERE LOWER(brand) = LOWER(i.brand)
+           AND LOWER(model) = LOWER(i.model)
+           AND active = true
+         ORDER BY updated_at DESC LIMIT 1
+       ) cat ON true
        WHERE ${where.join(' AND ')} ORDER BY i.created_at DESC`, params
     );
     res.json(rows);
