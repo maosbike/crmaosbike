@@ -152,10 +152,10 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
   }
 });
 
-// Update inventory unit
+// Update inventory unit (edición completa para admin)
 router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
-    const { branch_id, status, color, price, notes } = req.body;
+    const { branch_id, status, color, price, notes, brand, model, year, chassis, motor_num } = req.body;
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
     if (status === 'vendida') {
@@ -163,19 +163,38 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), as
     }
 
     // Verificar estado actual
-    const { rows: cur } = await db.query('SELECT status FROM inventory WHERE id=$1', [req.params.id]);
+    const { rows: cur } = await db.query('SELECT status, branch_id FROM inventory WHERE id=$1', [req.params.id]);
     if (!cur[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
     if (cur[0].status === 'vendida') {
-      return res.status(400).json({ error: 'Una unidad vendida no puede cambiar de estado.' });
+      return res.status(400).json({ error: 'Una unidad vendida no puede modificarse.' });
+    }
+
+    // Chasis: verificar unicidad si se quiere cambiar
+    if (chassis !== undefined && chassis !== '') {
+      const cleanChassis = chassis.replace(/\s/g, '').toUpperCase();
+      const { rows: dup } = await db.query(
+        `SELECT id FROM inventory WHERE UPPER(REPLACE(chassis,' ','')) = $1 AND id != $2`,
+        [cleanChassis, req.params.id]
+      );
+      if (dup.length > 0)
+        return res.status(400).json({ error: 'Ese número de chasis ya existe en otra unidad.' });
     }
 
     const sets = [], params = [];
     let idx = 1;
-    if (branch_id !== undefined) { sets.push(`branch_id = $${idx++}`); params.push(branch_id); }
-    if (status !== undefined)    { sets.push(`status = $${idx++}`);    params.push(status); }
-    if (color !== undefined)     { sets.push(`color = $${idx++}`);     params.push(color); }
-    if (price !== undefined)     { sets.push(`price = $${idx++}`);     params.push(price); }
-    if (notes !== undefined)     { sets.push(`notes = $${idx++}`);     params.push(notes); }
+    if (branch_id  !== undefined) { sets.push(`branch_id = $${idx++}`);  params.push(branch_id); }
+    if (status     !== undefined) { sets.push(`status = $${idx++}`);     params.push(status); }
+    if (color      !== undefined) { sets.push(`color = $${idx++}`);      params.push(String(color).toUpperCase()); }
+    if (price      !== undefined) { sets.push(`price = $${idx++}`);      params.push(Number(price) || 0); }
+    if (notes      !== undefined) { sets.push(`notes = $${idx++}`);      params.push(notes); }
+    if (brand      !== undefined) { sets.push(`brand = $${idx++}`);      params.push(String(brand).toUpperCase()); }
+    if (model      !== undefined) { sets.push(`model = $${idx++}`);      params.push(String(model).toUpperCase()); }
+    if (year       !== undefined) { sets.push(`year = $${idx++}`);       params.push(parseInt(year) || null); }
+    if (chassis    !== undefined && chassis !== '') {
+      sets.push(`chassis = $${idx++}`);
+      params.push(chassis.replace(/\s/g, '').toUpperCase());
+    }
+    if (motor_num  !== undefined) { sets.push(`motor_num = $${idx++}`);  params.push(motor_num || null); }
 
     if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
     params.push(req.params.id);
@@ -185,7 +204,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), as
     );
     if (!rows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
 
-    // Loguear cambio de estado en historial
+    // Historial: cambio de estado
     if (status && status !== cur[0].status) {
       await db.query(
         `INSERT INTO inventory_history (inventory_id, event_type, from_status, to_status, user_id, note)
@@ -194,8 +213,8 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), as
          `Estado cambiado: ${cur[0].status} → ${status}`]
       );
     }
-    // Loguear traslado de sucursal en historial
-    if (branch_id) {
+    // Historial: traslado de sucursal
+    if (branch_id && branch_id !== cur[0].branch_id) {
       await db.query(
         `INSERT INTO inventory_history (inventory_id, event_type, user_id, note)
          VALUES ($1,'moved',$2,$3)`,

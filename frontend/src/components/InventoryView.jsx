@@ -29,13 +29,37 @@ const ST_CFG = {
 };
 
 const COLOR_CSS = {
-  negro:'#111827', blanco:'#FFFFFF', rojo:'#EF4444', azul:'#2563EB',
-  verde:'#15803D', gris:'#9CA3AF', 'gris oscuro':'#374151', naranja:'#EA580C',
-  amarillo:'#D97706', plateado:'#94A3B8', plata:'#94A3B8', perla:'#E8E0D0',
-  'blanco perla':'#E8E0D0', bordo:'#9F1239', vino:'#9F1239',
-  celeste:'#0EA5E9', fucsia:'#DB2777', violeta:'#7C3AED',
+  // Básicos
+  negro:'#111827', 'negro mate':'#1F2937', 'negro metalico':'#374151', 'negro brillante':'#111827',
+  blanco:'#FFFFFF', 'blanco perla':'#F0EDE8', 'blanco nieve':'#F8FAFC', 'blanco polar':'#F1F5F9',
+  rojo:'#EF4444', 'rojo oscuro':'#991B1B', 'rojo metalico':'#DC2626', 'rojo brillante':'#EF4444',
+  azul:'#2563EB', 'azul marino':'#1E3A8A', 'azul metalico':'#1D4ED8', 'azul oscuro':'#1E3A8A',
+  'azul cielo':'#0EA5E9', 'azul claro':'#38BDF8', 'azul royal':'#2563EB',
+  verde:'#15803D', 'verde oscuro':'#14532D', 'verde militar':'#4D7C0F', 'verde oliva':'#65A30D',
+  'verde bosque':'#166534', 'verde metalico':'#16A34A', 'verde lima':'#84CC16',
+  gris:'#9CA3AF', 'gris oscuro':'#374151', 'gris claro':'#D1D5DB', 'gris metalico':'#6B7280',
+  'gris perla':'#E2E8F0', 'gris plata':'#94A3B8', 'gris titanio':'#4B5563',
+  naranja:'#EA580C', 'naranja metalico':'#C2410C', 'naranja fluor':'#F97316',
+  amarillo:'#D97706', 'amarillo metalico':'#B45309', 'amarillo fluor':'#EAB308',
+  plateado:'#94A3B8', plata:'#94A3B8', 'plata metalico':'#CBD5E1', 'plata mate':'#94A3B8',
+  perla:'#E8E0D0', bordo:'#9F1239', vino:'#9F1239', guinda:'#881337',
+  celeste:'#0EA5E9', fucsia:'#DB2777', violeta:'#7C3AED', morado:'#7C3AED', lila:'#A78BFA',
+  dorado:'#D97706', 'oro':'#CA8A04', bronce:'#92400E', cafe:'#78350F',
+  marron:'#92400E', beige:'#D4B896', crema:'#FEF3C7', champagne:'#F5E6C8',
+  titanio:'#6B7280', grafito:'#374151', antracita:'#1F2937',
 };
-const getColorCss = c => COLOR_CSS[(c||'').toLowerCase().trim()] || null;
+// Normaliza el string antes de buscar (quita tildes, pasa a minúsculas)
+const normalizeColor = s => (s||'').toLowerCase().trim()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const getColorCss = c => {
+  const key = normalizeColor(c);
+  // Búsqueda exacta primero
+  const exact = Object.entries(COLOR_CSS).find(([k]) => normalizeColor(k) === key);
+  if (exact) return exact[1];
+  // Búsqueda parcial (e.g. "AZUL METALICO OSCURO" → "azul metalico")
+  const partial = Object.entries(COLOR_CSS).find(([k]) => key.includes(normalizeColor(k)) || normalizeColor(k).includes(key));
+  return partial ? partial[1] : null;
+};
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 
@@ -64,8 +88,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [importLoading,setImportLoading] = useState(false);
   const [importDone,setImportDone] = useState(null);
   const importFileRef = useRef(null);
-  const isAdmin      = ['super_admin','admin_comercial'].includes(user?.role);
+  const isAdmin      = ['super_admin','admin_comercial','backoffice'].includes(user?.role);
   const isSuperAdmin = user?.role === 'super_admin';
+
+  // Modal edición
+  const [editTarget, setEditTarget] = useState(null);
+  const [eForm,      setEForm]      = useState({});
+  const [eSaving,    setESaving]    = useState(false);
+  const [eErr,       setEErr]       = useState('');
 
   // Drag-and-drop (solo super_admin)
   const dragItem    = useRef(null);
@@ -167,6 +197,44 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     } catch(ex) { alert(ex.message||'Error al registrar venta'); }
     finally { setSelling(false); }
   };
+  const openEdit = (unit) => {
+    setEErr('');
+    setEForm({
+      branch_id: unit.branch_id || '',
+      brand:     unit.brand     || '',
+      model:     unit.model     || '',
+      year:      unit.year      || '',
+      color:     unit.color     || '',
+      chassis:   unit.chassis   || '',
+      motor_num: unit.motor_num || '',
+      price:     unit.catalog_price || unit.price || '',
+      status:    unit.status    || 'disponible',
+      notes:     unit.notes     || '',
+    });
+    setEditTarget(unit);
+  };
+  const handleEditSave = async e => {
+    e.preventDefault();
+    setESaving(true); setEErr('');
+    try {
+      const updated = await api.updateInventory(editTarget.id, {
+        branch_id: eForm.branch_id || null,
+        brand:     eForm.brand,
+        model:     eForm.model,
+        year:      eForm.year,
+        color:     eForm.color,
+        chassis:   eForm.chassis,
+        motor_num: eForm.motor_num || null,
+        price:     Number(eForm.price) || 0,
+        status:    eForm.status,
+        notes:     eForm.notes || null,
+      });
+      setInv(prev => prev.map(x => x.id === editTarget.id ? { ...x, ...updated } : x));
+      setEditTarget(null);
+    } catch(ex) { setEErr(ex.message || 'Error al guardar'); }
+    finally { setESaving(false); }
+  };
+
   const handleDragStart = (e, id) => {
     dragItem.current = id;
     setDragging(true);
@@ -669,17 +737,31 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             </select>
                           )}
                         </div>
+                        {isAdmin && (
+                          <button onClick={()=>openEdit(x)}
+                            style={{ ...miniBtn, width:'100%', background:'#F8FAFC', color:'#374151', border:'1px solid #E2E8F0' }}>
+                            ✏️ Editar unidad
+                          </button>
+                        )}
                       </>
                     ) : (
-                      <button onClick={()=>toggleHist(x.id)}
-                        style={{
-                          ...miniBtn, width:'100%',
-                          background: isHistOpen ? '#EEF2FF' : '#F8FAFC',
-                          color: isHistOpen ? '#4F46E5' : '#64748B',
-                          border:`1px solid ${isHistOpen?'#A5B4FC':'#E2E8F0'}`,
-                        }}>
-                        {histLoading[x.id]?'Cargando…':'Ver historial'}
-                      </button>
+                      <>
+                        <button onClick={()=>toggleHist(x.id)}
+                          style={{
+                            ...miniBtn, width:'100%',
+                            background: isHistOpen ? '#EEF2FF' : '#F8FAFC',
+                            color: isHistOpen ? '#4F46E5' : '#64748B',
+                            border:`1px solid ${isHistOpen?'#A5B4FC':'#E2E8F0'}`,
+                          }}>
+                          {histLoading[x.id]?'Cargando…':'Ver historial'}
+                        </button>
+                        {isAdmin && (
+                          <button onClick={()=>openEdit(x)}
+                            style={{ ...miniBtn, width:'100%', background:'#F8FAFC', color:'#374151', border:'1px solid #E2E8F0', marginTop:4 }}>
+                            ✏️ Editar unidad
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -760,6 +842,66 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <img src={viewPhoto.src} style={{ width:'100%',borderRadius:10,maxHeight:420,objectFit:'contain' }}/>
           </div>
         </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════
+          MODAL — EDITAR UNIDAD
+      ══════════════════════════════════════════════════════════ */}
+      {editTarget && (
+        <Modal onClose={()=>{setEditTarget(null);setEErr('');}} title={`Editar · ${editTarget.brand} ${editTarget.model}`} wide>
+          <form onSubmit={handleEditSave}>
+            {/* Sucursal + Estado */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+              <Field label="Sucursal" value={eForm.branch_id} onChange={v=>setEForm({...eForm,branch_id:v})}
+                opts={[{v:'',l:'Sin sucursal'},...brs.map(b=>({v:b.id,l:b.name}))]}/>
+              <Field label="Estado" value={eForm.status} onChange={v=>setEForm({...eForm,status:v})}
+                opts={[
+                  {v:'disponible',  l:'Disponible'},
+                  {v:'reservada',   l:'Reservada'},
+                  {v:'preinscrita', l:'Preinscrita'},
+                ]}/>
+            </div>
+            {/* Marca + Modelo + Año */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 80px', gap:10, marginBottom:10 }}>
+              <Field label="Marca *" value={eForm.brand} onChange={v=>setEForm({...eForm,brand:v})} req/>
+              <Field label="Modelo *" value={eForm.model} onChange={v=>setEForm({...eForm,model:v})} req/>
+              <Field label="Año" value={eForm.year} onChange={v=>setEForm({...eForm,year:v})} type="number"/>
+            </div>
+            {/* Color + Precio */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+              <div>
+                <Field label="Color" value={eForm.color} onChange={v=>setEForm({...eForm,color:v})}/>
+                {eForm.color && (()=>{
+                  const cc = getColorCss(eForm.color);
+                  return <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5 }}>
+                    <span style={{ width:20,height:14,borderRadius:3,background:cc||'#E5E7EB',border:'1px solid #D1D5DB',display:'inline-block'}}/>
+                    <span style={{ fontSize:11,color:'#9CA3AF' }}>{cc?'Color reconocido':'Color no reconocido — se guardará igual'}</span>
+                  </div>;
+                })()}
+              </div>
+              <Field label="Precio" value={eForm.price} onChange={v=>setEForm({...eForm,price:v})} type="number"/>
+            </div>
+            {/* Chasis + Motor */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+              <Field label="N° Chasis *" value={eForm.chassis} onChange={v=>setEForm({...eForm,chassis:v})} req/>
+              <Field label="N° Motor" value={eForm.motor_num} onChange={v=>setEForm({...eForm,motor_num:v})}/>
+            </div>
+            {/* Notas */}
+            <Field label="Notas internas" value={eForm.notes} onChange={v=>setEForm({...eForm,notes:v})} rows={2}/>
+
+            {eErr && <div style={{ marginTop:10,padding:'8px 12px',background:'#FEF2F2',borderRadius:8,fontSize:12,color:'#DC2626',border:'1px solid #FECACA' }}>{eErr}</div>}
+
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:18 }}>
+              <button type="button" onClick={()=>{setEditTarget(null);setEErr('');}} style={{ ...S.gh, padding:'8px 18px', borderRadius:8, fontSize:13 }}>
+                Cancelar
+              </button>
+              <button type="submit" disabled={eSaving}
+                style={{ background:'#0F172A', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                {eSaving ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* ══════════════════════════════════════════════════════════
