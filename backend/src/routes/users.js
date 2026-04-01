@@ -92,6 +92,47 @@ router.put('/:id', roleCheck('super_admin'), async (req, res) => {
   } catch (e) { console.error('Error editar usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
+// Returns count of open tickets assigned to this user (pre-deactivation warning)
+router.get('/:id/active-tickets', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT COUNT(*) AS count FROM tickets
+       WHERE assigned_to = $1 AND status NOT IN ('ganado','perdido','cerrado')`,
+      [req.params.id]
+    );
+    res.json({ count: parseInt(rows[0].count) });
+  } catch (e) { res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+// Deactivate user + optionally bulk-reassign their open tickets
+router.post('/:id/deactivate', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { reassign_to } = req.body; // optional UUID to receive tickets
+    const check = await db.query('SELECT id, first_name, last_name, active FROM users WHERE id = $1', [req.params.id]);
+    if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (req.params.id === req.user.id) return res.status(400).json({ error: 'No puedes desactivarte a ti mismo' });
+
+    let reassigned = 0;
+    if (reassign_to) {
+      const target = await db.query('SELECT id FROM users WHERE id = $1 AND active = true', [reassign_to]);
+      if (!target.rows[0]) return res.status(400).json({ error: 'Usuario destino no encontrado o inactivo' });
+      const { rowCount } = await db.query(
+        `UPDATE tickets SET assigned_to = $1
+         WHERE assigned_to = $2 AND status NOT IN ('ganado','perdido','cerrado')`,
+        [reassign_to, req.params.id]
+      );
+      reassigned = rowCount;
+    }
+
+    await db.query(
+      'UPDATE users SET active = false, session_version = session_version + 1, updated_at = NOW() WHERE id = $1',
+      [req.params.id]
+    );
+    const u = check.rows[0];
+    res.json({ message: `${u.first_name} ${u.last_name} desactivado`, reassigned });
+  } catch (e) { console.error('Error desactivar usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
 router.put('/:id/reset-password', roleCheck('super_admin'), async (req, res) => {
   try {
     const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);

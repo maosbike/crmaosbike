@@ -91,6 +91,13 @@ export function AdminView() {
   const [eErr,  setEErr]  = useState('');
   const [eSaving,setESaving]= useState(false);
 
+  // Desactivar usuario
+  const [deactivateTarget, setDeactivateTarget] = useState(null); // user object
+  const [deactivateInfo,   setDeactivateInfo]   = useState(null); // { count, loading }
+  const [deactivateReassignTo, setDeactivateReassignTo] = useState('');
+  const [deactivating, setDeactivating] = useState(false);
+  const [deactivateErr, setDeactivateErr] = useState('');
+
   // ── Danger zone ─────────────────────────────────────────────────────────────
   const [cleaning,          setCleaning]         = useState(false);
   const [cleanDone,         setCleanDone]        = useState(false);
@@ -161,16 +168,39 @@ export function AdminView() {
     finally { setESaving(false); }
   };
 
-  const handleToggleActive = async u => {
-    const verb = u.active ? 'desactivar' : 'activar';
-    const msg  = u.active
-      ? `¿Desactivar a ${u.first_name} ${u.last_name}?\n\nEl usuario no podrá iniciar sesión hasta que lo reactives.`
-      : `¿Activar a ${u.first_name} ${u.last_name}?\n\nEl usuario podrá volver a iniciar sesión.`;
-    if (!confirm(msg)) return;
+  // Activar — simple, no necesita modal
+  const handleActivate = async u => {
+    if (!confirm(`¿Activar a ${u.first_name} ${u.last_name}?\n\nEl usuario podrá volver a iniciar sesión.`)) return;
     try {
-      const updated = await api.editUser(u.id, { active: !u.active });
+      const updated = await api.editUser(u.id, { active: true });
       setUsers(prev => prev.map(x => x.id === u.id ? { ...x, active: updated.active } : x));
-    } catch(ex) { alert(ex.message || 'Error al actualizar usuario'); }
+    } catch(ex) { alert(ex.message || 'Error al activar usuario'); }
+  };
+
+  // Desactivar — abre modal con info de leads activos
+  const openDeactivate = async u => {
+    setDeactivateTarget(u);
+    setDeactivateReassignTo('');
+    setDeactivateErr('');
+    setDeactivateInfo({ count: null, loading: true });
+    try {
+      const { count } = await api.getUserActiveTickets(u.id);
+      setDeactivateInfo({ count, loading: false });
+    } catch { setDeactivateInfo({ count: 0, loading: false }); }
+  };
+
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true); setDeactivateErr('');
+    try {
+      await api.deactivateUser(deactivateTarget.id, {
+        reassign_to: deactivateReassignTo || undefined,
+      });
+      setUsers(prev => prev.map(x => x.id === deactivateTarget.id ? { ...x, active: false } : x));
+      setDeactivateTarget(null);
+      setDeactivateInfo(null);
+    } catch(ex) { setDeactivateErr(ex.message || 'Error al desactivar'); }
+    finally { setDeactivating(false); }
   };
 
   const handleReset = async u => {
@@ -319,16 +349,16 @@ export function AdminView() {
                             style={{ ...S.gh, padding:'4px 8px', fontSize:11, borderRadius:6, border:'1px solid #E2E8F0', color:'#6B7280' }}>
                             <Ic.lock size={13}/>
                           </button>
-                          <button onClick={() => handleToggleActive(u)}
-                            title={u.active ? 'Desactivar' : 'Activar'}
-                            style={{
-                              padding:'4px 9px', fontSize:10, fontWeight:700, borderRadius:6, cursor:'pointer',
-                              border: u.active ? '1px solid #FECACA' : '1px solid #BBF7D0',
-                              background: u.active ? '#FEF2F2' : '#F0FDF4',
-                              color: u.active ? '#DC2626' : '#16A34A',
-                            }}>
-                            {u.active ? 'Desactivar' : 'Activar'}
-                          </button>
+                          {u.active
+                            ? <button onClick={() => openDeactivate(u)} title="Desactivar usuario"
+                                style={{ padding:'4px 9px',fontSize:10,fontWeight:700,borderRadius:6,cursor:'pointer',border:'1px solid #FECACA',background:'#FEF2F2',color:'#DC2626' }}>
+                                Desactivar
+                              </button>
+                            : <button onClick={() => handleActivate(u)} title="Activar usuario"
+                                style={{ padding:'4px 9px',fontSize:10,fontWeight:700,borderRadius:6,cursor:'pointer',border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#16A34A' }}>
+                                Activar
+                              </button>
+                          }
                         </div>
                       </td>
                     </tr>
@@ -488,6 +518,83 @@ export function AdminView() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* ══ MODAL — DESACTIVAR USUARIO ══ */}
+      {deactivateTarget && (
+        <Modal onClose={() => { setDeactivateTarget(null); setDeactivateInfo(null); }} title="Desactivar usuario">
+          {/* Identidad */}
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#FEF2F2',borderRadius:9,border:'1px solid #FECACA',marginBottom:16 }}>
+            <div style={{ width:34,height:34,borderRadius:'50%',background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',color:'#DC2626',fontSize:12,fontWeight:700,flexShrink:0 }}>
+              {((deactivateTarget.first_name||'?')[0]+(deactivateTarget.last_name||'?')[0]).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize:13,fontWeight:700,color:'#DC2626' }}>{deactivateTarget.first_name} {deactivateTarget.last_name}</div>
+              <div style={{ fontSize:11,color:'#9CA3AF' }}>{deactivateTarget.email}</div>
+            </div>
+          </div>
+
+          {/* Leads activos */}
+          {deactivateInfo?.loading
+            ? <div style={{ fontSize:12,color:'#6B7280',marginBottom:14 }}>Verificando leads activos...</div>
+            : deactivateInfo?.count > 0
+              ? <div style={{ padding:'10px 14px',borderRadius:9,background:'#FFFBEB',border:'1px solid #FCD34D',marginBottom:14 }}>
+                  <div style={{ fontSize:12,fontWeight:700,color:'#92400E',marginBottom:6 }}>
+                    ⚠ Este usuario tiene {deactivateInfo.count} lead{deactivateInfo.count!==1?'s':''} activo{deactivateInfo.count!==1?'s':''}
+                  </div>
+                  <div style={{ fontSize:11,color:'#78350F' }}>
+                    Elige qué hacer con ellos:
+                  </div>
+                  <div style={{ marginTop:10 }}>
+                    <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:4 }}>Reasignar a</label>
+                    <select
+                      value={deactivateReassignTo}
+                      onChange={e => setDeactivateReassignTo(e.target.value)}
+                      style={{ ...S.inp, width:'100%' }}
+                    >
+                      <option value="">— Dejar sin reasignar (SLA los redistribuirá) —</option>
+                      {users.filter(u => u.active && u.id !== deactivateTarget.id).map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.first_name} {u.last_name} · {ROLES.find(r=>r.v===u.role)?.l||u.role}
+                        </option>
+                      ))}
+                    </select>
+                    {!deactivateReassignTo && (
+                      <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>
+                        Si no reasignas ahora, los leads quedan asignados al historial del usuario.
+                        La rotación de SLA los redistribuirá automáticamente cuando venza el plazo.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              : deactivateInfo?.count === 0
+                ? <div style={{ padding:'8px 12px',borderRadius:8,background:'#F0FDF4',border:'1px solid #BBF7D0',fontSize:11,color:'#16A34A',marginBottom:14 }}>
+                    Sin leads activos asignados — se puede desactivar sin impacto.
+                  </div>
+                : null
+          }
+
+          <div style={{ padding:'8px 12px',borderRadius:8,background:'#F9FAFB',border:'1px solid #E5E7EB',fontSize:11,color:'#6B7280',marginBottom:14 }}>
+            El usuario <strong>no podrá iniciar sesión</strong> ni aparecerá en selectores de vendedores ni en la rotación de asignaciones. El historial y trazabilidad se mantienen íntegros.
+          </div>
+
+          {deactivateErr && (
+            <div style={{ marginBottom:12,padding:'8px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',fontSize:11,color:'#DC2626' }}>
+              {deactivateErr}
+            </div>
+          )}
+          <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
+            <button type="button" onClick={() => { setDeactivateTarget(null); setDeactivateInfo(null); }} style={S.btn2}>Cancelar</button>
+            <button
+              type="button"
+              disabled={deactivating || deactivateInfo?.loading}
+              onClick={handleDeactivate}
+              style={{ ...S.btn, background:'#DC2626', opacity:(deactivating||deactivateInfo?.loading)?0.7:1 }}
+            >
+              {deactivating ? 'Desactivando...' : 'Confirmar desactivación'}
+            </button>
+          </div>
         </Modal>
       )}
 

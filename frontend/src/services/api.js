@@ -117,6 +117,8 @@ export const api = {
   editUser: (id, data) => request('PUT', `/users/${id}`, data),
   resetPassword: (id) =>
     request('PUT', `/users/${id}/reset-password`),
+  getUserActiveTickets: (id) => request('GET', `/users/${id}/active-tickets`),
+  deactivateUser: (id, data) => request('POST', `/users/${id}/deactivate`, data || {}),
 
   // Notificaciones
   getNotifications: (params) => request('GET', `/notifications?${new URLSearchParams(params || {})}`),
