@@ -798,7 +798,10 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <Field label="Fecha de venta *" value={sellForm.sold_at} onChange={v=>setSellForm(p=>({...p,sold_at:v}))} type="date"/>
               </div>
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>
-                <Field label="Estado documentación" value={sellForm.sale_type} onChange={v=>setSellForm(p=>({...p,sale_type:v}))} opts={[{v:'completa',l:'Documentación completa'},{v:'inscripcion',l:'Solo inscripción pendiente'},{v:'entregada',l:'Entregada al cliente'}]}/>
+                <div>
+                  <Field label="Modalidad de entrega documental" value={sellForm.sale_type} onChange={v=>setSellForm(p=>({...p,sale_type:v}))} opts={[{v:'completa',l:'Documentación completa'},{v:'inscripcion',l:'Solo inscripción'}]}/>
+                  <div style={{ fontSize:10,color:'#9CA3AF',marginTop:3 }}>Se puede modificar después en Ventas</div>
+                </div>
                 <Field label="Método de pago" value={sellForm.payment_method} onChange={v=>setSellForm(p=>({...p,payment_method:v}))} opts={[{v:'',l:'Seleccionar...'},{v:'Contado',l:'Contado'},{v:'Transferencia',l:'Transferencia bancaria'},{v:'Tarjeta Débito',l:'Tarjeta Débito'},{v:'Tarjeta Crédito',l:'Tarjeta Crédito'},{v:'Crédito Autofin',l:'Crédito Autofin'},{v:'Mixto',l:'Mixto'}]}/>
               </div>
               {/* ── Lead asociado ── */}

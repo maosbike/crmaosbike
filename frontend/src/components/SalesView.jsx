@@ -5,9 +5,9 @@ import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const SALE_TYPES = [
-  { v: '',           l: '— Tipo inscripción —' },
+  { v: '',           l: '— Seleccionar —' },
   { v: 'inscripcion', l: 'Solo inscripción' },
-  { v: 'completa',    l: 'Inscripción completa' },
+  { v: 'completa',    l: 'Documentación completa' },
 ];
 
 const DOC_LABELS = {
@@ -123,7 +123,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, sellers, branches }) 
             {isAdmin && <Row label="Costo distribuidor" val={fmt(sale.cost_price)} />}
             {isAdmin && <Row label="Facturado dist."    val={fmt(sale.invoice_amount)} />}
             <Row label="Forma de pago"     val={sale.payment_method} />
-            <Row label="Tipo inscripción"  val={SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type} />
+            <Row label="Modalidad documental"  val={SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type} />
             <Row label="Entregada"         val={sale.delivered ? 'Sí' : 'No'} />
           </div>
           {sale.sale_notes && (
@@ -169,7 +169,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, sellers, branches }) 
             {isAdmin && <Field label="Monto facturado distribuidor" value={form.invoice_amount} onChange={set('invoice_amount')} type="number" />}
             <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
               opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-            <Field label="Tipo inscripción" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
+            <Field label="Modalidad documental" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input type="checkbox" id="delivered" checked={!!form.delivered}
@@ -233,7 +233,7 @@ function NewSaleModal({ user, sellers, branches, onClose, onCreated }) {
         <Field label="Fecha venta *" value={form.sold_at} onChange={set('sold_at')} type="date" />
         <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
           opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-        <Field label="Tipo inscripción" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
+        <Field label="Modalidad documental" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
 
         {/* Precios */}
         <div style={{ gridColumn: '1/-1', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginTop: 8 }}>Precios</div>
