@@ -39,7 +39,8 @@ function crmButton(ticketId) {
 
 // ─── Transporte HTTP (base interna) ──────────────────────────────────────────
 
-function apiCall(method, payload) {
+// timeout en ms: polling usa 30s en Telegram, le damos 40s de margen
+function apiCall(method, payload, socketTimeoutMs = 40000) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     logger.warn('[Telegram] TELEGRAM_BOT_TOKEN no configurado');
@@ -56,6 +57,7 @@ function apiCall(method, payload) {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(body),
         },
+        timeout: socketTimeoutMs,
       },
       (res) => {
         let data = '';
@@ -66,6 +68,10 @@ function apiCall(method, payload) {
         });
       }
     );
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
     req.on('error', (e) => {
       logger.warn(`[Telegram] ${method} error: ${e.message}`);
       resolve(null);
@@ -241,13 +247,23 @@ async function handleUpdate(update) {
 
 async function setupWebhook() {
   const token      = process.env.TELEGRAM_BOT_TOKEN;
-  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL; // ej: https://crmaosbike.cl/api/telegram/webhook
+  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
   const secret     = process.env.TELEGRAM_WEBHOOK_SECRET;
 
-  if (!token || !webhookUrl) {
-    logger.info('[Telegram] TELEGRAM_WEBHOOK_URL no configurada — webhook no registrado (modo solo-envío)');
+  if (!token) {
+    logger.info('[Telegram] TELEGRAM_BOT_TOKEN no configurado — bot desactivado');
     return null;
   }
+
+  if (!webhookUrl) {
+    // Sin URL de webhook → arrancar en modo polling (long-polling)
+    logger.info('[Telegram] TELEGRAM_WEBHOOK_URL no configurada — iniciando modo polling');
+    startPolling();
+    return null;
+  }
+
+  // Borrar webhook previo para evitar conflicto si se venía en modo polling
+  await apiCall('deleteWebhook', { drop_pending_updates: false });
 
   const payload = { url: webhookUrl, allowed_updates: ['message', 'callback_query'] };
   if (secret) payload.secret_token = secret;
@@ -259,6 +275,50 @@ async function setupWebhook() {
     logger.warn(`[Telegram] ⚠ Error registrando webhook: ${result?.description}`);
   }
   return result;
+}
+
+// ─── Modo polling (fallback cuando no hay webhook URL) ────────────────────────
+
+let _pollingActive = false;
+
+function startPolling() {
+  if (_pollingActive) return;
+  _pollingActive = true;
+
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+
+  let offset = 0;
+
+  async function poll() {
+    if (!_pollingActive) return;
+    try {
+      // socketTimeoutMs = 35000: Telegram corta a los 30s, le damos 5s de margen
+      const result = await apiCall('getUpdates', {
+        offset,
+        timeout: 30,
+        allowed_updates: ['message', 'callback_query'],
+      }, 35000);
+
+      if (result?.ok && Array.isArray(result.result)) {
+        for (const update of result.result) {
+          offset = update.update_id + 1;
+          handleUpdate(update).catch(e =>
+            logger.warn(`[Telegram] polling handleUpdate error: ${e.message}`)
+          );
+        }
+      }
+    } catch (e) {
+      logger.warn(`[Telegram] polling error: ${e.message}`);
+      // Esperar 5s antes de reintentar en caso de error de red
+      await new Promise(r => setTimeout(r, 5000));
+    }
+    // Siguiente tick inmediato (long polling bloquea 30s en Telegram si no hay updates)
+    setImmediate(poll);
+  }
+
+  logger.info('[Telegram] 🔄 Polling activo — escuchando /start y callbacks');
+  poll();
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
@@ -312,9 +372,10 @@ const TelegramService = {
     return sendMessage(seller.telegram_chat_id, text, crmButton(ticket.id));
   },
 
-  // Onboarding / webhook
+  // Onboarding / webhook / polling
   handleUpdate,
   setupWebhook,
+  startPolling,
 };
 
 module.exports = TelegramService;
