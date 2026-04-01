@@ -14,10 +14,10 @@ const HIST_ICONS  = { created:'C', imported:'I', sold:'V', status_changed:'E', m
 const HIST_LABELS = { created:'Creada', imported:'Importada', sold:'Venta', status_changed:'Cambio estado', moved:'Traslado', note:'Nota' };
 
 const BRANCH_CFG = {
-  MPN:  { color:'#2563EB', light:'#EFF6FF', label:'Pl.Norte'   },
-  MPS:  { color:'#059669', light:'#ECFDF5', label:'Sur Motos'  },
-  MPSY: { color:'#7C3AED', light:'#F5F3FF', label:'Sur Yamaha' },
-  MOV:  { color:'#D97706', light:'#FFFBEB', label:'Movicenter' },
+  MPN:  { color:'#2563EB', light:'#EFF6FF', label:'Mall Plaza Norte'       },
+  MPS:  { color:'#059669', light:'#ECFDF5', label:'Mall Plaza Sur - Motos' },
+  MPSY: { color:'#7C3AED', light:'#F5F3FF', label:'Mall Plaza Sur - Yamaha'},
+  MOV:  { color:'#D97706', light:'#FFFBEB', label:'Movicenter'             },
 };
 const FALLBACK_BRANCH = { color:'#6B7280', light:'#F9FAFB', label:'—' };
 
@@ -432,12 +432,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
                   {/* ── SUCURSAL — strip izquierdo de color ── */}
                   <div style={{
-                    width:80, flexShrink:0,
+                    width:96, flexShrink:0,
                     background: bCode ? bCfg.color : '#E5E7EB',
                     display:'flex', alignItems:'center', justifyContent:'center',
-                    padding:'0 4px',
+                    padding:'0 6px',
                   }}>
-                    <span style={{ fontSize:10, fontWeight:800, color:'#FFFFFF', letterSpacing:'0.04em', textAlign:'center', lineHeight:1.25, wordBreak:'break-word' }}>
+                    <span style={{ fontSize:9, fontWeight:800, color:'#FFFFFF', letterSpacing:'0.02em', textAlign:'center', lineHeight:1.3, wordBreak:'break-word' }}>
                       {bCfg.label || bCode || '—'}
                     </span>
                   </div>
