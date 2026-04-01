@@ -45,16 +45,32 @@ router.get('/', async (req, res) => {
 
     const { rows } = await db.query(
       `SELECT i.*, b.name as branch_name, b.code as branch_code,
-              cat.price AS catalog_price
+              COALESCE(
+                -- 1) precio propio de la unidad (si fue cargado con precio)
+                NULLIF(i.price, 0),
+                -- 2) modelo vinculado por FK directa (más confiable)
+                (SELECT mm.price FROM moto_models mm WHERE mm.id = i.model_id AND mm.price > 0 LIMIT 1),
+                -- 3) moto_prices más reciente via FK
+                (SELECT mp.price_list FROM moto_prices mp
+                   JOIN moto_models mm ON mp.model_id = mm.id
+                  WHERE mm.id = i.model_id AND mp.price_list > 0
+                  ORDER BY mp.period DESC LIMIT 1),
+                -- 4) moto_models por texto brand+model (sin filtro active para máxima cobertura)
+                (SELECT mm.price FROM moto_models mm
+                  WHERE LOWER(TRIM(mm.brand)) = LOWER(TRIM(i.brand))
+                    AND LOWER(TRIM(mm.model)) = LOWER(TRIM(i.model))
+                    AND mm.price > 0
+                  ORDER BY mm.updated_at DESC LIMIT 1),
+                -- 5) moto_prices por texto brand+model, período más reciente
+                (SELECT mp.price_list FROM moto_prices mp
+                   JOIN moto_models mm ON mp.model_id = mm.id
+                  WHERE LOWER(TRIM(mm.brand)) = LOWER(TRIM(i.brand))
+                    AND LOWER(TRIM(mm.model)) = LOWER(TRIM(i.model))
+                    AND mp.price_list > 0
+                  ORDER BY mp.period DESC LIMIT 1)
+              ) AS catalog_price
        FROM inventory i
        LEFT JOIN branches b ON i.branch_id = b.id
-       LEFT JOIN LATERAL (
-         SELECT price FROM moto_models
-         WHERE LOWER(brand) = LOWER(i.brand)
-           AND LOWER(model) = LOWER(i.model)
-           AND active = true
-         ORDER BY updated_at DESC LIMIT 1
-       ) cat ON true
        WHERE ${where.join(' AND ')} ORDER BY i.created_at DESC`, params
     );
     res.json(rows);

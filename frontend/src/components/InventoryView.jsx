@@ -536,10 +536,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
                   {/* ── PRECIO ── */}
                   {(() => {
-                    const ownPrice  = Number(x.price)        || 0;
-                    const catPrice  = Number(x.catalog_price) || 0;
-                    const showPrice = ownPrice > 0 ? ownPrice : catPrice;
-                    const isCatalog = ownPrice === 0 && catPrice > 0;
+                    // El backend ya devuelve en catalog_price el mejor precio disponible
+                    // (propio > FK model_id > moto_prices > brand+model texto)
+                    const showPrice = Number(x.catalog_price) || 0;
                     return (
                       <div style={{
                         flex:'0 0 130px', padding:'16px 18px',
@@ -550,10 +549,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           Precio
                         </div>
                         {showPrice > 0
-                          ? <>
-                              <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px' }}>{fmt(showPrice)}</div>
-                              {isCatalog && <div style={{ fontSize:9, color:'#94A3B8', marginTop:3 }}>catálogo</div>}
-                            </>
+                          ? <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px' }}>{fmt(showPrice)}</div>
                           : <div style={{ fontSize:13, color:'#CBD5E1' }}>—</div>
                         }
                       </div>
