@@ -14,11 +14,12 @@ const HIST_ICONS  = { created:'C', imported:'I', sold:'V', status_changed:'E', m
 const HIST_LABELS = { created:'Creada', imported:'Importada', sold:'Venta', status_changed:'Cambio estado', moved:'Traslado', note:'Nota' };
 
 const BRANCH_CFG = {
-  MPN: { color:'#2563EB', light:'#EFF6FF', label:'Norte'  },
-  MPS: { color:'#059669', light:'#ECFDF5', label:'Sur'    },
-  MOV: { color:'#D97706', light:'#FFFBEB', label:'Ovalle' },
+  MPN:  { color:'#2563EB', light:'#EFF6FF', label:'Pl.Norte'   },
+  MPS:  { color:'#059669', light:'#ECFDF5', label:'Sur Motos'  },
+  MPSY: { color:'#7C3AED', light:'#F5F3FF', label:'Sur Yamaha' },
+  MOV:  { color:'#D97706', light:'#FFFBEB', label:'Movicenter' },
 };
-const FALLBACK_BRANCH = { color:'#6B7280', light:'#F9FAFB', label:'' };
+const FALLBACK_BRANCH = { color:'#6B7280', light:'#F9FAFB', label:'—' };
 
 const ST_CFG = {
   disponible:  { color:'#15803D', bg:'#F0FDF4', border:'#86EFAC', label:'Disponible',  icon:'●' },
@@ -63,7 +64,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [importLoading,setImportLoading] = useState(false);
   const [importDone,setImportDone] = useState(null);
   const importFileRef = useRef(null);
-  const isAdmin = ['super_admin','admin_comercial'].includes(user?.role);
+  const isAdmin      = ['super_admin','admin_comercial'].includes(user?.role);
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  // Drag-and-drop (solo super_admin)
+  const dragItem    = useRef(null);
+  const dragOverItem= useRef(null);
+  const [dragging,  setDragging]  = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const brands = [...new Set(inv.map(x => x.brand).filter(Boolean))].sort();
 
@@ -159,6 +167,51 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     } catch(ex) { alert(ex.message||'Error al registrar venta'); }
     finally { setSelling(false); }
   };
+  const handleDragStart = (e, id) => {
+    dragItem.current = id;
+    setDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleDragEnter = (id) => { dragOverItem.current = id; };
+  const handleDragEnd   = async () => {
+    setDragging(false);
+    if (!dragItem.current || !dragOverItem.current || dragItem.current === dragOverItem.current) {
+      dragItem.current = null; dragOverItem.current = null;
+      return;
+    }
+    // Reordenar localmente primero (optimistic)
+    const fromId = dragItem.current;
+    const toId   = dragOverItem.current;
+    dragItem.current = null; dragOverItem.current = null;
+
+    setInv(prev => {
+      const arr = [...prev];
+      const fromIdx = arr.findIndex(x => x.id === fromId);
+      const toIdx   = arr.findIndex(x => x.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return prev;
+      const [moved] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, moved);
+      // Asignar sort_order secuencial y persistir
+      const items = arr.map((x, i) => ({ id: x.id, sort_order: i + 1 }));
+      api.reorderInventory(items).catch(() => reload());
+      return arr.map((x, i) => ({ ...x, sort_order: i + 1 }));
+    });
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.exportInventory(brF ? { branch_id: brF } : undefined);
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `inventario_${new Date().toISOString().slice(0,10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(ex) { alert(ex.message || 'Error al exportar'); }
+    finally { setExporting(false); }
+  };
+
   const toggleHist = async id => {
     const next = new Set(histOpen);
     if (next.has(id)) { next.delete(id); }
@@ -192,10 +245,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         </div>
         <div style={{ display:'flex', gap:8 }}>
           {isAdmin && (
-            <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
-              style={btnGhost}>
-              <Ic.upload size={13} color="#6B7280"/> Importar Excel
-            </button>
+            <>
+              <button onClick={handleExport} disabled={exporting} style={btnGhost}>
+                <Ic.dl size={13} color="#6B7280"/> {exporting ? 'Exportando…' : 'Exportar Excel'}
+              </button>
+              <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
+                style={btnGhost}>
+                <Ic.upload size={13} color="#6B7280"/> Importar Excel
+              </button>
+            </>
           )}
           <button onClick={()=>setShowAdd(true)} style={btnOrange}>
             <Ic.plus size={14} color="#fff"/> Nueva Unidad
@@ -328,9 +386,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {/* Contador */}
-          <div style={{ fontSize:11, color:'#9CA3AF', fontWeight:500, paddingLeft:2, marginBottom:4 }}>
-            {f.length} unidad{f.length!==1?'es':''}{hasFilters&&` (filtradas de ${inv.length})`}
+          {/* Contador + hint de orden para super_admin */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingLeft:2, marginBottom:4 }}>
+            <div style={{ fontSize:11, color:'#9CA3AF', fontWeight:500 }}>
+              {f.length} unidad{f.length!==1?'es':''}{hasFilters&&` (filtradas de ${inv.length})`}
+            </div>
+            {isSuperAdmin && !hasFilters && (
+              <div style={{ fontSize:10, color:'#94A3B8', display:'flex', alignItems:'center', gap:4 }}>
+                <span style={{ fontSize:13 }}>⠿</span> Arrastrá para reordenar
+              </div>
+            )}
           </div>
 
           {f.map(x => {
@@ -342,7 +407,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             const cDot      = getColorCss(x.color);
 
             return (
-              <div key={x.id}>
+              <div key={x.id}
+                draggable={isSuperAdmin && !hasFilters}
+                onDragStart={isSuperAdmin && !hasFilters ? e => handleDragStart(e, x.id) : undefined}
+                onDragEnter={isSuperAdmin && !hasFilters ? () => handleDragEnter(x.id) : undefined}
+                onDragEnd={isSuperAdmin && !hasFilters ? handleDragEnd : undefined}
+                onDragOver={isSuperAdmin && !hasFilters ? e => e.preventDefault() : undefined}
+                style={{ cursor: isSuperAdmin && !hasFilters ? 'grab' : 'default' }}
+              >
                 {/* ── CARD ── */}
                 <div style={{
                   display:'flex', alignItems:'stretch',
@@ -360,12 +432,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
                   {/* ── SUCURSAL — strip izquierdo de color ── */}
                   <div style={{
-                    width:72, flexShrink:0,
+                    width:80, flexShrink:0,
                     background: bCode ? bCfg.color : '#E5E7EB',
                     display:'flex', alignItems:'center', justifyContent:'center',
+                    padding:'0 4px',
                   }}>
-                    <span style={{ fontSize:16, fontWeight:900, color:'#FFFFFF', letterSpacing:'0.06em' }}>
-                      {bCode || '—'}
+                    <span style={{ fontSize:10, fontWeight:800, color:'#FFFFFF', letterSpacing:'0.04em', textAlign:'center', lineHeight:1.25, wordBreak:'break-word' }}>
+                      {bCfg.label || bCode || '—'}
                     </span>
                   </div>
 
@@ -591,7 +664,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                               style={{ ...miniBtn, flex:1, appearance:'auto', background:'#F8FAFC', color:'#64748B', border:'1px solid #E2E8F0', cursor:'pointer' }}>
                               <option value="" disabled>Mover</option>
                               {brs.filter(b=>b.id!==x.branch_id).map(b=>(
-                                <option key={b.id} value={b.id}>{b.code||b.name}</option>
+                                <option key={b.id} value={b.id}>{b.name}</option>
                               ))}
                             </select>
                           )}

@@ -26,6 +26,19 @@ const tryRefresh = async () => {
   }
 };
 
+// Para endpoints que devuelven Blob (descarga de archivos)
+const requestBlob = async (method, path) => {
+  const headers = {};
+  if (_token) headers['Authorization'] = `Bearer ${_token}`;
+  const res = await fetch(`${BASE}${path}`, { method, headers, credentials: 'include' });
+  if (!res.ok) {
+    let msg = 'Error al descargar';
+    try { const d = await res.json(); msg = d.error || msg; } catch {}
+    throw new Error(msg);
+  }
+  return res.blob();
+};
+
 const request = async (method, path, body, _retry = false) => {
   const headers = { 'Content-Type': 'application/json' };
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
@@ -91,6 +104,11 @@ export const api = {
   importInventoryConfirm: (rows) => request('POST', '/inventory/import/confirm', { rows }),
   sellInventory: (id, data) => request('POST', `/inventory/${id}/sell`, data),
   getInventoryHistory: (id) => request('GET', `/inventory/${id}/history`),
+  reorderInventory: (items) => request('PUT', '/inventory/reorder', { items }),
+  exportInventory: (params) => {
+    const qs = params ? '?' + new URLSearchParams(params) : '';
+    return requestBlob('GET', `/inventory/export${qs}`);
+  },
 
   // Catalog
   getModels: (params) => request('GET', `/catalog/models?${new URLSearchParams(params || {})}`),

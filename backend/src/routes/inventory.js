@@ -71,7 +71,11 @@ router.get('/', async (req, res) => {
               ) AS catalog_price
        FROM inventory i
        LEFT JOIN branches b ON i.branch_id = b.id
-       WHERE ${where.join(' AND ')} ORDER BY i.created_at DESC`, params
+       WHERE ${where.join(' AND ')}
+       ORDER BY
+         CASE WHEN i.sort_order IS NULL OR i.sort_order = 0 THEN 1 ELSE 0 END,
+         i.sort_order ASC,
+         i.created_at DESC`, params
     );
     res.json(rows);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
@@ -430,6 +434,114 @@ router.post('/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
 
     res.json({ url: result.secure_url });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
+});
+
+// ─── REORDER — solo super_admin ───────────────────────────────────────────────
+// Body: { items: [{id, sort_order}, ...] }
+router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || !items.length)
+      return res.status(400).json({ error: 'Se requiere array items [{id, sort_order}]' });
+
+    // Actualizar en una transacción para atomicidad
+    await db.query('BEGIN');
+    for (const { id, sort_order } of items) {
+      if (!id || sort_order == null) continue;
+      await db.query(
+        `UPDATE inventory SET sort_order = $1, updated_at = NOW() WHERE id = $2`,
+        [sort_order, id]
+      );
+    }
+    await db.query('COMMIT');
+    res.json({ ok: true, updated: items.length });
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error('[inventory/reorder]', e);
+    res.status(500).json({ error: 'Error al guardar orden' });
+  }
+});
+
+// ─── EXPORT — genera XLSX con todo el inventario ──────────────────────────────
+router.get('/export', async (req, res) => {
+  try {
+    const { branch_id, status } = req.query;
+    let where = ['1=1'], params = [], idx = 1;
+    if (branch_id) { where.push(`i.branch_id = $${idx++}`); params.push(branch_id); }
+    if (status)    { where.push(`i.status = $${idx++}`);    params.push(status); }
+
+    const { rows } = await db.query(
+      `SELECT i.*, b.name as branch_name, b.code as branch_code,
+              COALESCE(
+                NULLIF(i.price, 0),
+                (SELECT mm.price FROM moto_models mm WHERE mm.id = i.model_id AND mm.price > 0 LIMIT 1),
+                (SELECT mm.price FROM moto_models mm
+                  WHERE LOWER(TRIM(mm.brand)) = LOWER(TRIM(i.brand))
+                    AND LOWER(TRIM(mm.model)) = LOWER(TRIM(i.model))
+                    AND mm.price > 0
+                  ORDER BY mm.updated_at DESC LIMIT 1)
+              ) AS catalog_price
+       FROM inventory i
+       LEFT JOIN branches b ON i.branch_id = b.id
+       WHERE ${where.join(' AND ')}
+       ORDER BY
+         CASE WHEN i.sort_order IS NULL OR i.sort_order = 0 THEN 1 ELSE 0 END,
+         i.sort_order ASC, i.created_at DESC`,
+      params
+    );
+
+    const XLSX = require('xlsx');
+    const exportRows = [];
+    const failedRows = [];
+
+    for (const r of rows) {
+      try {
+        exportRows.push({
+          'Sucursal':       r.branch_name  || r.branch_code || '—',
+          'Año':            r.year         || '',
+          'Marca':          r.brand        || '',
+          'Modelo':         r.model        || '',
+          'Color':          r.color        || '',
+          'N° Chasis':      r.chassis      || '',
+          'N° Motor':       r.motor_num    || '',
+          'Estado':         r.status       || '',
+          'Precio':         r.catalog_price ? Number(r.catalog_price) : '',
+          'Fecha Ingreso':  r.created_at   ? new Date(r.created_at).toLocaleDateString('es-CL') : '',
+          'Fecha Venta':    r.sold_at      ? new Date(r.sold_at).toLocaleDateString('es-CL') : '',
+          'Notas':          r.notes        || '',
+        });
+      } catch (rowErr) {
+        failedRows.push({ chassis: r.chassis || r.id, error: rowErr.message });
+        console.warn(`[inventory/export] fila omitida: chassis=${r.chassis||r.id} — ${rowErr.message}`);
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+
+    // Ancho de columnas
+    ws['!cols'] = [
+      {wch:22},{wch:6},{wch:12},{wch:20},{wch:14},{wch:18},{wch:16},
+      {wch:14},{wch:12},{wch:14},{wch:14},{wch:30},
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+
+    // Hoja de errores (si los hubo)
+    if (failedRows.length > 0) {
+      const wsErr = XLSX.utils.json_to_sheet(failedRows);
+      XLSX.utils.book_append_sheet(wb, wsErr, 'Filas con error');
+    }
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const filename = `inventario_${new Date().toISOString().slice(0,10)}.xlsx`;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+  } catch (e) {
+    console.error('[inventory/export]', e);
+    res.status(500).json({ error: 'Error al generar exportación' });
+  }
 });
 
 module.exports = router;
