@@ -738,7 +738,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           )}
                         </div>
                         {isAdmin && (
-                          <button onClick={()=>openEdit(x)}
+                          <button onDoubleClick={()=>openEdit(x)}
+                            title="Doble click para editar"
                             style={{ ...miniBtn, width:'100%', background:'#F8FAFC', color:'#374151', border:'1px solid #E2E8F0' }}>
                             ✏️ Editar unidad
                           </button>
