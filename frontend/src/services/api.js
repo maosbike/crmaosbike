@@ -238,4 +238,5 @@ export const api = {
     fd.append('field', field);
     return request('POST', `/sales/${id}/doc`, fd);
   },
+  deleteSale: (id) => request('DELETE', `/sales/${id}`),
 };

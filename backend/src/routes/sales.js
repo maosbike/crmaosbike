@@ -7,6 +7,7 @@
  *   GET  /api/sales/:id      → todos los roles (ownership check para vendedor)
  *   POST /api/sales          → solo super_admin y backoffice
  *   PATCH /api/sales/:id     → solo super_admin y backoffice
+ *   DELETE /api/sales/:id    → solo super_admin
  *   POST /api/sales/:id/doc  → solo super_admin y backoffice
  *
  * Costos internos (cost_price, invoice_amount):
@@ -48,8 +49,6 @@ function sanitizeSale(sale, userRole) {
 }
 
 // ─── Query base — join enriquecido de ventas ──────────────────────────────────
-// Se usa tanto en list como en get-by-id.
-// client_name: usa el nombre manual si existe, si no toma el del ticket vinculado.
 const BASE_SELECT = `
   SELECT
     i.id,
@@ -57,7 +56,7 @@ const BASE_SELECT = `
     i.price,
     i.sale_price, i.cost_price, i.invoice_amount,
     i.sold_at, i.payment_method, i.sale_type, i.sale_notes,
-    i.delivered,
+    i.delivered, i.distributor_paid,
     i.doc_factura_dist, i.doc_factura_cli, i.doc_homologacion, i.doc_inscripcion,
     i.ticket_id,
     -- Vendedor
@@ -92,12 +91,10 @@ router.get('/', async (req, res) => {
     const where = [], params = [];
     let idx = 1;
 
-    // Ownership estricto: vendedor solo ve sus ventas
     if (req.user.role === 'vendedor') {
       where.push(`sv.id = $${idx++}`);
       params.push(req.user.id);
     } else if (seller_id) {
-      // Admin puede filtrar por vendedor, pero no puede suplantar el ownership del vendedor
       where.push(`sv.id = $${idx++}`);
       params.push(seller_id);
     }
@@ -133,20 +130,17 @@ router.get('/', async (req, res) => {
 });
 
 // ─── GET /api/sales/stats ─────────────────────────────────────────────────────
-// IMPORTANTE: esta ruta debe ir antes de /:id para que Express no confunda 'stats' con un UUID
 router.get('/stats', async (req, res) => {
   try {
     const { from, to, branch_id } = req.query;
     const where = [], params = [];
     let idx = 1;
 
-    // Ownership: vendedor solo ve sus métricas
     if (req.user.role === 'vendedor') {
       where.push(`i.sold_by = $${idx++}`);
       params.push(req.user.id);
     }
 
-    // Default: mes en curso si no hay filtro de fecha
     const monthStart = from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     const monthEnd   = to   ? to + ' 23:59:59' : new Date().toISOString();
     where.push(`i.sold_at >= $${idx++}`); params.push(monthStart);
@@ -158,33 +152,35 @@ router.get('/stats', async (req, res) => {
 
     const { rows } = await db.query(`
       SELECT
-        COUNT(*)                                                       AS total,
+        COUNT(*)                                                           AS total,
         COUNT(*) FILTER (WHERE i.doc_factura_cli  IS NULL
-                            OR  i.doc_factura_cli  = '')               AS sin_factura_cli,
+                            OR  i.doc_factura_cli  = '')                   AS sin_factura_cli,
         COUNT(*) FILTER (WHERE i.doc_homologacion IS NULL
-                            OR  i.doc_homologacion = '')               AS sin_homologacion,
+                            OR  i.doc_homologacion = '')                   AS sin_homologacion,
         COUNT(*) FILTER (WHERE i.doc_inscripcion  IS NULL
-                            OR  i.doc_inscripcion  = '')               AS sin_inscripcion,
+                            OR  i.doc_inscripcion  = '')                   AS sin_inscripcion,
         COUNT(*) FILTER (WHERE i.delivered = false
-                            OR  i.delivered IS NULL)                   AS pendiente_entrega,
-        SUM(i.sale_price)                                              AS total_venta,
-        SUM(i.cost_price)                                              AS total_costo,
-        SUM(i.invoice_amount)                                          AS total_facturado
+                            OR  i.delivered IS NULL)                       AS pendiente_entrega,
+        COUNT(*) FILTER (WHERE i.distributor_paid = false
+                            OR  i.distributor_paid IS NULL)                AS pendiente_distribuidor,
+        SUM(i.sale_price)                                                  AS total_venta,
+        SUM(i.cost_price)                                                  AS total_costo,
+        SUM(i.invoice_amount)                                              AS total_facturado
       FROM inventory i
       ${whereClause}
     `, params);
 
     const s = rows[0];
     const base = {
-      total:             parseInt(s.total)            || 0,
-      sin_factura_cli:   parseInt(s.sin_factura_cli)  || 0,
-      sin_homologacion:  parseInt(s.sin_homologacion) || 0,
-      sin_inscripcion:   parseInt(s.sin_inscripcion)  || 0,
-      pendiente_entrega: parseInt(s.pendiente_entrega)|| 0,
-      total_venta:       parseInt(s.total_venta)      || 0,
+      total:                  parseInt(s.total)                  || 0,
+      sin_factura_cli:        parseInt(s.sin_factura_cli)        || 0,
+      sin_homologacion:       parseInt(s.sin_homologacion)       || 0,
+      sin_inscripcion:        parseInt(s.sin_inscripcion)        || 0,
+      pendiente_entrega:      parseInt(s.pendiente_entrega)      || 0,
+      pendiente_distribuidor: parseInt(s.pendiente_distribuidor) || 0,
+      total_venta:            parseInt(s.total_venta)            || 0,
     };
 
-    // Costos internos: solo para admin/backoffice
     if (req.user.role !== 'vendedor') {
       base.total_costo     = parseInt(s.total_costo)     || 0;
       base.total_facturado = parseInt(s.total_facturado) || 0;
@@ -200,15 +196,10 @@ router.get('/stats', async (req, res) => {
 // ─── GET /api/sales/:id ───────────────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {
-    const { rows } = await db.query(
-      `${BASE_SELECT} AND i.id = $1`,
-      [req.params.id]
-    );
+    const { rows } = await db.query(`${BASE_SELECT} AND i.id = $1`, [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Venta no encontrada' });
 
     const sale = rows[0];
-
-    // Ownership check backend: vendedor solo puede ver sus ventas
     if (req.user.role === 'vendedor' && sale.seller_id !== req.user.id) {
       return res.status(403).json({ error: 'Sin permiso para ver esta venta' });
     }
@@ -221,8 +212,6 @@ router.get('/:id', async (req, res) => {
 });
 
 // ─── POST /api/sales ──────────────────────────────────────────────────────────
-// Crea una unidad nueva y la registra directamente como vendida.
-// Restringido a super_admin y backoffice.
 router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
   try {
     const {
@@ -232,12 +221,10 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
       client_name, client_rut,
     } = req.body;
 
-    if (!brand || !model || !chassis) {
+    if (!brand || !model || !chassis)
       return res.status(400).json({ error: 'Marca, modelo y chasis son obligatorios' });
-    }
-    if (!sold_by) {
+    if (!sold_by)
       return res.status(400).json({ error: 'Vendedor obligatorio' });
-    }
 
     const finalSoldAt = sold_at ? new Date(sold_at).toISOString() : new Date().toISOString();
 
@@ -282,7 +269,6 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
 
     const unit = rows[0];
 
-    // Historial de inventario
     await db.query(
       `INSERT INTO inventory_history (inventory_id, event_type, to_status, user_id, note, metadata)
        VALUES ($1, 'sold', 'vendida', $2, $3, $4)`,
@@ -293,7 +279,6 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
       ]
     );
 
-    // Timeline del ticket vinculado (si existe)
     if (ticket_id) {
       await db.query(
         `INSERT INTO timeline (ticket_id, user_id, type, title, note)
@@ -315,14 +300,12 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
 });
 
 // ─── PATCH /api/sales/:id ─────────────────────────────────────────────────────
-// Actualiza campos de seguimiento de la venta.
-// Restringido a super_admin y backoffice.
 router.patch('/:id', roleCheck('super_admin', 'backoffice'), async (req, res) => {
   try {
     const UPDATABLE = [
       'sale_price', 'cost_price', 'invoice_amount',
       'sale_type', 'payment_method', 'sale_notes',
-      'delivered',
+      'delivered', 'distributor_paid',
       'doc_factura_dist', 'doc_factura_cli', 'doc_homologacion', 'doc_inscripcion',
       'client_name', 'client_rut',
     ];
@@ -355,9 +338,72 @@ router.patch('/:id', roleCheck('super_admin', 'backoffice'), async (req, res) =>
   }
 });
 
+// ─── DELETE /api/sales/:id — solo super_admin ─────────────────────────────────
+// No borra la fila: revierte la unidad a 'disponible' y limpia todos los campos
+// de venta. Registra el evento en inventory_history para trazabilidad completa.
+// El ticket vinculado NO se toca — su estado lo gestiona el admin manualmente.
+router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
+  try {
+    // Verificar que existe y está vendida
+    const { rows: cur } = await db.query(
+      `SELECT id, brand, model, chassis, ticket_id, sold_by FROM inventory WHERE id = $1 AND status = 'vendida'`,
+      [req.params.id]
+    );
+    if (!cur[0]) return res.status(404).json({ error: 'Venta no encontrada o unidad no está vendida' });
+
+    const unit = cur[0];
+
+    // Revertir a disponible, limpiar todos los campos de venta
+    await db.query(
+      `UPDATE inventory SET
+         status          = 'disponible',
+         sold_at         = NULL,
+         sold_by         = NULL,
+         ticket_id       = NULL,
+         sale_notes      = NULL,
+         payment_method  = NULL,
+         sale_type       = NULL,
+         added_as_sold   = false,
+         sale_price      = NULL,
+         cost_price      = NULL,
+         invoice_amount  = NULL,
+         delivered       = false,
+         distributor_paid= false,
+         doc_factura_dist= NULL,
+         doc_factura_cli = NULL,
+         doc_homologacion= NULL,
+         doc_inscripcion = NULL,
+         client_name     = NULL,
+         client_rut      = NULL,
+         updated_at      = NOW()
+       WHERE id = $1`,
+      [req.params.id]
+    );
+
+    // Registrar en historial para trazabilidad
+    await db.query(
+      `INSERT INTO inventory_history (inventory_id, event_type, from_status, to_status, user_id, note, metadata)
+       VALUES ($1, 'status_changed', 'vendida', 'disponible', $2, $3, $4)`,
+      [
+        req.params.id,
+        req.user.id,
+        `Venta de prueba eliminada — unidad revertida a disponible por ${req.user.first_name || req.user.email}`,
+        JSON.stringify({ deleted_by: req.user.id, ticket_id_was: unit.ticket_id }),
+      ]
+    );
+
+    res.json({
+      ok: true,
+      message: `Unidad ${unit.brand} ${unit.model} (${unit.chassis}) revertida a disponible`,
+      ticket_id_was: unit.ticket_id || null,
+    });
+  } catch (e) {
+    console.error('[Sales] DELETE /:id', e);
+    res.status(500).json({ error: 'Error al eliminar venta' });
+  }
+});
+
 // ─── POST /api/sales/:id/doc ──────────────────────────────────────────────────
-// Sube un documento adjunto a una venta y guarda la URL en Cloudinary.
-// Restringido a super_admin y backoffice.
 router.post('/:id/doc', roleCheck('super_admin', 'backoffice'), uploadDoc.single('file'), async (req, res) => {
   try {
     const { field } = req.body;
@@ -367,7 +413,6 @@ router.post('/:id/doc', roleCheck('super_admin', 'backoffice'), uploadDoc.single
     }
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
-    // Verificar que la venta existe
     const { rows: check } = await db.query(
       `SELECT id FROM inventory WHERE id = $1 AND status = 'vendida'`,
       [req.params.id]

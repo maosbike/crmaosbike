@@ -1,41 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
+import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const SALE_TYPES = [
-  { v: '',           l: '— Seleccionar —' },
+  { v: '',            l: '— Seleccionar —' },
   { v: 'inscripcion', l: 'Solo inscripción' },
   { v: 'completa',    l: 'Documentación completa' },
 ];
 
 const DOC_LABELS = {
-  doc_factura_dist: 'Factura distribuidor',
+  doc_factura_dist: 'Factura dist.',
   doc_factura_cli:  'Factura cliente',
   doc_homologacion: 'Homologación',
   doc_inscripcion:  'Inscripción',
 };
 
-const CAN_CREATE  = ['super_admin', 'backoffice'];
-const CAN_ADMIN   = ['super_admin', 'admin_comercial', 'backoffice'];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function Check({ ok }) {
-  if (ok) return <Ic.check size={15} color="#10B981" />;
-  return <span style={{ display: 'inline-block', width: 15, height: 15, border: '2px solid #D1D5DB', borderRadius: 3 }} />;
-}
-
-function DocBadge({ url, label }) {
-  if (url) return (
-    <a href={url} target="_blank" rel="noopener noreferrer"
-       style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#10B981', fontWeight: 600, fontSize: 11, textDecoration: 'none' }}>
-      <Ic.file size={13} color="#10B981" /> Ver
-    </a>
-  );
-  return <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span>;
-}
+const CAN_CREATE = ['super_admin', 'backoffice'];
+const CAN_ADMIN  = ['super_admin', 'admin_comercial', 'backoffice'];
 
 const EMPTY_FORM = {
   brand: '', model: '', year: new Date().getFullYear(), chassis: '', motor_num: '',
@@ -45,28 +28,92 @@ const EMPTY_FORM = {
   delivered: false, client_name: '', client_rut: '',
 };
 
+// ─── Helpers visuales ─────────────────────────────────────────────────────────
+
+function StatusDot({ ok, size = 9 }) {
+  return (
+    <span style={{
+      display: 'inline-block', width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: ok ? '#10B981' : '#E5E7EB',
+      border: ok ? '1.5px solid #059669' : '1.5px solid #D1D5DB',
+      boxShadow: ok ? '0 0 0 2px rgba(16,185,129,0.15)' : 'none',
+    }} />
+  );
+}
+
+function DocBadge({ url }) {
+  if (url) return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+       style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#10B981',
+                fontWeight: 700, fontSize: 10, textDecoration: 'none',
+                background: '#ECFDF5', border: '1px solid #A7F3D0',
+                borderRadius: 5, padding: '2px 7px' }}>
+      <Ic.file size={11} color="#10B981" /> Ver
+    </a>
+  );
+  return <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span>;
+}
+
+function DistributorBadge({ paid }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
+      background: paid ? '#ECFDF5' : '#FEF3C7',
+      color: paid ? '#065F46' : '#92400E',
+      border: `1px solid ${paid ? '#A7F3D0' : '#FCD34D'}`,
+      whiteSpace: 'nowrap',
+    }}>
+      <span style={{ fontSize: 10 }}>{paid ? '✓' : '○'}</span>
+      {paid ? 'Pagada dist.' : 'Pend. distribuidor'}
+    </span>
+  );
+}
+
+// ─── KPI card ─────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, color = '#374151', bg = '#F9FAFB', border = '#E5E7EB', alert = false, icon }) {
+  return (
+    <div style={{
+      background: alert ? `${bg}` : '#FFFFFF',
+      border: `1px solid ${alert ? border : '#E5E7EB'}`,
+      borderRadius: 12, padding: '14px 18px',
+      display: 'flex', flexDirection: 'column', gap: 4,
+      boxShadow: alert ? `0 2px 8px ${border}44` : '0 1px 3px rgba(0,0,0,0.04)',
+    }}>
+      <div style={{ fontSize: 24, fontWeight: 900, color, letterSpacing: '-1px', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: alert ? color : '#9CA3AF',
+                    textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+    </div>
+  );
+}
+
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
-function SaleDetailModal({ sale, user, onClose, onUpdated, sellers, branches }) {
-  const isAdmin = CAN_ADMIN.includes(user.role);
-  const canEdit = CAN_CREATE.includes(user.role);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm]       = useState({});
-  const [saving, setSaving]   = useState(false);
-  const [err, setErr]         = useState('');
-  const [uploading, setUploading] = useState('');
+function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
+  const isAdmin  = CAN_ADMIN.includes(user.role);
+  const canEdit  = CAN_CREATE.includes(user.role);
+  const isSuperAdmin = user.role === 'super_admin';
+
+  const [editing,    setEditing]    = useState(false);
+  const [form,       setForm]       = useState({});
+  const [saving,     setSaving]     = useState(false);
+  const [err,        setErr]        = useState('');
+  const [uploading,  setUploading]  = useState('');
+  const [delConfirm, setDelConfirm] = useState(false);
+  const [deleting,   setDeleting]   = useState(false);
 
   useEffect(() => {
     setForm({
-      sale_price:     sale.sale_price     || '',
-      cost_price:     sale.cost_price     || '',
-      invoice_amount: sale.invoice_amount || '',
-      sale_type:      sale.sale_type      || '',
-      payment_method: sale.payment_method || '',
-      sale_notes:     sale.sale_notes     || '',
-      delivered:      !!sale.delivered,
-      client_name:    sale.client_name    || '',
-      client_rut:     sale.client_rut     || '',
+      sale_price:       sale.sale_price       || '',
+      cost_price:       sale.cost_price       || '',
+      invoice_amount:   sale.invoice_amount   || '',
+      sale_type:        sale.sale_type        || '',
+      payment_method:   sale.payment_method   || '',
+      sale_notes:       sale.sale_notes       || '',
+      delivered:        !!sale.delivered,
+      distributor_paid: !!sale.distributor_paid,
+      client_name:      sale.client_name      || '',
+      client_rut:       sale.client_rut       || '',
     });
   }, [sale]);
 
@@ -78,7 +125,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, sellers, branches }) 
       await api.updateSale(sale.id, form);
       onUpdated();
       setEditing(false);
-    } catch (e) { setErr(e.message); }
+    } catch (e) { setErr(e.message || 'Error al guardar'); }
     finally { setSaving(false); }
   }
 
@@ -92,97 +139,193 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, sellers, branches }) 
     finally { setUploading(''); }
   }
 
-  const Row = ({ label, val }) => (
-    <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
-      <span style={{ color: '#6B7280', fontSize: 12, minWidth: 160 }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 500 }}>{val || '—'}</span>
-    </div>
-  );
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await api.deleteSale(sale.id);
+      onDeleted(sale.id, res.ticket_id_was);
+    } catch (e) { alert(e.message || 'Error al eliminar'); setDeleting(false); }
+  }
+
+  const sellerName = sale.seller_fn ? `${sale.seller_fn} ${sale.seller_ln || ''}`.trim() : '—';
 
   return (
-    <Modal onClose={onClose} title={`Venta · ${sale.brand} ${sale.model} · ${sale.chassis}`} wide>
-      {/* Datos fijos de la unidad */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px', marginBottom: 16 }}>
-        <Row label="Marca / Modelo"  val={`${sale.brand} ${sale.model}`} />
-        <Row label="Año"             val={sale.year} />
-        <Row label="Chasis"          val={sale.chassis} />
-        <Row label="Color"           val={sale.color} />
-        <Row label="Vendedor"        val={sale.seller_fn ? `${sale.seller_fn} ${sale.seller_ln}` : '—'} />
-        <Row label="Sucursal"        val={sale.branch_name} />
-        <Row label="Fecha venta"     val={fD(sale.sold_at)} />
-        <Row label="Cliente"         val={sale.client_name} />
-        {sale.client_rut && <Row label="RUT cliente" val={sale.client_rut} />}
-        {sale.ticket_num  && <Row label="Ticket" val={sale.ticket_num} />}
-      </div>
+    <Modal onClose={onClose} title={`Venta · ${sale.brand} ${sale.model}`} wide>
 
-      {/* Campos editables */}
-      {!editing ? (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px', marginBottom: 16 }}>
-            <Row label="Precio venta"      val={fmt(sale.sale_price)} />
-            {isAdmin && <Row label="Costo distribuidor" val={fmt(sale.cost_price)} />}
-            {isAdmin && <Row label="Facturado dist."    val={fmt(sale.invoice_amount)} />}
-            <Row label="Forma de pago"     val={sale.payment_method} />
-            <Row label="Modalidad documental"  val={SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type} />
-            <Row label="Entregada"         val={sale.delivered ? 'Sí' : 'No'} />
+      {/* Cabecera: unidad */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+        borderRadius: 12, padding: '16px 20px', marginBottom: 18, color: '#FFFFFF',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      }}>
+        <div>
+          <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+            {sale.brand}
           </div>
-          {sale.sale_notes && (
-            <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '8px 12px', marginBottom: 16, fontSize: 13, color: '#374151' }}>
-              {sale.sale_notes}
+          <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 2 }}>
+            {sale.model} {sale.year ? `· ${sale.year}` : ''}
+          </div>
+          <div style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace' }}>
+            Chasis: {sale.chassis}{sale.color ? ` · ${sale.color}` : ''}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          {sale.sale_price > 0 && (
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#F28100', letterSpacing: '-1px' }}>
+              {fmt(sale.sale_price)}
             </div>
           )}
-          {/* Documentos */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: 8 }}>Documentos</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-              {Object.entries(DOC_LABELS).map(([field, label]) => (
-                <div key={field} style={{ ...S.card, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 12 }}>{label}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <DocBadge url={sale[field]} />
-                    {canEdit && (
-                      <label style={{ cursor: 'pointer' }}>
-                        <input type="file" style={{ display: 'none' }} accept=".jpg,.jpeg,.png,.webp,.pdf"
-                          onChange={e => handleDocUpload(field, e.target.files[0])} />
-                        {uploading === field
-                          ? <span style={{ fontSize: 11, color: '#6B7280' }}>↑</span>
-                          : <Ic.upload size={14} color="#6B7280" />}
-                      </label>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{fD(sale.sold_at)}</div>
+          <div style={{ marginTop: 6 }}>
+            <DistributorBadge paid={sale.distributor_paid} />
           </div>
+        </div>
+      </div>
+
+      {/* Info principal — grilla */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px', marginBottom: 16 }}>
+        {[
+          ['Vendedor',    sellerName],
+          ['Sucursal',    sale.branch_name || '—'],
+          ['Cliente',     sale.client_name || '—'],
+          ['RUT',         sale.client_rut  || '—'],
+          ['Ticket',      sale.ticket_num  || '—'],
+          ['Forma pago',  sale.payment_method || '—'],
+          ['Modalidad',   SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type || '—'],
+          ['Entregada',   sale.delivered ? 'Sí ✓' : 'Pendiente'],
+        ].map(([label, val]) => (
+          <div key={label} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
+            <span style={{ color: '#9CA3AF', fontSize: 11, minWidth: 90, flexShrink: 0 }}>{label}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: '#1E293B' }}>{val}</span>
+          </div>
+        ))}
+        {isAdmin && sale.cost_price > 0 && (
+          <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
+            <span style={{ color: '#9CA3AF', fontSize: 11, minWidth: 90, flexShrink: 0 }}>Precio lista</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: '#1E293B' }}>{fmt(sale.price)}</span>
+          </div>
+        )}
+      </div>
+
+      {sale.sale_notes && (
+        <div style={{ background: '#F8FAFC', borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+                      fontSize: 12, color: '#374151', borderLeft: '3px solid #CBD5E1' }}>
+          {sale.sale_notes}
+        </div>
+      )}
+
+      {/* Documentos */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
+                      letterSpacing: '0.1em', marginBottom: 8 }}>Documentos adjuntos</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 6 }}>
+          {Object.entries(DOC_LABELS).map(([field, label]) => (
+            <div key={field} style={{
+              background: '#F9FAFB', border: `1px solid ${sale[field] ? '#A7F3D0' : '#E5E7EB'}`,
+              borderRadius: 8, padding: '8px 12px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div>
+                <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>{label}</div>
+                <DocBadge url={sale[field]} />
+              </div>
+              {canEdit && (
+                <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                  <input type="file" style={{ display: 'none' }} accept=".jpg,.jpeg,.png,.webp,.pdf"
+                    onChange={e => handleDocUpload(field, e.target.files[0])} />
+                  <span style={{ fontSize: 18, color: uploading === field ? '#F28100' : '#CBD5E1',
+                                 lineHeight: 1, display: 'block' }}>
+                    {uploading === field ? '↑' : '+'}
+                  </span>
+                </label>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Modo edición */}
+      {!editing ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {canEdit && (
-            <button onClick={() => setEditing(true)} style={{ ...S.btn2, width: '100%' }}>
+            <button onClick={() => setEditing(true)} style={{ ...S.btn2, flex: 1, minWidth: 160 }}>
               Editar seguimiento
             </button>
           )}
-        </>
+          {/* Eliminar venta — solo super_admin */}
+          {isSuperAdmin && !delConfirm && (
+            <button onClick={() => setDelConfirm(true)}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #FCA5A5',
+                       background: 'transparent', color: '#EF4444', fontSize: 12,
+                       fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Eliminar venta de prueba
+            </button>
+          )}
+          {isSuperAdmin && delConfirm && (
+            <div style={{ width: '100%', background: '#FEF2F2', border: '1px solid #FECACA',
+                          borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', marginBottom: 6 }}>
+                ⚠ ¿Eliminar esta venta?
+              </div>
+              <div style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 10, lineHeight: 1.5 }}>
+                La unidad <strong>{sale.brand} {sale.model} · {sale.chassis}</strong> volverá a estado <strong>Disponible</strong> en inventario.
+                {sale.ticket_num && <> El ticket <strong>{sale.ticket_num}</strong> no se modifica — deberás ajustarlo manualmente si es necesario.</>}
+                {' '}Esta acción queda registrada en el historial de la unidad.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={handleDelete} disabled={deleting}
+                  style={{ padding: '7px 16px', borderRadius: 8, border: 'none',
+                           background: '#EF4444', color: '#FFFFFF', fontSize: 12,
+                           fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {deleting ? 'Eliminando…' : 'Sí, eliminar y revertir'}
+                </button>
+                <button onClick={() => setDelConfirm(false)}
+                  style={{ ...S.btn2, fontSize: 12 }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
-        /* Formulario de edición */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#F28100', textTransform: 'uppercase',
+                        letterSpacing: '0.08em', marginBottom: 2 }}>Editar seguimiento</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="Precio venta al cliente" value={form.sale_price} onChange={set('sale_price')} type="number" />
-            {isAdmin && <Field label="Costo compra distribuidor" value={form.cost_price} onChange={set('cost_price')} type="number" />}
-            {isAdmin && <Field label="Monto facturado distribuidor" value={form.invoice_amount} onChange={set('invoice_amount')} type="number" />}
+            <Field label="Precio venta al cliente ($)" value={form.sale_price}
+              onChange={set('sale_price')} type="number" />
+            {isAdmin && (
+              <Field label="Costo compra distribuidor ($)" value={form.cost_price}
+                onChange={set('cost_price')} type="number" />
+            )}
             <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
               opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-            <Field label="Modalidad documental" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
+            <Field label="Modalidad documental" value={form.sale_type}
+              onChange={set('sale_type')} opts={SALE_TYPES} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" id="delivered" checked={!!form.delivered}
-              onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
-            <label htmlFor="delivered" style={{ fontSize: 13 }}>Moto entregada al cliente</label>
+          {/* Checkboxes: entrega + pago distribuidor */}
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="checkbox" checked={!!form.delivered}
+                onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
+              Moto entregada al cliente
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="checkbox" checked={!!form.distributor_paid}
+                onChange={e => setForm(f => ({ ...f, distributor_paid: e.target.checked }))} />
+              Pagada al distribuidor
+            </label>
           </div>
-          <Field label="Nombre cliente (si no hay ticket)" value={form.client_name} onChange={set('client_name')} />
-          <Field label="RUT cliente" value={form.client_rut} onChange={set('client_rut')} />
-          <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={3} />
-          {err && <div style={{ color: '#EF4444', fontSize: 13 }}>{err}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
+            <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
+          </div>
+          <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
+          {err && <div style={{ color: '#EF4444', fontSize: 12, padding: '6px 10px',
+                                background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={handleSave} disabled={saving} style={{ ...S.btn, flex: 1 }}>
-              {saving ? 'Guardando…' : 'Guardar'}
+              {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
             <button onClick={() => setEditing(false)} style={{ ...S.btn2, flex: 1 }}>Cancelar</button>
           </div>
@@ -194,10 +337,10 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, sellers, branches }) 
 
 // ─── Modal: nueva venta ───────────────────────────────────────────────────────
 
-function NewSaleModal({ user, sellers, branches, onClose, onCreated }) {
-  const [form, setForm] = useState({ ...EMPTY_FORM });
+function NewSaleModal({ sellers, branches, onClose, onCreated }) {
+  const [form,   setForm]   = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
+  const [err,    setErr]    = useState('');
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -208,58 +351,56 @@ function NewSaleModal({ user, sellers, branches, onClose, onCreated }) {
     try {
       await api.createSale(form);
       onCreated();
-    } catch (e) { setErr(e.message); setSaving(false); }
+    } catch (e) { setErr(e.message || 'Error al crear'); setSaving(false); }
   }
 
   return (
     <Modal onClose={onClose} title="Registrar venta" wide>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-
-        {/* Unidad */}
-        <div style={{ gridColumn: '1/-1', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginTop: 4 }}>Unidad</div>
-        <Field label="Marca *"  value={form.brand}  onChange={set('brand')}  ph="YAMAHA" />
-        <Field label="Modelo *" value={form.model}  onChange={set('model')}  ph="MT-07" />
-        <Field label="Año"      value={form.year}   onChange={set('year')}   type="number" />
-        <Field label="Color"    value={form.color}  onChange={set('color')}  ph="Negro" />
+        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                      textTransform: 'uppercase', letterSpacing: '0.1em' }}>Unidad</div>
+        <Field label="Marca *"     value={form.brand}     onChange={set('brand')}     ph="YAMAHA" />
+        <Field label="Modelo *"    value={form.model}     onChange={set('model')}     ph="MT-07" />
+        <Field label="Año"         value={form.year}      onChange={set('year')}      type="number" />
+        <Field label="Color"       value={form.color}     onChange={set('color')}     ph="Negro" />
         <Field label="N° Chasis *" value={form.chassis}   onChange={set('chassis')}   ph="9CDKDE0…" />
         <Field label="N° Motor"    value={form.motor_num} onChange={set('motor_num')} ph="opcional" />
 
-        {/* Venta */}
-        <div style={{ gridColumn: '1/-1', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginTop: 8 }}>Venta</div>
+        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                      textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Venta</div>
         <Field label="Vendedor *" value={form.sold_by} onChange={set('sold_by')}
           opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}` }))]} />
         <Field label="Sucursal" value={form.branch_id} onChange={set('branch_id')}
           opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]} />
-        <Field label="Fecha venta *" value={form.sold_at} onChange={set('sold_at')} type="date" />
+        <Field label="Fecha venta" value={form.sold_at} onChange={set('sold_at')} type="date" />
         <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
           opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
         <Field label="Modalidad documental" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
 
-        {/* Precios */}
-        <div style={{ gridColumn: '1/-1', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginTop: 8 }}>Precios</div>
-        <Field label="Precio lista (ref.)"          value={form.price}          onChange={set('price')}          type="number" />
-        <Field label="Precio venta al cliente"      value={form.sale_price}     onChange={set('sale_price')}     type="number" />
-        <Field label="Costo compra distribuidor"    value={form.cost_price}     onChange={set('cost_price')}     type="number" />
-        <Field label="Monto facturado distribuidor" value={form.invoice_amount} onChange={set('invoice_amount')} type="number" />
+        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                      textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Precios</div>
+        <Field label="Precio lista (ref.)"        value={form.price}          onChange={set('price')}          type="number" />
+        <Field label="Precio venta al cliente"    value={form.sale_price}     onChange={set('sale_price')}     type="number" />
+        <Field label="Costo compra distribuidor"  value={form.cost_price}     onChange={set('cost_price')}     type="number" />
+        <Field label="Monto facturado dist."      value={form.invoice_amount} onChange={set('invoice_amount')} type="number" />
 
-        {/* Cliente */}
-        <div style={{ gridColumn: '1/-1', fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', marginTop: 8 }}>Cliente (si no hay ticket vinculado)</div>
+        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                      textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Cliente</div>
         <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
         <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
         <Field label="N° Ticket (opcional)" value={form.ticket_id} onChange={set('ticket_id')} ph="UUID del ticket" />
 
-        {/* Entrega y notas */}
         <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
           <input type="checkbox" id="new_delivered" checked={!!form.delivered}
             onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
           <label htmlFor="new_delivered" style={{ fontSize: 13 }}>Moto entregada al cliente</label>
         </div>
         <div style={{ gridColumn: '1/-1' }}>
-          <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={3} />
+          <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
         </div>
       </div>
-
-      {err && <div style={{ color: '#EF4444', fontSize: 13, marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 10, padding: '6px 10px',
+                            background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
         <button onClick={handleCreate} disabled={saving} style={{ ...S.btn, flex: 1 }}>
           {saving ? 'Registrando…' : 'Registrar venta'}
@@ -273,8 +414,9 @@ function NewSaleModal({ user, sellers, branches, onClose, onCreated }) {
 // ─── Vista principal ──────────────────────────────────────────────────────────
 
 export function SalesView({ user, realBranches }) {
-  const isAdmin  = CAN_ADMIN.includes(user.role);
-  const canCreate = CAN_CREATE.includes(user.role);
+  const isAdmin      = CAN_ADMIN.includes(user.role);
+  const canCreate    = CAN_CREATE.includes(user.role);
+  const isSuperAdmin = user.role === 'super_admin';
 
   const [sales,    setSales]    = useState([]);
   const [stats,    setStats]    = useState(null);
@@ -283,7 +425,6 @@ export function SalesView({ user, realBranches }) {
   const [selSale,  setSelSale]  = useState(null);
   const [showNew,  setShowNew]  = useState(false);
 
-  // Filtros
   const [q,        setQ]        = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate,   setToDate]   = useState('');
@@ -312,127 +453,252 @@ export function SalesView({ user, realBranches }) {
   }, [q, fromDate, toDate, fBranch, fSeller, isAdmin]);
 
   useEffect(() => { load(); }, [load]);
-
   useEffect(() => {
     if (isAdmin) api.getSellers().then(s => setSellers(s || [])).catch(() => {});
   }, [isAdmin]);
 
-  // Columnas según rol
-  const showCosts = isAdmin;
+  const hasFilters = q || fromDate || toDate || fBranch || fSeller;
+  const clearFilters = () => { setQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); };
+
+  const handleDeleted = (deletedId, ticketIdWas) => {
+    setSales(prev => prev.filter(s => s.id !== deletedId));
+    setSelSale(null);
+    setStats(prev => prev ? { ...prev, total: Math.max(0, (prev.total || 1) - 1) } : prev);
+    if (ticketIdWas) {
+      alert(`Venta eliminada. La unidad volvió a Disponible.\n\nRecordá revisar el ticket vinculado si es necesario.`);
+    }
+  };
 
   return (
-    <div>
+    <div style={{ maxWidth: 1400 }}>
+
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Ventas</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <p style={{ margin: '0 0 2px', fontSize: 11, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Operaciones · Comercial
+          </p>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.8px', lineHeight: 1 }}>
+            Ventas
+          </h1>
+        </div>
         {canCreate && (
-          <button onClick={() => setShowNew(true)} style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Ic.plus size={15} /> Agregar venta
+          <button onClick={() => setShowNew(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F28100', border: 'none',
+                     color: '#FFFFFF', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                     padding: '9px 18px', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(242,129,0,0.35)' }}>
+            <Ic.plus size={14} color="#fff" /> Nueva venta
           </button>
         )}
       </div>
 
-      {/* ── Stats cards ── */}
+      {/* ── KPIs ── */}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: 10, marginBottom: 16 }}>
-          <Stat icon={Ic.sale}   ic="#10B981" ib="rgba(16,185,129,0.1)"  label="Ventas" val={stats.total} />
-          <Stat icon={Ic.file}   ic="#F59E0B" ib="rgba(245,158,11,0.1)"  label="Sin factura cli." val={stats.sin_factura_cli}   al={stats.sin_factura_cli > 0} />
-          <Stat icon={Ic.check}  ic="#8B5CF6" ib="rgba(139,92,246,0.1)"  label="Pend. homolog."   val={stats.sin_homologacion}  al={stats.sin_homologacion > 0} />
-          <Stat icon={Ic.box}    ic="#06B6D4" ib="rgba(6,182,212,0.1)"   label="Pend. entrega"    val={stats.pendiente_entrega} al={stats.pendiente_entrega > 0} />
-          <Stat icon={Ic.tag}    ic="#F28100" ib="rgba(242,129,0,0.1)"   label="Pend. inscripción" val={stats.sin_inscripcion}  al={stats.sin_inscripcion > 0} />
-          {showCosts && stats.total_venta > 0 && (
-            <Stat icon={Ic.chart} ic="#10B981" ib="rgba(16,185,129,0.1)" label="Total vendido" val={fmt(stats.total_venta)} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 24 }}>
+          <KpiCard label="Ventas" value={stats.total} color="#0F172A" />
+          <KpiCard label="Pend. distribuidor" value={stats.pendiente_distribuidor}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} />
+          <KpiCard label="Sin factura cli." value={stats.sin_factura_cli}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.sin_factura_cli > 0} />
+          <KpiCard label="Pend. homolog." value={stats.sin_homologacion}
+            color="#6D28D9" bg="#F5F3FF" border="#C4B5FD" alert={stats.sin_homologacion > 0} />
+          <KpiCard label="Pend. inscripción" value={stats.sin_inscripcion}
+            color="#0E7490" bg="#ECFEFF" border="#67E8F9" alert={stats.sin_inscripcion > 0} />
+          <KpiCard label="Pend. entrega" value={stats.pendiente_entrega}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_entrega > 0} />
+          {isAdmin && stats.total_venta > 0 && (
+            <KpiCard label="Total vendido" value={fmt(stats.total_venta)} color="#065F46" bg="#ECFDF5" border="#A7F3D0" />
           )}
         </div>
       )}
 
       {/* ── Filtros ── */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-        <div style={{ position: 'relative' }}>
-          <Ic.search size={14} color="#9CA3AF" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar cliente / chasis / ticket…"
-            style={{ ...S.inp, paddingLeft: 30, width: 240 }} />
+      <div style={{
+        background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
+        padding: '12px 16px', marginBottom: 16,
+        display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 170 }}>
+          <Ic.search size={13} color="#9CA3AF" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <input value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Buscar cliente, chasis, ticket…"
+            style={{ ...S.inp, paddingLeft: 28, width: '100%', height: 34, fontSize: 12 }} />
         </div>
-        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-          style={{ ...S.inp }} title="Desde" />
-        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-          style={{ ...S.inp }} title="Hasta" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Desde</span>
+          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+            style={{ ...S.inp, height: 32, fontSize: 12 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Hasta</span>
+          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+            style={{ ...S.inp, height: 32, fontSize: 12 }} />
+        </div>
         {isAdmin && realBranches.length > 0 && (
-          <select value={fBranch} onChange={e => setFBranch(e.target.value)} style={S.inp}>
+          <select value={fBranch} onChange={e => setFBranch(e.target.value)}
+            style={{ ...S.inp, height: 34, fontSize: 12 }}>
             <option value="">Todas las sucursales</option>
             {realBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
         {isAdmin && sellers.length > 0 && (
-          <select value={fSeller} onChange={e => setFSeller(e.target.value)} style={S.inp}>
+          <select value={fSeller} onChange={e => setFSeller(e.target.value)}
+            style={{ ...S.inp, height: 34, fontSize: 12 }}>
             <option value="">Todos los vendedores</option>
             {sellers.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
           </select>
         )}
-        {(q || fromDate || toDate || fBranch || fSeller) && (
-          <button onClick={() => { setQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); }}
-            style={{ ...S.btn2, padding: '8px 12px', fontSize: 12 }}>
-            Limpiar
+        {hasFilters && (
+          <button onClick={clearFilters}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, height: 34, padding: '0 12px',
+                     borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB',
+                     fontSize: 11, cursor: 'pointer', color: '#6B7280', fontFamily: 'inherit' }}>
+            <Ic.x size={10} /> Limpiar · {sales.length}
           </button>
         )}
       </div>
 
       {/* ── Tabla ── */}
-      <div className="crm-table-scroll" style={{ background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 700 }}>
+      <div style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
+                    overflow: 'auto', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 760 }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+            <tr style={{ borderBottom: '2px solid #F1F3F5', background: '#FAFAFA' }}>
               {[
-                'Fecha', 'Ticket', 'Cliente', 'Vendedor', ...(isAdmin ? ['Sucursal'] : []),
-                'Moto', 'Año', 'Chasis', 'Color',
-                ...(showCosts ? ['P. Venta', 'Costo'] : ['P. Venta']),
-                'Factura cli.', 'Homolog.', 'Inscripción', 'Entregada', 'Acciones',
-              ].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '9px 10px', fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                ['Fecha',       'left',   'nowrap'],
+                ['Cliente',     'left',   'nowrap'],
+                ['Vendedor',    'left',   'nowrap'],
+                ...(isAdmin ? [['Sucursal', 'left', 'nowrap']] : []),
+                ['Moto',        'left',   'nowrap'],
+                ['Chasis',      'left',   'nowrap'],
+                ['P. Venta',    'right',  'nowrap'],
+                ['Distribuidor','center', 'nowrap'],
+                ['Entregada',   'center', 'nowrap'],
+                ['Docs',        'center', 'nowrap'],
+                ['',            'center', 'nowrap'],
+              ].map(([h, align, ws]) => (
+                <th key={h} style={{ textAlign: align, padding: '10px 12px', fontSize: 9,
+                                     fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
+                                     letterSpacing: '0.1em', whiteSpace: ws }}>
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={99} style={{ textAlign: 'center', padding: 32, color: '#9CA3AF' }}>Cargando…</td></tr>
+              <tr><td colSpan={99} style={{ textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 }}>
+                Cargando…
+              </td></tr>
             )}
             {!loading && sales.length === 0 && (
-              <tr><td colSpan={99} style={{ textAlign: 'center', padding: 32, color: '#9CA3AF' }}>Sin ventas para los filtros seleccionados</td></tr>
+              <tr><td colSpan={99} style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
+                <div style={{ fontSize: 12 }}>{hasFilters ? 'Probá otros filtros' : 'No hay ventas registradas aún'}</div>
+              </td></tr>
             )}
-            {!loading && sales.map(s => (
-              <tr key={s.id} style={{ borderBottom: '1px solid #F3F4F6' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#FAFAFA'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{fD(s.sold_at)}</td>
-                <td style={{ padding: '8px 10px', color: '#F28100', fontWeight: 600, fontSize: 11 }}>{s.ticket_num || '—'}</td>
-                <td style={{ padding: '8px 10px', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.client_name || '—'}</td>
-                <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{s.seller_fn ? `${s.seller_fn} ${s.seller_ln}` : '—'}</td>
-                {isAdmin && <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{s.branch_name || '—'}</td>}
-                <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{s.brand} {s.model}</td>
-                <td style={{ padding: '8px 10px' }}>{s.year || '—'}</td>
-                <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: 11 }}>{s.chassis}</td>
-                <td style={{ padding: '8px 10px' }}>{s.color || '—'}</td>
-                <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{fmt(s.sale_price)}</td>
-                {showCosts && <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', color: '#6B7280' }}>{fmt(s.cost_price)}</td>}
-                <td style={{ padding: '8px 10px', textAlign: 'center' }}><Check ok={!!s.doc_factura_cli} /></td>
-                <td style={{ padding: '8px 10px', textAlign: 'center' }}><Check ok={!!s.doc_homologacion} /></td>
-                <td style={{ padding: '8px 10px', textAlign: 'center' }}><Check ok={!!s.doc_inscripcion} /></td>
-                <td style={{ padding: '8px 10px', textAlign: 'center' }}><Check ok={!!s.delivered} /></td>
-                <td style={{ padding: '8px 10px' }}>
-                  <button onClick={() => setSelSale(s)}
-                    style={{ ...S.gh, padding: '4px 8px', fontSize: 11, color: '#F28100', fontWeight: 600 }}>
-                    Ver
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {!loading && sales.map(s => {
+              const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
+              const docsOk = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
+              const docCount = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
+              return (
+                <tr key={s.id} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FAFBFF'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
+                  {/* Fecha */}
+                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#6B7280', fontSize: 11 }}>
+                    {fD(s.sold_at)}
+                    {s.ticket_num && (
+                      <div style={{ fontSize: 9, color: '#F28100', fontWeight: 700, marginTop: 1 }}>
+                        {s.ticket_num}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Cliente */}
+                  <td style={{ padding: '10px 12px', maxWidth: 150, overflow: 'hidden',
+                               textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontWeight: 600, color: '#1E293B' }}>{s.client_name || '—'}</span>
+                    {s.client_rut && (
+                      <div style={{ fontSize: 10, color: '#9CA3AF' }}>{s.client_rut}</div>
+                    )}
+                  </td>
+
+                  {/* Vendedor */}
+                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: 11, color: '#374151' }}>
+                    {sellerName}
+                  </td>
+
+                  {/* Sucursal (solo admin) */}
+                  {isAdmin && (
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: 11, color: '#6B7280' }}>
+                      {s.branch_name || '—'}
+                    </td>
+                  )}
+
+                  {/* Moto */}
+                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontWeight: 700, color: '#0F172A' }}>{s.brand}</span>
+                    <span style={{ color: '#475569' }}> {s.model}</span>
+                    {s.year && <span style={{ color: '#9CA3AF', fontSize: 10 }}> {s.year}</span>}
+                  </td>
+
+                  {/* Chasis */}
+                  <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 10,
+                               color: '#374151', whiteSpace: 'nowrap' }}>
+                    {s.chassis}
+                  </td>
+
+                  {/* Precio venta */}
+                  <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap',
+                               fontWeight: 700, color: s.sale_price ? '#0F172A' : '#D1D5DB' }}>
+                    {s.sale_price ? fmt(s.sale_price) : '—'}
+                  </td>
+
+                  {/* Estado pago distribuidor */}
+                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                    <DistributorBadge paid={s.distributor_paid} />
+                  </td>
+
+                  {/* Entregada */}
+                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                    <StatusDot ok={s.delivered} />
+                  </td>
+
+                  {/* Docs (resumen n/4) */}
+                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                      background: docsOk ? '#ECFDF5' : docCount > 0 ? '#FFFBEB' : '#F9FAFB',
+                      color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
+                      border: `1px solid ${docsOk ? '#A7F3D0' : docCount > 0 ? '#FCD34D' : '#E5E7EB'}`,
+                    }}>
+                      {docCount}/4
+                    </span>
+                  </td>
+
+                  {/* Acciones */}
+                  <td style={{ padding: '10px 12px' }}>
+                    <button onClick={() => setSelSale(s)}
+                      style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #E2E8F0',
+                               background: '#F8FAFC', color: '#374151', fontSize: 11, fontWeight: 600,
+                               cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                      Ver →
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* ── Total ── */}
+      {/* Contador */}
       {!loading && sales.length > 0 && (
-        <div style={{ textAlign: 'right', fontSize: 12, color: '#6B7280', marginTop: 8 }}>
+        <div style={{ textAlign: 'right', fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
           {sales.length} venta{sales.length !== 1 ? 's' : ''}
         </div>
       )}
@@ -442,15 +708,13 @@ export function SalesView({ user, realBranches }) {
         <SaleDetailModal
           sale={selSale}
           user={user}
-          sellers={sellers}
-          branches={realBranches}
           onClose={() => setSelSale(null)}
           onUpdated={() => { load(); setSelSale(null); }}
+          onDeleted={handleDeleted}
         />
       )}
       {showNew && (
         <NewSaleModal
-          user={user}
           sellers={sellers}
           branches={realBranches}
           onClose={() => setShowNew(false)}
