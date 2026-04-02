@@ -493,7 +493,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   boxShadow: isSold ? 'none' : '0 1px 6px rgba(0,0,0,0.06)',
                   opacity: isSold ? 0.75 : 1,
                   transition:'box-shadow 0.15s, opacity 0.15s',
+                  cursor: isAdmin ? 'pointer' : 'default',
                 }}
+                  onClick={isAdmin ? ()=>openEdit(x) : undefined}
                   onMouseEnter={e=>{ if(!isSold) e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)'; }}
                   onMouseLeave={e=>{ if(!isSold) e.currentTarget.style.boxShadow='0 1px 6px rgba(0,0,0,0.06)'; }}
                 >
@@ -698,7 +700,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   })()}
 
                   {/* ── ACCIONES ── */}
-                  <div style={{
+                  <div onClick={e=>e.stopPropagation()} style={{
                     flex:'0 0 160px', padding:'14px 16px',
                     display:'flex', flexDirection:'column', justifyContent:'center', gap:7,
                   }}>
@@ -737,32 +739,17 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             </select>
                           )}
                         </div>
-                        {isAdmin && (
-                          <button onDoubleClick={()=>openEdit(x)}
-                            title="Doble click para editar"
-                            style={{ ...miniBtn, width:'100%', background:'#F8FAFC', color:'#374151', border:'1px solid #E2E8F0' }}>
-                            ✏️ Editar unidad
-                          </button>
-                        )}
                       </>
                     ) : (
-                      <>
-                        <button onClick={()=>toggleHist(x.id)}
-                          style={{
-                            ...miniBtn, width:'100%',
-                            background: isHistOpen ? '#EEF2FF' : '#F8FAFC',
-                            color: isHistOpen ? '#4F46E5' : '#64748B',
-                            border:`1px solid ${isHistOpen?'#A5B4FC':'#E2E8F0'}`,
-                          }}>
-                          {histLoading[x.id]?'Cargando…':'Ver historial'}
-                        </button>
-                        {isAdmin && (
-                          <button onClick={()=>openEdit(x)}
-                            style={{ ...miniBtn, width:'100%', background:'#F8FAFC', color:'#374151', border:'1px solid #E2E8F0', marginTop:4 }}>
-                            ✏️ Editar unidad
-                          </button>
-                        )}
-                      </>
+                      <button onClick={()=>toggleHist(x.id)}
+                        style={{
+                          ...miniBtn, width:'100%',
+                          background: isHistOpen ? '#EEF2FF' : '#F8FAFC',
+                          color: isHistOpen ? '#4F46E5' : '#64748B',
+                          border:`1px solid ${isHistOpen?'#A5B4FC':'#E2E8F0'}`,
+                        }}>
+                        {histLoading[x.id]?'Cargando…':'Ver historial'}
+                      </button>
                     )}
                   </div>
                 </div>
