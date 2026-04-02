@@ -7,7 +7,7 @@ import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
 const SALE_TYPES = [
   { v: '',            l: '— Seleccionar —' },
   { v: 'inscripcion', l: 'Solo inscripción' },
-  { v: 'completa',    l: 'Documentación completa' },
+  { v: 'completa',    l: 'Entrega completa' },
 ];
 
 const DOC_LABELS = {
@@ -165,20 +165,27 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
           <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 2 }}>
             {sale.model} {sale.year ? `· ${sale.year}` : ''}
           </div>
-          <div style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'monospace' }}>
-            Chasis: {sale.chassis}{sale.color ? ` · ${sale.color}` : ''}
+          <div style={{ fontSize: 11, color: '#94A3B8', letterSpacing: '0.04em' }}>
+            {sale.chassis}{sale.color ? ` · ${sale.color}` : ''}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
           {sale.sale_price > 0 && (
             <div style={{ fontSize: 22, fontWeight: 900, color: '#F28100', letterSpacing: '-1px' }}>
               {fmt(sale.sale_price)}
             </div>
           )}
-          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{fD(sale.sold_at)}</div>
-          <div style={{ marginTop: 6 }}>
-            <DistributorBadge paid={sale.distributor_paid} />
-          </div>
+          <div style={{ fontSize: 11, color: '#94A3B8' }}>{fD(sale.sold_at)}</div>
+          <DistributorBadge paid={sale.distributor_paid} />
+          {/* Trash — solo super_admin */}
+          {isSuperAdmin && !delConfirm && (
+            <button onClick={() => setDelConfirm(true)} title="Eliminar venta de prueba"
+              style={{ marginTop: 2, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+                       borderRadius: 7, padding: '5px 8px', cursor: 'pointer', lineHeight: 1,
+                       color: '#FCA5A5', fontSize: 14, display: 'flex', alignItems: 'center' }}>
+              🗑
+            </button>
+          )}
         </div>
       </div>
 
@@ -244,47 +251,39 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
         </div>
       </div>
 
-      {/* Modo edición */}
+      {/* Confirmación de eliminación — aparece cuando se activa con el trash */}
+      {isSuperAdmin && delConfirm && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10,
+                      padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', marginBottom: 6 }}>
+            ⚠ ¿Eliminar esta venta?
+          </div>
+          <div style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 10, lineHeight: 1.5 }}>
+            La unidad <strong>{sale.brand} {sale.model} · {sale.chassis}</strong> volverá a estado <strong>Disponible</strong> en inventario.
+            {sale.ticket_num && <> El ticket <strong>{sale.ticket_num}</strong> no se modifica — ajustalo manualmente si es necesario.</>}
+            {' '}Esta acción queda registrada en el historial.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleDelete} disabled={deleting}
+              style={{ padding: '7px 16px', borderRadius: 8, border: 'none',
+                       background: '#EF4444', color: '#FFFFFF', fontSize: 12,
+                       fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {deleting ? 'Eliminando…' : 'Sí, eliminar y revertir'}
+            </button>
+            <button onClick={() => setDelConfirm(false)} style={{ ...S.btn2, fontSize: 12 }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Botón editar */}
       {!editing ? (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           {canEdit && (
-            <button onClick={() => setEditing(true)} style={{ ...S.btn2, flex: 1, minWidth: 160 }}>
+            <button onClick={() => setEditing(true)} style={{ ...S.btn2, flex: 1 }}>
               Editar seguimiento
             </button>
-          )}
-          {/* Eliminar venta — solo super_admin */}
-          {isSuperAdmin && !delConfirm && (
-            <button onClick={() => setDelConfirm(true)}
-              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #FCA5A5',
-                       background: 'transparent', color: '#EF4444', fontSize: 12,
-                       fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-              Eliminar venta de prueba
-            </button>
-          )}
-          {isSuperAdmin && delConfirm && (
-            <div style={{ width: '100%', background: '#FEF2F2', border: '1px solid #FECACA',
-                          borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', marginBottom: 6 }}>
-                ⚠ ¿Eliminar esta venta?
-              </div>
-              <div style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 10, lineHeight: 1.5 }}>
-                La unidad <strong>{sale.brand} {sale.model} · {sale.chassis}</strong> volverá a estado <strong>Disponible</strong> en inventario.
-                {sale.ticket_num && <> El ticket <strong>{sale.ticket_num}</strong> no se modifica — deberás ajustarlo manualmente si es necesario.</>}
-                {' '}Esta acción queda registrada en el historial de la unidad.
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleDelete} disabled={deleting}
-                  style={{ padding: '7px 16px', borderRadius: 8, border: 'none',
-                           background: '#EF4444', color: '#FFFFFF', fontSize: 12,
-                           fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  {deleting ? 'Eliminando…' : 'Sí, eliminar y revertir'}
-                </button>
-                <button onClick={() => setDelConfirm(false)}
-                  style={{ ...S.btn2, fontSize: 12 }}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
           )}
         </div>
       ) : (
@@ -300,7 +299,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
             )}
             <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
               opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-            <Field label="Modalidad documental" value={form.sale_type}
+            <Field label="Tipo de entrega" value={form.sale_type}
               onChange={set('sale_type')} opts={SALE_TYPES} />
           </div>
           {/* Checkboxes: entrega + pago distribuidor */}
@@ -375,7 +374,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated }) {
         <Field label="Fecha venta" value={form.sold_at} onChange={set('sold_at')} type="date" />
         <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
           opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-        <Field label="Modalidad documental" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
+        <Field label="Tipo de entrega" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
 
         <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
                       textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Precios</div>
@@ -604,7 +603,9 @@ export function SalesView({ user, realBranches }) {
               const docsOk = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
               const docCount = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
               return (
-                <tr key={s.id} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s' }}
+                <tr key={s.id}
+                  onClick={() => setSelSale(s)}
+                  style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s', cursor: 'pointer' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#FAFBFF'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
 
@@ -647,9 +648,13 @@ export function SalesView({ user, realBranches }) {
                   </td>
 
                   {/* Chasis */}
-                  <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 10,
-                               color: '#374151', whiteSpace: 'nowrap' }}>
-                    {s.chassis}
+                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#374151',
+                                   background: '#F1F5F9', padding: '3px 8px',
+                                   borderRadius: 6, border: '1px solid #E2E8F0',
+                                   letterSpacing: '0.03em' }}>
+                      {s.chassis}
+                    </span>
                   </td>
 
                   {/* Precio venta */}
@@ -680,14 +685,9 @@ export function SalesView({ user, realBranches }) {
                     </span>
                   </td>
 
-                  {/* Acciones */}
-                  <td style={{ padding: '10px 12px' }}>
-                    <button onClick={() => setSelSale(s)}
-                      style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #E2E8F0',
-                               background: '#F8FAFC', color: '#374151', fontSize: 11, fontWeight: 600,
-                               cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                      Ver →
-                    </button>
+                  {/* Acciones — click en fila ya abre el detalle */}
+                  <td style={{ padding: '10px 12px' }} onClick={e => e.stopPropagation()}>
+                    <span style={{ fontSize: 10, color: '#CBD5E1', userSelect: 'none' }}>›</span>
                   </td>
                 </tr>
               );
