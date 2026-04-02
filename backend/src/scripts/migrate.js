@@ -65,6 +65,7 @@ async function migrate() {
     await runMigration('026', 'timeline evidence fields',       m('026_timeline_evidence.sql'));
     await runMigration('027', 'branches update + yamaha',       m('027_branches_update.sql'));
     await runMigration('028', 'inventory sort_order',           m('028_inventory_sort_order.sql'));
+    await runMigration('029', 'fix branch names',               m('029_fix_branch_names.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');
