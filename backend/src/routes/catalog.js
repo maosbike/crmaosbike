@@ -5,13 +5,29 @@ const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
 router.use(auth);
-const upload = multer({
+
+const MAX_GALLERY = 8;
+
+const uploadImg = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 },   // 5 MB por foto
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (allowed.includes(file.mimetype)) cb(null, true);
     else cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
+  },
+});
+
+// Alias de compatibilidad para el endpoint /image existente
+const upload = uploadImg;
+
+const uploadPdf = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },  // 15 MB para PDF
+  fileFilter: (_req, file, cb) => {
+    const ok = file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname);
+    if (ok) cb(null, true);
+    else cb(new Error('Solo se permiten archivos PDF'));
   },
 });
 
@@ -89,14 +105,80 @@ router.delete('/models/:id', roleCheck('super_admin'), async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
 
-// Upload model image
-router.post('/models/:id/image', roleCheck('super_admin', 'admin_comercial'), upload.single('image'), async (req, res) => {
+// Upload model main image
+router.post('/models/:id/image', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('image'), async (req, res) => {
   try {
+    if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
     const b64 = req.file.buffer.toString('base64');
     const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, { folder: 'crmaosbike/catalog' });
-    await db.query('UPDATE moto_models SET image_url = $1 WHERE id = $2', [result.secure_url, req.params.id]);
+    await db.query('UPDATE moto_models SET image_url = $1, updated_at = NOW() WHERE id = $2', [result.secure_url, req.params.id]);
     res.json({ url: result.secure_url });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir imagen' }); }
+});
+
+// Add gallery photo (máx MAX_GALLERY fotos)
+router.post('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
+
+    // Verificar límite de galería
+    const { rows } = await db.query('SELECT image_gallery FROM moto_models WHERE id=$1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Modelo no encontrado' });
+    const current = Array.isArray(rows[0].image_gallery) ? rows[0].image_gallery
+                    : (rows[0].image_gallery ? JSON.parse(rows[0].image_gallery) : []);
+    if (current.length >= MAX_GALLERY)
+      return res.status(400).json({ error: `Máximo ${MAX_GALLERY} fotos por modelo` });
+
+    const b64 = req.file.buffer.toString('base64');
+    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+      folder: 'crmaosbike/catalog/gallery',
+      transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }],
+    });
+
+    const updated = [...current, result.secure_url];
+    await db.query(
+      'UPDATE moto_models SET image_gallery = $1::jsonb, updated_at = NOW() WHERE id = $2',
+      [JSON.stringify(updated), req.params.id]
+    );
+    res.json({ url: result.secure_url, gallery: updated });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
+});
+
+// Remove gallery photo
+router.delete('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL requerida' });
+
+    const { rows } = await db.query('SELECT image_gallery FROM moto_models WHERE id=$1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Modelo no encontrado' });
+    const current = Array.isArray(rows[0].image_gallery) ? rows[0].image_gallery
+                    : (rows[0].image_gallery ? JSON.parse(rows[0].image_gallery) : []);
+    const updated = current.filter(u => u !== url);
+    await db.query(
+      'UPDATE moto_models SET image_gallery = $1::jsonb, updated_at = NOW() WHERE id = $2',
+      [JSON.stringify(updated), req.params.id]
+    );
+    res.json({ gallery: updated });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al eliminar foto' }); }
+});
+
+// Upload spec PDF
+router.post('/models/:id/spec', roleCheck('super_admin', 'admin_comercial'), uploadPdf.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'PDF requerido' });
+    const b64 = req.file.buffer.toString('base64');
+    const result = await cloudinary.uploader.upload(`data:application/pdf;base64,${b64}`, {
+      folder: 'crmaosbike/specs',
+      resource_type: 'raw',
+      format: 'pdf',
+    });
+    await db.query(
+      'UPDATE moto_models SET spec_url = $1, updated_at = NOW() WHERE id = $2',
+      [result.secure_url, req.params.id]
+    );
+    res.json({ url: result.secure_url });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir PDF' }); }
 });
 
 // ── BRANCHES ──

@@ -14,7 +14,10 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
   const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
   const gallery=Array.isArray(m.image_gallery)?m.image_gallery:(m.image_gallery?JSON.parse(m.image_gallery):[]);
   const[imgUploading,setImgUploading]=useState(false);
+  const[galleryUploading,setGalleryUploading]=useState(false);
+  const[specUploading,setSpecUploading]=useState(false);
   const[colorInput,setColorInput]=useState("");
+  const MAX_GALLERY=8;
 
   const startEdit=()=>{
     setForm({
@@ -65,6 +68,37 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
       onSaved&&onSaved({...m,image_url:res.url});
     }catch(e){alert("Error al subir imagen");}
     finally{setImgUploading(false);}
+  };
+  const handleAddGalleryPhoto=async(file)=>{
+    if(gallery.length>=MAX_GALLERY){alert(`Máximo ${MAX_GALLERY} fotos por modelo`);return;}
+    setGalleryUploading(true);
+    try{
+      const res=await api.addModelGalleryPhoto(m.id,file);
+      const updated={...m,image_gallery:res.gallery};
+      setM(updated);onSaved&&onSaved(updated);
+    }catch(e){alert(e.message||"Error al subir foto");}
+    finally{setGalleryUploading(false);}
+  };
+  const handleRemoveGalleryPhoto=async(url)=>{
+    setGalleryUploading(true);
+    try{
+      const res=await api.removeModelGalleryPhoto(m.id,url);
+      const updated={...m,image_gallery:res.gallery};
+      setM(updated);onSaved&&onSaved(updated);
+    }catch(e){alert(e.message||"Error al eliminar foto");}
+    finally{setGalleryUploading(false);}
+  };
+  const handleUploadSpec=async(file)=>{
+    setSpecUploading(true);
+    try{
+      const res=await api.uploadModelSpec(m.id,file);
+      const updated={...m,spec_url:res.url};
+      setM(updated);
+      // Si estamos en modo edición, sincronizar el form también
+      setForm(f=>({...f,spec_url:res.url}));
+      onSaved&&onSaved(updated);
+    }catch(e){alert(e.message||"Error al subir PDF");}
+    finally{setSpecUploading(false);}
   };
 
   const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":"—");
@@ -130,11 +164,42 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
             </div>
           )}
 
-          {/* Ficha técnica */}
-          {!editing&&m.spec_url&&(
-            <a href={m.spec_url} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#F28100",textDecoration:"none",border:"1px solid #FDBA74",borderRadius:8,padding:"6px 12px",marginBottom:14}}>
-              📄 Ver ficha técnica
-            </a>
+          {/* Ficha técnica + PDF upload (view mode) */}
+          {!editing&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+              {m.spec_url&&(
+                <a href={m.spec_url} target="_blank" rel="noreferrer" download
+                  style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#F28100",textDecoration:"none",border:"1px solid #FDBA74",borderRadius:8,padding:"6px 12px"}}>
+                  📄 Descargar ficha técnica
+                </a>
+              )}
+              {canEdit&&(
+                <label style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#6B7280",cursor:"pointer",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 11px",background:"#F9FAFB"}}>
+                  {specUploading?"Subiendo…":"📎 "}{!specUploading&&(m.spec_url?"Reemplazar PDF":"Subir PDF")}
+                  <input type="file" accept="application/pdf,.pdf" style={{display:"none"}} onChange={e=>e.target.files[0]&&handleUploadSpec(e.target.files[0])}/>
+                </label>
+              )}
+            </div>
+          )}
+
+          {/* Galería de fotos (view mode) */}
+          {!editing&&gallery.length>0&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",fontWeight:600,marginBottom:6}}>
+                Galería <span style={{color:"#D1D5DB",fontWeight:400}}>({gallery.length})</span>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {gallery.map((url,i)=>(
+                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                    <img src={url} loading="lazy" alt={`Foto ${i+1}`}
+                      style={{width:80,height:60,objectFit:"cover",borderRadius:8,border:"1px solid #E5E7EB",cursor:"pointer",transition:"opacity 0.15s"}}
+                      onMouseEnter={e=>e.currentTarget.style.opacity=0.8}
+                      onMouseLeave={e=>e.currentTarget.style.opacity=1}
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* FORM EDICIÓN */}
@@ -190,9 +255,46 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
                 <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Descripción</div>
                 <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={3} style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical"}} placeholder="Descripción comercial del modelo..."/>
               </div>
+              {/* Ficha técnica — URL manual o subir PDF */}
               <div style={{marginBottom:10}}>
                 <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>URL ficha técnica (PDF o página)</div>
                 <input value={form.spec_url} onChange={e=>setForm(f=>({...f,spec_url:e.target.value}))} placeholder="https://..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                <div style={{marginTop:5,display:"flex",alignItems:"center",gap:8}}>
+                  <label style={{fontSize:11,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 10px"}}>
+                    {specUploading?"Subiendo PDF…":"📎 Subir PDF (máx 15 MB)"}
+                    <input type="file" accept="application/pdf,.pdf" style={{display:"none"}}
+                      onChange={e=>e.target.files[0]&&handleUploadSpec(e.target.files[0])}/>
+                  </label>
+                  {m.spec_url&&!specUploading&&<span style={{fontSize:10,color:"#10B981"}}>✓ PDF cargado</span>}
+                </div>
+              </div>
+              {/* Galería de fotos */}
+              <div style={{marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                  <div style={{fontSize:10,color:"#6B7280"}}>Galería de fotos ({gallery.length}/{MAX_GALLERY})</div>
+                  {gallery.length<MAX_GALLERY&&(
+                    <label style={{fontSize:11,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 9px"}}>
+                      {galleryUploading?"Subiendo…":"+ Foto"}
+                      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&handleAddGalleryPhoto(e.target.files[0])}/>
+                    </label>
+                  )}
+                </div>
+                {gallery.length>0&&(
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {gallery.map((url,i)=>(
+                      <div key={i} style={{position:"relative"}}>
+                        <img src={url} loading="lazy" alt={`Foto ${i+1}`}
+                          style={{width:76,height:58,objectFit:"cover",borderRadius:7,border:"1px solid #E5E7EB",display:"block"}}/>
+                        <button onClick={()=>handleRemoveGalleryPhoto(url)}
+                          title="Quitar foto"
+                          style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",background:"#EF4444",border:"2px solid #FFF",color:"#fff",cursor:"pointer",fontSize:11,lineHeight:"14px",textAlign:"center",padding:0,fontWeight:700}}>
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {gallery.length===0&&<div style={{fontSize:11,color:"#9CA3AF"}}>Sin fotos en galería. Máximo {MAX_GALLERY}, 5 MB cada una.</div>}
               </div>
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>Colores</div>

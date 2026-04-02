@@ -121,6 +121,18 @@ export const api = {
     fd.append('image', file);
     return request('POST', `/catalog/models/${id}/image`, fd);
   },
+  addModelGalleryPhoto: (id, file) => {
+    const fd = new FormData();
+    fd.append('photo', file);
+    return request('POST', `/catalog/models/${id}/gallery`, fd);
+  },
+  removeModelGalleryPhoto: (id, url) =>
+    request('DELETE', `/catalog/models/${id}/gallery`, { url }),
+  uploadModelSpec: (id, file) => {
+    const fd = new FormData();
+    fd.append('pdf', file);
+    return request('POST', `/catalog/models/${id}/spec`, fd);
+  },
 
   // Other
   getBranches: () => request('GET', '/catalog/branches'),
