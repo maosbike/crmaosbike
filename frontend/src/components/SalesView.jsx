@@ -89,18 +89,15 @@ function KpiCard({ label, value, color = '#374151', bg = '#F9FAFB', border = '#E
 
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
-function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
+function SaleDetailModal({ sale, user, onClose, onUpdated }) {
   const isAdmin  = CAN_ADMIN.includes(user.role);
   const canEdit  = CAN_CREATE.includes(user.role);
-  const isSuperAdmin = user.role === 'super_admin';
 
   const [editing,    setEditing]    = useState(false);
   const [form,       setForm]       = useState({});
   const [saving,     setSaving]     = useState(false);
   const [err,        setErr]        = useState('');
   const [uploading,  setUploading]  = useState('');
-  const [delConfirm, setDelConfirm] = useState(false);
-  const [deleting,   setDeleting]   = useState(false);
 
   useEffect(() => {
     setForm({
@@ -139,14 +136,6 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
     finally { setUploading(''); }
   }
 
-  async function handleDelete() {
-    setDeleting(true);
-    try {
-      const res = await api.deleteSale(sale.id);
-      onDeleted(sale.id, res.ticket_id_was);
-    } catch (e) { alert(e.message || 'Error al eliminar'); setDeleting(false); }
-  }
-
   const sellerName = sale.seller_fn ? `${sale.seller_fn} ${sale.seller_ln || ''}`.trim() : '—';
 
   return (
@@ -177,15 +166,6 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
           )}
           <div style={{ fontSize: 11, color: '#94A3B8' }}>{fD(sale.sold_at)}</div>
           <DistributorBadge paid={sale.distributor_paid} />
-          {/* Trash — solo super_admin */}
-          {isSuperAdmin && !delConfirm && (
-            <button onClick={() => setDelConfirm(true)} title="Eliminar venta de prueba"
-              style={{ marginTop: 2, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
-                       borderRadius: 7, padding: '5px 8px', cursor: 'pointer', lineHeight: 1,
-                       color: '#FCA5A5', fontSize: 14, display: 'flex', alignItems: 'center' }}>
-              🗑
-            </button>
-          )}
         </div>
       </div>
 
@@ -252,31 +232,6 @@ function SaleDetailModal({ sale, user, onClose, onUpdated, onDeleted }) {
       </div>
 
       {/* Confirmación de eliminación — aparece cuando se activa con el trash */}
-      {isSuperAdmin && delConfirm && (
-        <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10,
-                      padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', marginBottom: 6 }}>
-            ⚠ ¿Eliminar esta venta?
-          </div>
-          <div style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 10, lineHeight: 1.5 }}>
-            La unidad <strong>{sale.brand} {sale.model} · {sale.chassis}</strong> volverá a estado <strong>Disponible</strong> en inventario.
-            {sale.ticket_num && <> El ticket <strong>{sale.ticket_num}</strong> no se modifica — ajustalo manualmente si es necesario.</>}
-            {' '}Esta acción queda registrada en el historial.
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleDelete} disabled={deleting}
-              style={{ padding: '7px 16px', borderRadius: 8, border: 'none',
-                       background: '#EF4444', color: '#FFFFFF', fontSize: 12,
-                       fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              {deleting ? 'Eliminando…' : 'Sí, eliminar y revertir'}
-            </button>
-            <button onClick={() => setDelConfirm(false)} style={{ ...S.btn2, fontSize: 12 }}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Botón editar */}
       {!editing ? (
         <div style={{ display: 'flex', gap: 8 }}>
@@ -424,11 +379,13 @@ export function SalesView({ user, realBranches }) {
   const [selSale,  setSelSale]  = useState(null);
   const [showNew,  setShowNew]  = useState(false);
 
-  const [q,        setQ]        = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate,   setToDate]   = useState('');
-  const [fBranch,  setFBranch]  = useState('');
-  const [fSeller,  setFSeller]  = useState('');
+  const [q,              setQ]              = useState('');
+  const [fromDate,       setFromDate]       = useState('');
+  const [toDate,         setToDate]         = useState('');
+  const [fBranch,        setFBranch]        = useState('');
+  const [fSeller,        setFSeller]        = useState('');
+  const [confirmDeleteId,setConfirmDeleteId]= useState(null);
+  const [deleting,       setDeleting]       = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -466,6 +423,15 @@ export function SalesView({ user, realBranches }) {
     if (ticketIdWas) {
       alert(`Venta eliminada. La unidad volvió a Disponible.\n\nRecordá revisar el ticket vinculado si es necesario.`);
     }
+  };
+
+  const handleDeleteRow = async (saleId) => {
+    setDeleting(true);
+    try {
+      const res = await api.deleteSale(saleId);
+      handleDeleted(saleId, res.ticket_id_was);
+    } catch (e) { alert(e.message || 'Error al eliminar'); }
+    finally { setDeleting(false); setConfirmDeleteId(null); }
   };
 
   return (
@@ -685,9 +651,32 @@ export function SalesView({ user, realBranches }) {
                     </span>
                   </td>
 
-                  {/* Acciones — click en fila ya abre el detalle */}
-                  <td style={{ padding: '10px 12px' }} onClick={e => e.stopPropagation()}>
-                    <span style={{ fontSize: 10, color: '#CBD5E1', userSelect: 'none' }}>›</span>
+                  {/* Acciones */}
+                  <td style={{ padding: '6px 10px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                    {isSuperAdmin && confirmDeleteId === s.id ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <button onClick={() => handleDeleteRow(s.id)} disabled={deleting}
+                          style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#EF4444',
+                                   color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {deleting ? '…' : 'Confirmar'}
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)}
+                          style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB',
+                                   color: '#6B7280', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          No
+                        </button>
+                      </span>
+                    ) : isSuperAdmin ? (
+                      <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar venta de prueba"
+                        style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #FECACA', background: 'transparent',
+                                 color: '#FCA5A5', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                        </svg>
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 10, color: '#CBD5E1', userSelect: 'none' }}>›</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -710,7 +699,6 @@ export function SalesView({ user, realBranches }) {
           user={user}
           onClose={() => setSelSale(null)}
           onUpdated={() => { load(); setSelSale(null); }}
-          onDeleted={handleDeleted}
         />
       )}
       {showNew && (
