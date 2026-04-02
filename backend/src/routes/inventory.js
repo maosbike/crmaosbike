@@ -492,13 +492,28 @@ router.get('/export', async (req, res) => {
     const { rows } = await db.query(
       `SELECT i.*, b.name as branch_name, b.code as branch_code,
               COALESCE(
+                -- 1) precio propio de la unidad
                 NULLIF(i.price, 0),
+                -- 2) modelo vinculado por FK directa
                 (SELECT mm.price FROM moto_models mm WHERE mm.id = i.model_id AND mm.price > 0 LIMIT 1),
+                -- 3) moto_prices más reciente via FK
+                (SELECT mp.price_list FROM moto_prices mp
+                   JOIN moto_models mm ON mp.model_id = mm.id
+                  WHERE mm.id = i.model_id AND mp.price_list > 0
+                  ORDER BY mp.period DESC LIMIT 1),
+                -- 4) moto_models por texto brand+model
                 (SELECT mm.price FROM moto_models mm
                   WHERE LOWER(TRIM(mm.brand)) = LOWER(TRIM(i.brand))
                     AND LOWER(TRIM(mm.model)) = LOWER(TRIM(i.model))
                     AND mm.price > 0
-                  ORDER BY mm.updated_at DESC LIMIT 1)
+                  ORDER BY mm.updated_at DESC LIMIT 1),
+                -- 5) moto_prices por texto brand+model, período más reciente
+                (SELECT mp.price_list FROM moto_prices mp
+                   JOIN moto_models mm ON mp.model_id = mm.id
+                  WHERE LOWER(TRIM(mm.brand)) = LOWER(TRIM(i.brand))
+                    AND LOWER(TRIM(mm.model)) = LOWER(TRIM(i.model))
+                    AND mp.price_list > 0
+                  ORDER BY mp.period DESC LIMIT 1)
               ) AS catalog_price
        FROM inventory i
        LEFT JOIN branches b ON i.branch_id = b.id

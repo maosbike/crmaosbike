@@ -229,8 +229,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         status:    eForm.status,
         notes:     eForm.notes || null,
       });
-      setInv(prev => prev.map(x => x.id === editTarget.id ? { ...x, ...updated } : x));
+      setInv(prev => prev.map(x => x.id === editTarget.id ? {
+        ...x, ...updated,
+        // catalog_price se recalcula server-side en el GET; actualizar optimistamente
+        // con el precio directo si el usuario lo cambió, para evitar parpadeo
+        catalog_price: Number(eForm.price) > 0 ? Number(eForm.price) : x.catalog_price,
+      } : x));
       setEditTarget(null);
+      reload();
     } catch(ex) { setEErr(ex.message || 'Error al guardar'); }
     finally { setESaving(false); }
   };
@@ -508,7 +514,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     padding:'6px 7px',
                   }}>
                     <span style={{ fontSize:8.5, fontWeight:800, color:'#FFFFFF', letterSpacing:'0.01em', textAlign:'center', lineHeight:1.35, wordBreak:'break-word', whiteSpace:'normal' }}>
-                      {bCfg.label || bCode || '—'}
+                      {BRANCH_CFG[bCode] ? bCfg.label : (x.branch_name || bCode || '—')}
                     </span>
                   </div>
 
@@ -984,7 +990,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <div style={{ flex:'1 1 120px' }}>
                   <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Sucursal / Precio</div>
                   <div style={{ fontWeight:700,fontSize:12,color:'#374151' }}>{bName}</div>
-                  {(() => { const p = Number(sellUnit.price)||0 || Number(sellUnit.catalog_price)||0; return p>0 ? <div style={{ fontSize:15,fontWeight:900,color:'#F28100',marginTop:4 }}>{fmt(p)}</div> : null; })()}
+                  {(() => { const p = Number(sellUnit.catalog_price) || 0; return p>0 ? <div style={{ fontSize:15,fontWeight:900,color:'#F28100',marginTop:4 }}>{fmt(p)}</div> : null; })()}
                 </div>
               </div>
               <div style={{ fontSize:11,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:12 }}>Datos de la venta</div>
