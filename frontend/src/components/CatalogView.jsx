@@ -442,151 +442,203 @@ function AddModelModal({onClose,onAdded}){
   );
 }
 
+// Tarjeta de modelo (reutilizable)
+function ModelCard({m,onClick}){
+  const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
+  const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":null);
+  return(
+    <div onClick={onClick}
+      style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:14,overflow:"hidden",cursor:"pointer",transition:"border-color 0.15s,box-shadow 0.15s"}}
+      onMouseEnter={e=>{e.currentTarget.style.borderColor="#F2810066";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)";}}
+      onMouseLeave={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.boxShadow="none";}}
+    >
+      <div style={{height:130,background:"#F5F5F7",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+        {m.image_url
+          ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}} loading="lazy"/>
+          :<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
+        }
+      </div>
+      <div style={{padding:"10px 12px 12px"}}>
+        <div style={{fontSize:14,fontWeight:700,lineHeight:1.2,marginBottom:3}}>{m.commercial_name||m.model}</div>
+        {specInfo&&<div style={{fontSize:10,color:"#6B7280"}}>{specInfo}{m.year?` · ${m.year}`:""}</div>}
+        {m.price>0&&(
+          <div style={{marginTop:8,borderTop:"1px solid #F1F5F9",paddingTop:8}}>
+            <div style={{fontSize:15,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</div>
+            {m.bonus>0&&m.bonus<m.price&&<div style={{fontSize:10,color:"#10B981"}}>Bono {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b></div>}
+          </div>
+        )}
+        {colors.length>0&&(
+          <div style={{display:"flex",gap:3,marginTop:6,flexWrap:"wrap"}}>
+            {colors.slice(0,4).map(c=><span key={c} style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#6B7280"}}>{c}</span>)}
+            {colors.length>4&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#444"}}>+{colors.length-4}</span>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CatalogView({user}){
   const[models,setModels]=useState([]);
-  const[brands,setBrands]=useState([]);
-  const[brandF,setBrandF]=useState("");
-  const[search,setSearch]=useState("");
   const[loading,setLoading]=useState(true);
   const[selected,setSelected]=useState(null);
   const[showAdd,setShowAdd]=useState(false);
+  // Navegación: null = vista marcas, string = marca activa
+  const[activeBrand,setActiveBrand]=useState(null);
+  // null = todas las categorías de la marca, string = categoría activa
+  const[activeCat,setActiveCat]=useState(null);
+  // búsqueda global (solo en vista todas)
+  const[search,setSearch]=useState("");
   const canEdit=user&&(user.role==="super_admin"||user.role==="admin_comercial");
   const canDelete=user&&user.role==="super_admin";
 
-  const refreshBrands=(ms)=>setBrands([...new Set(ms.map(m=>m.brand))].sort());
-
   useEffect(()=>{
-    api.getModels().then(d=>{
-      const ms=Array.isArray(d)?d:[];
-      setModels(ms);
-      refreshBrands(ms);
-    }).catch(()=>{}).finally(()=>setLoading(false));
+    api.getModels().then(d=>setModels(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
 
-  const onSaved=(updated)=>{
-    setModels(ms=>{const next=ms.map(m=>m.id===updated.id?updated:m);refreshBrands(next);return next;});
-    setSelected(updated);
-  };
+  const onSaved=(updated)=>{setModels(ms=>ms.map(m=>m.id===updated.id?updated:m));setSelected(updated);};
+  const onAdded=(created)=>{setModels(ms=>[...ms,created]);};
+  const onDeleted=(id)=>{setModels(ms=>ms.filter(m=>m.id!==id));setSelected(null);};
 
-  const onAdded=(created)=>{
-    setModels(ms=>{const next=[...ms,created];refreshBrands(next);return next;});
-  };
+  // Marcas únicas ordenadas
+  const brands=[...new Set(models.map(m=>m.brand))].sort();
 
-  const onDeleted=(id)=>{
-    setModels(ms=>{const next=ms.filter(m=>m.id!==id);refreshBrands(next);return next;});
-    setSelected(null);
-  };
-
-  let f=models;
-  if(brandF)f=f.filter(m=>m.brand===brandF);
-  if(search){const q=search.toLowerCase();f=f.filter(m=>(m.brand+m.model+(m.commercial_name||"")).toLowerCase().includes(q));}
-
-  // Group by brand for nicer display
-  const grouped=brands.filter(b=>!brandF||b===brandF).reduce((acc,b)=>{
-    const bm=f.filter(m=>m.brand===b);
-    if(bm.length)acc.push({brand:b,models:bm});
-    return acc;
-  },[]);
-
-  return(
-    <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-        <h1 style={{fontSize:18,fontWeight:700,margin:0}}>Catálogo de Motos</h1>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:12,color:"#6B7280"}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</span>
-          {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"6px 14px"}}>+ Agregar moto</button>}
+  // ── Vista: lista de marcas ──────────────────────────────────────────────
+  if(!activeBrand){
+    const q=search.toLowerCase();
+    const filteredModels=q?models.filter(m=>(m.brand+m.model+(m.commercial_name||"")).toLowerCase().includes(q)):models;
+    const visibleBrands=brands.filter(b=>filteredModels.some(m=>m.brand===b));
+    return(
+      <div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+          <div>
+            <h1 style={{fontSize:20,fontWeight:800,margin:0,color:"#0F172A",letterSpacing:"-0.4px"}}>Catálogo</h1>
+            <p style={{margin:"3px 0 0",fontSize:12,color:"#94A3B8",fontWeight:500}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</p>
+          </div>
+          {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
         </div>
-      </div>
 
-      {/* Filtros */}
-      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar modelo..." style={{...S.inp,flex:1,minWidth:160}}/>
-        <select value={brandF} onChange={e=>setBrandF(e.target.value)} style={{...S.inp,minWidth:160}}>
-          <option value="">Todas las marcas</option>
-          {brands.map(b=><option key={b} value={b}>{b}</option>)}
-        </select>
-      </div>
-
-      {!loading&&f.length===0&&(
-        <div style={{...S.card,textAlign:"center",padding:40,color:"#6B7280"}}>
-          <div style={{fontSize:32,marginBottom:12}}>🏍</div>
-          <div style={{fontWeight:600,marginBottom:6}}>Sin modelos en catálogo</div>
-          <div style={{fontSize:12}}>Importá una lista de precios PDF para poblar el catálogo.</div>
+        {/* Búsqueda global */}
+        <div style={{position:"relative",marginBottom:20,maxWidth:360}}>
+          <Ic.search size={14} color="#9CA3AF" style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)"}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar en todo el catálogo..." style={{...S.inp,paddingLeft:34,width:"100%",boxSizing:"border-box"}}/>
         </div>
-      )}
 
-      {grouped.map(({brand,models:bms})=>(
-        <div key={brand} style={{marginBottom:24}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#F28100",textTransform:"uppercase",letterSpacing:2,marginBottom:10,paddingLeft:2}}>{brand} <span style={{color:"#444",fontWeight:400}}>({bms.length})</span></div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
-            {bms.map(m=>{
-              const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
-              const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":null);
+        {/* Si hay búsqueda, mostrar resultados flat */}
+        {q?(
+          filteredModels.length===0?(
+            <div style={{textAlign:"center",padding:40,color:"#9CA3AF",fontSize:13}}>Sin resultados para "{search}"</div>
+          ):(
+            <div>
+              <div style={{fontSize:11,color:"#94A3B8",marginBottom:12,fontWeight:600}}>{filteredModels.length} resultado{filteredModels.length!==1?"s":""}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
+                {filteredModels.map(m=><ModelCard key={m.id} m={m} onClick={()=>setSelected(m)}/>)}
+              </div>
+            </div>
+          )
+        ):(
+          /* Grid de marcas */
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
+            {visibleBrands.map(brand=>{
+              const bms=models.filter(m=>m.brand===brand);
+              const cats=[...new Set(bms.map(m=>m.category).filter(Boolean))].sort();
               return(
-                <div key={m.id} onClick={()=>setSelected(m)}
-                  style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:14,overflow:"hidden",cursor:"pointer",transition:"border-color 0.15s",position:"relative"}}
-                  onMouseEnter={e=>e.currentTarget.style.borderColor="#F2810055"}
-                  onMouseLeave={e=>e.currentTarget.style.borderColor="#E5E7EB"}
+                <div key={brand} onClick={()=>{setActiveBrand(brand);setActiveCat(null);}}
+                  style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:16,padding:"20px 20px 16px",cursor:"pointer",transition:"box-shadow 0.15s,border-color 0.15s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#F28100";e.currentTarget.style.boxShadow="0 4px 18px rgba(242,129,0,0.12)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.boxShadow="none";}}
                 >
-                  {/* Imagen */}
-                  <div style={{height:130,background:"#F5F5F7",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-                    {m.image_url
-                      ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                      :<span style={{fontSize:40,opacity:0.15}}>🏍</span>
-                    }
-                  </div>
-
-                  <div style={{padding:"10px 12px 12px"}}>
-                    {/* Categoría badge */}
-                    {m.category&&(
-                      <span style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:catColor(m.category)+"22",color:catColor(m.category),fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>
-                        {m.category}
-                      </span>
-                    )}
-
-                    {/* Nombre */}
-                    <div style={{fontSize:14,fontWeight:700,marginTop:5,lineHeight:1.2}}>{m.commercial_name||m.model}</div>
-                    {specInfo&&<div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{specInfo}{m.year?` · ${m.year}`:""}</div>}
-
-                    {/* Precio */}
-                    {m.price>0&&m.bonus<m.price&&(
-                      <div style={{marginTop:8,borderTop:"1px solid #E5E7EB",paddingTop:8}}>
-                        <div style={{fontSize:16,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</div>
-                        {m.bonus>0&&(
-                          <div style={{fontSize:10,color:"#10B981",marginTop:1}}>
-                            Bono {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Colores */}
-                    {colors.length>0&&(
-                      <div style={{display:"flex",gap:3,marginTop:8,flexWrap:"wrap"}}>
-                        {colors.slice(0,4).map(c=><span key={c} style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#6B7280"}}>{c}</span>)}
-                        {colors.length>4&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#444"}}>+{colors.length-4}</span>}
-                      </div>
-                    )}
-                  </div>
+                  <div style={{fontSize:18,fontWeight:900,color:"#0F172A",letterSpacing:"-0.5px",marginBottom:4}}>{brand}</div>
+                  <div style={{fontSize:12,color:"#94A3B8",marginBottom:cats.length?12:0}}>{bms.length} modelo{bms.length!==1?"s":""}</div>
+                  {cats.length>0&&(
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                      {cats.map(c=>(
+                        <span key={c} style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:catColor(c)+"18",color:catColor(c),fontWeight:600,border:`1px solid ${catColor(c)}30`}}>
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+        )}
+
+        {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded}/>}
+        {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted}/>}
+      </div>
+    );
+  }
+
+  // ── Vista: marca seleccionada (categorías + modelos) ────────────────────
+  const brandModels=models.filter(m=>m.brand===activeBrand);
+  const brandCats=[...new Set(brandModels.map(m=>m.category).filter(Boolean))].sort();
+  const shownModels=activeCat?brandModels.filter(m=>m.category===activeCat):brandModels;
+  const uncategorized=brandModels.filter(m=>!m.category);
+
+  return(
+    <div>
+      {/* Breadcrumb / header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={()=>{setActiveBrand(null);setActiveCat(null);}}
+            style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",color:"#94A3B8",fontSize:13,fontWeight:600,cursor:"pointer",padding:0,fontFamily:"inherit"}}>
+            <Ic.back size={14}/> Catálogo
+          </button>
+          <span style={{color:"#D1D5DB"}}>/</span>
+          <span style={{fontSize:16,fontWeight:800,color:"#0F172A"}}>{activeBrand}</span>
+          {activeCat&&<><span style={{color:"#D1D5DB"}}>/</span><span style={{fontSize:14,fontWeight:700,color:catColor(activeCat)}}>{activeCat}</span></>}
         </div>
-      ))}
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:12,color:"#94A3B8"}}>{shownModels.length} modelo{shownModels.length!==1?"s":""}</span>
+          {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
+        </div>
+      </div>
+
+      {/* Pills de categoría */}
+      {brandCats.length>0&&(
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
+          <button onClick={()=>setActiveCat(null)}
+            style={{padding:"6px 16px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
+                    background:!activeCat?"#0F172A":"#F1F5F9",color:!activeCat?"#FFFFFF":"#475569",transition:"all 0.12s"}}>
+            Todos ({brandModels.length})
+          </button>
+          {brandCats.map(c=>{
+            const cnt=brandModels.filter(m=>m.category===c).length;
+            const active=activeCat===c;
+            return(
+              <button key={c} onClick={()=>setActiveCat(c)}
+                style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${active?catColor(c):"#E2E8F0"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
+                        background:active?catColor(c):"#FFFFFF",color:active?"#FFFFFF":catColor(c),transition:"all 0.12s"}}>
+                {c} <span style={{fontWeight:400,opacity:0.75}}>({cnt})</span>
+              </button>
+            );
+          })}
+          {uncategorized.length>0&&(
+            <button onClick={()=>setActiveCat("__sin_categoria")}
+              style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${activeCat==="__sin_categoria"?"#6B7280":"#E2E8F0"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,
+                      background:activeCat==="__sin_categoria"?"#6B7280":"#FFFFFF",color:activeCat==="__sin_categoria"?"#FFFFFF":"#6B7280"}}>
+              Sin categoría ({uncategorized.length})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Grid de modelos */}
+      {(() => {
+        const list=activeCat==="__sin_categoria"?uncategorized:shownModels;
+        return list.length===0?(
+          <div style={{textAlign:"center",padding:40,color:"#9CA3AF",fontSize:13}}>Sin modelos en esta categoría</div>
+        ):(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
+            {list.map(m=><ModelCard key={m.id} m={m} onClick={()=>setSelected(m)}/>)}
+          </div>
+        );
+      })()}
 
       {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded}/>}
-
-      {selected&&(
-        <ModelDetailModal
-          model={selected}
-          canEdit={canEdit}
-          canDelete={canDelete}
-          onClose={()=>setSelected(null)}
-          onSaved={onSaved}
-          onDeleted={onDeleted}
-        />
-      )}
+      {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted}/>}
     </div>
   );
 }
