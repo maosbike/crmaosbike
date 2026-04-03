@@ -26,7 +26,7 @@ router.use(roleCheck('super_admin'));
 const COL_ALIASES = {
   nombre:           ['nombre', 'first_name', 'name', 'nombres'],
   apellido:         ['apellido', 'last_name', 'apellidos'],
-  telefono:         ['telefono', 'teléfono', 'phone', 'celular', 'fono', 'cel'],
+  telefono:         ['telefono', 'teléfono', 'phone', 'celular', 'fono', 'cel', 'tel', 'movil', 'móvil', 'numero_celular', 'numero_telefono', 'número_celular', 'número_telefono'],
   email:            ['email', 'correo', 'mail', 'e-mail'],
   rut:              ['rut', 'run', 'rut_cliente'],
   // 'distribuidor' es la columna de sucursal en plantillas Yamaha
@@ -101,6 +101,17 @@ function formatRut(raw) {
   if (stripped.includes('-')) return stripped.toUpperCase();
   if (stripped.length < 2) return stripped.toUpperCase();
   return (stripped.slice(0, -1) + '-' + stripped.slice(-1)).toUpperCase();
+}
+
+// Normaliza teléfonos chilenos: elimina separadores y strip prefijo país 56.
+// "+56 9 1234 5678" → "912345678" | "9.1234.5678" → "912345678" | "56912345678" → "912345678"
+function normalizePhone(raw) {
+  if (!raw) return '';
+  const digits = raw.toString().replace(/[^\d]/g, '');
+  if (!digits) return '';
+  // Código de país 56 al inicio (11 dígitos: 56 + móvil 9 dígitos)
+  if (digits.length === 11 && digits.startsWith('56')) return digits.slice(2);
+  return digits;
 }
 
 // Parsea números chilenos con puntos como separadores de miles ("1.500.000" → 1500000)
@@ -263,7 +274,8 @@ function resolveModel(modeloRaw, models) {
 function validateRow(row, headerMap, rowIndex) {
   const nombre         = get(row, headerMap, 'nombre');
   const apellido       = get(row, headerMap, 'apellido');
-  const telefono       = get(row, headerMap, 'telefono');
+  const telefonoRaw    = get(row, headerMap, 'telefono');
+  const telefono       = normalizePhone(telefonoRaw);
   const email          = get(row, headerMap, 'email');
   const rut            = get(row, headerMap, 'rut');
   const sucursalRaw    = get(row, headerMap, 'sucursal'); // sin toLowerCase — lo hace resolveBranch
@@ -312,9 +324,10 @@ function validateRow(row, headerMap, rowIndex) {
   if (!sucursalRaw)              errors.push('Sucursal obligatoria');
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
                                  errors.push('Formato de email inválido');
-  // Teléfono tolerante: acepta 7-15 dígitos con prefijos opcionales
-  if (telefono && !/^\+?[\d\s\-\(\)]{7,16}$/.test(telefono))
-                                 errors.push('Formato de teléfono inválido');
+  // Teléfono: validar el número ya normalizado (solo dígitos, 7-12 chars)
+  if (telefonoRaw && !telefono)  errors.push('Teléfono no tiene dígitos válidos');
+  if (telefono && !/^\d{7,12}$/.test(telefono))
+                                 errors.push(`Teléfono inválido tras normalizar: ${telefono}`);
   if (rut) {
     const cleaned = normalizeRut(rut);
     if (!/^\d{6,8}[0-9K]$/.test(cleaned)) errors.push('Formato de RUT inválido');

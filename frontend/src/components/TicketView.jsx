@@ -4,6 +4,15 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SR
 import { RemindersTab } from './RemindersTab.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
+// Formatea teléfono para display: "912345678" → "+56 9 1234 5678"
+function formatPhone(raw) {
+  if (!raw) return '';
+  const s = raw.toString().trim();
+  if (/^9\d{8}$/.test(s))   return `+56 9 ${s.slice(1,5)} ${s.slice(5)}`;
+  if (/^569\d{8}$/.test(s)) return `+56 9 ${s.slice(3,7)} ${s.slice(7)}`;
+  return s;
+}
+
 // Formatea RUT para display: "163459779" o "16345977-9" → "16.345.977-9"
 function displayRut(raw) {
   if (!raw) return '';
@@ -194,7 +203,7 @@ export function TicketView({lead,user,nav,updLead}){
             {lead.fn} {lead.ln}
           </h1>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            {lead.phone&&<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'#374151', fontWeight:500 }}><Ic.phone size={11} color="#9CA3AF"/>{lead.phone}</span>}
+            {lead.phone&&<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'#374151', fontWeight:500 }}><Ic.phone size={11} color="#9CA3AF"/>{formatPhone(lead.phone)}</span>}
             {lead.email&&<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#6B7280' }}><Ic.mail size={11} color="#9CA3AF"/>{lead.email}</span>}
             {lead.rut&&<span style={{ fontSize:11, color:'#6B7280', fontVariantNumeric:'tabular-nums' }}>RUT {displayRut(lead.rut)}</span>}
             {lead.comuna&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{lead.comuna}</span>}
