@@ -4,6 +4,15 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SR
 import { RemindersTab } from './RemindersTab.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
+// Formatea RUT para display: "163459779" o "16345977-9" → "16.345.977-9"
+function displayRut(raw) {
+  if (!raw) return '';
+  const s = raw.toString().replace(/\./g, '').trim();
+  const [body, dv] = s.includes('-') ? s.split('-') : [s.slice(0, -1), s.slice(-1)];
+  if (!body) return raw;
+  return body.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + (dv || '');
+}
+
 const slaBox = (bg, border, color) => ({
   background:bg, border:`1px solid ${border}`, borderRadius:8,
   padding:'7px 10px', marginBottom:8, fontSize:11, color,
@@ -174,8 +183,8 @@ export function TicketView({lead,user,nav,updLead}){
       <div style={{
         background:'#FFFFFF', borderRadius:14, border:'1px solid #E5E7EB',
         boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
-        display:'grid', gridTemplateColumns:'200px 1fr 268px 252px',
-        overflow:'hidden', marginBottom:12,
+        display:'grid', gridTemplateColumns:'minmax(180px,200px) minmax(0,1fr) minmax(200px,268px) minmax(200px,252px)',
+        overflow:'hidden', marginBottom:12, minWidth:0,
       }}>
 
         {/* Z1: CLIENTE */}
@@ -187,6 +196,7 @@ export function TicketView({lead,user,nav,updLead}){
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
             {lead.phone&&<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'#374151', fontWeight:500 }}><Ic.phone size={11} color="#9CA3AF"/>{lead.phone}</span>}
             {lead.email&&<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#6B7280' }}><Ic.mail size={11} color="#9CA3AF"/>{lead.email}</span>}
+            {lead.rut&&<span style={{ fontSize:11, color:'#6B7280', fontVariantNumeric:'tabular-nums' }}>RUT {displayRut(lead.rut)}</span>}
             {lead.comuna&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{lead.comuna}</span>}
           </div>
           <div style={{ marginTop:12, paddingTop:10, borderTop:'1px solid #F1F3F5', display:'flex', flexDirection:'column', gap:5 }}>
@@ -268,6 +278,14 @@ export function TicketView({lead,user,nav,updLead}){
               {sinContactoH>0&&<span style={{ fontSize:11, fontWeight:600, color: slaBreach?'#EF4444':slaWarning?'#F97316':'#9CA3AF' }}>{sinContactoH}h</span>}
             </div>
             <TBdg s={lead.status}/>
+            {/* Autofin badge — visible sin bajar */}
+            {(() => {
+              const fd = lead.fin_data ? (typeof lead.fin_data==='string'?JSON.parse(lead.fin_data):lead.fin_data) : null;
+              const ev = fd?.eval_autofin || fd?.pre_eval_autofin;
+              if (!ev) return null;
+              const color = /aprob/i.test(ev)?'#10B981':/rechaz/i.test(ev)?'#EF4444':'#F59E0B';
+              return <div style={{ marginTop:6, display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:color+'18', border:`1px solid ${color}40`, fontSize:10, fontWeight:700, color }}><span style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>Autofin: {ev}</div>;
+            })()}
           </div>
           {slaReassigned&&<div style={slaBox("rgba(139,92,246,0.07)","rgba(139,92,246,0.22)","#7C3AED")}><Ic.users size={12} color="#7C3AED"/><span><strong>Reasignado</strong> · {s.fn}{s.ln?` ${s.ln}`:''}</span></div>}
           {slaBreach&&!slaReassigned&&<div style={slaBox("rgba(239,68,68,0.07)","rgba(239,68,68,0.22)","#EF4444")}><Ic.alert size={12} color="#EF4444"/><span><strong>Vencido</strong> · {sinContactoH}h sin gestión</span></div>}
@@ -331,7 +349,7 @@ export function TicketView({lead,user,nav,updLead}){
             <div>
               <div style={secTitle('#F28100')}>Identificación Personal</div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:20 }}>
-                <Field label="RUT" value={lead.rut} onChange={v=>upd("rut",v)}/>
+                <Field label="RUT" value={displayRut(lead.rut)} onChange={v=>upd("rut",v)}/>
                 <Field label="Nombre" value={lead.fn} onChange={v=>upd("fn",v)}/>
                 <Field label="Apellido" value={lead.ln} onChange={v=>upd("ln",v)}/>
                 <Field label="Fecha Nacimiento" value={lead.bday} onChange={v=>upd("bday",v)} ph="DD/MM/AAAA"/>
@@ -421,62 +439,30 @@ export function TicketView({lead,user,nav,updLead}){
       ══════════════════════════════════════════════════════════ */}
       {lead.fin_data && Object.keys(lead.fin_data).length > 0 && (() => {
         const fd = typeof lead.fin_data === 'string' ? JSON.parse(lead.fin_data) : lead.fin_data;
-        const hasTanner  = fd.pre_eval_tanner || fd.eval_tanner || fd.obs_tanner;
         const hasAutofin = fd.id_autofin || fd.pre_eval_autofin || fd.eval_autofin || fd.obs_autofin;
-        const evalColor  = (v) => !v ? '#9CA3AF' : /aprob/i.test(v) ? '#10B981' : /rechaz/i.test(v) ? '#EF4444' : /evalu/i.test(v) ? '#F28100' : '#6B7280';
+        if (!hasAutofin) return null;
+        const evalColor = (v) => !v ? '#9CA3AF' : /aprob/i.test(v) ? '#10B981' : /rechaz/i.test(v) ? '#EF4444' : '#F59E0B';
         return (
           <div style={secCard}>
             <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F3F5', display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>Evaluaciones Financieras</span>
-              {fd.vendedor_ref && <span style={{ fontSize:11, color:'#94A3B8', marginLeft:'auto' }}>Vendedor ref: {fd.vendedor_ref}</span>}
+              <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>Autofin</span>
+              {fd.id_autofin && <span style={{ fontSize:11, color:'#94A3B8' }}>ID {fd.id_autofin}</span>}
+              {fd.vendedor_ref && <span style={{ fontSize:11, color:'#94A3B8', marginLeft:'auto' }}>Ref: {fd.vendedor_ref}</span>}
             </div>
-            <div style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-              {/* Tanner */}
-              {hasTanner && (
-                <div>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Tanner</div>
-                  {fd.pre_eval_tanner && <div style={{ marginBottom:4 }}>
-                    <span style={{ fontSize:10, color:'#6B7280' }}>Pre-evaluación: </span>
-                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.pre_eval_tanner) }}>{fd.pre_eval_tanner}</span>
-                  </div>}
-                  {fd.eval_tanner && <div style={{ marginBottom:4 }}>
-                    <span style={{ fontSize:10, color:'#6B7280' }}>Evaluación: </span>
-                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.eval_tanner) }}>{fd.eval_tanner}</span>
-                  </div>}
-                  {fd.obs_tanner && <div style={{ fontSize:11, color:'#6B7280', marginTop:4, background:'#F9FAFB', borderRadius:6, padding:'6px 8px', lineHeight:1.4 }}>{fd.obs_tanner}</div>}
-                </div>
-              )}
-              {/* Autofin */}
-              {hasAutofin && (
-                <div>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>
-                    Autofin {fd.id_autofin && <span style={{ color:'#CBD5E1', fontWeight:400, textTransform:'none' }}>· ID {fd.id_autofin}</span>}
-                  </div>
-                  {fd.pre_eval_autofin && <div style={{ marginBottom:4 }}>
-                    <span style={{ fontSize:10, color:'#6B7280' }}>Pre-evaluación: </span>
-                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.pre_eval_autofin) }}>{fd.pre_eval_autofin}</span>
-                  </div>}
-                  {fd.eval_autofin && <div style={{ marginBottom:4 }}>
-                    <span style={{ fontSize:10, color:'#6B7280' }}>Evaluación: </span>
-                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.eval_autofin) }}>{fd.eval_autofin}</span>
-                  </div>}
-                  {fd.obs_autofin && <div style={{ fontSize:11, color:'#6B7280', marginTop:4, background:'#F9FAFB', borderRadius:6, padding:'6px 8px', lineHeight:1.4 }}>{fd.obs_autofin}</div>}
-                </div>
-              )}
-              {/* Opción de compra */}
-              {fd.opcion_compra && (
-                <div>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>Opción de compra</div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{fd.opcion_compra}</div>
-                </div>
-              )}
-              {/* Financiamiento raw */}
-              {fd.financiamiento && (
-                <div>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>Financiamiento (plantilla)</div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{fd.financiamiento}</div>
-                </div>
-              )}
+            <div style={{ padding:'16px 20px', display:'flex', flexDirection:'column', gap:8 }}>
+              {fd.pre_eval_autofin && <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <span style={{ fontSize:11, color:'#6B7280', minWidth:110 }}>Pre-evaluación:</span>
+                <span style={{ fontSize:12, fontWeight:700, color:evalColor(fd.pre_eval_autofin) }}>{fd.pre_eval_autofin}</span>
+              </div>}
+              {fd.eval_autofin && <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <span style={{ fontSize:11, color:'#6B7280', minWidth:110 }}>Evaluación:</span>
+                <span style={{ fontSize:12, fontWeight:700, color:evalColor(fd.eval_autofin) }}>{fd.eval_autofin}</span>
+              </div>}
+              {fd.obs_autofin && <div style={{ fontSize:11, color:'#6B7280', background:'#F9FAFB', borderRadius:6, padding:'8px 10px', lineHeight:1.5 }}>{fd.obs_autofin}</div>}
+              {fd.opcion_compra && <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <span style={{ fontSize:11, color:'#6B7280', minWidth:110 }}>Opción compra:</span>
+                <span style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{fd.opcion_compra}</span>
+              </div>}
             </div>
           </div>
         );
