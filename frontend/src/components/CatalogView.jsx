@@ -4,13 +4,13 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SR
 
 function catColor(c){return CAT_COLOR[c]||"#555";}
 
-function CategoryCombo({value,onChange,allCategories,style}){
+function CategoryCombo({value,onChange,allCategories,style,listId="cat-list"}){
   return(
     <>
-      <input list="cat-list" value={value} onChange={e=>onChange(e.target.value)}
+      <input list={listId} value={value} onChange={e=>onChange(e.target.value)}
         placeholder="Seleccionar o escribir nueva..." style={style}/>
-      <datalist id="cat-list">
-        {allCategories.map(c=><option key={c} value={c}/>)}
+      <datalist id={listId}>
+        {(allCategories||[]).map(c=><option key={c} value={c}/>)}
       </datalist>
     </>
   );
@@ -236,7 +236,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
                   <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría</div>
-                  <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                  <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}} listId="cat-detail"/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Cilindrada (cc)</div>
@@ -395,7 +395,7 @@ function AddModelModal({onClose,onAdded,allCategories}){
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
             <div>
               <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría</div>
-              <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+              <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}} listId="cat-add"/>
             </div>
             <div>
               <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Cilindrada (cc)</div>
@@ -518,7 +518,7 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
       <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
         <div style={{flex:"0 0 180px"}}>
           <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría a renombrar</div>
-          <CategoryCombo value={renameFrom} onChange={setRenameFrom} allCategories={allCategories} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+          <CategoryCombo value={renameFrom} onChange={setRenameFrom} allCategories={allCategories} style={{...S.inp,width:"100%",boxSizing:"border-box"}} listId="cat-rename"/>
         </div>
         <div style={{flex:"0 0 180px"}}>
           <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Nuevo nombre</div>
@@ -713,8 +713,8 @@ export function CatalogView({user}){
         );
       })()}
 
-      {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded}/>}
-      {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted}/>}
+      {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={allCategories}/>}
+      {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted} allCategories={allCategories}/>}
     </div>
   );
 }
