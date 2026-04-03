@@ -112,6 +112,8 @@ export const api = {
 
   // Catalog
   getModels: (params) => request('GET', `/catalog/models?${new URLSearchParams(params || {})}`),
+  getCategories: () => request('GET', '/catalog/categories'),
+  renameCategory: (from, to) => request('PATCH', '/catalog/categories/rename', { from, to }),
   getBrands: () => request('GET', '/catalog/brands'),
   createModel: (data) => request('POST', '/catalog/models', data),
   updateModel: (id, data) => request('PATCH', `/catalog/models/${id}`, data),

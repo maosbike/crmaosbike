@@ -4,7 +4,19 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SR
 
 function catColor(c){return CAT_COLOR[c]||"#555";}
 
-function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}){
+function CategoryCombo({value,onChange,allCategories,style}){
+  return(
+    <>
+      <input list="cat-list" value={value} onChange={e=>onChange(e.target.value)}
+        placeholder="Seleccionar o escribir nueva..." style={style}/>
+      <datalist id="cat-list">
+        {allCategories.map(c=><option key={c} value={c}/>)}
+      </datalist>
+    </>
+  );
+}
+
+function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,allCategories}){
   const[m,setM]=useState(m0);
   const[editing,setEditing]=useState(false);
   const[saving,setSaving]=useState(false);
@@ -224,10 +236,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
                   <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría</div>
-                  <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} style={{...S.inp,width:"100%"}}>
-                    <option value="">Sin categoría</option>
-                    {Object.keys(CAT_COLOR).map(c=><option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
                 <div>
                   <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Cilindrada (cc)</div>
@@ -343,7 +352,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted}
   );
 }
 
-function AddModelModal({onClose,onAdded}){
+function AddModelModal({onClose,onAdded,allCategories}){
   const[form,setForm]=useState({brand:"",model:"",commercial_name:"",category:"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,description:"",spec_url:""});
   const[colors,setColors]=useState([]);
   const[colorInput,setColorInput]=useState("");
@@ -386,10 +395,7 @@ function AddModelModal({onClose,onAdded}){
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
             <div>
               <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría</div>
-              <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} style={{...S.inp,width:"100%"}}>
-                <option value="">Sin categoría</option>
-                {Object.keys(CAT_COLOR).map(c=><option key={c} value={c}>{c}</option>)}
-              </select>
+              <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
             <div>
               <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Cilindrada (cc)</div>
@@ -478,11 +484,65 @@ function ModelCard({m,onClick}){
   );
 }
 
+function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
+  const[renameFrom,setRenameFrom]=useState("");
+  const[renameTo,setRenameTo]=useState("");
+  const[saving,setSaving]=useState(false);
+  const handleRename=async()=>{
+    if(!renameFrom||!renameTo.trim()){alert("Completá ambos campos");return;}
+    if(renameFrom===renameTo.trim()){alert("El nombre es igual");return;}
+    setSaving(true);
+    try{
+      const r=await api.renameCategory(renameFrom,renameTo.trim());
+      onRenamed(renameFrom,renameTo.trim(),r.updated);
+      setRenameFrom("");setRenameTo("");
+    }catch(e){alert(e.message||"Error");}
+    finally{setSaving(false);}
+  };
+  return(
+    <div style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:14,padding:"18px 20px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#0F172A"}}>Gestionar categorías</div>
+        <button onClick={onClose} style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+      </div>
+      {/* Categorías existentes */}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+        {allCategories.length===0?<span style={{fontSize:12,color:"#9CA3AF"}}>Sin categorías aún</span>:allCategories.map(c=>(
+          <span key={c} onClick={()=>setRenameFrom(c)} title="Click para renombrar"
+            style={{fontSize:11,padding:"4px 12px",borderRadius:20,background:catColor(c)+"18",color:catColor(c),border:`1.5px solid ${renameFrom===c?catColor(c):"transparent"}`,fontWeight:600,cursor:"pointer",transition:"border-color 0.1s"}}>
+            {c}
+          </span>
+        ))}
+      </div>
+      {/* Renombrar */}
+      <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+        <div style={{flex:"0 0 180px"}}>
+          <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría a renombrar</div>
+          <CategoryCombo value={renameFrom} onChange={setRenameFrom} allCategories={allCategories} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{flex:"0 0 180px"}}>
+          <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Nuevo nombre</div>
+          <input value={renameTo} onChange={e=>setRenameTo(e.target.value)} placeholder="ej: Enduro" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+        </div>
+        <button onClick={handleRename} disabled={saving||!renameFrom||!renameTo.trim()}
+          style={{...S.btn,padding:"7px 16px",fontSize:12,opacity:saving||!renameFrom||!renameTo.trim()?0.6:1}}>
+          {saving?"Guardando…":"Renombrar en todos los modelos"}
+        </button>
+      </div>
+      <div style={{fontSize:11,color:"#94A3B8",marginTop:10}}>
+        Renombrar actualiza la categoría en todos los modelos que la tengan asignada.
+        Para crear una categoría nueva, asignala directamente al editar un modelo.
+      </div>
+    </div>
+  );
+}
+
 export function CatalogView({user}){
   const[models,setModels]=useState([]);
   const[loading,setLoading]=useState(true);
   const[selected,setSelected]=useState(null);
   const[showAdd,setShowAdd]=useState(false);
+  const[showManageCats,setShowManageCats]=useState(false);
   // Navegación: null = vista marcas, string = marca activa
   const[activeBrand,setActiveBrand]=useState(null);
   // null = todas las categorías de la marca, string = categoría activa
@@ -499,6 +559,16 @@ export function CatalogView({user}){
   const onSaved=(updated)=>{setModels(ms=>ms.map(m=>m.id===updated.id?updated:m));setSelected(updated);};
   const onAdded=(created)=>{setModels(ms=>[...ms,created]);};
   const onDeleted=(id)=>{setModels(ms=>ms.filter(m=>m.id!==id));setSelected(null);};
+  const handleCategoryRenamed=(from,to,count)=>{
+    setModels(ms=>ms.map(m=>m.category===from?{...m,category:to}:m));
+    alert(`Categoría renombrada: "${from}" → "${to}" (${count} modelo${count!==1?"s":""})`);
+  };
+
+  // Categorías únicas (modelos + hardcoded como fallback)
+  const allCategories=[...new Set([
+    ...Object.keys(CAT_COLOR),
+    ...models.map(m=>m.category).filter(Boolean)
+  ])].sort();
 
   // Marcas únicas ordenadas
   const brands=[...new Set(models.map(m=>m.brand))].sort();
@@ -515,8 +585,14 @@ export function CatalogView({user}){
             <h1 style={{fontSize:20,fontWeight:800,margin:0,color:"#0F172A",letterSpacing:"-0.4px"}}>Catálogo</h1>
             <p style={{margin:"3px 0 0",fontSize:12,color:"#94A3B8",fontWeight:500}}>{loading?"Cargando...":`${models.length} modelos · ${brands.length} marcas`}</p>
           </div>
-          {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
+          <div style={{display:"flex",gap:8}}>
+            {canEdit&&<button onClick={()=>setShowManageCats(v=>!v)} style={{...S.btn2,fontSize:12,padding:"6px 14px"}}>Categorías</button>}
+            {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
+          </div>
         </div>
+
+        {/* Panel gestión categorías */}
+        {canEdit&&showManageCats&&<ManageCategoriesPanel allCategories={allCategories} onRenamed={handleCategoryRenamed} onClose={()=>setShowManageCats(false)}/>}
 
         {/* Búsqueda global */}
         <div style={{position:"relative",marginBottom:20,maxWidth:360}}>
@@ -565,8 +641,8 @@ export function CatalogView({user}){
           </div>
         )}
 
-        {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded}/>}
-        {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted}/>}
+        {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={allCategories}/>}
+        {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted} allCategories={allCategories}/>}
       </div>
     );
   }

@@ -251,4 +251,27 @@ router.delete('/aliases/:id', roleCheck('super_admin', 'admin_comercial'), async
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+// Renombrar categoría en todos los modelos
+router.patch('/categories/rename', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  const { from, to } = req.body;
+  if (!from || !to) return res.status(400).json({ error: 'from y to requeridos' });
+  try {
+    const { rowCount } = await db.query(
+      `UPDATE moto_models SET category = $1 WHERE LOWER(TRIM(category)) = LOWER(TRIM($2))`,
+      [to.trim(), from.trim()]
+    );
+    res.json({ ok: true, updated: rowCount });
+  } catch (e) { res.status(500).json({ error: 'Error' }); }
+});
+
+// Listar categorías únicas
+router.get('/categories', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT category, COUNT(*) AS count FROM moto_models WHERE category IS NOT NULL AND category <> '' GROUP BY category ORDER BY category`
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: 'Error' }); }
+});
+
 module.exports = router;
