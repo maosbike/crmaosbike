@@ -119,6 +119,12 @@ function resolveBranch(sucursalRaw, branches) {
   if (!sucursalRaw) return null;
   const s = sucursalRaw.toLowerCase().trim();
 
+  // Movicenter y variantes mal escritas → siempre derivar a Mall Plaza Norte.
+  // Movicenter NO es una sucursal de reparto comercial independiente.
+  if (/ovicenter/i.test(s) || s === 'mov') {
+    return branches.find(b => b.code === 'MPN') || null;
+  }
+
   // 1. Coincidencia exacta por código o nombre
   for (const b of branches) {
     if (b.code.toLowerCase() === s || b.name.toLowerCase() === s) return b;

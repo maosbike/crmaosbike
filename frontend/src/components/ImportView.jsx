@@ -173,7 +173,7 @@ export function ImportView() {
                       ['apellido',  'No',  'Apellido'],
                       ['telefono',  'Sí*', 'Obligatorio si no hay email'],
                       ['email',     'Sí*', 'Obligatorio si no hay teléfono'],
-                      ['sucursal',  'Sí',  'Código de sucursal: MPN, MPS o MOV'],
+                      ['sucursal',  'Sí',  'Código de sucursal: MPN o MPS (Movicenter → se deriva a MPN)'],
                       ['rut',       'No',  'Formato: 12345678-9'],
                       ['fuente',    'No',  'web / whatsapp / presencial / referido / evento / llamada'],
                       ['prioridad', 'No',  'alta / media / baja'],
