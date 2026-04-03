@@ -141,12 +141,12 @@ function resolveBranch(sucursalRaw, branches) {
     if (b.name.toLowerCase().includes(s)) return b;
   }
 
-  // 4. Score por palabras en común (≥4 caracteres)
-  const sWords = new Set(s.split(/\s+/).filter(w => w.length >= 4));
+  // 4. Score por palabras en común (≥3 caracteres — incluye "sur", "mpn", etc.)
+  const sWords = new Set(s.split(/\s+/).filter(w => w.length >= 3));
   let best = null;
   let bestScore = 0;
   for (const b of branches) {
-    const bWords = b.name.toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+    const bWords = b.name.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
     const score = bWords.filter(w => sWords.has(w)).length;
     if (score > bestScore) { bestScore = score; best = b; }
   }
