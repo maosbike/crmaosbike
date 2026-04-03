@@ -417,6 +417,72 @@ export function TicketView({lead,user,nav,updLead}){
       </div>
 
       {/* ══════════════════════════════════════════════════════════
+          EVALUACIONES YAMAHA — solo si hay fin_data
+      ══════════════════════════════════════════════════════════ */}
+      {lead.fin_data && Object.keys(lead.fin_data).length > 0 && (() => {
+        const fd = typeof lead.fin_data === 'string' ? JSON.parse(lead.fin_data) : lead.fin_data;
+        const hasTanner  = fd.pre_eval_tanner || fd.eval_tanner || fd.obs_tanner;
+        const hasAutofin = fd.id_autofin || fd.pre_eval_autofin || fd.eval_autofin || fd.obs_autofin;
+        const evalColor  = (v) => !v ? '#9CA3AF' : /aprob/i.test(v) ? '#10B981' : /rechaz/i.test(v) ? '#EF4444' : /evalu/i.test(v) ? '#F28100' : '#6B7280';
+        return (
+          <div style={secCard}>
+            <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F3F5', display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>Evaluaciones Financieras</span>
+              {fd.vendedor_ref && <span style={{ fontSize:11, color:'#94A3B8', marginLeft:'auto' }}>Vendedor ref: {fd.vendedor_ref}</span>}
+            </div>
+            <div style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+              {/* Tanner */}
+              {hasTanner && (
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Tanner</div>
+                  {fd.pre_eval_tanner && <div style={{ marginBottom:4 }}>
+                    <span style={{ fontSize:10, color:'#6B7280' }}>Pre-evaluación: </span>
+                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.pre_eval_tanner) }}>{fd.pre_eval_tanner}</span>
+                  </div>}
+                  {fd.eval_tanner && <div style={{ marginBottom:4 }}>
+                    <span style={{ fontSize:10, color:'#6B7280' }}>Evaluación: </span>
+                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.eval_tanner) }}>{fd.eval_tanner}</span>
+                  </div>}
+                  {fd.obs_tanner && <div style={{ fontSize:11, color:'#6B7280', marginTop:4, background:'#F9FAFB', borderRadius:6, padding:'6px 8px', lineHeight:1.4 }}>{fd.obs_tanner}</div>}
+                </div>
+              )}
+              {/* Autofin */}
+              {hasAutofin && (
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>
+                    Autofin {fd.id_autofin && <span style={{ color:'#CBD5E1', fontWeight:400, textTransform:'none' }}>· ID {fd.id_autofin}</span>}
+                  </div>
+                  {fd.pre_eval_autofin && <div style={{ marginBottom:4 }}>
+                    <span style={{ fontSize:10, color:'#6B7280' }}>Pre-evaluación: </span>
+                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.pre_eval_autofin) }}>{fd.pre_eval_autofin}</span>
+                  </div>}
+                  {fd.eval_autofin && <div style={{ marginBottom:4 }}>
+                    <span style={{ fontSize:10, color:'#6B7280' }}>Evaluación: </span>
+                    <span style={{ fontSize:11, fontWeight:600, color:evalColor(fd.eval_autofin) }}>{fd.eval_autofin}</span>
+                  </div>}
+                  {fd.obs_autofin && <div style={{ fontSize:11, color:'#6B7280', marginTop:4, background:'#F9FAFB', borderRadius:6, padding:'6px 8px', lineHeight:1.4 }}>{fd.obs_autofin}</div>}
+                </div>
+              )}
+              {/* Opción de compra */}
+              {fd.opcion_compra && (
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>Opción de compra</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{fd.opcion_compra}</div>
+                </div>
+              )}
+              {/* Financiamiento raw */}
+              {fd.financiamiento && (
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>Financiamiento (plantilla)</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{fd.financiamiento}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ══════════════════════════════════════════════════════════
           TIMELINE — sección inferior
       ══════════════════════════════════════════════════════════ */}
       <div style={secCard}>

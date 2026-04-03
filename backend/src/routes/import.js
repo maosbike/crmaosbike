@@ -40,22 +40,24 @@ const COL_ALIASES = {
   observaciones:    ['observaciones', 'obs', 'nota', 'notes', 'comentarios'],
   mensaje:          ['mensaje', 'message'],
   modelo:           ['modelo', 'product', 'producto', 'moto', 'motocicleta'],
+  fecha_nacimiento: ['fecha_nacimiento', 'birth_date', 'birthdate', 'nacimiento', 'fecha_de_nacimiento'],
+  test_ride:        ['test_ride', 'test ride', 'testride', 'prueba_manejo'],
   // Campos financieros Yamaha
-  opcion_compra:    ['opcion_compra'],
+  opcion_compra:    ['opcion_compra', 'opción_compra', 'opcion de compra'],
   financiamiento:   ['financiamiento'],
-  sit_laboral:      ['situacion_laboral', 'sit_laboral'],
+  sit_laboral:      ['situacion_laboral', 'sit_laboral', 'situación_laboral'],
   continuidad:      ['continuidad_laboral', 'continuidad'],
-  renta:            ['renta_liquida', 'renta'],
+  renta:            ['renta_liquida', 'renta', 'renta_líquida'],
   pie:              ['pie'],
   // Evaluaciones Tanner
-  pre_eval_tanner:  ['pre_evaluacion_tanner'],
-  eval_tanner:      ['evaluacion_tanner'],
-  obs_tanner:       ['observaciones_evaluacion_tanner'],
+  pre_eval_tanner:  ['pre_evaluacion_tanner', 'pre_evaluación_tanner'],
+  eval_tanner:      ['evaluacion_tanner', 'evaluación_tanner'],
+  obs_tanner:       ['observaciones_evaluacion_tanner', 'observaciones_evaluación_tanner'],
   // Evaluaciones Autofin
   id_autofin:       ['id_autofin'],
-  pre_eval_autofin: ['pre_evaluacion_autofin'],
-  eval_autofin:     ['evaluacion_autofin'],
-  obs_autofin:      ['observaciones_evaluacion_autofin'],
+  pre_eval_autofin: ['pre_evaluacion_autofin', 'pre_evaluación_autofin'],
+  eval_autofin:     ['evaluacion_autofin', 'evaluación_autofin'],
+  obs_autofin:      ['observaciones_evaluacion_autofin', 'observaciones_evaluación_autofin'],
 };
 
 const VALID_SOURCES  = ['web','redes_sociales','whatsapp','presencial','referido','evento','llamada','importacion'];
@@ -88,8 +90,17 @@ function get(row, headerMap, field) {
   return (row[idx] ?? '').toString().trim();
 }
 
+// Para validación: elimina puntos y guion → "163459779"
 function normalizeRut(raw) {
   return raw.replace(/\./g, '').replace(/-/g, '').toUpperCase().trim();
+}
+// Para almacenamiento: elimina puntos, conserva guion → "16345977-9"
+function formatRut(raw) {
+  const stripped = raw.replace(/\./g, '').trim();
+  // Si ya tiene guion, devolver limpio; si no, insertar guion antes del último char
+  if (stripped.includes('-')) return stripped.toUpperCase();
+  if (stripped.length < 2) return stripped.toUpperCase();
+  return (stripped.slice(0, -1) + '-' + stripped.slice(-1)).toUpperCase();
 }
 
 // Parsea números chilenos con puntos como separadores de miles ("1.500.000" → 1500000)
@@ -273,15 +284,30 @@ function validateRow(row, headerMap, rowIndex) {
   const eval_autofin     = get(row, headerMap, 'eval_autofin');
   const obs_autofin      = get(row, headerMap, 'obs_autofin');
   const vendedor_ref     = get(row, headerMap, 'vendedor_ref'); // solo referencia, no se usa para asignar
+  const fecha_nacimiento = get(row, headerMap, 'fecha_nacimiento');
+  const test_ride_raw    = get(row, headerMap, 'test_ride');
+
+  // Si no hay apellido separado, intentar partir el nombre en primera palabra + resto
+  let first_name = nombre;
+  let last_name  = apellido || null;
+  if (!last_name && nombre.trim().includes(' ')) {
+    const parts = nombre.trim().split(/\s+/);
+    first_name = parts[0];
+    last_name  = parts.slice(1).join(' ');
+  }
+
+  // test_ride: SI/SÍ/1/true → true
+  const test_ride = /^(si|sí|yes|1|true)$/i.test(test_ride_raw.trim());
 
   const errors = [];
 
-  if (!nombre)                   errors.push('Nombre obligatorio');
+  if (!first_name)               errors.push('Nombre obligatorio');
   if (!telefono && !email)       errors.push('Teléfono o email obligatorio');
   if (!sucursalRaw)              errors.push('Sucursal obligatoria');
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
                                  errors.push('Formato de email inválido');
-  if (telefono && !/^\+?[\d\s\-\(\)]{6,16}$/.test(telefono))
+  // Teléfono tolerante: acepta 7-15 dígitos con prefijos opcionales
+  if (telefono && !/^\+?[\d\s\-\(\)]{7,16}$/.test(telefono))
                                  errors.push('Formato de teléfono inválido');
   if (rut) {
     const cleaned = normalizeRut(rut);
@@ -293,11 +319,24 @@ function validateRow(row, headerMap, rowIndex) {
   const obs_parts = [observaciones, mensaje].filter(Boolean);
   const obs_vendedor = obs_parts.join(' | ') || null;
 
-  // Detectar si quiere financiamiento
+  // Detectar si quiere financiamiento: "SI", "SÍ", texto con "financ", o tiene evaluaciones
   const wants_financing =
+    /^(si|sí|yes)$/i.test(financiamiento.trim()) ||
     /financ/i.test(opcion_compra) ||
     /financ/i.test(financiamiento) ||
     !!(pre_eval_tanner || eval_tanner || id_autofin || pre_eval_autofin || eval_autofin);
+
+  // Parsear fecha_nacimiento: acepta YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY
+  let birthdate = null;
+  if (fecha_nacimiento) {
+    const fn = fecha_nacimiento.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fn)) {
+      birthdate = fn; // ya en formato ISO
+    } else if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(fn)) {
+      const [d, m, y] = fn.split(/[\/\-]/);
+      birthdate = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+  }
 
   // Construir fin_data con los campos de evaluación (solo los que tienen valor)
   const fin_data = {};
@@ -316,11 +355,12 @@ function validateRow(row, headerMap, rowIndex) {
 
   return {
     _row:            rowIndex,
-    nombre,
-    apellido:        apellido   || null,
+    nombre:          first_name,
+    apellido:        last_name,
     telefono:        telefono   || null,
     email:           email      || null,
-    rut:             rut ? normalizeRut(rut) : null,
+    rut:             rut ? formatRut(rut) : null,
+    birthdate:       birthdate,
     sucursal_raw:    sucursalRaw,           // valor original para display y matching
     fuente:          VALID_SOURCES.includes(fuente) ? fuente : 'importacion',
     prioridad:       VALID_PRIORITY.includes(prioridad) ? prioridad : 'media',
@@ -331,6 +371,7 @@ function validateRow(row, headerMap, rowIndex) {
     continuidad:     continuidad || null,
     renta:           parseChileanInt(renta_raw),
     pie:             parseChileanInt(pie_raw),
+    test_ride,
     wants_financing,
     fin_data:        Object.keys(fin_data).length > 0 ? fin_data : null,
     errors,
@@ -406,8 +447,11 @@ router.post('/preview', upload.single('file'), async (req, res) => {
     const phones = rows.filter(r => r.telefono).map(r => r.telefono);
 
     if (ruts.length) {
+      // Buscar tanto el formato con guion como sin guion para máxima compatibilidad
+      const rutsNorm = ruts.map(normalizeRut);
       const { rows: dr } = await db.query(
-        `SELECT rut FROM tickets WHERE rut = ANY($1::text[]) AND rut IS NOT NULL`, [ruts]
+        `SELECT rut FROM tickets WHERE REPLACE(REPLACE(rut,'.',''),'-','') = ANY($1::text[]) AND rut IS NOT NULL`,
+        [rutsNorm]
       );
       dr.forEach(r => dbDupRuts.add(normalizeRut(r.rut)));
     }
@@ -437,8 +481,8 @@ router.post('/preview', upload.single('file'), async (req, res) => {
                         (r.email    && seenEmail.get(r.email.toLowerCase()) > 1) ||
                         (r.telefono && seenPhone.get(r.telefono)            > 1);
 
-      // Duplicados en BD
-      const isDupDB = (r.rut      && dbDupRuts.has(r.rut))                  ||
+      // Duplicados en BD (comparar RUT normalizado)
+      const isDupDB = (r.rut      && dbDupRuts.has(normalizeRut(r.rut)))     ||
                       (r.email    && dbDupEmails.has(r.email.toLowerCase())) ||
                       (r.telefono && dbDupPhones.has(r.telefono));
 
@@ -558,13 +602,13 @@ router.post('/confirm', async (req, res) => {
              comuna, source, branch_id, seller_id, assigned_to,
              model_id, priority, color_pref,
              obs_vendedor, wants_financing, sit_laboral, continuidad,
-             renta, pie, fin_data,
+             renta, pie, test_ride, birthdate, fin_data,
              sla_deadline, status
            ) VALUES (
              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
              $12,$13,$14,
-             $15,$16,$17,$18,$19,$20,$21,
-             $22, 'abierto'
+             $15,$16,$17,$18,$19,$20,$21,$22,$23,
+             $24, 'abierto'
            ) RETURNING id, ticket_num`,
           [
             num,
@@ -587,8 +631,10 @@ router.post('/confirm', async (req, res) => {
             r.continuidad      || null,
             r.renta            || null,
             r.pie              || null,
+            r.test_ride        || false,
+            r.birthdate        || null,
             r.fin_data ? JSON.stringify(r.fin_data) : null,
-            calcSlaDeadline().toISOString(),           // $22 sla_deadline
+            calcSlaDeadline().toISOString(),           // $24 sla_deadline
           ]
         );
 
