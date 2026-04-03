@@ -681,13 +681,23 @@ function parsePromobility(text) {
   const period = detectPeriod(text);
   const lines  = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Regex para detectar "modelo+año" concatenado (termina en 202x o 202x)
+  // Regex para detectar "modelo+año" concatenado (termina en 202x)
   const MODEL_YEAR_RE = /^(.+?)(20\d{2})$/;
-  // Regex para precios Promobility (usan $)
-  const PROMO_PRICE_RE = /\$\s*[\d,]+/;
+
+  // Detecta líneas de precios: contienen "$" adyacente a dígitos
+  // Cubre formato A (número$) y formato B ($número)
+  const PROMO_PRICE_RE = /\d\s*\$|\$\s*\d/;
+
+  // También detecta líneas que son SOLO números chilenos (sin $) pero con varios precios
+  const PLAIN_NUMS_RE  = /^\d{1,3}(?:\.\d{3})+(?:\s+\d{1,3}(?:\.\d{3})+)*$/;
 
   // Textos a ignorar
   const SKIP_RE = /^(Marca|Segmento|Modelo|Año|Precio|Bono|Precios válidos|Lista de precios|Todo Medio|Calle|Adventure|Cross|ATV|UTV|Fun|Sport|Trabajo|Calle\s+Sport)/i;
+
+  /** Determina si una línea es de precios (no un modelo) */
+  function isPriceLine(l) {
+    return PROMO_PRICE_RE.test(l) || PLAIN_NUMS_RE.test(l);
+  }
 
   let i = 0;
   while (i < lines.length) {
@@ -697,7 +707,7 @@ function parsePromobility(text) {
     if (SKIP_RE.test(line) || line.length < 3) { i++; continue; }
 
     // ¿Es una línea de precios? (no modelo)
-    if (PROMO_PRICE_RE.test(line)) { i++; continue; }
+    if (isPriceLine(line)) { i++; continue; }
 
     // ¿La línea termina con un año? → es modelo+año
     const yearMatch = line.match(MODEL_YEAR_RE);
@@ -707,25 +717,54 @@ function parsePromobility(text) {
     const year     = parseInt(yearMatch[2]);
     const nextLine = lines[i + 1] || '';
 
-    // La siguiente línea debe tener precios con "$"
-    if (!PROMO_PRICE_RE.test(nextLine)) { i++; continue; }
+    // La siguiente línea debe tener precios
+    if (!isPriceLine(nextLine)) { i++; continue; }
 
-    // Parsear precios de la siguiente línea
-    const priceRe = /\$\s*([\d.,]+)/g;
-    const prices  = [];
-    let pm;
-    while ((pm = priceRe.exec(nextLine)) !== null) {
-      const v = parsePrice(pm[1].replace(/,/g, '.'));
-      if (v) prices.push(v);
+    // Extraer TODOS los números en orden de aparición (formato chileno X.XXX.XXX)
+    // Esto funciona para ambos formatos: "2.299.900$" y "$3.499.900"
+    let allNums = extractPrices(nextLine);
+    let consumed = 2; // líneas consumidas: modelo + primera línea de precios
+
+    // Algunos modelos (p.ej. Royal Enfield) tienen precios en 2 líneas.
+    // Si la línea siguiente también es de precios y NO es modelo+año → incluirla.
+    const lineAfterNext = lines[i + 2] || '';
+    if (lineAfterNext && isPriceLine(lineAfterNext) && !lineAfterNext.match(MODEL_YEAR_RE)) {
+      allNums  = allNums.concat(extractPrices(lineAfterNext));
+      consumed = 3;
     }
 
-    if (prices.length === 0) { i += 2; continue; }
+    if (allNums.length === 0) { i += consumed; continue; }
 
-    // Mapeo posicional: prices[0]=Lista, prices[1]=Bono, prices[2]=Precio Final con Bono
-    const price_list       = prices[0] || null;
-    const bono_todo_medio  = prices.length >= 3 ? (prices[1] || null) : null;
-    const price_todo_medio = prices.length >= 3 ? (prices[2] || null)
-                           : prices.length === 2 ? (prices[1] || null) : null;
+    // ── Mapeo posicional ──────────────────────────────────────────────────────
+    // Columnas del PDF: Precio Lista | Bono Marca | Precio Final con Bono
+    // allNums[0] = Precio Lista  (ej: 2.299.900)
+    // allNums[1] = Bono Marca    (ej:   100.000)   — puede no existir
+    // allNums[2] = Precio Final  (ej: 2.199.900)   — puede no existir
+    //
+    // Sanity check: Precio Lista siempre debe ser >= 500.000.
+    // Si el primer número es menor, hubo un corrimiento de columna → descartar.
+
+    let price_list       = allNums[0] || null;
+    let bono_todo_medio  = null;
+    let price_todo_medio = null;
+    let notes            = null;
+
+    if (price_list && price_list < 500000) {
+      // Corrimiento de columna: el bono fue leído como precio lista
+      notes      = `PRECIO INVÁLIDO DETECTADO (valor=${price_list}) — revisar PDF`;
+      price_list = null;
+    } else if (allNums.length >= 3) {
+      bono_todo_medio  = allNums[1] || null;
+      price_todo_medio = allNums[2] || null;
+    } else if (allNums.length === 2) {
+      // Heurística: si el 2do valor es < 30% del primero → es bono; si no → precio final
+      if (allNums[1] < (allNums[0] || 0) * 0.30) {
+        bono_todo_medio = allNums[1];
+      } else {
+        price_todo_medio = allNums[1];
+      }
+    }
+    // allNums.length === 1: solo precio lista, sin bono ni precio final
 
     const brand = inferPromoBrand(modelRaw);
 
@@ -745,11 +784,11 @@ function parsePromobility(text) {
       price_financiamiento: null,
       dcto_30_dias:         null,
       dcto_60_dias:         null,
-      notes:                null,
-      raw: { model: modelRaw, year, prices },
+      notes,
+      raw: { model: modelRaw, year, nums: allNums },
     });
 
-    i += 2; // consumir línea modelo + línea precios
+    i += consumed;
   }
 
   return { period, source_type: 'promobility', rows };
