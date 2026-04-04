@@ -43,6 +43,20 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
     if(user.role!=='vendedor') api.getSellers().then(d=>setAllSellers(Array.isArray(d)?d:[])).catch(()=>{});
   },[]);
   const[nw,setNw]=useState({fn:"",ln:"",phone:"",email:"",rut:"",comuna:"",source:"presencial",motoId:"",branch_id:user.branch||"",priority:"media",seller_id:""});
+  const[reassigningId,setReassigningId]=useState(null);
+  const[reassignTo,setReassignTo]=useState('');
+  const[reassigningBusy,setReassigningBusy]=useState(false);
+  const handleReassign=async(e,leadId)=>{
+    e.stopPropagation();
+    if(!reassignTo)return;
+    setReassigningBusy(true);
+    try{
+      await api.manualReassign({ticket_id:leadId,to_user_id:reassignTo});
+      setReassigningId(null);setReassignTo('');
+      onRefresh?.();
+    }catch(ex){alert(ex.message||'Error al reasignar');}
+    finally{setReassigningBusy(false);}
+  };
   const sellers=user.role!=="vendedor"?[...new Map(leads.filter(l=>l.seller_id).map(l=>[l.seller_id,{id:l.seller_id,fn:l.seller_fn,ln:l.seller_ln}])).values()]:[];
   const f=leads.filter(l=>{
     if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;
@@ -107,6 +121,26 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
           );
         })}
       </div>
+
+      {/* ── Cartera por vendedor (solo admins) ── */}
+      {user.role!=='vendedor'&&allSellers.length>0&&(
+        <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+          {allSellers.map(s=>{
+            const active=leads.filter(l=>l.seller_id===s.id&&!['ganado','perdido','cerrado'].includes(l.status)).length;
+            const isSel=selF===s.id;
+            return(
+              <button key={s.id} onClick={()=>setSelF(isSel?'':s.id)}
+                style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,border:isSel?'2px solid #3B82F6':'1px solid #E5E7EB',background:isSel?'#EFF6FF':'#FFFFFF',cursor:'pointer',fontFamily:'inherit',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',transition:'all 0.12s'}}>
+                <span style={{fontSize:22,fontWeight:900,color:isSel?'#3B82F6':'#0F172A',lineHeight:1}}>{active}</span>
+                <div style={{textAlign:'left'}}>
+                  <div style={{fontSize:11,fontWeight:700,color:isSel?'#3B82F6':'#374151'}}>{s.first_name} {s.last_name}</div>
+                  <div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>leads activos</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Barra de filtros — mismo estilo que Inventario ── */}
       <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'14px 18px',marginBottom:20,display:'flex',gap:12,flexWrap:'wrap',alignItems:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}}>
@@ -272,6 +306,36 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                       <div style={{fontSize:11,color:'#CBD5E1'}}>Sin asignar</div>
                       {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>{brName}</div>}
                     </>
+                  )}
+                  {user.role!=='vendedor'&&allSellers.length>0&&(
+                    <div style={{marginTop:8}} onClick={e=>e.stopPropagation()}>
+                      {reassigningId===x.id?(
+                        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                          <select value={reassignTo} onChange={e=>setReassignTo(e.target.value)}
+                            style={{fontSize:11,borderRadius:6,border:'1px solid #D1D5DB',padding:'4px 6px',background:'#F9FAFB',fontFamily:'inherit',width:'100%'}}>
+                            <option value="">Seleccionar...</option>
+                            {allSellers.filter(s=>s.id!==x.seller_id).map(s=>(
+                              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                            ))}
+                          </select>
+                          <div style={{display:'flex',gap:4}}>
+                            <button onClick={e=>handleReassign(e,x.id)} disabled={!reassignTo||reassigningBusy}
+                              style={{flex:1,fontSize:10,fontWeight:700,padding:'4px 0',borderRadius:5,border:'none',background:'#3B82F6',color:'#fff',cursor:'pointer',fontFamily:'inherit',opacity:!reassignTo||reassigningBusy?0.5:1}}>
+                              {reassigningBusy?'…':'Confirmar'}
+                            </button>
+                            <button onClick={()=>{setReassigningId(null);setReassignTo('');}}
+                              style={{fontSize:10,padding:'4px 8px',borderRadius:5,border:'1px solid #E5E7EB',background:'#F9FAFB',cursor:'pointer',fontFamily:'inherit'}}>
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ):(
+                        <button onClick={()=>{setReassigningId(x.id);setReassignTo('');}}
+                          style={{fontSize:10,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'none',padding:'3px 9px',borderRadius:5,cursor:'pointer',fontFamily:'inherit'}}>
+                          ↗ Traspasar
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
