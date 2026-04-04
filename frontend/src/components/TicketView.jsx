@@ -501,18 +501,30 @@ export function TicketView({lead,user,nav,updLead}){
           <div style={{ position:'relative', paddingLeft:20 }}>
             <div style={{ position:'absolute', left:7, top:0, bottom:0, width:2, background:'#E5E7EB' }}/>
             {(lead.timeline||[]).map((t,i)=>{
-              const dotColor=t.type==="contact_registered"||t.type==="contact"?"#3B82F6":t.type==="note_added"?"#10B981":t.type==="status"?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#374151";
+              const isEvidence=t.type==="contact_evidence";
+              const dotColor=isEvidence?"#0D9488":t.type==="contact_registered"||t.type==="contact"?"#3B82F6":t.type==="note_added"?"#10B981":t.type==="status"?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#374151";
               const userName=t.user||(t.user_fn?`${t.user_fn} ${t.user_ln}`:"Sistema");
+              const evTypeLabel={screenshot_whatsapp:'WhatsApp',screenshot_llamada:'Llamada',archivo:'Archivo adjunto',nota:'Nota detallada'};
               return(
                 <div key={t.id||i} style={{ position:'relative', paddingBottom:14, paddingLeft:16 }}>
                   <div style={{ position:'absolute', left:-2, top:4, width:12, height:12, borderRadius:'50%', background:dotColor, border:'2px solid #F5F5F7' }}/>
-                  <div style={{ background:'#F9FAFB', borderRadius:10, padding:12 }}>
+                  <div style={{ background: isEvidence?'#F0FDFA':'#F9FAFB', borderRadius:10, padding:12, border: isEvidence?'1px solid #99F6E4':'1px solid transparent' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <span style={{ fontSize:13, fontWeight:600 }}>{t.title}</span>
                       <span style={{ fontSize:10, color:'#9CA3AF' }}>{fDT(t.date||t.created_at)}</span>
                     </div>
                     {t.note&&<div style={{ fontSize:12, color:'#6B7280', marginTop:4, lineHeight:1.4 }}>{t.note}</div>}
-                    <div style={{ fontSize:10, color:'#9CA3AF', marginTop:4 }}>{userName}{t.method?` · vía ${t.method}`:""}</div>
+                    {isEvidence&&t.evidence_url&&(
+                      <a href={t.evidence_url} target="_blank" rel="noopener noreferrer"
+                        style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:8, fontSize:12, fontWeight:600, color:'#0D9488', textDecoration:'none', background:'#CCFBF1', padding:'4px 10px', borderRadius:6 }}>
+                        <Ic.file size={12} color="#0D9488"/> Ver evidencia adjunta
+                      </a>
+                    )}
+                    <div style={{ fontSize:10, color:'#9CA3AF', marginTop:6 }}>
+                      {userName}
+                      {t.method?` · vía ${t.method}`:""}
+                      {isEvidence&&t.evidence_type?` · ${evTypeLabel[t.evidence_type]||t.evidence_type}`:""}
+                    </div>
                   </div>
                 </div>
               );

@@ -4,6 +4,7 @@ const { auth } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const SLAService = require('../services/slaService');
 const TelegramService = require('../services/telegramService');
+const NotificationService = require('../services/notificationService');
 const { calcSlaDeadline } = require('../utils/slaUtils');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
@@ -76,11 +77,21 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // Create ticket
 router.post('/', asyncHandler(async (req, res) => {
-  const { first_name, last_name, rut, email, phone, comuna, source, branch_id, model_id, priority, color_pref } = req.body;
+  const { first_name, last_name, rut, email, phone, comuna, source, branch_id, model_id, priority, color_pref, assigned_to: manualSeller } = req.body;
   if (!first_name) return res.status(400).json({ error: 'Nombre requerido' });
 
-  const branch = branch_id || req.user.branch_id;
+  // MOV (Movicenter) → redirigir asignación a MPN para que sus vendedores atiendan esos leads
+  const MOV_ID = 'b0000001-0001-0001-0001-000000000003';
+  const MPN_ID = 'b0000001-0001-0001-0001-000000000001';
+  const rawBranch = branch_id || req.user.branch_id;
+  const branch = rawBranch === MOV_ID ? MPN_ID : rawBranch;
+
   let seller = req.user.role === 'vendedor' ? req.user.id : null;
+
+  // Asignación manual: solo roles admin/backoffice pueden imponer vendedor
+  if (!seller && manualSeller && ['super_admin','admin_comercial','backoffice'].includes(req.user.role)) {
+    seller = manualSeller;
+  }
 
   // Auto-assign: lógica unificada con importación (branch_id + extra_branches, least-loaded)
   if (!seller && branch) {
@@ -144,6 +155,10 @@ router.post('/', asyncHandler(async (req, res) => {
           );
         })
         .catch((e) => console.warn('[Telegram] notifyNewLead error:', e.message));
+
+      // In-app notification (fire-and-forget)
+      NotificationService.newLeadAssigned(createdTicket, seller)
+        .catch((e) => console.warn('[Notification] newLeadAssigned error:', e.message));
     }
   } catch (txErr) {
     await client.query('ROLLBACK');
@@ -258,6 +273,11 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
   if (type === 'contact_registered') {
     await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
     await SLAService.registerAction(req.params.id, 'contact_registered');
+    // Auto-transición: si el lead sigue en Nuevo, pasa a En gestión al registrar contacto real
+    await db.query(
+      "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status = 'nuevo'",
+      [req.params.id]
+    );
   } else if (type === 'note_added') {
     await SLAService.registerAction(req.params.id, 'note_added');
   }
@@ -304,6 +324,11 @@ router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (
   );
 
   await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
+  // Auto-transición: si el lead sigue en Nuevo, pasa a En gestión al subir evidencia
+  await db.query(
+    "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status = 'nuevo'",
+    [req.params.id]
+  );
 
   res.status(201).json(rows[0]);
 }));
