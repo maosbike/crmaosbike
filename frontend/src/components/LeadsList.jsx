@@ -46,19 +46,31 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
   const[reassigningId,setReassigningId]=useState(null);
   const[reassignTo,setReassignTo]=useState('');
   const[reassigningBusy,setReassigningBusy]=useState(false);
+  // localOverrides: {leadId: {seller_id, seller_fn, seller_ln}} — actualización optimista
+  // Se aplica inmediatamente al confirmar traspaso; se limpia cuando llegan los datos del servidor
+  const[localOverrides,setLocalOverrides]=useState({});
+  useEffect(()=>{setLocalOverrides({});},[leads]);
+  const effectiveLeads=leads.map(l=>localOverrides[l.id]?{...l,...localOverrides[l.id]}:l);
   const handleReassign=async(e,leadId)=>{
     e.stopPropagation();
     if(!reassignTo)return;
     setReassigningBusy(true);
+    // Actualización optimista inmediata — el lead cambia de vendedor en la UI al instante
+    const newSeller=allSellers.find(s=>s.id===reassignTo);
+    if(newSeller) setLocalOverrides(prev=>({...prev,[leadId]:{seller_id:newSeller.id,seller_fn:newSeller.first_name,seller_ln:newSeller.last_name}}));
+    setReassigningId(null);setReassignTo('');
     try{
       await api.manualReassign({ticket_id:leadId,to_user_id:reassignTo});
-      setReassigningId(null);setReassignTo('');
-      onRefresh?.();
-    }catch(ex){alert(ex.message||'Error al reasignar');}
+      onRefresh?.(); // sincroniza con servidor; useEffect[leads] limpiará overrides
+    }catch(ex){
+      // Revertir el override si falló
+      setLocalOverrides(prev=>{const n={...prev};delete n[leadId];return n;});
+      alert(ex.message||'Error al reasignar');
+    }
     finally{setReassigningBusy(false);}
   };
-  const sellers=user.role!=="vendedor"?[...new Map(leads.filter(l=>l.seller_id).map(l=>[l.seller_id,{id:l.seller_id,fn:l.seller_fn,ln:l.seller_ln}])).values()]:[];
-  const f=leads.filter(l=>{
+  const sellers=user.role!=="vendedor"?[...new Map(effectiveLeads.filter(l=>l.seller_id).map(l=>[l.seller_id,{id:l.seller_id,fn:l.seller_fn,ln:l.seller_ln}])).values()]:[];
+  const f=effectiveLeads.filter(l=>{
     if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;
     if(stF&&l.status!==stF)return false;
     if(brF&&l.branch_id!==brF&&l.branch!==brF)return false;
@@ -101,7 +113,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
       {/* ── KPI rápidos por estado ── */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:18}}>
         {Object.entries(TICKET_STATUS).map(([k,v])=>{
-          const cnt=leads.filter(l=>l.status===k&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
+          const cnt=effectiveLeads.filter(l=>l.status===k&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
           const strip=ST_STRIP[k]||{color:v.c,light:'#F9FAFB'};
           const active=stF===k;
           return(
@@ -126,7 +138,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
       {user.role!=='vendedor'&&allSellers.length>0&&(
         <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
           {allSellers.map(s=>{
-            const active=leads.filter(l=>l.seller_id===s.id&&!['ganado','perdido','cerrado'].includes(l.status)).length;
+            const active=effectiveLeads.filter(l=>l.seller_id===s.id&&!['ganado','perdido','cerrado'].includes(l.status)).length;
             const isSel=selF===s.id;
             return(
               <button key={s.id} onClick={()=>setSelF(isSel?'':s.id)}
@@ -200,7 +212,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
 
       {/* ── Contador ── */}
       {f.length>0&&<div style={{fontSize:11,color:'#94A3B8',fontWeight:500,paddingLeft:2,marginBottom:6}}>
-        {f.length} ticket{f.length!==1?'s':''}{hasFilters?` (de ${leads.filter(l=>user.role!=="vendedor"||l.seller_id===user.id).length} total)`:''}
+        {f.length} ticket{f.length!==1?'s':''}{hasFilters?` (de ${effectiveLeads.filter(l=>user.role!=="vendedor"||l.seller_id===user.id).length} total)`:''}
       </div>}
 
       {/* ── Lista de registros — mismo patrón visual que Inventario ── */}
