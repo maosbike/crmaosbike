@@ -183,13 +183,16 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
 
     const newDeadline = calcSlaDeadline().toISOString();
 
-    // Actualizar ticket
+    // Actualizar ticket.
+    // first_action_at: se preserva si ya había gestión real previa (contacto o evidencia).
+    // Solo se resetea si el lead nunca fue contactado antes (NULL → NULL).
+    // La reasignación automática por SLA sí resetea (porque ocurre exactamente por falta de contacto).
     await db.query(
       `UPDATE tickets SET
         assigned_to = $1,
         sla_status = 'reassigned',
         sla_deadline = $2,
-        first_action_at = NULL,
+        first_action_at = CASE WHEN first_action_at IS NOT NULL THEN first_action_at ELSE NULL END,
         reassignment_count = reassignment_count + 1
        WHERE id = $3`,
       [to_user_id, newDeadline, ticket_id]
