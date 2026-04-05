@@ -324,6 +324,8 @@ router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (
   );
 
   await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
+  // Registrar como acción real — fija first_action_at y protege contra reasignación SLA
+  await SLAService.registerAction(req.params.id, 'contact_evidence');
   // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal
   await db.query(
     "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido','cerrado')",

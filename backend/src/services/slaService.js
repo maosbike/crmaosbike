@@ -10,6 +10,7 @@ const SLAService = {
   // Requiere una acción concreta sobre el cliente o el proceso.
   REAL_ACTIONS: [
     'contact_registered',  // Llamada, WhatsApp, presencial, email — method requerido
+    'contact_evidence',    // Evidencia subida (foto/nota) — equivale a contacto real confirmado
     'note_added',          // Nota sustantiva — mínimo 20 caracteres
     'reminder_created',    // Crear recordatorio asociado al ticket
     'financing_updated',   // Cambiar estado financiamiento a algo concreto

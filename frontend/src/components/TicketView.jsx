@@ -482,9 +482,9 @@ export function TicketView({lead,user,nav,updLead}){
       })()}
 
       {/* ══════════════════════════════════════════════════════════
-          TIMELINE — sección inferior
+          TIMELINE — sección inferior (oculto para vendedores)
       ══════════════════════════════════════════════════════════ */}
-      <div style={secCard}>
+      {user.role!=='vendedor'&&<div style={secCard}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F3F5' }}>
           <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>Timeline de Gestión</span>
         </div>
@@ -538,7 +538,7 @@ export function TicketView({lead,user,nav,updLead}){
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ══════════════════════════════════════════════════════════
           RECORDATORIOS — sección inferior
