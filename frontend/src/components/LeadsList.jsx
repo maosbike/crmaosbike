@@ -235,19 +235,20 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 onClick={()=>nav("ticket",x.id)}
                 onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)'}
                 onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 6px rgba(0,0,0,0.06)'}
+                className="crm-lead-row"
                 style={{display:'flex',alignItems:'stretch',background:'#FFFFFF',borderRadius:14,border:'1px solid #E2E5EA',overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.06)',cursor:'pointer',transition:'box-shadow 0.15s',minWidth:0}}
               >
-                {/* Strip izquierdo — color de estado (igual que sucursal en Inventario) */}
-                <div style={{width:72,flexShrink:0,background:stStrip.color,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,padding:'10px 4px'}}>
+                {/* Strip izquierdo — color de estado */}
+                <div className="crm-lead-strip" style={{width:72,flexShrink:0,background:stStrip.color,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,padding:'10px 4px'}}>
                   <span style={{fontSize:10,fontWeight:900,color:'#FFFFFF',letterSpacing:'0.04em',textAlign:'center',lineHeight:1.2,textTransform:'uppercase'}}>{stCfg.l}</span>
                   {x.num&&<span style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,0.7)',letterSpacing:'0.03em'}}>{x.num}</span>}
                 </div>
 
                 {/* Zona Moto */}
-                <div style={{flex:'0 0 310px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',alignItems:'center',gap:14}}>
+                <div className="crm-lead-moto" style={{flex:'0 0 310px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',alignItems:'center',gap:14}}>
                   {x.model_image
-                    ?<img src={x.model_image} alt="" style={{width:120,height:84,padding:6,boxSizing:'border-box',objectFit:'contain',objectPosition:'center',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#F8FAFC',flexShrink:0}}/>
-                    :<div style={{width:120,height:84,borderRadius:10,border:'1.5px dashed #D1D5DB',background:'#F8FAFC',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    ?<img src={x.model_image} alt="" className="crm-lead-img" style={{width:120,height:84,padding:6,boxSizing:'border-box',objectFit:'contain',objectPosition:'center',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#F8FAFC',flexShrink:0}}/>
+                    :<div className="crm-lead-img" style={{width:120,height:84,borderRadius:10,border:'1.5px dashed #D1D5DB',background:'#F8FAFC',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
                     </div>
                   }
@@ -269,7 +270,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Cliente */}
-                <div style={{flex:'0 0 210px',minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                <div className="crm-lead-client" style={{flex:'0 0 210px',minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Cliente</div>
                   <div style={{fontSize:14,fontWeight:700,color:'#0F172A',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
                   {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:4}}>{x.phone}</div>}
@@ -280,7 +281,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Estado / Prioridad */}
-                <div style={{flex:'0 0 145px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                <div className="crm-lead-status" style={{flex:'0 0 145px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Estado</div>
                   <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'5px 11px',borderRadius:20,fontSize:11,fontWeight:700,color:stCfg.c,background:`${stCfg.c}18`,border:`1px solid ${stCfg.c}40`,whiteSpace:'nowrap',alignSelf:'flex-start'}}>
                     <span style={{width:6,height:6,borderRadius:'50%',background:stCfg.c,flexShrink:0}}/>
@@ -306,7 +307,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Vendedor */}
-                <div style={{flex:1,minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                <div className="crm-lead-seller" style={{flex:1,minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Vendedor</div>
                   {x.seller_fn?(
                     <>
@@ -352,7 +353,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 </div>
 
                 {/* Zona Fecha */}
-                <div style={{flex:'0 0 108px',padding:'12px 14px',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
+                <div className="crm-lead-date" style={{flex:'0 0 108px',padding:'12px 14px',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Creación</div>
                   <div style={{fontSize:13,fontWeight:700,color:'#1E293B',lineHeight:1.2}}>{fD(x.createdAt)}</div>
                   <div style={{display:'inline-flex',alignItems:'center',marginTop:6}}>

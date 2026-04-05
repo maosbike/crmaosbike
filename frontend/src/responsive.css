@@ -88,3 +88,170 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .crm-modal-inner { max-width: 92% !important; }
   .crm-ticket-cols { grid-template-columns: 1fr !important; }
 }
+
+/* ─── LEADS LIST — mobile card layout ──────────── */
+@media (max-width: 767px) {
+  /* Row wraps into stacked zones */
+  .crm-lead-row { flex-wrap: wrap !important; }
+
+  /* Status strip: horizontal bar full width */
+  .crm-lead-strip {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    height: auto !important;
+    min-height: 36px !important;
+    padding: 7px 12px !important;
+    gap: 10px !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+  }
+
+  /* Moto zone: left ~55% */
+  .crm-lead-moto {
+    flex: 0 0 55% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid #F1F3F5 !important;
+    padding: 10px 10px !important;
+    align-items: center !important;
+  }
+
+  /* Reduce lead image on mobile */
+  .crm-lead-img {
+    width: 70px !important;
+    height: 50px !important;
+  }
+
+  /* Client zone: right ~45% */
+  .crm-lead-client {
+    flex: 0 0 45% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-left: 1px solid #F1F3F5 !important;
+    border-bottom: 1px solid #F1F3F5 !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Status/priority zone: hidden (status shown in strip) */
+  .crm-lead-status { display: none !important; }
+
+  /* Seller zone: full-width footer */
+  .crm-lead-seller {
+    flex: 0 0 100% !important;
+    border-right: none !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Date zone: hidden on mobile */
+  .crm-lead-date { display: none !important; }
+}
+
+/* ─── INVENTORY — mobile card layout ───────────── */
+@media (max-width: 767px) {
+  .crm-inv-card { flex-wrap: wrap !important; }
+
+  /* Branch strip: horizontal full-width bar */
+  .crm-inv-strip {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 36px !important;
+    padding: 7px 14px !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    font-size: 11px !important;
+  }
+
+  /* Unit (photo + brand): left 55% */
+  .crm-inv-unit {
+    flex: 0 0 55% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid #F1F3F5 !important;
+    padding: 10px 10px !important;
+    gap: 10px !important;
+  }
+
+  /* Reduce unit photo on mobile */
+  .crm-inv-photo {
+    width: 70px !important;
+    height: 70px !important;
+  }
+
+  /* Status: right 45% (paired with unit) */
+  .crm-inv-status {
+    flex: 0 0 45% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-left: 1px solid #F1F3F5 !important;
+    border-bottom: 1px solid #F1F3F5 !important;
+    padding: 10px 10px !important;
+  }
+
+  /* Identifiers (chasis/motor): left 55% */
+  .crm-inv-id {
+    flex: 0 0 55% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid #F1F3F5 !important;
+    padding: 10px 10px !important;
+    gap: 8px !important;
+  }
+
+  /* Price: right 45% (paired with identifiers) */
+  .crm-inv-price {
+    flex: 0 0 45% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-left: 1px solid #F1F3F5 !important;
+    border-bottom: 1px solid #F1F3F5 !important;
+    padding: 10px 10px !important;
+  }
+
+  /* Actions: full width footer */
+  .crm-inv-actions {
+    flex: 0 0 100% !important;
+    padding: 10px 12px !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-start !important;
+  }
+  .crm-inv-actions button, .crm-inv-actions select {
+    flex: 1 !important;
+    min-width: 100px !important;
+  }
+}
+
+/* ─── TICKET VIEW — breadcrumb + actions ─────── */
+@media (max-width: 767px) {
+  .crm-ticket-breadcrumb {
+    flex-wrap: wrap !important;
+    gap: 4px 6px !important;
+  }
+  .crm-ticket-actions {
+    margin-left: 0 !important;
+    width: 100% !important;
+    justify-content: stretch !important;
+    gap: 6px !important;
+  }
+  .crm-ticket-actions button {
+    flex: 1 !important;
+    font-size: 11px !important;
+    padding: 8px 8px !important;
+    justify-content: center !important;
+  }
+}
+
+/* ─── SALES VIEW — table scroll + form grids ─── */
+@media (max-width: 767px) {
+  .crm-sales-table { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; border-radius: 12px; }
+  .grid-2col { grid-template-columns: 1fr !important; }
+}
+
+/* ─── CATALOG — edit form grids ─────────────── */
+@media (max-width: 767px) {
+  .crm-cat-grid { grid-template-columns: 1fr !important; }
+}

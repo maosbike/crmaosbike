@@ -154,7 +154,7 @@ export function TicketView({lead,user,nav,updLead}){
     <div style={{ width:'100%' }}>
 
       {/* ── BREADCRUMB + ACCIONES ── */}
-      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:14 }}>
+      <div className="crm-ticket-breadcrumb" style={{ display:'flex', alignItems:'center', gap:6, marginBottom:14 }}>
         <button onClick={()=>nav("leads")}
           style={{ ...S.gh, display:'flex', alignItems:'center', gap:5, padding:'4px 10px',
             fontSize:12, fontWeight:500, color:'#6B7280',
@@ -166,7 +166,7 @@ export function TicketView({lead,user,nav,updLead}){
         <span style={{ color:'#D1D5DB' }}>›</span>
         <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>{lead.fn} {lead.ln}</span>
         {/* Acciones principales — derecha */}
-        <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
+        <div className="crm-ticket-actions" style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
           {!isPerdido&&!isGanado&&(
             <button onClick={()=>{resetContact();setShowContact(true);}}
               style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',

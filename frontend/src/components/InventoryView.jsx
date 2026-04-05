@@ -490,7 +490,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 style={{ cursor: isSuperAdmin && !hasFilters ? 'grab' : 'default' }}
               >
                 {/* ── CARD ── */}
-                <div style={{
+                <div className="crm-inv-card" style={{
                   display:'flex', alignItems:'stretch',
                   background:'#FFFFFF',
                   borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
@@ -507,7 +507,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 >
 
                   {/* ── SUCURSAL — strip izquierdo de color ── */}
-                  <div style={{
+                  <div className="crm-inv-strip" style={{
                     width:88, flexShrink:0,
                     background: bCode ? bCfg.color : '#E5E7EB',
                     display:'flex', alignItems:'center', justifyContent:'center',
@@ -519,7 +519,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </div>
 
                   {/* ── UNIDAD — foto · marca · modelo · año · color ── */}
-                  <div style={{
+                  <div className="crm-inv-unit" style={{
                     flex:'0 0 290px', minWidth:0, padding:'10px 16px',
                     borderRight:'1px solid #F1F3F5',
                     display:'flex', alignItems:'center', gap:14,
@@ -531,11 +531,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         ? <img
                             src={x.unit_photo}
                             onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
+                            className="crm-inv-photo"
                             style={{ width:92, height:92, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
                           />
                         : <button
                             onClick={()=>handlePhoto(x.id,'unit_photo')}
                             title="Agregar foto de la moto"
+                            className="crm-inv-photo"
                             style={{
                               width:92, height:92, borderRadius:10,
                               border:'1.5px dashed #D1D5DB', background:'#F8FAFC',
@@ -588,7 +590,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </div>
 
                   {/* ── IDENTIFICADORES — chasis · motor ── */}
-                  <div style={{
+                  <div className="crm-inv-id" style={{
                     flex:1, minWidth:0, padding:'14px 20px',
                     borderRight:'1px solid #F1F3F5',
                     display:'flex', flexDirection:'column', justifyContent:'center', gap:12,
@@ -642,7 +644,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </div>
 
                   {/* ── ESTADO ── */}
-                  <div style={{
+                  <div className="crm-inv-status" style={{
                     flex:'0 0 148px', padding:'16px 18px',
                     borderRight:'1px solid #F1F3F5',
                     display:'flex', flexDirection:'column', justifyContent:'center', gap:8,
@@ -689,7 +691,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     // (propio > FK model_id > moto_prices > brand+model texto)
                     const showPrice = Number(x.catalog_price) || 0;
                     return (
-                      <div style={{
+                      <div className="crm-inv-price" style={{
                         flex:'0 0 130px', padding:'16px 18px',
                         borderRight:'1px solid #F1F3F5',
                         display:'flex', flexDirection:'column', justifyContent:'center',
@@ -706,7 +708,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   })()}
 
                   {/* ── ACCIONES ── */}
-                  <div onClick={e=>e.stopPropagation()} style={{
+                  <div className="crm-inv-actions" onClick={e=>e.stopPropagation()} style={{
                     flex:'0 0 160px', padding:'14px 16px',
                     display:'flex', flexDirection:'column', justifyContent:'center', gap:7,
                   }}>

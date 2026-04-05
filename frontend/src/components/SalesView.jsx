@@ -245,7 +245,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
         <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#F28100', textTransform: 'uppercase',
                         letterSpacing: '0.08em', marginBottom: 2 }}>Editar seguimiento</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="Precio venta al cliente ($)" value={form.sale_price}
               onChange={set('sale_price')} type="number" />
             {isAdmin && (
@@ -270,7 +270,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
               Pagada al distribuidor
             </label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
             <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
           </div>
@@ -310,7 +310,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated }) {
 
   return (
     <Modal onClose={onClose} title="Registrar venta" wide>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
                       textTransform: 'uppercase', letterSpacing: '0.1em' }}>Unidad</div>
         <Field label="Marca *"     value={form.brand}     onChange={set('brand')}     ph="YAMAHA" />
@@ -525,7 +525,7 @@ export function SalesView({ user, realBranches }) {
       </div>
 
       {/* ── Tabla ── */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
+      <div className="crm-sales-table" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
                     overflow: 'auto', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 760 }}>
           <thead>
