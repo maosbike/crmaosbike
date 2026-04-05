@@ -121,6 +121,10 @@ export function TicketView({lead,user,nav,updLead}){
       const noteForTimeline=(needsEvidence||needsNote)?null:cf.note.trim()||null;
       const entry=await api.addTimeline(lead.id,{type:'contact_registered',method:cf.method,title,note:noteForTimeline});
       addTimelineLocal(entry);
+      // Reflejo inmediato del estado en UI: si el lead no está en estado avanzado/terminal, pasa a En gestión
+      if(!['en_gestion','cotizado','financiamiento','ganado','perdido','cerrado'].includes(lead.status)){
+        updLead(lead.id,{status:'en_gestion'});
+      }
       setCfDone(true);
       setTimeout(()=>closeContact(),2200);
     }catch(e){

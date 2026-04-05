@@ -273,9 +273,9 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
   if (type === 'contact_registered') {
     await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
     await SLAService.registerAction(req.params.id, 'contact_registered');
-    // Auto-transición: si el lead sigue en Nuevo, pasa a En gestión al registrar contacto real
+    // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal
     await db.query(
-      "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status = 'nuevo'",
+      "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido','cerrado')",
       [req.params.id]
     );
   } else if (type === 'note_added') {
@@ -324,9 +324,9 @@ router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (
   );
 
   await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
-  // Auto-transición: si el lead sigue en Nuevo, pasa a En gestión al subir evidencia
+  // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal
   await db.query(
-    "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status = 'nuevo'",
+    "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido','cerrado')",
     [req.params.id]
   );
 
