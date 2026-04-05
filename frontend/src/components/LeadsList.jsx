@@ -246,7 +246,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
                 {/* Zona Moto — igual que zona unidad en Inventario */}
                 <div style={{flex:'0 0 260px',padding:'12px 16px',borderRight:'1px solid #F1F3F5',display:'flex',alignItems:'flex-start',gap:14}}>
                   {x.model_image
-                    ?<img src={x.model_image} alt="" style={{width:80,height:56,objectFit:'cover',borderRadius:9,border:'1.5px solid #E2E8F0',flexShrink:0}}/>
+                    ?<img src={x.model_image} alt="" style={{width:80,height:56,objectFit:'contain',objectPosition:'center',borderRadius:9,border:'1.5px solid #E2E8F0',background:'#F8FAFC',flexShrink:0}}/>
                     :<div style={{width:80,height:56,borderRadius:9,border:'1.5px dashed #D1D5DB',background:'#F8FAFC',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
                     </div>

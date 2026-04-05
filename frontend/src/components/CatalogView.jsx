@@ -121,7 +121,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
         {/* Header imagen */}
         <div style={{position:"relative",height:200,background:"#F5F5F7",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
           {m.image_url
-            ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"contain",objectPosition:"center"}}/>
             :<div style={{color:"#D1D5DB",fontSize:13,fontWeight:500,letterSpacing:"0.05em"}}>SIN IMAGEN</div>
           }
           {canEdit&&(
@@ -460,7 +460,7 @@ function ModelCard({m,onClick}){
     >
       <div style={{height:130,background:"#F5F5F7",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
         {m.image_url
-          ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"cover"}} loading="lazy"/>
+          ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:"100%",objectFit:"contain",objectPosition:"center"}} loading="lazy"/>
           :<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
         }
       </div>
