@@ -227,7 +227,7 @@ export function TicketView({lead,user,nav,updLead}){
             <>
               <div style={{ display:'flex', gap:20, marginBottom:14, alignItems:'flex-start', flex:1 }}>
                 <div style={{ width:140, height:112, borderRadius:10, background:'#F3F4F6', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid #E5E7EB' }}>
-                  {m.image?<img src={m.image} alt={m.model} style={{ width:'100%', height:'100%', objectFit:'contain', objectPosition:'center' }}/>:<span style={{ fontSize:9, color:'#9CA3AF', fontWeight:600 }}>SIN IMG</span>}
+                  {m.image?<img src={m.image} alt={m.model} style={{ maxWidth:'calc(100% - 20px)', maxHeight:'calc(100% - 20px)', width:'auto', height:'auto', display:'block', objectFit:'contain' }}/>:<span style={{ fontSize:9, color:'#9CA3AF', fontWeight:600 }}>SIN IMG</span>}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:22, fontWeight:900, color:'#0F172A', letterSpacing:'-0.6px', lineHeight:1.1, marginBottom:4 }}>{m.brand} {m.model}</div>

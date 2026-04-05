@@ -125,7 +125,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               {quoted.image && (
                 <img
                   src={quoted.image} alt=""
-                  style={{ width: 52, height: 38, objectFit: 'contain', objectPosition: 'center', borderRadius: 5, background: '#F3F4F6', flexShrink: 0 }}
+                  style={{ width: 52, height: 38, padding: 4, boxSizing: 'border-box', objectFit: 'contain', objectPosition: 'center', borderRadius: 5, background: '#F3F4F6', flexShrink: 0 }}
                 />
               )}
               <div>
