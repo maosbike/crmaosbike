@@ -52,11 +52,15 @@ router.get('/brands', async (req, res) => {
 
 router.post('/models', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
-    const { brand, model, year, cc, category, colors, price, bonus } = req.body;
+    const { brand, model, year, cc, category, colors, price, bonus,
+            bono_tipo, bono_condicion, bono_requisitos } = req.body;
     const { rows } = await db.query(
-      `INSERT INTO moto_models (brand, model, year, cc, category, colors, price, bonus)
-       VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8) RETURNING *`,
-      [brand, model, year, cc, category, JSON.stringify(colors || []), price, bonus || 0]
+      `INSERT INTO moto_models
+         (brand, model, year, cc, category, colors, price, bonus,
+          bono_tipo, bono_condicion, bono_requisitos)
+       VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11) RETURNING *`,
+      [brand, model, year, cc, category, JSON.stringify(colors || []), price, bonus || 0,
+       bono_tipo || null, bono_condicion || null, bono_requisitos || null]
     );
     res.status(201).json(rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
@@ -67,7 +71,8 @@ router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), async (
   try {
     const jsonFields = ['colors', 'image_gallery'];
     const allowed = ['brand', 'model', 'commercial_name', 'description', 'spec_url',
-                     'colors', 'image_gallery', 'category', 'cc', 'year', 'price', 'bonus'];
+                     'colors', 'image_gallery', 'category', 'cc', 'year', 'price', 'bonus',
+                     'bono_tipo', 'bono_condicion', 'bono_requisitos'];
     const sets = [], params = [];
     let idx = 1;
     for (const key of allowed) {

@@ -4,6 +4,21 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SR
 
 function catColor(c){return CAT_COLOR[c]||"#555";}
 
+const BONO_CONDICION={
+  todo_medio_pago:     {l:"Todo medio de pago",     c:"#10B981"},
+  solo_financiamiento: {l:"Solo financiamiento",     c:"#8B5CF6"},
+  solo_autofin:        {l:"Solo Autofin",             c:"#F28100"},
+  contado_transferencia:{l:"Contado / Transferencia", c:"#3B82F6"},
+  otro:                {l:"Otro (ver requisitos)",    c:"#6B7280"},
+};
+// Devuelve el label de condición dado el valor guardado
+function bonoCondLabel(condicion){
+  return BONO_CONDICION[condicion]?.l || (condicion ? condicion : "Todo medio de pago");
+}
+function bonoCondColor(condicion){
+  return BONO_CONDICION[condicion]?.c || "#10B981";
+}
+
 function CategoryCombo({value,onChange,allCategories,style,listId="cat-list"}){
   return(
     <>
@@ -44,13 +59,16 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       year:m.year||"",
       price:m.price||0,
       bonus:m.bonus||0,
+      bono_tipo:m.bono_tipo||"",
+      bono_condicion:m.bono_condicion||"",
+      bono_requisitos:m.bono_requisitos||"",
     });
     setEditing(true);
   };
   const save=async()=>{
     setSaving(true);
     try{
-      const updated=await api.updateModel(m.id,{...form,price:Number(form.price)||0,bonus:Number(form.bonus)||0,cc:form.cc?Number(form.cc):null,year:form.year?Number(form.year):null});
+      const updated=await api.updateModel(m.id,{...form,price:Number(form.price)||0,bonus:Number(form.bonus)||0,cc:form.cc?Number(form.cc):null,year:form.year?Number(form.year):null,bono_tipo:form.bono_tipo||null,bono_condicion:form.bono_condicion||null,bono_requisitos:form.bono_requisitos||null});
       setM(updated);
       setEditing(false);
       onSaved&&onSaved(updated);
@@ -149,14 +167,33 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
             {m.year&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{m.year}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase"}}>Año</div></div>}
             <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{specInfo}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase"}}>Motor</div></div>
             {m.price>0&&m.bonus<m.price&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#F28100"}}>{fmt(m.price)}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase"}}>Precio lista</div></div>}
-            {m.bonus>0&&m.bonus<m.price&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#10B981"}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase"}}>Todo medio</div></div>}
+            {m.bonus>0&&m.bonus<m.price&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:bonoCondColor(m.bono_condicion)}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase",maxWidth:80,lineHeight:1.2}}>{bonoCondLabel(m.bono_condicion)}</div></div>}
           </div>
 
-          {/* Bono detalle */}
-          {m.bonus>0&&m.bonus<m.price&&<div style={{background:"#ECFDF5",border:"1px solid #A7F3D0",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:12}}>
-            <span style={{color:"#10B981",fontWeight:600}}>Bono {fmt(m.bonus)}</span>
-            <span style={{color:"#6B7280",marginLeft:6}}>→ Precio todo medio de pago {fmt(m.price-m.bonus)}</span>
-          </div>}
+          {/* Bono detalle — condición explícita */}
+          {m.bonus>0&&m.bonus<m.price&&(()=>{
+            const cond=m.bono_condicion;
+            const condLabel=bonoCondLabel(cond);
+            const condColor=bonoCondColor(cond);
+            const isConditional=cond&&cond!=="todo_medio_pago";
+            return(
+              <div style={{background:condColor+"0F",border:`1px solid ${condColor}33`,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:m.bono_tipo||m.bono_requisitos?6:0}}>
+                  <span style={{color:condColor,fontWeight:700}}>
+                    {m.bono_tipo?`${m.bono_tipo}: `:"Bono "}
+                    {fmt(m.bonus)}
+                  </span>
+                  <span style={{color:"#6B7280"}}>→ precio final {fmt(m.price-m.bonus)}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2}}>
+                  <span style={{fontSize:10,fontWeight:700,color:condColor,background:condColor+"18",padding:"2px 8px",borderRadius:10,border:`1px solid ${condColor}33`}}>
+                    {isConditional?"⚠ ":""}{condLabel}
+                  </span>
+                </div>
+                {m.bono_requisitos&&<div style={{marginTop:6,fontSize:11,color:"#6B7280",lineHeight:1.4}}>📋 {m.bono_requisitos}</div>}
+              </div>
+            );
+          })()}
 
           {/* Colores */}
           {!editing&&colors.length>0&&(
@@ -256,10 +293,31 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                   <input type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder="ej: 2990000" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Bono todo medio ($)</div>
+                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Bono ($) — monto del descuento</div>
                   <input type="number" value={form.bonus} onChange={e=>setForm(f=>({...f,bonus:e.target.value}))} placeholder="ej: 150000" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
               </div>
+              {/* ─ Configuración del bono ─ */}
+              {Number(form.bonus)>0&&(
+                <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Condición del bono</div>
+                  <div style={{marginBottom:8}}>
+                    <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>¿A qué aplica este bono?</div>
+                    <select value={form.bono_condicion} onChange={e=>setForm(f=>({...f,bono_condicion:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}>
+                      <option value="">Seleccionar condición...</option>
+                      {Object.entries(BONO_CONDICION).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+                    </select>
+                  </div>
+                  <div style={{marginBottom:8}}>
+                    <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Tipo / nombre del bono <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></div>
+                    <input value={form.bono_tipo} onChange={e=>setForm(f=>({...f,bono_tipo:e.target.value}))} placeholder="ej: Bono mes, Bono aniversario..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Requisitos adicionales <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></div>
+                    <textarea value={form.bono_requisitos} onChange={e=>setForm(f=>({...f,bono_requisitos:e.target.value}))} rows={2} placeholder="ej: Requiere firma de contrato antes del 30/04..." style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical",fontSize:12}}/>
+                  </div>
+                </div>
+              )}
               <div style={{marginBottom:10}}>
                 <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Descripción</div>
                 <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={3} style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical"}} placeholder="Descripción comercial del modelo..."/>
@@ -353,7 +411,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
 }
 
 function AddModelModal({onClose,onAdded,allCategories}){
-  const[form,setForm]=useState({brand:"",model:"",commercial_name:"",category:"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,description:"",spec_url:""});
+  const[form,setForm]=useState({brand:"",model:"",commercial_name:"",category:"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,bono_tipo:"",bono_condicion:"",bono_requisitos:"",description:"",spec_url:""});
   const[colors,setColors]=useState([]);
   const[colorInput,setColorInput]=useState("");
   const[saving,setSaving]=useState(false);
@@ -364,7 +422,7 @@ function AddModelModal({onClose,onAdded,allCategories}){
     if(!form.brand.trim()||!form.model.trim()){alert("Marca y modelo son obligatorios");return;}
     setSaving(true);
     try{
-      const created=await api.createModel({...form,commercial_name:form.commercial_name||form.model,cc:form.cc?Number(form.cc):null,year:Number(form.year),price:Number(form.price)||0,bonus:Number(form.bonus)||0,colors});
+      const created=await api.createModel({...form,commercial_name:form.commercial_name||form.model,cc:form.cc?Number(form.cc):null,year:Number(form.year),price:Number(form.price)||0,bonus:Number(form.bonus)||0,bono_tipo:form.bono_tipo||null,bono_condicion:form.bono_condicion||null,bono_requisitos:form.bono_requisitos||null,colors});
       onAdded(created);
       onClose();
     }catch(e){alert(e.message||"Error al crear");}
@@ -416,6 +474,28 @@ function AddModelModal({onClose,onAdded,allCategories}){
               <input type="number" value={form.bonus} onChange={e=>setForm(f=>({...f,bonus:e.target.value}))} placeholder="0" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
           </div>
+          {Number(form.bonus)>0&&(
+            <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Condición del bono</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                <div>
+                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>¿A qué aplica?</div>
+                  <select value={form.bono_condicion} onChange={e=>setForm(f=>({...f,bono_condicion:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box",fontSize:12}}>
+                    <option value="">Seleccionar...</option>
+                    {Object.entries(BONO_CONDICION).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Tipo de bono</div>
+                  <input value={form.bono_tipo} onChange={e=>setForm(f=>({...f,bono_tipo:e.target.value}))} placeholder="ej: Bono mes..." style={{...S.inp,width:"100%",boxSizing:"border-box",fontSize:12}}/>
+                </div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Requisitos</div>
+                <input value={form.bono_requisitos} onChange={e=>setForm(f=>({...f,bono_requisitos:e.target.value}))} placeholder="ej: Requiere contrato antes del 30/04..." style={{...S.inp,width:"100%",boxSizing:"border-box",fontSize:12}}/>
+              </div>
+            </div>
+          )}
           <div style={{marginBottom:10}}>
             <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Descripción</div>
             <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={2} style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical"}} placeholder="Descripción comercial..."/>
@@ -470,7 +550,12 @@ function ModelCard({m,onClick}){
         {m.price>0&&(
           <div style={{marginTop:8,borderTop:"1px solid #F1F5F9",paddingTop:8}}>
             <div style={{fontSize:15,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</div>
-            {m.bonus>0&&m.bonus<m.price&&<div style={{fontSize:10,color:"#10B981"}}>Bono {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b></div>}
+            {m.bonus>0&&m.bonus<m.price&&(()=>{
+              const cond=m.bono_condicion;
+              const color=bonoCondColor(cond);
+              const label=cond&&cond!=="todo_medio_pago"?`⚠ ${bonoCondLabel(cond)}`:"Todo medio de pago";
+              return<div style={{fontSize:10,color}}>{m.bono_tipo||"Bono"} {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b><br/><span style={{fontSize:9,opacity:0.8}}>{label}</span></div>;
+            })()}
           </div>
         )}
         {colors.length>0&&(
