@@ -332,7 +332,7 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
     let headerIdx = raw.findIndex(row =>
-      Array.isArray(row) && row.some(c => typeof c === 'string' && /sucursal|chasis|marca/i.test(c))
+      Array.isArray(row) && row.some(c => typeof c === 'string' && /sucursal|chasis|marca|modelo|estado/i.test(c))
     );
     if (headerIdx === -1) return res.status(400).json({ error: 'No se encontró fila de encabezados' });
 
@@ -345,29 +345,71 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
       brand:  col('marca'),
       model:  col('modelo'),
       color:  col('color'),
-      chassis:col('chasis'),
+      chassis:col('chasis','n° chasis','n chasis','numero chasis'),
       motor:  col('motor'),
       status: col('estado'),
       price:  col('precio tienda','precio'),
       notes:  col('observaci'),
     };
 
+    // Fallback: si no hay columna "marca" explícita, inferir la columna de marca
+    // buscando la col entre "año" y "modelo" que tenga texto en las primeras filas de datos
+    if (C.brand === -1) {
+      const dataRows = raw.slice(headerIdx + 1).filter(r => Array.isArray(r) && r.some(c => c != null));
+      const yearCol  = C.year  >= 0 ? C.year  : -1;
+      const modelCol = C.model >= 0 ? C.model : -1;
+      // Candidatos: columnas entre año y modelo (o simplemente las que tengan texto no numérico)
+      const candidates = [];
+      if (yearCol >= 0 && modelCol > yearCol + 1) {
+        for (let ci = yearCol + 1; ci < modelCol; ci++) candidates.push(ci);
+      }
+      // Si no hay candidatos por posición, buscar la primera columna con strings de marcas conocidas
+      const KNOWN_BRANDS = /^(yamaha|honda|suzuki|kawasaki|um|opai|kymco|bajaj|benelli|royal enfield|tvs|lifan|haojue|cfmoto|sym)/i;
+      if (candidates.length === 0) {
+        for (let ci = 0; ci < (raw[headerIdx] || []).length; ci++) {
+          const hasKnown = dataRows.slice(0, 5).some(r => r[ci] && KNOWN_BRANDS.test(String(r[ci]).trim()));
+          if (hasKnown) { candidates.push(ci); break; }
+        }
+      }
+      if (candidates.length > 0) C.brand = candidates[0];
+    }
+
     const { rows: branches } = await db.query('SELECT id, name, code FROM branches');
     const brMap = {};
     branches.forEach(b => {
-      brMap[b.name.toLowerCase()] = b.id;
-      brMap[b.code.toLowerCase()] = b.id;
+      brMap[b.name.toLowerCase().trim()] = b.id;
+      brMap[b.code.toLowerCase().trim()] = b.id;
     });
-    brMap['mall plaza norte'] = brMap['mpn']; brMap['plaza norte'] = brMap['mpn'];
-    brMap['mall plaza sur']   = brMap['mps'];
-    brMap['movicenter']       = brMap['mov'];
+    // Aliases adicionales
+    brMap['mall plaza norte']     = brMap['mpn'] || brMap['mall plaza norte'];
+    brMap['plaza norte']          = brMap['mpn'] || brMap['plaza norte'];
+    brMap['mall plaza sur']       = brMap['mps'] || brMap['mall plaza sur'];
+    brMap['yamaha mall plaza sur']= brMap['mps'] || brMap['yamaha mall plaza sur'];
+    brMap['movicenter']           = brMap['mov'] || brMap['movicenter'];
+
+    // Búsqueda flexible de sucursal (exact → partial → fuzzy)
+    const findBranch = (raw) => {
+      if (!raw) return null;
+      const lower = raw.toLowerCase().trim();
+      if (brMap[lower]) return brMap[lower];
+      // Partial: buscar key que esté contenida en el valor o viceversa
+      for (const [key, id] of Object.entries(brMap)) {
+        if (id && (lower.includes(key) || key.includes(lower))) return id;
+      }
+      return null;
+    };
 
     const parsePrice  = v => { const s = String(v||'').replace(/[^0-9]/g,''); return s ? parseInt(s) : 0; };
     const parseStatus = v => ({ disponible:'disponible', reservada:'reservada', vendida:'vendida', preinscrita:'preinscrita' }[String(v||'').trim().toLowerCase()] || 'disponible');
 
     const { rows: existing } = await db.query('SELECT lower(chassis) as ch FROM inventory');
     const existingSet = new Set(existing.map(r => r.ch));
-    const get = (row, idx) => idx >= 0 && row[idx] != null ? String(row[idx]).trim() : '';
+    const PLACEHOLDER = /^[\-–—\/nd]+$/i; // —, N/D, n/d, -, etc.
+    const get = (row, idx) => {
+      if (idx < 0 || row[idx] == null) return '';
+      const v = String(row[idx]).trim();
+      return PLACEHOLDER.test(v) ? '' : v;
+    };
 
     const preview = raw.slice(headerIdx + 1)
       .filter(row => Array.isArray(row) && row.some(c => c !== null && c !== ''))
@@ -376,7 +418,7 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
         const brand     = get(row, C.brand).toUpperCase();
         const model     = get(row, C.model).toUpperCase();
         const branchRaw = get(row, C.branch);
-        const branch_id = brMap[branchRaw.toLowerCase()] || null;
+        const branch_id = findBranch(branchRaw);
         const errors    = [];
         if (!chassis)   errors.push('Sin N° Chasis');
         if (!brand)     errors.push('Sin Marca');
