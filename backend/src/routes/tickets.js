@@ -67,7 +67,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (!rows[0]) return res.status(404).json({ error: 'Ticket no encontrado' });
 
   const tl = await db.query(
-    `SELECT tl.*, u.first_name as user_fn, u.last_name as user_ln
+    `SELECT tl.*, u.first_name as user_fn, u.last_name as user_ln, u.role as user_role
      FROM timeline tl LEFT JOIN users u ON tl.user_id = u.id
      WHERE tl.ticket_id = $1 ORDER BY tl.created_at DESC`, [req.params.id]
   );

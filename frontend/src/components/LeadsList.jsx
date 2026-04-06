@@ -14,7 +14,6 @@ const ST_STRIP = {
   financiamiento:{ color:'#F28100', light:'#FFF7ED' },
   ganado:        { color:'#15803D', light:'#F0FDF4' },
   perdido:       { color:'#EF4444', light:'#FEF2F2' },
-  cerrado:       { color:'#6B7280', light:'#F9FAFB' },
 };
 
 const selectCtrl={height:32,borderRadius:7,border:'1.5px solid #E5E7EB',background:'#FFFFFF',color:'#374151',fontSize:12,padding:'0 8px',cursor:'pointer',fontFamily:'inherit',outline:'none'};

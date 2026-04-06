@@ -70,7 +70,7 @@ export default function App(){
     if(pg==="ticket"&&lid){
       setSelLead(leads.find(l=>l.id===lid)||{id:lid,fn:'',ln:'',timeline:[]});
       api.getTicket(lid).then(d=>{
-        const tl=(d.timeline||[]).map(t=>({id:t.id,type:t.type,title:t.title,note:t.note,method:t.method,date:t.created_at,user_fn:t.user_fn,user_ln:t.user_ln,evidence_url:t.evidence_url,evidence_type:t.evidence_type}));
+        const tl=(d.timeline||[]).map(t=>({id:t.id,type:t.type,title:t.title,note:t.note,method:t.method,date:t.created_at,user_fn:t.user_fn,user_ln:t.user_ln,user_role:t.user_role,evidence_url:t.evidence_url,evidence_type:t.evidence_type}));
         const full={...mapTicket(d),timeline:tl};
         setSelLead(full);
         setLeads(p=>p.map(l=>l.id===lid?full:l));

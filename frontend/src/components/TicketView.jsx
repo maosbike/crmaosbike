@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
@@ -60,10 +60,13 @@ export function TicketView({lead,user,nav,updLead}){
       api.getReassignments(lead.id).then(d=>setAssignHistory(Array.isArray(d)?d:[])).catch(()=>{});
     }
     api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
-    // Auto-transición: abrir un lead 'nuevo' lo mueve a 'abierto'
+    // Auto-transición: abrir un lead 'nuevo' lo mueve a 'abierto' (persiste en DB)
     if(lead.status==='nuevo'){
       updLead(lead.id,{status:'abierto'});
+      api.updateTicket(lead.id,{status:'abierto'}).catch(()=>{});
     }
+    // Capturar estado inicial para detectar qué campos cambian al guardar
+    savedRef.current={fn:lead.fn,ln:lead.ln,rut:lead.rut,bday:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sitLab:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta,pie:lead.pie,wantsFin:lead.wantsFin,finStatus:lead.finStatus,rechazoMotivo:lead.rechazoMotivo,motoId:lead.motoId};
   },[isAdmin,lead.id]);// eslint-disable-line
   const sellers=realSellers;
 
@@ -86,6 +89,9 @@ export function TicketView({lead,user,nav,updLead}){
   const[cfErr,setCfErr]=useState('');
   const[cfSaving,setCfSaving]=useState(false);
   const[cfDone,setCfDone]=useState(false);
+  const[chatMsg,setChatMsg]=useState('');
+  const[chatSending,setChatSending]=useState(false);
+  const savedRef=useRef(null);
 
   const needsEvidence=EVIDENCE_RESULTS.includes(cf.result);
   const needsNote=NOTE_RESULTS.includes(cf.result);
@@ -126,7 +132,7 @@ export function TicketView({lead,user,nav,updLead}){
       const entry=await api.addTimeline(lead.id,{type:'contact_registered',method:cf.method,title,note:noteForTimeline});
       addTimelineLocal(entry);
       // Reflejo inmediato del estado en UI: si el lead no está en estado avanzado/terminal, pasa a En gestión
-      if(!['en_gestion','cotizado','financiamiento','ganado','perdido','cerrado'].includes(lead.status)){
+      if(!['en_gestion','cotizado','financiamiento','ganado','perdido'].includes(lead.status)){
         updLead(lead.id,{status:'en_gestion'});
       }
       setCfDone(true);
@@ -150,6 +156,18 @@ export function TicketView({lead,user,nav,updLead}){
       addTimelineLocal({id:`tl-${Date.now()}`,type:"note_added",title:"Nota agregada",note:noteForm.trim(),date:new Date().toISOString(),user_fn:user.fn,user_ln:user.ln});
     }
     setNoteForm("");
+  };
+  const sendChat=async()=>{
+    if(!chatMsg.trim()||chatSending)return;
+    setChatSending(true);
+    try{
+      const e=await api.addTimeline(lead.id,{type:'internal_comment',title:'Comentario interno',note:chatMsg.trim()});
+      addTimelineLocal(e);
+      setChatMsg('');
+    }catch{
+      addTimelineLocal({id:`tl-${Date.now()}`,type:'internal_comment',title:'Comentario interno',note:chatMsg.trim(),date:new Date().toISOString(),user_fn:user.fn,user_ln:user.ln,user_role:user.role});
+      setChatMsg('');
+    }finally{setChatSending(false);}
   };
   const isGanado=lead.status==="ganado";
   const isPerdido=lead.status==="perdido";
@@ -200,7 +218,7 @@ export function TicketView({lead,user,nav,updLead}){
       <div style={{
         background:'#FFFFFF', borderRadius:14, border:'1px solid #E5E7EB',
         boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
-        display:'grid', gridTemplateColumns:'minmax(180px,200px) minmax(0,1fr) minmax(200px,268px) minmax(200px,252px)',
+        display:'grid', gridTemplateColumns:'minmax(180px,200px) minmax(0,1fr) minmax(200px,252px)',
         overflow:'hidden', marginBottom:12, minWidth:0,
       }}>
 
@@ -262,30 +280,7 @@ export function TicketView({lead,user,nav,updLead}){
           </div>
         </div>
 
-        {/* Z3: OBSERVACIONES */}
-        <div style={{ ...zoneDiv, padding:'18px 16px', display:'flex', flexDirection:'column', gap:12 }}>
-          <div style={lbl9}>Observaciones</div>
-          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:10 }}>
-            <div>
-              <label style={lbl9}>Obs. Vendedor</label>
-              <textarea value={lead.obsVendedor||""} onChange={e=>upd("obsVendedor",e.target.value)} rows={4}
-                style={{ ...S.inp, width:'100%', resize:'none', fontSize:11 }} placeholder="Notas internas del vendedor..."/>
-            </div>
-            {isAdmin&&(
-              <div>
-                <label style={lbl9}>Obs. Supervisor</label>
-                <textarea value={lead.obsSupervisor||""} onChange={e=>upd("obsSupervisor",e.target.value)} rows={4}
-                  style={{ ...S.inp, width:'100%', resize:'none', fontSize:11 }} placeholder="Notas del supervisor..."/>
-              </div>
-            )}
-          </div>
-          {lead.lastContact&&(
-            <div style={{ marginTop:'auto', paddingTop:10, borderTop:'1px solid #F1F3F5' }}>
-              <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:3 }}>Último contacto</div>
-              <div style={{ fontSize:12, fontWeight:600, color:'#374151' }}>{fDT(lead.lastContact)}</div>
-            </div>
-          )}
-        </div>
+        {/* Z3 (Observaciones) eliminado — reemplazado por Comunicación Interna más abajo */}
 
         {/* Z4: STATUS */}
         <div style={{ padding:'18px 16px', background:'#FAFBFC', display:'flex', flexDirection:'column' }}>
@@ -310,31 +305,22 @@ export function TicketView({lead,user,nav,updLead}){
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:7, marginBottom:8 }}>
             <div>
               <label style={S.lbl}>Prioridad</label>
-              <select value={lead.priority} onChange={e=>upd("priority",e.target.value)} style={{ ...S.inp, width:'100%', fontSize:11 }}>
+              <select value={lead.priority} onChange={e=>{const v=e.target.value;updLead(lead.id,{priority:v});api.updateTicket(lead.id,{priority:v}).catch(()=>{});}} style={{ ...S.inp, width:'100%', fontSize:11 }}>
                 {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
               </select>
             </div>
             <div>
               <label style={S.lbl}>Estado</label>
-              {/* cerrado = solo admin/supervisor puede seleccionarlo */}
-              {user.role==='vendedor' && lead.status==='cerrado' ? (
-                <div style={{...S.inp,width:'100%',fontSize:11,color:'#6B7280',cursor:'default'}}>
-                  Cerrado (solo admin puede cambiar)
-                </div>
-              ) : (
-                <select value={lead.status} onChange={e=>upd("status",e.target.value)} style={{ ...S.inp, width:'100%', fontSize:11 }}>
-                  {Object.entries(TICKET_STATUS)
-                    .filter(([k])=>user.role==='vendedor'?k!=='cerrado':true)
-                    .map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-                </select>
-              )}
+              <select value={lead.status} onChange={e=>{const v=e.target.value;updLead(lead.id,{status:v});api.updateTicket(lead.id,{status:v}).catch(()=>{});}} style={{ ...S.inp, width:'100%', fontSize:11 }}>
+                {Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+              </select>
             </div>
           </div>
           <div style={{ marginBottom:8 }}>
             <label style={S.lbl}>Test Ride</label>
             <div style={{ display:'flex', gap:5 }}>
               {[true,false].map(v=>(
-                <button key={String(v)} onClick={()=>upd("testRide",v)}
+                <button key={String(v)} onClick={()=>{updLead(lead.id,{testRide:v});api.updateTicket(lead.id,{test_ride:v}).catch(()=>{});}}
                   style={{ flex:1, padding:'5px', fontSize:11, fontWeight:600, fontFamily:'inherit', borderRadius:6, cursor:'pointer', border:'none',
                     background: lead.testRide===v?(v?'#10B981':'#374151'):'#EFEFEF', color: lead.testRide===v?'#fff':'#9CA3AF' }}>
                   {v?"✓ Sí":"✗ No"}
@@ -447,8 +433,19 @@ export function TicketView({lead,user,nav,updLead}){
                 </div>
                 <div style={{ marginLeft:'auto' }}>
                   <button onClick={async()=>{
-                    try{const e=await api.addTimeline(lead.id,{type:"system",title:"Datos del cliente actualizados",note:null});addTimelineLocal(e);}
-                    catch{addTimelineLocal({id:`tl-${Date.now()}`,type:"system",title:"Datos del cliente actualizados",date:new Date().toISOString()});}
+                    const orig=savedRef.current||{};
+                    const LABELS={fn:'Nombre',ln:'Apellido',rut:'RUT',bday:'F.Nacimiento',email:'Email',phone:'Teléfono',comuna:'Comuna',source:'Origen',sitLab:'Sit.Laboral',continuidad:'Continuidad',renta:'Renta',pie:'Pie',wantsFin:'Financiamiento',finStatus:'Estado Fin.',rechazoMotivo:'Mot.Rechazo',motoId:'Moto'};
+                    const changed=Object.keys(LABELS).filter(k=>String(lead[k]??'')!==String(orig[k]??''));
+                    const payload={first_name:lead.fn,last_name:lead.ln,rut:lead.rut,birthdate:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sit_laboral:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta||null,pie:lead.pie||null,wants_financing:lead.wantsFin,fin_status:lead.finStatus,rechazo_motivo:lead.rechazoMotivo,model_id:lead.motoId||null};
+                    try{
+                      await api.updateTicket(lead.id,payload);
+                      savedRef.current={...orig,...lead};
+                      if(changed.length>0){
+                        const desc=changed.map(k=>LABELS[k]).join(', ');
+                        const e=await api.addTimeline(lead.id,{type:'system',title:`Actualizado: ${desc}`,note:null});
+                        addTimelineLocal(e);
+                      }
+                    }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
                   }} style={{ ...S.btn, fontSize:12 }}>
                     Guardar cambios
                   </button>
@@ -456,6 +453,54 @@ export function TicketView({lead,user,nav,updLead}){
               </div>
             </div>
 
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════
+          COMUNICACIÓN INTERNA — visible para todo el equipo
+      ══════════════════════════════════════════════════════════ */}
+      <div style={secCard}>
+        <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F3F5', display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>Comunicación Interna</span>
+          <span style={{ fontSize:10, color:'#9CA3AF', background:'#F3F4F6', borderRadius:6, padding:'2px 8px' }}>Solo visible para el equipo</span>
+        </div>
+        <div style={{ padding:'16px 20px' }}>
+          {/* Mensajes */}
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14, maxHeight:300, overflowY:'auto' }}>
+            {(lead.timeline||[]).filter(t=>t.type==='internal_comment').length===0&&(
+              <div style={{ textAlign:'center', color:'#9CA3AF', fontSize:12, padding:'16px 0' }}>Sin comentarios aún. Usá este espacio para comunicarte con el equipo sobre este lead.</div>
+            )}
+            {(lead.timeline||[]).filter(t=>t.type==='internal_comment').slice().reverse().map((t,i)=>{
+              const isMe=(t.user_fn===user.fn&&t.user_ln===user.ln);
+              const name=t.user_fn?`${t.user_fn} ${t.user_ln||''}`.trim():'Sistema';
+              const role=t.user_role||'';
+              const isAdminRole=['super_admin','admin_comercial'].includes(role);
+              const roleLabel=isAdminRole?'Admin':role==='vendedor'?'Vendedor':'Equipo';
+              const roleColor=isAdminRole?'#F28100':role==='vendedor'?'#2563EB':'#6B7280';
+              return(
+                <div key={t.id||i} style={{ display:'flex', flexDirection:'column', alignItems:isMe?'flex-end':'flex-start' }}>
+                  <div style={{ display:'flex', gap:5, alignItems:'center', marginBottom:3 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:'#374151' }}>{name}</span>
+                    <span style={{ fontSize:9, fontWeight:600, color:roleColor, background:roleColor+'15', padding:'1px 6px', borderRadius:8 }}>{roleLabel}</span>
+                    <span style={{ fontSize:9, color:'#9CA3AF' }}>{fDT(t.date||t.created_at)}</span>
+                  </div>
+                  <div style={{ maxWidth:'80%', background:isMe?'#EFF6FF':'#F9FAFB', borderRadius:isMe?'12px 4px 12px 12px':'4px 12px 12px 12px', padding:'8px 12px', fontSize:12, color:'#374151', border:`1px solid ${isMe?'#BFDBFE':'#E5E7EB'}`, lineHeight:1.45, wordBreak:'break-word' }}>
+                    {t.note||t.title}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Input */}
+          <div style={{ display:'flex', gap:8 }}>
+            <input value={chatMsg} onChange={e=>setChatMsg(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}}
+              placeholder="Escribí un comentario para el equipo..." style={{ ...S.inp, flex:1, fontSize:12 }}/>
+            <button onClick={sendChat} disabled={!chatMsg.trim()||chatSending}
+              style={{ ...S.btn2, padding:'7px 16px', fontSize:12, opacity:(!chatMsg.trim()||chatSending)?0.5:1, cursor:!chatMsg.trim()?'default':'pointer' }}>
+              Enviar
+            </button>
           </div>
         </div>
       </div>
@@ -517,7 +562,7 @@ export function TicketView({lead,user,nav,updLead}){
           {/* Entradas */}
           <div style={{ position:'relative', paddingLeft:20 }}>
             <div style={{ position:'absolute', left:7, top:0, bottom:0, width:2, background:'#E5E7EB' }}/>
-            {(lead.timeline||[]).map((t,i)=>{
+            {(lead.timeline||[]).filter(t=>t.type!=='internal_comment').map((t,i)=>{
               const isEvidence=t.type==="contact_evidence";
               const dotColor=isEvidence?"#0D9488":t.type==="contact_registered"||t.type==="contact"?"#3B82F6":t.type==="note_added"?"#10B981":t.type==="status"?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#374151";
               const userName=t.user||(t.user_fn?`${t.user_fn} ${t.user_ln}`:"Sistema");
