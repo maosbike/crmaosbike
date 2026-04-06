@@ -124,7 +124,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     // Filter out definitively closed statuses on the frontend.
     api.getTickets({ limit:300 }).then(d => {
       const all = d.data || [];
-      setOpenTickets(all.filter(t => !['perdido','cerrado'].includes(t.status)));
+      setOpenTickets(all.filter(t => !['perdido'].includes(t.status)));
     }).catch(() => {});
   }, [showAdd, showSell]);
 

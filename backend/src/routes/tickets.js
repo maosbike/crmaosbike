@@ -275,7 +275,7 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
     await SLAService.registerAction(req.params.id, 'contact_registered');
     // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal
     await db.query(
-      "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido','cerrado')",
+      "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido')",
       [req.params.id]
     );
   } else if (type === 'note_added') {
@@ -328,7 +328,7 @@ router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (
   await SLAService.registerAction(req.params.id, 'contact_evidence');
   // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal
   await db.query(
-    "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido','cerrado')",
+    "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido')",
     [req.params.id]
   );
 
@@ -343,7 +343,7 @@ router.get('/stats/dashboard', asyncHandler(async (req, res) => {
 
   const stats = await db.query(`
     SELECT
-      COUNT(*) FILTER (WHERE status NOT IN ('ganado','perdido','cerrado')) as activos,
+      COUNT(*) FILTER (WHERE status NOT IN ('ganado','perdido')) as activos,
       COUNT(*) FILTER (WHERE status = 'ganado') as ganados,
       COUNT(*) FILTER (WHERE status = 'perdido') as perdidos,
       COUNT(*) as total

@@ -41,11 +41,11 @@ router.get('/', async (req, res) => {
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE t.status = 'ganado') as ganados,
         COUNT(*) FILTER (WHERE t.status = 'perdido') as perdidos,
-        COUNT(*) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) as activos,
+        COUNT(*) FILTER (WHERE t.status NOT IN ('ganado','perdido')) as activos,
         COUNT(*) FILTER (WHERE t.wants_financing = true) as con_fin,
         COUNT(*) FILTER (WHERE t.wants_financing = false OR t.wants_financing IS NULL) as sin_fin,
         COUNT(*) FILTER (WHERE t.sla_status = 'breached') as sla_breached,
-        COUNT(*) FILTER (WHERE t.first_action_at IS NULL AND t.status NOT IN ('ganado','perdido','cerrado')) as sin_tocar,
+        COUNT(*) FILTER (WHERE t.first_action_at IS NULL AND t.status NOT IN ('ganado','perdido')) as sin_tocar,
         ROUND(AVG(EXTRACT(EPOCH FROM (t.first_action_at - t.created_at))/3600) FILTER (WHERE t.first_action_at IS NOT NULL), 1) as avg_first_action_hrs
       FROM tickets t
       LEFT JOIN moto_models m ON t.model_id = m.id
@@ -79,7 +79,7 @@ router.get('/', async (req, res) => {
         COUNT(*) FILTER (WHERE t.status = 'ganado') as ganados,
         COUNT(*) FILTER (WHERE t.status = 'perdido') as perdidos,
         ROUND(AVG(EXTRACT(EPOCH FROM (t.first_action_at - t.created_at))/3600) FILTER (WHERE t.first_action_at IS NOT NULL), 1) as avg_first_hrs,
-        COUNT(*) FILTER (WHERE t.first_action_at IS NULL AND t.status NOT IN ('ganado','perdido','cerrado')) as sin_tocar,
+        COUNT(*) FILTER (WHERE t.first_action_at IS NULL AND t.status NOT IN ('ganado','perdido')) as sin_tocar,
         COUNT(*) FILTER (WHERE t.sla_status = 'breached') as sla_breached
       FROM tickets t LEFT JOIN moto_models m ON t.model_id = m.id LEFT JOIN branches b ON t.branch_id = b.id
       ${where}

@@ -100,7 +100,7 @@ router.get('/events', async (req, res) => {
              u.first_name as seller_name
       FROM tickets t
       LEFT JOIN users u ON t.assigned_to = u.id
-      WHERE t.status NOT IN ('ganado', 'perdido', 'cerrado')
+      WHERE t.status NOT IN ('ganado', 'perdido')
         AND t.sla_deadline IS NOT NULL
         AND DATE(t.sla_deadline) >= $1
         AND DATE(t.sla_deadline) <= $2

@@ -4,7 +4,7 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SR
 
 export function Dashboard({leads,inv,user,nav,branches=[]}){
   const[stats,setStats]=useState(null);
-  const active=leads.filter(l=>!["ganado","perdido","cerrado"].includes(l.status));
+  const active=leads.filter(l=>!["ganado","perdido"].includes(l.status));
   const ganados=leads.filter(l=>l.status==="ganado");
   const avail=inv.filter(x=>x.status==="disponible").length;
   const pipe=Object.entries(TICKET_STATUS).slice(0,5).map(([k,v])=>({name:v.l,count:leads.filter(l=>l.status===k).length,color:v.c}));

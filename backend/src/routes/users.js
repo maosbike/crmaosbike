@@ -97,7 +97,7 @@ router.get('/:id/active-tickets', roleCheck('super_admin'), async (req, res) => 
   try {
     const { rows } = await db.query(
       `SELECT COUNT(*) AS count FROM tickets
-       WHERE assigned_to = $1 AND status NOT IN ('ganado','perdido','cerrado')`,
+       WHERE assigned_to = $1 AND status NOT IN ('ganado','perdido')`,
       [req.params.id]
     );
     res.json({ count: parseInt(rows[0].count) });
@@ -118,7 +118,7 @@ router.post('/:id/deactivate', roleCheck('super_admin'), async (req, res) => {
       if (!target.rows[0]) return res.status(400).json({ error: 'Usuario destino no encontrado o inactivo' });
       const { rowCount } = await db.query(
         `UPDATE tickets SET assigned_to = $1
-         WHERE assigned_to = $2 AND status NOT IN ('ganado','perdido','cerrado')`,
+         WHERE assigned_to = $2 AND status NOT IN ('ganado','perdido')`,
         [reassign_to, req.params.id]
       );
       reassigned = rowCount;

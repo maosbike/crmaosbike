@@ -92,6 +92,12 @@ export function TicketView({lead,user,nav,updLead}){
   const[chatMsg,setChatMsg]=useState('');
   const[chatSending,setChatSending]=useState(false);
   const savedRef=useRef(null);
+  // Modal "Marcar como perdido"
+  const PERDIDO_MOTIVOS=['Compró en otra marca','No aplica para financiamiento','Solo cotizando / sin intención real','No responde','Compró moto usada','Otro motivo'];
+  const[perdidoModal,setPerdidoModal]=useState(false);
+  const[perdidoMotivo,setPerdidoMotivo]=useState('');
+  const[perdidoDetalle,setPerdidoDetalle]=useState('');
+  const[perdidoSaving,setPerdidoSaving]=useState(false);
 
   const needsEvidence=EVIDENCE_RESULTS.includes(cf.result);
   const needsNote=NOTE_RESULTS.includes(cf.result);
@@ -169,6 +175,41 @@ export function TicketView({lead,user,nav,updLead}){
       setChatMsg('');
     }finally{setChatSending(false);}
   };
+  // Cambio de estado con persistencia real y revert en error
+  const handleStatusChange=async(newStatus)=>{
+    if(newStatus===lead.status)return;
+    if(newStatus==='perdido'){setPerdidoModal(true);setPerdidoMotivo('');setPerdidoDetalle('');return;}
+    const prev=lead.status;
+    updLead(lead.id,{status:newStatus});
+    try{
+      await api.updateTicket(lead.id,{status:newStatus});
+      const lbl=TICKET_STATUS[newStatus]?.l||newStatus;
+      const e=await api.addTimeline(lead.id,{type:'system',title:`Estado → ${lbl}`,note:null});
+      addTimelineLocal(e);
+    }catch(err){
+      updLead(lead.id,{status:prev});
+      alert('No se pudo cambiar el estado: '+(err.message||'Error desconocido. Revisá la conexión.'));
+    }
+  };
+
+  // Confirmar pérdida con motivo
+  const confirmPerdido=async()=>{
+    if(!perdidoMotivo){alert('Seleccioná un motivo antes de continuar.');return;}
+    setPerdidoSaving(true);
+    const prev=lead.status;
+    try{
+      const note=perdidoDetalle.trim()||null;
+      await api.updateTicket(lead.id,{status:'perdido',rechazo_motivo:perdidoMotivo,obs_vendedor:perdidoDetalle.trim()||undefined});
+      updLead(lead.id,{status:'perdido'});
+      const e=await api.addTimeline(lead.id,{type:'system',title:`Lead perdido · ${perdidoMotivo}`,note});
+      addTimelineLocal(e);
+      setPerdidoModal(false);
+    }catch(err){
+      updLead(lead.id,{status:prev});
+      alert('Error al marcar como perdido: '+(err.message||'Error desconocido'));
+    }finally{setPerdidoSaving(false);}
+  };
+
   const isGanado=lead.status==="ganado";
   const isPerdido=lead.status==="perdido";
 
@@ -302,20 +343,72 @@ export function TicketView({lead,user,nav,updLead}){
           {slaReassigned&&<div style={slaBox("rgba(139,92,246,0.07)","rgba(139,92,246,0.22)","#7C3AED")}><Ic.users size={12} color="#7C3AED"/><span><strong>Reasignado</strong> · {s.fn}{s.ln?` ${s.ln}`:''}</span></div>}
           {slaBreach&&!slaReassigned&&<div style={slaBox("rgba(239,68,68,0.07)","rgba(239,68,68,0.22)","#EF4444")}><Ic.alert size={12} color="#EF4444"/><span><strong>Vencido</strong> · {sinContactoH}h sin gestión</span></div>}
           {slaWarning&&<div style={slaBox("rgba(249,115,22,0.07)","rgba(249,115,22,0.22)","#F97316")}><Ic.clock size={12} color="#F97316"/><span><strong>Atender ya</strong> · {8-sinContactoH}h restantes</span></div>}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:7, marginBottom:8 }}>
-            <div>
-              <label style={S.lbl}>Prioridad</label>
-              <select value={lead.priority} onChange={e=>{const v=e.target.value;updLead(lead.id,{priority:v});api.updateTicket(lead.id,{priority:v}).catch(()=>{});}} style={{ ...S.inp, width:'100%', fontSize:11 }}>
-                {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={S.lbl}>Estado</label>
-              <select value={lead.status} onChange={e=>{const v=e.target.value;updLead(lead.id,{status:v});api.updateTicket(lead.id,{status:v}).catch(()=>{});}} style={{ ...S.inp, width:'100%', fontSize:11 }}>
-                {Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-              </select>
+          {/* ── Estado visual grande ── */}
+          <div style={{ marginBottom:10 }}>
+            <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:7 }}>Estado del Lead</div>
+            {isPerdido?(
+              <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
+                <span style={{ fontSize:18 }}>❌</span>
+                <div>
+                  <div style={{ fontSize:13,fontWeight:800,color:'#EF4444' }}>Lead Perdido</div>
+                  {lead.rechazoMotivo&&<div style={{ fontSize:11,color:'#B91C1C',marginTop:1 }}>{lead.rechazoMotivo}</div>}
+                </div>
+              </div>
+            ):isGanado?(
+              <div style={{ background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
+                <span style={{ fontSize:18 }}>✅</span>
+                <div style={{ fontSize:13,fontWeight:800,color:'#10B981' }}>Lead Ganado</div>
+              </div>
+            ):(
+              <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
+                {Object.entries(TICKET_STATUS).filter(([k])=>!['ganado','perdido'].includes(k)).map(([k,v])=>{
+                  const active=lead.status===k;
+                  return(
+                    <button key={k} onClick={()=>handleStatusChange(k)}
+                      style={{ display:'flex',alignItems:'center',gap:9,padding:'7px 11px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
+                        fontSize:12,fontWeight:active?700:500,textAlign:'left',transition:'all 0.1s',
+                        background:active?v.c+'18':'transparent',
+                        color:active?v.c:'#6B7280',
+                        border:`1.5px solid ${active?v.c+'55':'#E5E7EB'}` }}>
+                      <span style={{ width:8,height:8,borderRadius:'50%',flexShrink:0,background:active?v.c:'#D1D5DB',transition:'background 0.1s' }}/>
+                      {v.l}
+                      {active&&<Ic.check size={12} color={v.c} style={{ marginLeft:'auto' }}/>}
+                    </button>
+                  );
+                })}
+                {/* Botón perdido — separado visualmente */}
+                <button onClick={()=>handleStatusChange('perdido')}
+                  style={{ display:'flex',alignItems:'center',gap:9,padding:'7px 11px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
+                    fontSize:12,fontWeight:500,textAlign:'left',marginTop:2,
+                    background:'transparent',color:'#9CA3AF',border:'1px dashed #E5E7EB' }}>
+                  <span style={{ width:8,height:8,borderRadius:'50%',flexShrink:0,background:'#E5E7EB' }}/>
+                  Marcar como perdido
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Prioridad ── */}
+          <div style={{ marginBottom:8 }}>
+            <label style={S.lbl}>Prioridad</label>
+            <div style={{ display:'flex',gap:5 }}>
+              {Object.entries(PRIORITY).map(([k,v])=>{
+                const active=lead.priority===k;
+                return(
+                  <button key={k} onClick={async()=>{
+                    const prev=lead.priority;
+                    updLead(lead.id,{priority:k});
+                    try{await api.updateTicket(lead.id,{priority:k});}
+                    catch(err){updLead(lead.id,{priority:prev});alert('Error al cambiar prioridad');}
+                  }} style={{ flex:1,padding:'5px',fontSize:11,fontWeight:600,fontFamily:'inherit',borderRadius:6,cursor:'pointer',
+                    border:'none',background:active?v.c:'#EFEFEF',color:active?'#fff':'#9CA3AF' }}>
+                    {v.l}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
           <div style={{ marginBottom:8 }}>
             <label style={S.lbl}>Test Ride</label>
             <div style={{ display:'flex', gap:5 }}>
@@ -434,17 +527,23 @@ export function TicketView({lead,user,nav,updLead}){
                 <div style={{ marginLeft:'auto' }}>
                   <button onClick={async()=>{
                     const orig=savedRef.current||{};
-                    const LABELS={fn:'Nombre',ln:'Apellido',rut:'RUT',bday:'F.Nacimiento',email:'Email',phone:'Teléfono',comuna:'Comuna',source:'Origen',sitLab:'Sit.Laboral',continuidad:'Continuidad',renta:'Renta',pie:'Pie',wantsFin:'Financiamiento',finStatus:'Estado Fin.',rechazoMotivo:'Mot.Rechazo',motoId:'Moto'};
+                    const LABELS={fn:'Nombre',ln:'Apellido',rut:'RUT',bday:'F. Nacimiento',email:'Email',phone:'Teléfono',comuna:'Comuna',source:'Origen',sitLab:'Sit. Laboral',continuidad:'Continuidad',renta:'Renta',pie:'Pie',wantsFin:'Solicita Fin.',finStatus:'Estado Fin.',rechazoMotivo:'Mot. Rechazo',motoId:'Modelo'};
                     const changed=Object.keys(LABELS).filter(k=>String(lead[k]??'')!==String(orig[k]??''));
                     const payload={first_name:lead.fn,last_name:lead.ln,rut:lead.rut,birthdate:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sit_laboral:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta||null,pie:lead.pie||null,wants_financing:lead.wantsFin,fin_status:lead.finStatus,rechazo_motivo:lead.rechazoMotivo,model_id:lead.motoId||null};
                     try{
                       await api.updateTicket(lead.id,payload);
-                      savedRef.current={...orig,...lead};
                       if(changed.length>0){
-                        const desc=changed.map(k=>LABELS[k]).join(', ');
-                        const e=await api.addTimeline(lead.id,{type:'system',title:`Actualizado: ${desc}`,note:null});
+                        const fmtVal=(k,v)=>{
+                          if(v===''||v===null||v===undefined)return '(vacío)';
+                          if(k==='renta'||k==='pie')return '$'+Number(v).toLocaleString('es-CL');
+                          if(k==='wantsFin')return v?'Sí':'No';
+                          return String(v);
+                        };
+                        const details=changed.map(k=>`${LABELS[k]}: ${fmtVal(k,orig[k])} → ${fmtVal(k,lead[k])}`).join('\n');
+                        const e=await api.addTimeline(lead.id,{type:'system',title:`Datos actualizados (${changed.length} campo${changed.length!==1?'s':''})`,note:details});
                         addTimelineLocal(e);
                       }
+                      savedRef.current={...orig,...lead};
                     }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
                   }} style={{ ...S.btn, fontSize:12 }}>
                     Guardar cambios
@@ -671,6 +770,56 @@ export function TicketView({lead,user,nav,updLead}){
       )}
 
       {showSell&&<SellFromTicketModal ticketId={lead.id} lead={lead} user={user} onClose={()=>setShowSell(false)} onSuccess={()=>{updLead(lead.id,{status:"ganado"});}}/>}
+
+      {/* ══ MODAL MARCAR COMO PERDIDO ════════════════════════════ */}
+      {perdidoModal&&(
+        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1001,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
+          onClick={e=>{if(e.target===e.currentTarget&&!perdidoSaving)setPerdidoModal(false);}}>
+          <div style={{ background:'#fff',borderRadius:16,width:'100%',maxWidth:440,boxShadow:'0 20px 60px rgba(0,0,0,0.18)',overflow:'hidden' }}>
+            {/* Header */}
+            <div style={{ padding:'18px 22px',borderBottom:'1px solid #FEE2E2',background:'#FFF5F5',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+              <div>
+                <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>❌ Marcar como perdido</div>
+                <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
+              </div>
+              {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+            </div>
+            <div style={{ padding:'20px 22px',display:'flex',flexDirection:'column',gap:14 }}>
+              {/* Motivos */}
+              <div>
+                <div style={{ fontSize:11,fontWeight:700,color:'#374151',marginBottom:8 }}>¿Por qué se perdió este lead?</div>
+                <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
+                  {PERDIDO_MOTIVOS.map(m=>(
+                    <button key={m} type="button" onClick={()=>setPerdidoMotivo(m)}
+                      style={{ textAlign:'left',padding:'9px 14px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:perdidoMotivo===m?700:400,
+                        background:perdidoMotivo===m?'#FEF2F2':'#F9FAFB',
+                        color:perdidoMotivo===m?'#B91C1C':'#374151',
+                        border:`1.5px solid ${perdidoMotivo===m?'#FECACA':'#E5E7EB'}`,transition:'all 0.1s',display:'flex',alignItems:'center',gap:10 }}>
+                      <span style={{ width:9,height:9,borderRadius:'50%',flexShrink:0,background:perdidoMotivo===m?'#EF4444':'#D1D5DB',transition:'background 0.1s' }}/>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Detalle libre */}
+              <div>
+                <label style={{ ...S.lbl,marginBottom:6 }}>Detalle adicional <span style={{ fontWeight:400,color:'#9CA3AF' }}>(opcional)</span></label>
+                <textarea value={perdidoDetalle} onChange={e=>setPerdidoDetalle(e.target.value)}
+                  rows={3} placeholder="Ej: El cliente compró una Yamaha MT-03 en otro concesionario..."
+                  style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}/>
+              </div>
+              {/* Acciones */}
+              <div style={{ display:'flex',gap:10,justifyContent:'flex-end' }}>
+                {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ ...S.btn2,fontSize:13 }}>Cancelar</button>}
+                <button onClick={confirmPerdido} disabled={!perdidoMotivo||perdidoSaving}
+                  style={{ ...S.btn,fontSize:13,background:'#EF4444',opacity:!perdidoMotivo||perdidoSaving?0.6:1,cursor:!perdidoMotivo?'default':'pointer',display:'flex',alignItems:'center',gap:7 }}>
+                  {perdidoSaving?'Guardando...':'Confirmar pérdida'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ MODAL REGISTRAR CONTACTO ══════════════════════════════ */}
       {showContact&&(

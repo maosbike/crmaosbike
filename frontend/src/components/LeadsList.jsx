@@ -138,7 +138,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
       {user.role!=='vendedor'&&allSellers.length>0&&(
         <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
           {allSellers.map(s=>{
-            const active=effectiveLeads.filter(l=>l.seller_id===s.id&&!['ganado','perdido','cerrado'].includes(l.status)).length;
+            const active=effectiveLeads.filter(l=>l.seller_id===s.id&&!['ganado','perdido'].includes(l.status)).length;
             const isSel=selF===s.id;
             return(
               <button key={s.id} onClick={()=>setSelF(isSel?'':s.id)}

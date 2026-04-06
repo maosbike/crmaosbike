@@ -586,7 +586,7 @@ router.post('/confirm', async (req, res) => {
       if (!sellerCache[branch_id]) {
         const { rows: sellers } = await db.query(
           `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
-                  COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido','cerrado')) AS active_tickets
+                  COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido')) AS active_tickets
            FROM users u
            LEFT JOIN tickets t ON t.assigned_to = u.id
            WHERE u.role = 'vendedor' AND u.active = true

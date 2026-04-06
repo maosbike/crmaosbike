@@ -20,7 +20,7 @@ router.get('/commercial', async (req, res) => {
     // 1. Leads sin tocar (sin first_action_at, activos)
     const { rows: [sinTocar] } = await db.query(
       `SELECT COUNT(*) as count FROM tickets t
-       WHERE t.status NOT IN ('ganado','perdido','cerrado')
+       WHERE t.status NOT IN ('ganado','perdido')
        AND t.first_action_at IS NULL ${userFilter}`,
       params
     );
@@ -72,7 +72,7 @@ router.get('/commercial', async (req, res) => {
               EXTRACT(EPOCH FROM (t.sla_deadline - NOW())) / 3600 as hours_left
        FROM tickets t
        LEFT JOIN users u ON t.assigned_to = u.id
-       WHERE t.status NOT IN ('ganado','perdido','cerrado')
+       WHERE t.status NOT IN ('ganado','perdido')
        AND t.sla_status IN ('normal','warning','breached')
        AND t.first_action_at IS NULL
        ${userFilter}
