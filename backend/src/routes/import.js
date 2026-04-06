@@ -447,14 +447,11 @@ router.post('/preview', upload.single('file'), async (req, res) => {
     if (rows.length === 0) return res.status(400).json({ error: 'No se encontraron filas de datos' });
 
     // ── Duplicados internos al archivo ─────────────────────────
-    const seenRut   = new Map();
-    const seenEmail = new Map();
-    const seenPhone = new Map();
-    for (const r of rows) {
-      if (r.rut)      seenRut.set(r.rut, (seenRut.get(r.rut) || 0) + 1);
-      if (r.email)    seenEmail.set(r.email.toLowerCase(), (seenEmail.get(r.email.toLowerCase()) || 0) + 1);
-      if (r.telefono) seenPhone.set(r.telefono, (seenPhone.get(r.telefono) || 0) + 1);
-    }
+    // Sets de keys ya vistos: la primera aparición pasa, las siguientes son dup_file.
+    // (antes se usaba Map con conteo → todas las copias quedaban descartadas, incluyendo la primera)
+    const fileSeenRut   = new Set();
+    const fileSeenEmail = new Set();
+    const fileSeenPhone = new Set();
 
     // ── Duplicados en base de datos ────────────────────────────
     const dbDupRuts   = new Set();
@@ -495,10 +492,20 @@ router.post('/preview', upload.single('file'), async (req, res) => {
     for (const r of rows) {
       if (r.status === 'error') continue;
 
-      // Duplicados en archivo
-      const isDupFile = (r.rut      && seenRut.get(r.rut)                  > 1) ||
-                        (r.email    && seenEmail.get(r.email.toLowerCase()) > 1) ||
-                        (r.telefono && seenPhone.get(r.telefono)            > 1);
+      // Duplicados en archivo: la primera aparición de cada key se deja pasar;
+      // las siguientes con la misma RUT/email/teléfono se marcan como dup_file.
+      const rutKey   = r.rut   || null;
+      const emailKey = r.email ? r.email.toLowerCase() : null;
+      const phoneKey = r.telefono || null;
+      const isDupFile = (rutKey   && fileSeenRut.has(rutKey))   ||
+                        (emailKey && fileSeenEmail.has(emailKey)) ||
+                        (phoneKey && fileSeenPhone.has(phoneKey));
+      // Registrar keys de esta fila para detectar copias posteriores
+      if (!isDupFile) {
+        if (rutKey)   fileSeenRut.add(rutKey);
+        if (emailKey) fileSeenEmail.add(emailKey);
+        if (phoneKey) fileSeenPhone.add(phoneKey);
+      }
 
       // Duplicados en BD (comparar RUT normalizado)
       const isDupDB = (r.rut      && dbDupRuts.has(normalizeRut(r.rut)))     ||
