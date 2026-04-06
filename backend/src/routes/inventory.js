@@ -414,20 +414,25 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
     const preview = raw.slice(headerIdx + 1)
       .filter(row => Array.isArray(row) && row.some(c => c !== null && c !== ''))
       .map((row, i) => {
-        const chassis   = get(row, C.chassis).replace(/\s/g,'').toUpperCase();
+        const chassis   = get(row, C.chassis).replace(/\s/g,'').toUpperCase() || null;
         const brand     = get(row, C.brand).toUpperCase();
         const model     = get(row, C.model).toUpperCase();
         const branchRaw = get(row, C.branch);
         const branch_id = findBranch(branchRaw);
+        // Errores bloqueantes: sin marca, sin modelo o sucursal no reconocida
         const errors    = [];
-        if (!chassis)   errors.push('Sin N° Chasis');
         if (!brand)     errors.push('Sin Marca');
         if (!model)     errors.push('Sin Modelo');
         if (!branch_id) errors.push(`Sucursal no reconocida: "${branchRaw}"`);
+        // Advertencias: datos faltantes pero la unidad igual entra (admin completa después)
+        const warnings  = [];
+        if (!chassis)   warnings.push('Sin N° Chasis');
         const duplicate = !!chassis && existingSet.has(chassis.toLowerCase());
+        const _status   = duplicate ? 'duplicate' : errors.length ? 'error' : warnings.length ? 'warning' : 'ok';
         return {
-          _row: headerIdx + 2 + i, _status: duplicate ? 'duplicate' : errors.length ? 'error' : 'ok',
-          _errors: errors, branch_id, branch_raw: branchRaw,
+          _row: headerIdx + 2 + i, _status,
+          _errors: errors, _warnings: warnings,
+          branch_id, branch_raw: branchRaw,
           year:      parseInt(get(row, C.year)) || new Date().getFullYear(),
           brand, model,
           color:     get(row, C.color).toUpperCase() || 'SIN COLOR',
@@ -440,9 +445,10 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
 
     res.json({
       sheet: sheetName, total: preview.length,
-      ok: preview.filter(r => r._status==='ok').length,
+      ok:         preview.filter(r => r._status==='ok').length,
+      warnings:   preview.filter(r => r._status==='warning').length,
       duplicates: preview.filter(r => r._status==='duplicate').length,
-      errors: preview.filter(r => r._status==='error').length,
+      errors:     preview.filter(r => r._status==='error').length,
       rows: preview,
     });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al procesar: ' + e.message }); }
@@ -456,12 +462,24 @@ router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), asyn
     let inserted = 0, skipped = 0;
     for (const r of rows) {
       try {
-        await db.query(
-          `INSERT INTO inventory (branch_id,year,brand,model,color,chassis,motor_num,status,price,notes,created_by)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (chassis) DO NOTHING`,
-          [r.branch_id, r.year, r.brand, r.model, r.color, r.chassis,
-           r.motor_num||null, r.status, r.price||0, r.notes||null, req.user.id]
-        );
+        const chassis = r.chassis || null; // null si no viene — Postgres permite múltiples NULL en UNIQUE
+        if (chassis) {
+          // Con chasis: usar ON CONFLICT para evitar duplicados
+          await db.query(
+            `INSERT INTO inventory (branch_id,year,brand,model,color,chassis,motor_num,status,price,notes,created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (chassis) DO NOTHING`,
+            [r.branch_id, r.year, r.brand, r.model, r.color, chassis,
+             r.motor_num||null, r.status, r.price||0, r.notes||null, req.user.id]
+          );
+        } else {
+          // Sin chasis: insertar directo (sin ON CONFLICT — NULL no genera conflicto en PG)
+          await db.query(
+            `INSERT INTO inventory (branch_id,year,brand,model,color,chassis,motor_num,status,price,notes,created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            [r.branch_id, r.year, r.brand, r.model, r.color, null,
+             r.motor_num||null, r.status, r.price||0, r.notes||null, req.user.id]
+          );
+        }
         inserted++;
       } catch (e) { if (e.code==='23505') skipped++; else throw e; }
     }

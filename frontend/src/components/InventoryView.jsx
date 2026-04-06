@@ -166,7 +166,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   };
   const handleImportConfirm = async () => {
     if (!importPreview) return;
-    const okRows = importPreview.rows.filter(r => r._status==='ok');
+    const okRows = importPreview.rows.filter(r => r._status==='ok' || r._status==='warning');
     if (!okRows.length) return;
     setImportLoading(true);
     try { const r = await api.importInventoryConfirm(okRows); setImportDone(r); setImportPreview(null); reload(); }
@@ -1147,14 +1147,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           {importPreview && (
             <>
               <div style={{ display:'flex',gap:10,marginBottom:14,flexWrap:'wrap' }}>
-                {[{l:'Total filas',v:importPreview.total,c:'#6B7280'},{l:'Nuevas',v:importPreview.ok,c:'#10B981'},{l:'Duplicados',v:importPreview.duplicates,c:'#F59E0B'},{l:'Errores',v:importPreview.errors,c:'#EF4444'}].map(({l,v,c})=>(
+                {[{l:'Total filas',v:importPreview.total,c:'#6B7280'},{l:'Nuevas',v:importPreview.ok,c:'#10B981'},{l:'Incompletas',v:importPreview.warnings||0,c:'#F97316'},{l:'Duplicados',v:importPreview.duplicates,c:'#F59E0B'},{l:'Errores',v:importPreview.errors,c:'#EF4444'}].map(({l,v,c})=>(
                   <div key={l} style={{ ...S.card,padding:'8px 14px',textAlign:'center',flex:1,minWidth:80 }}>
                     <div style={{ fontSize:20,fontWeight:800,color:c }}>{v}</div>
                     <div style={{ fontSize:10,color:'#6B7280' }}>{l}</div>
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize:11,color:'#6B7280',marginBottom:10 }}>Hoja: <strong>{importPreview.sheet}</strong> · Solo se importarán filas en verde.</p>
+              <p style={{ fontSize:11,color:'#6B7280',marginBottom:10 }}>Hoja: <strong>{importPreview.sheet}</strong> · Se importarán filas <span style={{color:'#10B981',fontWeight:600}}>verdes</span> (completas) y <span style={{color:'#F97316',fontWeight:600}}>naranjas</span> (incompletas, completar después).</p>
               <div style={{ maxHeight:320,overflowY:'auto',border:'1px solid #E5E7EB',borderRadius:8,marginBottom:14 }}>
                 <table style={{ width:'100%',borderCollapse:'collapse',fontSize:11 }}>
                   <thead style={{ position:'sticky',top:0,background:'#F9FAFB' }}>
@@ -1162,8 +1162,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </thead>
                   <tbody>
                     {importPreview.rows.map((r,i)=>{
-                      const bg=r._status==='ok'?'rgba(16,185,129,0.04)':r._status==='duplicate'?'rgba(245,158,11,0.06)':'rgba(239,68,68,0.06)';
-                      const ic=r._status==='ok'?'#10B981':r._status==='duplicate'?'#F59E0B':'#EF4444';
+                      const bg=r._status==='ok'?'rgba(16,185,129,0.04)':r._status==='warning'?'rgba(249,115,22,0.05)':r._status==='duplicate'?'rgba(245,158,11,0.06)':'rgba(239,68,68,0.06)';
+                      const ic=r._status==='ok'?'#10B981':r._status==='warning'?'#F97316':r._status==='duplicate'?'#F59E0B':'#EF4444';
                       return(
                         <tr key={i} style={{ borderBottom:'1px solid #F3F4F6',background:bg }}>
                           <td style={{ padding:'5px 8px',color:'#9CA3AF' }}>{r._row}</td>
@@ -1177,7 +1177,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           <td style={{ padding:'5px 8px' }}>{r.status}</td>
                           <td style={{ padding:'5px 8px' }}>{r.price?fmt(r.price):'-'}</td>
                           <td style={{ padding:'5px 8px',color:ic,fontSize:10,fontWeight:600 }}>
-                            {r._status==='ok'?'Nueva':r._status==='duplicate'?'Ya existe':r._errors?.join(', ')}
+                            {r._status==='ok'?'Nueva':r._status==='warning'?`Incompleta · ${r._warnings?.join(', ')}`:r._status==='duplicate'?'Ya existe':r._errors?.join(', ')}
                           </td>
                         </tr>
                       );

@@ -72,6 +72,7 @@ async function migrate() {
     await runMigration('033', 'fix SLA fields retroactivo',    m('033_fix_sla_fields_retroactivo.sql'));
     await runMigration('034', 'add status nuevo',               m('034_add_status_nuevo.sql'));
     await runMigration('035', 'remove cerrado status',          m('035_remove_cerrado.sql'));
+    await runMigration('036', 'chassis nullable',               m('036_chassis_nullable.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');
