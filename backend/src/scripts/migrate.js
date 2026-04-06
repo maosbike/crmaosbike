@@ -5,7 +5,7 @@ const db = require('../config/db');
 const seed = require('../../migrations/002_seed');
 
 // Migrations that should run only ONCE (destructive or data-mutating)
-const ONCE_ONLY = ['010','012','013','018','032','033'];
+const ONCE_ONLY = ['010','012','013','018','032','033','034'];
 
 async function hasRun(name) {
   await db.query(`
@@ -70,6 +70,7 @@ async function migrate() {
     await runMigration('031', 'ticket birthdate column',        m('031_birthdate.sql'));
     await runMigration('032', 'fix status leads con evidencia', m('032_fix_status_evidencia.sql'));
     await runMigration('033', 'fix SLA fields retroactivo',    m('033_fix_sla_fields_retroactivo.sql'));
+    await runMigration('034', 'add status nuevo',               m('034_add_status_nuevo.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');

@@ -60,7 +60,11 @@ export function TicketView({lead,user,nav,updLead}){
       api.getReassignments(lead.id).then(d=>setAssignHistory(Array.isArray(d)?d:[])).catch(()=>{});
     }
     api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
-  },[isAdmin,lead.id]);
+    // Auto-transición: abrir un lead 'nuevo' lo mueve a 'abierto'
+    if(lead.status==='nuevo'){
+      updLead(lead.id,{status:'abierto'});
+    }
+  },[isAdmin,lead.id]);// eslint-disable-line
   const sellers=realSellers;
 
   const created=new Date(lead.createdAt).getTime();const now=Date.now();
@@ -312,9 +316,18 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
             <div>
               <label style={S.lbl}>Estado</label>
-              <select value={lead.status} onChange={e=>upd("status",e.target.value)} style={{ ...S.inp, width:'100%', fontSize:11 }}>
-                {Object.entries(TICKET_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-              </select>
+              {/* cerrado = solo admin/supervisor puede seleccionarlo */}
+              {user.role==='vendedor' && lead.status==='cerrado' ? (
+                <div style={{...S.inp,width:'100%',fontSize:11,color:'#6B7280',cursor:'default'}}>
+                  Cerrado (solo admin puede cambiar)
+                </div>
+              ) : (
+                <select value={lead.status} onChange={e=>upd("status",e.target.value)} style={{ ...S.inp, width:'100%', fontSize:11 }}>
+                  {Object.entries(TICKET_STATUS)
+                    .filter(([k])=>user.role==='vendedor'?k!=='cerrado':true)
+                    .map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+                </select>
+              )}
             </div>
           </div>
           <div style={{ marginBottom:8 }}>

@@ -1,7 +1,7 @@
 // ─── Shared UI: constants, styles, icons, utils ───────────────────────────────
 
 // Constants
-export const TICKET_STATUS={abierto:{l:"Abierto",c:"#3B82F6"},en_gestion:{l:"En Gestión",c:"#F59E0B"},cotizado:{l:"Cotizado",c:"#8B5CF6"},financiamiento:{l:"Financiamiento",c:"#F28100"},ganado:{l:"Ganado",c:"#10B981"},perdido:{l:"Perdido",c:"#EF4444"},cerrado:{l:"Cerrado",c:"#6B7280"}};
+export const TICKET_STATUS={nuevo:{l:"Nuevo",c:"#06B6D4"},abierto:{l:"Abierto",c:"#3B82F6"},en_gestion:{l:"En Gestión",c:"#F59E0B"},cotizado:{l:"Cotizado",c:"#8B5CF6"},financiamiento:{l:"Financiamiento",c:"#F28100"},ganado:{l:"Ganado",c:"#10B981"},perdido:{l:"Perdido",c:"#EF4444"},cerrado:{l:"Cerrado",c:"#6B7280"}};
 export const PRIORITY={alta:{l:"Alta",c:"#EF4444"},media:{l:"Media",c:"#F59E0B"},baja:{l:"Baja",c:"#6B7280"}};
 export const SRC={web:"Web",redes_sociales:"RRSS",whatsapp:"WhatsApp",presencial:"Presencial",referido:"Referido",evento:"Evento",llamada:"Llamada"};
 export const COMUNAS=["Huechuraba","Providencia","Las Condes","La Florida","Maipú","Santiago Centro","Ñuñoa","Vitacura","Puente Alto","San Bernardo","Cerrillos","Recoleta","Independencia","Quilicura","Lo Barnechea","Peñalolén","La Reina","Macul","San Miguel","Otra"];
@@ -36,7 +36,7 @@ export const mapTicket=(t)=>{
     branch_code:t.branch_code||'',branch_addr:t.branch_addr||'',
     seller:null,seller_fn:t.seller_fn||'',seller_ln:t.seller_ln||'',
     seller_id:t.assigned_to||null,
-    status:t.status||'abierto',priority:t.priority||'media',
+    status:t.status||'nuevo',priority:t.priority||'media',
     motoId:null,
     model_brand:t.moto_brand||null,model_name:t.moto_model||null,model_image:t.image_url||null,model_category:t.category||null,model_cc:t.cc||null,model_year:t.moto_year||null,
     model_price:t.moto_price||0,model_bonus:t.moto_bonus||0,

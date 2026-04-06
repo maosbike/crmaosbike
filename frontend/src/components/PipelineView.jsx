@@ -6,7 +6,7 @@ import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 export function PipelineView({leads,user,nav,updLead}){
   const[dragId,setDragId]=useState(null);
   const[sellLead,setSellLead]=useState(null);
-  const stages=["abierto","en_gestion","cotizado","financiamiento"];
+  const stages=["nuevo","abierto","en_gestion","cotizado","financiamiento"];
   const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(user.role==="vendedor"&&l.seller_id!==user.id)return false;return true;});
   const drop=stage=>{if(dragId){const ld=leads.find(l=>l.id===dragId);if(ld)updLead(dragId,{status:stage,timeline:[{id:`tl-${Date.now()}`,type:"status",title:`Estado → ${TICKET_STATUS[stage]?.l}`,date:new Date().toISOString(),user:user.fn},...ld.timeline]});setDragId(null);}};
   const getSlaInfo=(l)=>{

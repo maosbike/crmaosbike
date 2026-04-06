@@ -7,6 +7,7 @@ const SRC_SHORT={web:"Web",redes_sociales:"RRSS",whatsapp:"WA",presencial:"Pres.
 
 // Colores de estado alineados con TICKET_STATUS
 const ST_STRIP = {
+  nuevo:         { color:'#0891B2', light:'#ECFEFF' },
   abierto:       { color:'#2563EB', light:'#EFF6FF' },
   en_gestion:    { color:'#D97706', light:'#FFFBEB' },
   cotizado:      { color:'#7C3AED', light:'#F5F3FF' },

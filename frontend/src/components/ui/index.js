@@ -33,7 +33,7 @@ export const mapTicket=(t)=>{
     branch_code:t.branch_code||'',branch_addr:t.branch_addr||'',
     seller:null,seller_fn:t.seller_fn||'',seller_ln:t.seller_ln||'',
     seller_id:t.assigned_to||null,
-    status:t.status||'abierto',priority:t.priority||'media',
+    status:t.status||'nuevo',priority:t.priority||'media',
     motoId:null,
     model_brand:t.moto_brand||null,model_name:t.moto_model||null,model_image:t.image_url||null,model_category:t.category||null,model_cc:t.cc||null,model_year:t.moto_year||null,
     colorPref:t.color_pref||'',wantsFin:t.wants_financing||false,
