@@ -120,9 +120,10 @@ function commercialName(name) {
   return name.replace(/\s+/g, ' ').trim();
 }
 
-/** Detecta período: "MARZO 2026" → "2026-03" */
+/** Detecta período: "MARZO 2026" o "Abril2026" → "2026-03" */
 function detectPeriod(text) {
-  const re = /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(\d{4})\b/i;
+  // \s* para manejar PDFs que no ponen espacio entre mes y año (ej: "Abril2026")
+  const re = /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s*(\d{4})\b/i;
   const m = text.match(re);
   if (!m) return null;
   return `${m[2]}-${MONTHS[m[1].toLowerCase()]}`;
@@ -162,99 +163,111 @@ function detectSourceType(text) {
 
 // ─── Parser Honda ─────────────────────────────────────────────────────────────
 //
-// Estructura en el PDF:
-//   Línea A: código interno (ej: "LJA73")
-//   Línea B: "MODELO CATEGORIA PBV    PRECIO    [BONO_TMP|-]    PRECIO_TMP    [BONO_AF    PRECIO_AF]    [NOTAS]"
+// Estructura en el PDF (formato lista plana, ej: Abril 2026):
+//   Cada fila de datos ocupa UNA línea:
+//     MODELO [PRECIO] [-|BONO_TODO_MEDIO] [PRECIO_c/BONO] [BONO_AF] [PRECIO_c/BONO_AF] [NOTAS]
 //
-// Categorías válidas: Commuter, Mid Size, Big Bike, Off, ATV, BB special
+//   Separadores de sección (ignorar): LMC ON, LMC ON/OFF, MC ON, MC ON/OFF,
+//     SC TTL, SCS TTL, OFF, ATV, ACCION COMERCIAL, etc.
+//
+// Estrategia:
+//   1. Saltar líneas de cabecera / sección / pie
+//   2. Para cada línea de dato: encontrar la posición del PRIMER precio
+//      (número en formato chileno >= 100.000) → todo antes = modelo, resto = precios+notas
 
-const HONDA_CATEGORIES = ['Commuter', 'Mid Size', 'Big Bike', 'Off', 'ATV', 'BB special'];
-// Regex que detecta donde empieza la categoría en la línea de datos
-const HONDA_CAT_RE = new RegExp(`(${HONDA_CATEGORIES.join('|')})`, 'i');
-// Regex que detecta una línea de código Honda
-const HONDA_CODE_RE = /^[A-Z]{2,4}\d+[A-Z0-9]*$/;
-// Secciones agrupadas (no son datos)
-const HONDA_SKIP_RE = /^(LMC ON|LMC ON\/OFF|MC ON|MC ON\/OFF|SC TTL|OFF|ATV|PVB|DESDE|HASTA EL|LISTA DE PRECIOS|OBSERVACIONES|\*|Nuevas|Nuestro|28-|02-)/i;
+// Líneas a ignorar completamente (cabeceras, secciones, pies)
+const HONDA_SKIP_RE = /^(LMC\s*ON|LMC\s*ON\/OFF|MC\s*ON|MC\s*ON\/OFF|SC\s+TTL|SCS?\s+TTL|ACCI[OÓ]N\s+COMERCIAL|MODELO|V1\s*$|V1\s+PERIODO|PERIODO|LISTA\s+DE\s+PRECIOS|BONO\s+TODO|BONO\s+SOLO|BONO\s+DE|PRECIO\s+c\s*\/|PRECIO\s+C\s*\/|MEDIO\s+DE|PBV|PVB|DESDE\s+EL|HASTA\s+EL|OBSERVACIONES|VIGENCIA|V[AÁ]LIDO|DISTRIBUIDORES|C[OÓ]DIGO|COD\s+P|Nuestro|Nuevo\s|Nuevas|\*|\d{2}-\d{2}-|HONDA\s+MOTOR|PRECIO\s+DE\s+LISTA|ATV\s*$|OFF\s*$)/i;
 
 function parseHonda(text) {
   const rows  = [];
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const period = detectPeriod(text);
 
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
+  // Precio Honda: X.XXX.XXX (entre 1M y ~60M CLP).
+  // Recorremos posición a posición para evitar que el último dígito del modelo
+  // (ej: "...20268.990.000") se funda con el primer dígito del precio.
+  // Honda más caro (GoldWing) ≈ 31M → usamos 60M como techo de validación.
+  const SINGLE_PRICE_RE = /^([1-9]\d?\.\d{3}\.\d{3})/;
 
-    // ¿Es una línea de código Honda?
-    if (HONDA_CODE_RE.test(line)) {
-      const code    = line;
-      const dataLine = lines[i + 1] || '';
-      i += 2;
+  for (const line of lines) {
+    // Saltar líneas de cabecera / sección / pie
+    if (HONDA_SKIP_RE.test(line)) continue;
 
-      if (HONDA_SKIP_RE.test(dataLine)) continue;
+    // La línea debe tener al menos un precio en formato X.XXX.XXX
+    if (!/[1-9]\d?\.\d{3}\.\d{3}/.test(line)) continue;
 
-      // Limpiar tabs
-      const dl = dataLine.replace(/\t/g, '').trim();
-
-      // Encontrar la categoría en la línea
-      const catMatch = dl.match(HONDA_CAT_RE);
-      if (!catMatch) continue;
-
-      const category = catMatch[1];
-      const catIdx   = dl.indexOf(category);
-
-      // Modelo = todo antes de la categoría
-      const modelRaw = dl.slice(0, catIdx).trim();
-      if (!modelRaw) continue;
-
-      // Texto después de la categoría: PBV + precios + notas
-      const afterCat = dl.slice(catIdx + category.length).trim();
-
-      // Extraer PBV (primer número pequeño, 2-3 dígitos, solo si no es BB special)
-      let pbv = null;
-      let priceText = afterCat;
-      if (category !== 'BB special') {
-        const pbvMatch = afterCat.match(/^(\d{2,3})\s+/);
-        if (pbvMatch) {
-          pbv = parseInt(pbvMatch[1]);
-          priceText = afterCat.slice(pbvMatch[0].length);
+    // Buscar el PRIMER precio real escaneando carácter a carácter
+    let firstPriceIdx = -1;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch < '1' || ch > '9') continue; // solo candidatos [1-9]
+      const m = line.slice(i).match(SINGLE_PRICE_RE);
+      if (m) {
+        const val = parseInt(m[1].replace(/\./g, ''), 10);
+        if (val <= 60000000) { // precio razonable para Honda
+          firstPriceIdx = i;
+          break;
         }
       }
-
-      // ¿Tiene dash en la columna de BONO_TODO_MEDIO?
-      const hasDash = /\s-\s/.test(priceText);
-
-      // Extraer todos los precios
-      const nums = extractPrices(priceText);
-
-      // Asignar columnas
-      const prices = assignPriceColumns(nums, hasDash);
-
-      // Notas (texto que queda después de eliminar números y dashes)
-      const notes = priceText
-        .replace(/\d{1,3}(?:\.\d{3})+/g, '')
-        .replace(/\s-\s/g, ' ')
-        .replace(/\/\/\//g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim() || null;
-
-      rows.push({
-        brand:            'Honda',
-        model:            commercialName(modelRaw),
-        normalized_model: normalizeModel(modelRaw),
-        code,
-        category,
-        segment:          null,
-        cc:               null,
-        ...prices,
-        dcto_30_dias:     null,
-        dcto_60_dias:     null,
-        notes,
-        raw: { code, model: modelRaw, category, pbv, afterCat },
-      });
-    } else {
-      i++;
     }
+
+    // Sin texto de modelo antes del precio → saltar
+    if (firstPriceIdx <= 0) continue;
+
+    const modelRaw  = line.slice(0, firstPriceIdx).trim();
+    const priceText = line.slice(firstPriceIdx);
+
+    // El modelo debe comenzar con una letra
+    if (!modelRaw || !/^[A-Za-zÀ-ÿ]/.test(modelRaw)) continue;
+
+    // ¿Tiene dash en la columna BONO_TODO_MEDIO?  (aparece como " - " entre precios)
+    const hasDash = /\s-\s/.test(priceText);
+
+    // Extraer precios limitando a los 5 primeros (máx columnas en la tabla Honda)
+    // para que las notas al final de línea no corrompan la asignación de columnas
+    const nums = extractPrices(priceText).slice(0, 5);
+    if (nums.length === 0) continue;
+
+    // Asignar columnas usando heurística de ratio
+    const prices = assignPriceColumns(nums, hasDash);
+
+    // Si price_todo_medio == price_list: no hay bono todo medio de pago real.
+    // El bono_todo_medio clasificado es en realidad el bono_financiamiento.
+    if (prices.price_todo_medio !== null &&
+        prices.price_todo_medio === prices.price_list &&
+        prices.bono_todo_medio !== null) {
+      if (prices.bono_financiamiento === null) {
+        prices.bono_financiamiento = prices.bono_todo_medio;
+      }
+      prices.bono_todo_medio = null;
+    }
+
+    // Limpiar bono_financiamiento huérfano (bono sin precio final = proviene de nota)
+    if (prices.bono_financiamiento !== null && prices.price_financiamiento === null) {
+      prices.bono_financiamiento = null;
+    }
+
+    // Notas: texto residual después de quitar números y dashes
+    const notes = priceText
+      .replace(/\d{1,3}(?:\.\d{3})+/g, '')
+      .replace(/\s-\s/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || null;
+
+    rows.push({
+      brand:            'Honda',
+      model:            commercialName(modelRaw),
+      normalized_model: normalizeModel(modelRaw),
+      code:             null,
+      category:         null,
+      segment:          null,
+      cc:               null,
+      ...prices,
+      dcto_30_dias:     null,
+      dcto_60_dias:     null,
+      notes,
+      raw: { model: modelRaw, priceText },
+    });
   }
 
   return { period, source_type: 'honda', rows };
