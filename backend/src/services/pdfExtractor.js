@@ -148,6 +148,9 @@ function detectSourceType(text) {
   // Promobility: nombre exacto
   if (t.includes('promobility')) return 'promobility';
 
+  // iMoto: Importadora iMoto (Takasaki / Loncin / Zontes)
+  if (t.includes('imoto') || t.includes('importadora imoto')) return 'imoto';
+
   // MMB: al menos una marca del grupo + alguna referencia a bono o lista de precios
   const hasMmbBrand = t.includes('keeway') || t.includes('benelli') ||
                       t.includes('qj motor') || t.includes('benda');
@@ -808,6 +811,180 @@ function parsePromobility(text) {
   return { period, source_type: 'promobility', rows };
 }
 
+// ─── Parser iMoto (Takasaki / Loncin / Zontes) ───────────────────────────────
+//
+// Estructura del PDF:
+//   CATEGORIA + MODELO + [AÑO] + CC_NÚMERO + CC + PRECIO_LISTA$ + [BONO$|-] + PRECIO_FINAL$ + DCTO%
+//
+// Todos los campos vienen concatenados en una línea (sin separadores).
+// Algunos registros se cortan en 2-3 líneas (ej. modelo con nombre largo).
+// Las filas sin precio tienen "----" al final.
+//
+// Marcas inferidas por prefijo de modelo:
+//   ZT → Zontes
+//   Todo lo demás → Takasaki (mayoría del catálogo iMoto)
+
+function parseImoto(text) {
+  const rows   = [];
+  const period = detectPeriod(text);
+  const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Categorías conocidas (orden importa: las más largas primero)
+  const CATS = [
+    'SCOOTER ADVENTURE', 'SCOOTER',
+    'ENDURO (NO HOMOLOGADA)', 'ENDURO',
+    'ATV (NO HOMOLOGADA)', 'ATV',
+    'DUAL', 'NAKED',
+    'ADVENTURE', 'SPORT ADVENTURE', 'SPORT',
+  ];
+  const CAT_RE = new RegExp(
+    `^(${CATS.map(c => c.replace(/[()]/g, '\\$&')).join('|')})`,
+    'i'
+  );
+
+  // Líneas de encabezado / pie a ignorar completamente
+  const SKIP_RE = /^(MARCA$|CATEGORIA\b|MODELO\b|AÑO\b|C\.C\b|PRECIO\b|BONO\b|DESCUENTO\b|PAGO\b|CONTADO\b|IVA\b|LISTA DE PRECIOS|DISTRIBUIDORES|IMPORTADORA|TAKASAKI|LONCIN|ZONTES|^[A-Z]{1,2}$|\d{4}$)/i;
+
+  // Precio iMoto: número chileno seguido de $  (ej: "1.390.000$")
+  const HAS_PRICE_RE = /\d{1,3}(?:\.\d{3})+\$/;
+  // Línea sin stock — contiene "----" (puede estar precedido de texto de modelo)
+  const HAS_DASHES_RE = /-{4}/;
+
+  // ── Paso 1: unir líneas fragmentadas en entradas completas ─────────────────
+  const entries = [];
+  let buf = '';
+
+  for (const line of rawLines) {
+    if (SKIP_RE.test(line)) {
+      if (buf) { entries.push(buf); buf = ''; }
+      continue;
+    }
+    // Línea sin precio (tiene "----"): siempre es una entrada completa por sí sola
+    if (HAS_DASHES_RE.test(line)) {
+      if (buf) entries.push(buf);
+      entries.push(line);
+      buf = '';
+      continue;
+    }
+    // Línea con precio → cierra la entrada actual
+    if (HAS_PRICE_RE.test(line)) {
+      entries.push((buf + ' ' + line).trim());
+      buf = '';
+      continue;
+    }
+    // Nueva categoría → cierra buffer anterior, inicia nuevo
+    if (CAT_RE.test(line)) {
+      if (buf) entries.push(buf);
+      buf = line;
+    } else {
+      buf = (buf + ' ' + line).trim();
+    }
+  }
+  if (buf) entries.push(buf);
+
+  // ── Paso 2: parsear cada entrada ───────────────────────────────────────────
+  for (const entry of entries) {
+    if (!entry || entry.length < 5) continue;
+
+    // Detectar categoría
+    const catMatch = entry.match(CAT_RE);
+    if (!catMatch) continue;
+    const categoryRaw = catMatch[0];
+    const afterCat    = entry.slice(categoryRaw.length).trim();
+
+    // Filas sin precio (----): registrar como sin stock y saltar
+    if (/^.{0,80}-{4}/.test(afterCat)) continue;
+
+    // Encontrar el primer precio (ancla de separación modelo/precios)
+    const priceIdx = afterCat.search(/\d{1,3}(?:\.\d{3})+\$/);
+    if (priceIdx <= 0) continue;
+
+    const beforePrices = afterCat.slice(0, priceIdx).trim(); // modelo+año+cc
+    const priceText    = afterCat.slice(priceIdx);           // "1.390.000$ 141.000$ ..."
+
+    // Extraer CC (último número seguido de "CC" en beforePrices)
+    // Intentar primero con año explícito, luego sin año
+    let ccMatch = beforePrices.match(/^(.*?)(20\d{2})(\d+)CC$/i);
+    let year = null, cc = null, modelRaw = '';
+    if (ccMatch) {
+      modelRaw = ccMatch[1].trim().replace(/-$/, '').trim();
+      year     = parseInt(ccMatch[2]);
+      cc       = parseInt(ccMatch[3]);
+    } else {
+      ccMatch = beforePrices.match(/^(.*?)(\d+)CC$/i);
+      if (!ccMatch) continue;
+      modelRaw = ccMatch[1].trim().replace(/-$/, '').trim();
+      cc       = parseInt(ccMatch[2]);
+    }
+    if (!modelRaw) continue;
+
+    // ── Parsear precios ─────────────────────────────────────────────────────
+    // Formato: LISTA$ [-|BONO$] PRECIO_FINAL$ DCTO%
+    // El bono puede ser un número o un guión pegado al siguiente precio: "-2.390.000$"
+    const hasBonoDash = /\$\s*-\d/.test(priceText);   // "$  -1.390.000$"
+    const nums = extractPrices(priceText);             // solo extrae números
+
+    let price_list       = null;
+    let bono_todo_medio  = null;
+    let price_todo_medio = null;
+
+    if (nums.length >= 3) {
+      price_list       = nums[0];
+      bono_todo_medio  = nums[1];
+      price_todo_medio = nums[2];
+    } else if (nums.length === 2) {
+      price_list       = nums[0];
+      price_todo_medio = nums[1];
+    } else if (nums.length === 1) {
+      price_list = nums[0];
+    }
+
+    // Si el bono viene con guión (sin bono real), anularlo
+    if (hasBonoDash) {
+      bono_todo_medio  = null;
+      price_todo_medio = nums.length >= 2 ? nums[1] : null;
+    }
+
+    // Validación: precio lista mínimo razonable
+    if (!price_list || price_list < 100000) continue;
+
+    // Marca por prefijo de modelo
+    const brand = /^ZT/i.test(modelRaw) ? 'Zontes' : 'Takasaki';
+
+    // Categoría normalizada
+    const catMap = {
+      'SCOOTER': 'Scooter', 'SCOOTER ADVENTURE': 'Scooter',
+      'ENDURO': 'Enduro', 'ENDURO (NO HOMOLOGADA)': 'Enduro',
+      'ATV': 'ATV', 'ATV (NO HOMOLOGADA)': 'ATV',
+      'DUAL': 'Dual Sport', 'NAKED': 'Naked',
+      'ADVENTURE': 'Adventure', 'SPORT': 'Sport', 'SPORT ADVENTURE': 'Adventure',
+    };
+    const category = catMap[categoryRaw.toUpperCase()] || categoryRaw;
+
+    rows.push({
+      brand,
+      model:            commercialName(modelRaw),
+      normalized_model: normalizeModel(modelRaw),
+      code:             null,
+      category,
+      segment:          categoryRaw,
+      cc,
+      year,
+      price_list,
+      bono_todo_medio,
+      price_todo_medio,
+      bono_financiamiento:  null,
+      price_financiamiento: null,
+      dcto_30_dias:         null,
+      dcto_60_dias:         null,
+      notes:                null,
+      raw: { entry, modelRaw, cc, nums },
+    });
+  }
+
+  return { period, source_type: 'imoto', rows };
+}
+
 // ─── Función principal ────────────────────────────────────────────────────────
 
 async function extractFromPDF(buffer, filename) {
@@ -844,6 +1021,7 @@ async function extractFromPDF(buffer, filename) {
       case 'yamaha':      result = parseYamaha(text);      break;
       case 'mmb':         result = parseMMB(text);         break;
       case 'promobility': result = parsePromobility(text); break;
+      case 'imoto':       result = parseImoto(text);       break;
     }
   } catch (e) {
     throw new Error(`Error en parser ${source_type}: ${e.message}`);
