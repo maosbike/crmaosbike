@@ -506,9 +506,17 @@ function parseMMB(text) {
       price_todo_medio     = nums[2] || null;
       price_financiamiento = nums[3] || null;
     } else if (nums.length === 3) {
-      price_list       = nums[0];
-      bono_todo_medio  = nums[1] || null;
-      price_todo_medio = nums[2] || null;
+      price_list = nums[0];
+      // Si nums[1] es claramente un bono (< 50% del precio lista), asignarlo como tal.
+      // Si no (p.ej. todos iguales: sin bono explícito), es precio todo medio de pago.
+      if (nums[1] < nums[0] * 0.5) {
+        bono_todo_medio  = nums[1];
+        price_todo_medio = nums[2];
+      } else {
+        // Sin bono: los tres valores son precio lista / todo medio / crédito
+        price_todo_medio     = nums[1];
+        price_financiamiento = nums[2];
+      }
     } else if (nums.length === 2) {
       price_list = nums[0];
       // Aplicar heurística de ratio: si el 2do valor es < 40% del price_list,
@@ -591,15 +599,39 @@ function parseMMB(text) {
         raw: { brand: brandKey, model: modelRaw, line },
       });
       i++;
-    } else if (restOfLine && !MMB_PRICE_RE.test(lines[i + 1] || '')) {
-      // Brand+modelo en línea actual, pero precios en la siguiente → Patrón C incompleto
-      // OR: la brand está sola (restOfLine puede ser el modelo si no hay precios)
-      // Comprobamos la siguiente línea
-      const nextLine = lines[i + 1] || '';
-      if (MMB_PRICE_RE.test(nextLine)) {
-        // restOfLine = modelo, nextLine = precios
-        const modelRaw = restOfLine;
-        const prices   = parsePriceLine(nextLine);
+    } else if (restOfLine && MMB_PRICE_RE.test(lines[i + 1] || '')) {
+      // Patrón C: brand+modelo en línea actual, precios en la siguiente
+      const modelRaw = restOfLine;
+      const prices   = parsePriceLine(lines[i + 1]);
+      if (modelRaw) {
+        rows.push({
+          brand,
+          model:            commercialName(modelRaw),
+          normalized_model: normalizeModel(modelRaw),
+          code:             null,
+          category:         null,
+          segment:          null,
+          cc:               null,
+          price_list: prices.price_list,
+          bono_todo_medio: prices.bono_todo_medio,
+          price_todo_medio: prices.price_todo_medio,
+          bono_financiamiento: null,
+          price_financiamiento: prices.price_financiamiento,
+          dcto_30_dias: prices.dcto_30_dias,
+          dcto_60_dias: prices.dcto_60_dias,
+          notes: prices.price_list ? prices.notes : 'Sin precio / fuera de stock',
+          raw: { brand: brandKey, model: modelRaw, priceLine: lines[i + 1] },
+        });
+      }
+      i += 2;
+    } else {
+      // Patrón B: brand sola → siguiente línea = modelo → otra línea = precios
+      const modelLine = restOfLine || (lines[i + 1] || '').trim();
+      const priceLine = restOfLine ? (lines[i + 1] || '') : (lines[i + 2] || '');
+      const advance   = restOfLine ? 2 : 3;
+      if (modelLine && !getBrand(modelLine) && MMB_PRICE_RE.test(priceLine)) {
+        const modelRaw = modelLine;
+        const prices   = parsePriceLine(priceLine);
         if (modelRaw) {
           rows.push({
             brand,
@@ -617,46 +649,15 @@ function parseMMB(text) {
             dcto_30_dias: prices.dcto_30_dias,
             dcto_60_dias: prices.dcto_60_dias,
             notes: prices.price_list ? prices.notes : 'Sin precio / fuera de stock',
-            raw: { brand: brandKey, model: modelRaw, nextLine },
+            raw: { brand: brandKey, model: modelRaw, priceLine },
           });
-        }
-        i += 2;
-      } else {
-        // Brand sola (Patrón B): brand, luego modelo, luego precios
-        const modelLine  = lines[i + 1] || '';
-        const priceLine  = lines[i + 2] || '';
-        if (modelLine && MMB_PRICE_RE.test(priceLine)) {
-          const modelRaw = modelLine.trim();
-          const prices   = parsePriceLine(priceLine);
-          if (modelRaw && !getBrand(modelRaw)) {
-            rows.push({
-              brand,
-              model:            commercialName(modelRaw),
-              normalized_model: normalizeModel(modelRaw),
-              code:             null,
-              category:         null,
-              segment:          null,
-              cc:               null,
-              price_list: prices.price_list,
-              bono_todo_medio: prices.bono_todo_medio,
-              price_todo_medio: prices.price_todo_medio,
-              bono_financiamiento: null,
-              price_financiamiento: prices.price_financiamiento,
-              dcto_30_dias: prices.dcto_30_dias,
-              dcto_60_dias: prices.dcto_60_dias,
-              notes: prices.price_list ? prices.notes : 'Sin precio / fuera de stock',
-              raw: { brand: brandKey, model: modelRaw, priceLine },
-            });
-            i += 3;
-          } else {
-            i++;
-          }
+          i += advance;
         } else {
           i++;
         }
+      } else {
+        i++;
       }
-    } else {
-      i++;
     }
   }
 
