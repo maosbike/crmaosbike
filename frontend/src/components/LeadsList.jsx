@@ -33,9 +33,21 @@ function Initials({fn,ln,size=30}){
   );
 }
 
-export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
+const STATUS_ORDER=['nuevo','abierto','en_gestion','cotizado','financiamiento','ganado','perdido'];
+
+export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,onFilterChange}){
   const brs=realBranches||[];
-  const[search,setSearch]=useState("");const[stF,setStF]=useState("");const[brF,setBrF]=useState("");const[prF,setPrF]=useState("");const[srcF,setSrcF]=useState("");const[selF,setSelF]=useState("");const[showNew,setShowNew]=useState(false);
+  // Filtros persistidos en App.jsx para mantener contexto al volver de una ficha
+  const {search='',stF='',brF='',prF='',srcF='',selF=''}=filter||{};
+  const setFilter=(key,val)=>onFilterChange(f=>({...f,[key]:val}));
+  const setSearch=v=>setFilter('search',v);
+  const setStF=v=>setFilter('stF',v);
+  const setBrF=v=>setFilter('brF',v);
+  const setPrF=v=>setFilter('prF',v);
+  const setSrcF=v=>setFilter('srcF',v);
+  const setSelF=v=>setFilter('selF',v);
+  const clearFilters=()=>onFilterChange({search:'',stF:'',brF:'',prF:'',srcF:'',selF:''});
+  const[showNew,setShowNew]=useState(false);
   const[catalogModels,setCatalogModels]=useState([]);
   const[allSellers,setAllSellers]=useState([]);
   useEffect(()=>{
@@ -203,7 +215,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
           {divider}
           <div style={{display:'flex',flexDirection:'column',gap:2}}>
             <label style={{...filterLabel,color:'transparent'}}>·</label>
-            <button onClick={()=>{setSearch('');setStF('');setBrF('');setPrF('');setSrcF('');setSelF('');}} style={{height:32,padding:'0 12px',borderRadius:8,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:11,cursor:'pointer',color:'#6B7280',display:'flex',alignItems:'center',gap:5,fontWeight:500,fontFamily:'inherit'}}>
+            <button onClick={()=>{clearFilters();}} style={{height:32,padding:'0 12px',borderRadius:8,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:11,cursor:'pointer',color:'#6B7280',display:'flex',alignItems:'center',gap:5,fontWeight:500,fontFamily:'inherit'}}>
               <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
             </button>
           </div>
@@ -216,16 +228,17 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches}){
       </div>}
 
       {/* ── Lista de registros — mismo patrón visual que Inventario ── */}
+      {f.length>0&&!stF&&<div style={{fontSize:10,fontWeight:600,color:'#9CA3AF',paddingLeft:2,marginBottom:6,letterSpacing:'0.04em'}}>Ordenado por estado</div>}
       {f.length===0?(
         <div style={{background:'#FFFFFF',borderRadius:14,border:'1px dashed #E5E7EB',padding:'60px 0',textAlign:'center'}}>
           <div style={{fontSize:14,fontWeight:700,color:'#374151',marginBottom:4}}>{hasFilters?'Sin resultados con estos filtros':'Sin tickets registrados'}</div>
           <div style={{fontSize:12,color:'#9CA3AF'}}>
-            {hasFilters&&<button onClick={()=>{setSearch('');setStF('');setBrF('');setPrF('');setSrcF('');setSelF('');}} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button>}
+            {hasFilters&&<button onClick={()=>{clearFilters();}} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button>}
           </div>
         </div>
       ):(
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {f.map(x=>{
+          {(stF?f:[...f].sort((a,b)=>{const ai=STATUS_ORDER.indexOf(a.status);const bi=STATUS_ORDER.indexOf(b.status);return(ai===-1?99:ai)-(bi===-1?99:bi);})).map(x=>{
             const stStrip=ST_STRIP[x.status]||{color:'#6B7280',light:'#F9FAFB'};
             const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280'};
             const prCfg=PRIORITY[x.priority]||{l:'—',c:'#9CA3AF'};

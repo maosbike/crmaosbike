@@ -30,6 +30,7 @@ export default function App(){
   const[showChangePw,setShowChangePw]=useState(false);
   const[drawerOpen,setDrawerOpen]=useState(false);
   const[realBranches,setRealBranches]=useState([]);
+  const[leadsFilter,setLeadsFilter]=useState({search:'',stF:'',brF:'',prF:'',srcF:'',selF:''});
 
   // Intento de restore silencioso al cargar — usa la cookie httpOnly si existe
   useEffect(()=>{
@@ -111,7 +112,7 @@ export default function App(){
         <header className="crm-desktop-hdr" style={{height:48,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",borderBottom:"1px solid #E5E7EB",background:"rgba(255,255,255,0.85)",backdropFilter:"blur(8px)",flexShrink:0}}><NotifBell nav={nav}/></header>
         <main className="crm-scroll-area" style={{flex:1,overflow:"auto",padding:"16px 20px"}}>
           {page==="dashboard"&&<Dashboard leads={leads} inv={inv} user={user} nav={nav} branches={realBranches}/>}
-          {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches}/>}
+          {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches} filter={leadsFilter} onFilterChange={setLeadsFilter}/>}
           {page==="pipeline"&&<PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/>}
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
           {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/>}
