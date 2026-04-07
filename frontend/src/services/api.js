@@ -135,6 +135,14 @@ export const api = {
     fd.append('pdf', file);
     return request('POST', `/catalog/models/${id}/spec`, fd);
   },
+  uploadColorPhoto: (id, color, file) => {
+    const fd = new FormData();
+    fd.append('photo', file);
+    fd.append('color', color);
+    return request('POST', `/catalog/models/${id}/color-photo`, fd);
+  },
+  removeColorPhoto: (id, color) =>
+    request('DELETE', `/catalog/models/${id}/color-photo`, { color }),
 
   // Other
   getBranches: () => request('GET', '/catalog/branches'),

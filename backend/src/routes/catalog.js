@@ -69,9 +69,9 @@ router.post('/models', roleCheck('super_admin', 'admin_comercial'), async (req, 
 // Update model details
 router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
-    const jsonFields = ['colors', 'image_gallery'];
+    const jsonFields = ['colors', 'image_gallery', 'color_photos'];
     const allowed = ['brand', 'model', 'commercial_name', 'description', 'spec_url',
-                     'colors', 'image_gallery', 'category', 'cc', 'year', 'price', 'bonus',
+                     'colors', 'image_gallery', 'color_photos', 'category', 'cc', 'year', 'price', 'bonus',
                      'bono_tipo', 'bono_condicion', 'bono_requisitos'];
     const sets = [], params = [];
     let idx = 1;
@@ -166,6 +166,61 @@ router.delete('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial')
     );
     res.json({ gallery: updated });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al eliminar foto' }); }
+});
+
+// Upload photo for a specific color
+router.post('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('photo'), async (req, res) => {
+  try {
+    const { color } = req.body;
+    if (!color) return res.status(400).json({ error: 'color requerido' });
+    if (!req.file) return res.status(400).json({ error: 'foto requerida' });
+
+    const { rows } = await db.query('SELECT color_photos FROM moto_models WHERE id=$1 AND active=true', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Modelo no encontrado' });
+
+    const current = Array.isArray(rows[0].color_photos) ? rows[0].color_photos
+                  : (rows[0].color_photos ? JSON.parse(rows[0].color_photos) : []);
+
+    const b64 = req.file.buffer.toString('base64');
+    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+      folder: 'crmaosbike/catalog/colors',
+      transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }],
+    });
+
+    // Upsert: reemplazar si ya existe foto para ese color, agregar si no
+    const colorLow = color.toLowerCase().trim();
+    const filtered = current.filter(p => p.color.toLowerCase().trim() !== colorLow);
+    const updated = [...filtered, { color: color.trim(), url: result.secure_url }];
+
+    await db.query(
+      'UPDATE moto_models SET color_photos = $1::jsonb, updated_at = NOW() WHERE id = $2',
+      [JSON.stringify(updated), req.params.id]
+    );
+    res.json({ color: color.trim(), url: result.secure_url, color_photos: updated });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto de color' }); }
+});
+
+// Remove photo for a specific color
+router.delete('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const { color } = req.body;
+    if (!color) return res.status(400).json({ error: 'color requerido' });
+
+    const { rows } = await db.query('SELECT color_photos FROM moto_models WHERE id=$1 AND active=true', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Modelo no encontrado' });
+
+    const current = Array.isArray(rows[0].color_photos) ? rows[0].color_photos
+                  : (rows[0].color_photos ? JSON.parse(rows[0].color_photos) : []);
+
+    const colorLow = color.toLowerCase().trim();
+    const updated = current.filter(p => p.color.toLowerCase().trim() !== colorLow);
+
+    await db.query(
+      'UPDATE moto_models SET color_photos = $1::jsonb, updated_at = NOW() WHERE id = $2',
+      [JSON.stringify(updated), req.params.id]
+    );
+    res.json({ color_photos: updated });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al eliminar foto de color' }); }
 });
 
 // Upload spec PDF

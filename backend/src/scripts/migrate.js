@@ -74,6 +74,7 @@ async function migrate() {
     await runMigration('035', 'remove cerrado status',          m('035_remove_cerrado.sql'));
     await runMigration('036', 'chassis nullable',               m('036_chassis_nullable.sql'));
     await runMigration('037', 'bono condicion y tipo',          m('037_bono_condicion.sql'));
+    await runMigration('038', 'color photos por modelo',        m('038_color_photos.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');
