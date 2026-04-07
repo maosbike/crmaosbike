@@ -248,10 +248,19 @@ const SLAService = {
         await NotificationService.slaWarning(ticket, ticket.assigned_to, adminIds);
 
         // Telegram SLA warning (fire-and-forget)
-        db.query('SELECT telegram_chat_id FROM users WHERE id = $1', [ticket.assigned_to])
-          .then(({ rows: [u] }) => u?.telegram_chat_id
-            ? TelegramService.notifySlaWarning(ticket, u)
-            : null)
+        Promise.all([
+          db.query('SELECT telegram_chat_id, first_name, last_name FROM users WHERE id = $1', [ticket.assigned_to]),
+          db.query(`SELECT b.name AS branch_name, m.brand AS moto_brand, m.model AS moto_model
+                    FROM tickets t
+                    LEFT JOIN branches b ON b.id = t.branch_id
+                    LEFT JOIN moto_models m ON m.id = t.model_id
+                    WHERE t.id = $1`, [ticket.id]),
+        ])
+          .then(([{ rows: [u] }, { rows: [extra] }]) => {
+            if (!u?.telegram_chat_id) return null;
+            const enriched = { ...ticket, ...extra };
+            return TelegramService.notifySlaWarning(enriched, u);
+          })
           .catch((e) => logger.warn('[Telegram] slaWarning error:', e.message));
 
         logger.info(`[SLA] WARNING: Ticket #${ticket.ticket_number}`);
