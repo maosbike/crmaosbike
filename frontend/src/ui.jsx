@@ -62,10 +62,11 @@ const I=({d,s=18,c="currentColor",...p})=><svg width={s} height={s} viewBox="0 0
 export const Ic={
   home:p=><I d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M9 22V12h6v10" {...p}/>,
   users:p=><I d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75" {...p}/>,
-  kanban:p=><I d="M3 3h6v18H3zM9 3h6v12H9zM15 3h6v8h-6z" {...p}/>,
+  ticket:p=><I d="M2 9a1 1 0 011-1h18a1 1 0 011 1v2a2 2 0 000 4v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a2 2 0 000-4V9z M9 12h6" {...p}/>,
+  kanban:p=><I d="M3 3h5v13H3z M9.5 3h5v9h-5z M16 3h5v6h-5z" {...p}/>,
   box:p=><I d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" {...p}/>,
   sale:p=><I d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18 M16 10a4 4 0 01-8 0" {...p}/>,
-  bike:p=><svg width={p.size||18} height={p.size||18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17 L9 9 L15 9 L19 17"/><path d="M12 9 L12 6 L15 6"/></svg>,
+  bike:p=><svg width={p.size||18} height={p.size||18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5 L10.5 10 L14 10 L18.5 17.5"/><path d="M10.5 10 L13 6 L16 6 L15 10"/><path d="M5.5 17.5 L10.5 10"/></svg>,
   chart:p=><I d="M18 20V10 M12 20V4 M6 20v-6" {...p}/>,
   gear:p=><I d="M12 15a3 3 0 100-6 3 3 0 000 6z" {...p}/>,
   out:p=><I d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9" {...p}/>,

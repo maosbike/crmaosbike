@@ -86,7 +86,7 @@ export default function App(){
 
   const items=[
     {id:"dashboard",icon:Ic.home,label:"Dashboard"},
-    ...(r!=="backoffice"?[{id:"leads",icon:Ic.users,label:"Leads / Tickets"},{id:"pipeline",icon:Ic.kanban,label:"Pipeline"}]:[]),
+    ...(r!=="backoffice"?[{id:"leads",icon:Ic.ticket,label:"Leads / Tickets"},{id:"pipeline",icon:Ic.kanban,label:"Pipeline"}]:[]),
     {id:"calendar",icon:Ic.cal,label:"Calendario"},
     {id:"inventory",icon:Ic.box,label:"Inventario"},
     {id:"sales",icon:Ic.sale,label:"Ventas"},
