@@ -87,7 +87,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [importPreview,setImportPreview] = useState(null);
   const [importLoading,setImportLoading] = useState(false);
   const [importDone,setImportDone] = useState(null);
-  const importFileRef = useRef(null);
+  const importFileRef  = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef= useRef(null);
+  const photoTargetRef = useRef(null);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const isAdmin      = ['super_admin','admin_comercial','backoffice'].includes(user?.role);
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -159,13 +163,25 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     finally { setAdding(false); }
   };
   const handlePhoto = (id, field) => {
-    const input = document.createElement('input'); input.type='file'; input.accept='image/*';
-    input.onchange = async e => {
-      const file = e.target.files[0]; if (!file) return;
-      try { const r = await api.uploadInvPhoto(id,file,field); setInv(p=>p.map(x=>x.id===id?{...x,[field]:r.url}:x)); }
-      catch(ex) { alert(ex.message||'Error al subir foto'); }
-    };
-    input.click();
+    if (isMobile) {
+      photoTargetRef.current = { id, field };
+      setShowPhotoPicker(true);
+    } else {
+      const input = document.createElement('input'); input.type='file'; input.accept='image/*';
+      input.onchange = async e => {
+        const file = e.target.files[0]; if (!file) return;
+        try { const r = await api.uploadInvPhoto(id,file,field); setInv(p=>p.map(x=>x.id===id?{...x,[field]:r.url}:x)); }
+        catch(ex) { alert(ex.message||'Error al subir foto'); }
+      };
+      input.click();
+    }
+  };
+  const handlePhotoFile = async file => {
+    if (!file || !photoTargetRef.current) return;
+    const { id, field } = photoTargetRef.current;
+    photoTargetRef.current = null;
+    try { const r = await api.uploadInvPhoto(id,file,field); setInv(p=>p.map(x=>x.id===id?{...x,[field]:r.url}:x)); }
+    catch(ex) { alert(ex.message||'Error al subir foto'); }
   };
   const handleImportFile = async e => {
     const file = e.target.files[0]; if (!file) return;
@@ -1395,6 +1411,34 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             </div>
           )}
         </Modal>
+      )}
+
+      {/* ── Inputs ocultos para picker mobile ── */}
+      <input ref={cameraInputRef}  type="file" accept="image/*" capture="environment" style={{ display:'none' }} onChange={e=>handlePhotoFile(e.target.files[0])}/>
+      <input ref={galleryInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e=>handlePhotoFile(e.target.files[0])}/>
+
+      {/* ── Bottom sheet: cámara o galería (solo mobile) ── */}
+      {showPhotoPicker && (
+        <div onClick={()=>setShowPhotoPicker(false)}
+          style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:9999,display:'flex',flexDirection:'column',justifyContent:'flex-end' }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:'#fff',borderRadius:'18px 18px 0 0',padding:'12px 16px 32px' }}>
+            <div style={{ width:36,height:4,borderRadius:2,background:'#D1D5DB',margin:'0 auto 18px' }}/>
+            <div style={{ fontSize:13,fontWeight:700,color:'#374151',marginBottom:14,textAlign:'center' }}>Agregar foto</div>
+            <button onClick={()=>{ setShowPhotoPicker(false); setTimeout(()=>{ cameraInputRef.current.value=''; cameraInputRef.current.click(); },50); }}
+              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#0F172A' }}>
+              Tomar foto con la cámara
+            </button>
+            <button onClick={()=>{ setShowPhotoPicker(false); setTimeout(()=>{ galleryInputRef.current.value=''; galleryInputRef.current.click(); },50); }}
+              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#0F172A' }}>
+              Elegir desde la galería
+            </button>
+            <button onClick={()=>{ setShowPhotoPicker(false); photoTargetRef.current=null; }}
+              style={{ display:'block',width:'100%',padding:'12px',borderRadius:12,border:'none',background:'transparent',fontSize:14,color:'#6B7280',cursor:'pointer',fontFamily:'inherit' }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
