@@ -102,7 +102,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
       added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type
     } = req.body;
 
-    if (!chassis || !brand || !model) return res.status(400).json({ error: 'Marca, modelo y chasis requeridos' });
+    if (!brand || !model) return res.status(400).json({ error: 'Marca y modelo son requeridos' });
 
     const isSold = !!added_as_sold;
     const finalStatus = isSold ? 'vendida' : 'disponible';
@@ -149,6 +149,32 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Chasis ya existe' });
     console.error(e); res.status(500).json({ error: 'Error' });
+  }
+});
+
+// ─── REORDER — solo super_admin ───────────────────────────────────────────────
+// Body: { items: [{id, sort_order}, ...] }
+router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || !items.length)
+      return res.status(400).json({ error: 'Se requiere array items [{id, sort_order}]' });
+
+    // Actualizar en una transacción para atomicidad
+    await db.query('BEGIN');
+    for (const { id, sort_order } of items) {
+      if (!id || sort_order == null) continue;
+      await db.query(
+        `UPDATE inventory SET sort_order = $1, updated_at = NOW() WHERE id = $2`,
+        [sort_order, id]
+      );
+    }
+    await db.query('COMMIT');
+    res.json({ ok: true, updated: items.length });
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error('[inventory/reorder]', e);
+    res.status(500).json({ error: 'Error al guardar orden' });
   }
 });
 
@@ -513,32 +539,6 @@ router.post('/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
 
     res.json({ url: result.secure_url });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
-});
-
-// ─── REORDER — solo super_admin ───────────────────────────────────────────────
-// Body: { items: [{id, sort_order}, ...] }
-router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
-  try {
-    const { items } = req.body;
-    if (!Array.isArray(items) || !items.length)
-      return res.status(400).json({ error: 'Se requiere array items [{id, sort_order}]' });
-
-    // Actualizar en una transacción para atomicidad
-    await db.query('BEGIN');
-    for (const { id, sort_order } of items) {
-      if (!id || sort_order == null) continue;
-      await db.query(
-        `UPDATE inventory SET sort_order = $1, updated_at = NOW() WHERE id = $2`,
-        [sort_order, id]
-      );
-    }
-    await db.query('COMMIT');
-    res.json({ ok: true, updated: items.length });
-  } catch (e) {
-    await db.query('ROLLBACK').catch(() => {});
-    console.error('[inventory/reorder]', e);
-    res.status(500).json({ error: 'Error al guardar orden' });
-  }
 });
 
 // ─── EXPORT — genera XLSX con todo el inventario ──────────────────────────────

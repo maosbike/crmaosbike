@@ -110,14 +110,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [eForm,      setEForm]      = useState({});
   const [eSaving,    setESaving]    = useState(false);
   const [eErr,       setEErr]       = useState('');
+  const [addErr,     setAddErr]     = useState('');
 
   // Drag-and-drop (solo super_admin)
   const dragItem    = useRef(null);
-  const dragOverItem= useRef(null);
   const [dragging,  setDragging]  = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const brands = [...new Set(inv.map(x => x.brand).filter(Boolean))].sort();
+  const canDrag = isSuperAdmin && brF && !search && !stF && !brandF;
 
   const f = inv.filter(x => {
     if (brF    && x.branch_id !== brF)   return false;
@@ -129,6 +130,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const counts = Object.fromEntries(Object.keys(INV_ST).map(k => [k, inv.filter(x => x.status === k).length]));
   const reload = () => api.getInventory().then(d => setInv(Array.isArray(d) ? d : [])).catch(() => {});
   const hasFilters = search || brF || stF || brandF;
+  const showHub = !brF && !search && !stF && !brandF;
   const clearFilters = () => { setSearch(''); setBrF(''); setStF(''); setBrandF(''); };
 
   useEffect(() => {
@@ -145,12 +147,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   // ── Handlers (sin cambios de lógica) ────────────────────────────────────────
 
   const handleAdd = async e => {
-    e.preventDefault(); setAdding(true);
+    e.preventDefault(); setAdding(true); setAddErr('');
     try {
       await api.createInventory({
         branch_id:nw.branch_id||null, year:Number(nw.year),
         brand:nw.brand, model:nw.model, color:nw.color,
-        chassis:nw.chassis, motor_num:nw.motor_num||null,
+        chassis:nw.chassis||null, motor_num:nw.motor_num||null,
         added_as_sold:nw.added_as_sold,
         ...(nw.added_as_sold ? {
           sold_at:nw.sold_at||null, sold_by:nw.sold_by||null,
@@ -158,8 +160,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           payment_method:nw.payment_method||null, sale_type:nw.sale_type||null,
         } : {})
       });
-      setShowAdd(false); setNw(BLANK_NW()); reload();
-    } catch(ex) { alert(ex.message||'Error al agregar'); }
+      setShowAdd(false); setNw(BLANK_NW()); setAddErr(''); reload();
+    } catch(ex) { setAddErr(ex.message||'Error al agregar la unidad'); }
     finally { setAdding(false); }
   };
   const handlePhoto = (id, field) => {
@@ -265,18 +267,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     setDragging(true);
     e.dataTransfer.effectAllowed = 'move';
   };
-  const handleDragEnter = (id) => { dragOverItem.current = id; };
-  const handleDragEnd   = async () => {
-    setDragging(false);
-    if (!dragItem.current || !dragOverItem.current || dragItem.current === dragOverItem.current) {
-      dragItem.current = null; dragOverItem.current = null;
-      return;
-    }
-    // Reordenar localmente primero (optimistic)
+  const handleDragEnd = () => { setDragging(false); dragItem.current = null; };
+  const handleDrop = (e, toId) => {
+    e.preventDefault();
     const fromId = dragItem.current;
-    const toId   = dragOverItem.current;
-    dragItem.current = null; dragOverItem.current = null;
-
+    dragItem.current = null;
+    setDragging(false);
+    if (!fromId || !toId || fromId === toId) return;
+    // Capture visible IDs at drop time (not inside setState)
+    const visibleIds = new Set(f.map(x => x.id));
     setInv(prev => {
       const arr = [...prev];
       const fromIdx = arr.findIndex(x => x.id === fromId);
@@ -284,10 +283,18 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       if (fromIdx < 0 || toIdx < 0) return prev;
       const [moved] = arr.splice(fromIdx, 1);
       arr.splice(toIdx, 0, moved);
-      // Asignar sort_order secuencial y persistir
-      const items = arr.map((x, i) => ({ id: x.id, sort_order: i + 1 }));
+      // Only reorder the visible (branch-filtered) items — don't overwrite other branches
+      let order = 1;
+      const items = [];
+      const result = arr.map(x => {
+        if (visibleIds.has(x.id)) {
+          items.push({ id: x.id, sort_order: order });
+          return { ...x, sort_order: order++ };
+        }
+        return x;
+      });
       api.reorderInventory(items).catch(() => reload());
-      return arr.map((x, i) => ({ ...x, sort_order: i + 1 }));
+      return result;
     });
   };
 
@@ -348,7 +355,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </button>
             </>
           )}
-          <button onClick={()=>setShowAdd(true)} style={btnOrange}>
+          <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }} style={btnOrange}>
             <Ic.plus size={14} color="#fff"/> Nueva Unidad
           </button>
         </div>
@@ -501,33 +508,83 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           LISTA DE UNIDADES — Cards horizontales
       ══════════════════════════════════════════════════════════ */}
 
-      {f.length === 0 ? (
-        <div style={{ background:'#FFFFFF', borderRadius:14, border:'1px dashed #E5E7EB', padding:'60px 0', textAlign:'center' }}>
-          <div style={{ fontSize:36, marginBottom:12 }}>📦</div>
-          <div style={{ fontSize:14, fontWeight:700, color:'#374151', marginBottom:4 }}>
-            {hasFilters ? 'Sin resultados con estos filtros' : 'Sin unidades en el inventario'}
-          </div>
-          <div style={{ fontSize:12, color:'#9CA3AF' }}>
-            {hasFilters
-              ? <button onClick={clearFilters} style={{ background:'none', border:'none', color:'#F28100', fontSize:12, cursor:'pointer', textDecoration:'underline', padding:0, fontFamily:'inherit' }}>Limpiar filtros</button>
-              : 'Agregá unidades manualmente o importá desde Excel.'}
-          </div>
+      {/* ══════ HUB: vista por sucursal ══════ */}
+      {showHub ? (
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap:16, marginTop:8 }}>
+          {[
+            { code:'MOV',  id: brs.find(b=>b.code==='MOV')?.id  },
+            { code:'MPN',  id: brs.find(b=>b.code==='MPN')?.id  },
+            { code:'MPS',  id: brs.find(b=>b.code==='MPS')?.id  },
+            { code:'MPSY', id: brs.find(b=>b.code==='MPSY')?.id },
+          ].map(({ code, id }) => {
+            const cfg  = BRANCH_CFG[code] || FALLBACK_BRANCH;
+            const cnt  = inv.filter(x => x.branch_id === id && x.status !== 'vendida').length;
+            const vend = inv.filter(x => x.branch_id === id && x.status === 'vendida').length;
+            return (
+              <button key={code} onClick={() => id && setBrF(id)}
+                style={{
+                  background:'#FFFFFF', border:`2px solid ${cfg.color}22`,
+                  borderRadius:18, padding:'28px 20px 24px',
+                  cursor: id ? 'pointer' : 'default',
+                  textAlign:'left', fontFamily:'inherit',
+                  boxShadow:`0 2px 12px ${cfg.color}18`,
+                  transition:'box-shadow 0.15s, transform 0.1s',
+                  position:'relative', overflow:'hidden',
+                }}
+                onMouseEnter={e=>{ e.currentTarget.style.boxShadow=`0 6px 24px ${cfg.color}30`; e.currentTarget.style.transform='translateY(-2px)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.boxShadow=`0 2px 12px ${cfg.color}18`; e.currentTarget.style.transform='translateY(0)'; }}
+              >
+                <div style={{ position:'absolute', top:0, left:0, right:0, height:5, background:cfg.color, borderRadius:'18px 18px 0 0' }}/>
+                {/* Placeholder foto sucursal */}
+                <div style={{ width:'100%', aspectRatio:'16/9', borderRadius:10, background:`${cfg.color}12`, border:`1px dashed ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
+                  <span style={{ fontSize:11, color:cfg.color, fontWeight:600, opacity:0.5 }}>Foto próximamente</span>
+                </div>
+                <div style={{ fontSize:16, fontWeight:900, color:'#0F172A', marginBottom:4 }}>{cfg.label}</div>
+                <div style={{ fontSize:12, color:'#6B7280' }}>
+                  <span style={{ fontWeight:700, color:cfg.color }}>{cnt}</span> disponibles · <span style={{ color:'#6D28D9', fontWeight:600 }}>{vend}</span> vendidas
+                </div>
+              </button>
+            );
+          })}
         </div>
       ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {/* Contador + hint de orden para super_admin */}
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingLeft:2, marginBottom:4 }}>
-            <div style={{ fontSize:11, color:'#9CA3AF', fontWeight:500 }}>
-              {f.length} unidad{f.length!==1?'es':''}{hasFilters&&` (filtradas de ${inv.length})`}
-            </div>
-            {isSuperAdmin && !hasFilters && (
-              <div style={{ fontSize:10, color:'#94A3B8', display:'flex', alignItems:'center', gap:4 }}>
-                <span style={{ fontSize:13 }}>⠿</span> Arrastrá para reordenar
-              </div>
-            )}
-          </div>
+        /* ══════ LIST VIEW ══════ */
+        <>
+          {/* Botón volver (solo cuando brF está activo) */}
+          {brF && (
+            <button onClick={clearFilters}
+              style={{ marginBottom:12, display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:'#475569', fontFamily:'inherit', padding:0 }}>
+              ← Volver a sucursales
+            </button>
+          )}
 
-          {f.map(x => {
+          {f.length === 0 ? (
+            <div style={{ background:'#FFFFFF', borderRadius:14, border:'1px dashed #E5E7EB', padding:'60px 0', textAlign:'center' }}>
+              <div style={{ fontSize:36, marginBottom:12 }}>📦</div>
+              <div style={{ fontSize:14, fontWeight:700, color:'#374151', marginBottom:4 }}>
+                {hasFilters ? 'Sin resultados con estos filtros' : 'Sin unidades en el inventario'}
+              </div>
+              <div style={{ fontSize:12, color:'#9CA3AF' }}>
+                {hasFilters
+                  ? <button onClick={clearFilters} style={{ background:'none', border:'none', color:'#F28100', fontSize:12, cursor:'pointer', textDecoration:'underline', padding:0, fontFamily:'inherit' }}>Limpiar filtros</button>
+                  : 'Agregá unidades manualmente o importá desde Excel.'}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {/* Contador + hint de orden */}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingLeft:2, marginBottom:4 }}>
+                <div style={{ fontSize:11, color:'#9CA3AF', fontWeight:500 }}>
+                  {f.length} unidad{f.length!==1?'es':''}{hasFilters&&` (filtradas de ${inv.length})`}
+                </div>
+                {canDrag && (
+                  <div style={{ fontSize:10, color:'#94A3B8', display:'flex', alignItems:'center', gap:4 }}>
+                    <span style={{ fontSize:13 }}>⠿</span> Arrastrá para reordenar
+                  </div>
+                )}
+              </div>
+
+              {f.map(x => {
             const isSold    = x.status === 'vendida';
             const stCfg     = ST_CFG[x.status] || ST_CFG.disponible;
             const bCode     = x.branch_code || brs.find(b => b.id===x.branch_id)?.code || '';
@@ -706,12 +763,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
             return (
               <div key={x.id}
-                draggable={isSuperAdmin && !hasFilters}
-                onDragStart={isSuperAdmin && !hasFilters ? e => handleDragStart(e, x.id) : undefined}
-                onDragEnter={isSuperAdmin && !hasFilters ? () => handleDragEnter(x.id) : undefined}
-                onDragEnd={isSuperAdmin && !hasFilters ? handleDragEnd : undefined}
-                onDragOver={isSuperAdmin && !hasFilters ? e => e.preventDefault() : undefined}
-                style={{ cursor: isSuperAdmin && !hasFilters ? 'grab' : 'default' }}
+                draggable={canDrag}
+                onDragStart={canDrag ? e => handleDragStart(e, x.id) : undefined}
+                onDragEnd={canDrag ? handleDragEnd : undefined}
+                onDragOver={canDrag ? e => e.preventDefault() : undefined}
+                onDrop={canDrag ? e => handleDrop(e, x.id) : undefined}
+                style={{ cursor: canDrag ? 'grab' : 'default' }}
               >
                 {/* ── CARD ── */}
                 <div className="crm-inv-card" style={{
@@ -1029,7 +1086,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </div>
             );
           })}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ══════════════════════════════════════════════════════════
@@ -1108,7 +1167,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           MODAL — AGREGAR UNIDAD
       ══════════════════════════════════════════════════════════ */}
       {showAdd && (
-        <Modal onClose={()=>{setShowAdd(false);setNw(BLANK_NW());}} title="Agregar Unidad al Inventario" wide>
+        <Modal onClose={()=>{setShowAdd(false);setNw(BLANK_NW());setAddErr('');}} title="Agregar Unidad al Inventario" wide>
           <form onSubmit={handleAdd}>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:10 }}>
               <Field label="Sucursal *" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:'',l:'Seleccionar...'},...brs.map(b=>({v:b.id,l:b.name}))]} req/>
@@ -1117,10 +1176,10 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10 }}>
               <Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/>
-              <Field label="Color *" value={nw.color} onChange={v=>setNw({...nw,color:v})} req/>
+              <Field label="Color" value={nw.color} onChange={v=>setNw({...nw,color:v})}/>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14 }}>
-              <Field label="N° Chasis *" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})} req/>
+              <Field label="N° Chasis" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})}/>
               <Field label="N° Motor" value={nw.motor_num} onChange={v=>setNw({...nw,motor_num:v})}/>
             </div>
             <div onClick={()=>setNw({...nw,added_as_sold:!nw.added_as_sold})}
@@ -1150,12 +1209,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <Field label="Observaciones" value={nw.sale_notes} onChange={v=>setNw({...nw,sale_notes:v})} rows={2} ph="Ej: Venta registrada con retraso..."/>
               </div>
             )}
+            {addErr && <div style={{ marginBottom:12, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, fontSize:12, color:'#DC2626' }}>{addErr}</div>}
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
               <div style={{ fontSize:11,color:'#6B7280' }}>
                 {nw.added_as_sold&&<span style={{ color:'#EF4444',fontWeight:600 }}>Se creará como vendida</span>}
               </div>
               <div style={{ display:'flex',gap:8 }}>
-                <button type="button" onClick={()=>{setShowAdd(false);setNw(BLANK_NW());}} style={S.btn2}>Cancelar</button>
+                <button type="button" onClick={()=>{setShowAdd(false);setNw(BLANK_NW());setAddErr('');}} style={S.btn2}>Cancelar</button>
                 <button type="submit" disabled={adding} style={{ ...S.btn,opacity:adding?0.7:1,background:nw.added_as_sold?'#EF4444':undefined }}>
                   {adding?'Guardando...':nw.added_as_sold?'Registrar como vendida':'Agregar al inventario'}
                 </button>
