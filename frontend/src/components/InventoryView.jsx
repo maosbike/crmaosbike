@@ -575,12 +575,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     </div>
                     {/* Bottom action bar */}
                     <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', borderTop:'1px solid #F1F3F5', gap:8 }}>
-                      <div style={{ flex:1 }}>
-                        {Number(x.catalog_price) > 0
-                          ? <div style={{ fontSize:15, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px' }}>{fmt(Number(x.catalog_price))}</div>
-                          : <div style={{ fontSize:11, color:'#CBD5E1' }}>—</div>
-                        }
-                      </div>
+                      <div style={{ flex:1 }}></div>
                       <button onClick={()=>toggleExpand(x.id)}
                         style={{ padding:'5px 10px', borderRadius:7, border:`1px solid ${isExpanded?'#A5B4FC':'#E2E8F0'}`, background:isExpanded?'#EEF2FF':'#F8FAFC', color:isExpanded?'#4F46E5':'#64748B', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                         {isExpanded ? '▲' : '▼ Detalles'}
@@ -898,26 +893,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     )}
                   </div>
 
-                  {/* ── PRECIO ── */}
+                  {/* ── PRECIO oculto ── */}
                   {(() => {
-                    // El backend ya devuelve en catalog_price el mejor precio disponible
-                    // (propio > FK model_id > moto_prices > brand+model texto)
-                    const showPrice = Number(x.catalog_price) || 0;
-                    return (
-                      <div className="crm-inv-price" style={{
-                        flex:'0 0 130px', padding:'16px 18px',
-                        borderRight:'1px solid #F1F3F5',
-                        display:'flex', flexDirection:'column', justifyContent:'center',
-                      }}>
-                        <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>
-                          Precio
-                        </div>
-                        {showPrice > 0
-                          ? <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px' }}>{fmt(showPrice)}</div>
-                          : <div style={{ fontSize:13, color:'#CBD5E1' }}>—</div>
-                        }
-                      </div>
-                    );
+                    return null;
                   })()}
 
                   {/* ── ACCIONES ── */}
@@ -1199,9 +1177,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   )}
                 </div>
                 <div style={{ flex:'1 1 120px' }}>
-                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Sucursal / Precio</div>
+                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Sucursal</div>
                   <div style={{ fontWeight:700,fontSize:12,color:'#374151' }}>{bName}</div>
-                  {(() => { const p = Number(sellUnit.catalog_price) || 0; return p>0 ? <div style={{ fontSize:15,fontWeight:900,color:'#F28100',marginTop:4 }}>{fmt(p)}</div> : null; })()}
                 </div>
               </div>
               <div style={{ fontSize:11,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:12 }}>Datos de la venta</div>
@@ -1347,7 +1324,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <div style={{ textAlign:'center',padding:'32px 16px' }}>
               <div style={{ width:52,height:52,borderRadius:12,background:'#F3F4F6',border:'1px solid #E5E7EB',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',fontSize:13,fontWeight:800,color:'#6B7280' }}>XLS</div>
               <p style={{ fontSize:13,color:'#374151',marginBottom:6 }}>Seleccioná tu plantilla Excel (.xlsx)</p>
-              <p style={{ fontSize:11,color:'#6B7280',marginBottom:20 }}>Columnas: <strong>Sucursal · Año · Marca · Modelo · Color · N° Chasis · N° Motor · Estado · Precio</strong></p>
+              <p style={{ fontSize:11,color:'#6B7280',marginBottom:20 }}>Columnas: <strong>Sucursal · Año · Marca · Modelo · Color · N° Chasis · N° Motor · Estado</strong></p>
               <button onClick={()=>importFileRef.current?.click()} disabled={importLoading} style={{ ...S.btn,fontSize:13,padding:'10px 24px' }}>
                 {importLoading?'Procesando...':'Seleccionar archivo'}
               </button>
@@ -1367,7 +1344,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               <div style={{ maxHeight:320,overflowY:'auto',border:'1px solid #E5E7EB',borderRadius:8,marginBottom:14 }}>
                 <table style={{ width:'100%',borderCollapse:'collapse',fontSize:11 }}>
                   <thead style={{ position:'sticky',top:0,background:'#F9FAFB' }}>
-                    <tr>{['Fila','Sucursal','Año','Marca','Modelo','Color','Chasis','Motor','Estado','Precio',''].map(h=><th key={h} style={{ padding:'6px 8px',textAlign:'left',fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',borderBottom:'1px solid #E5E7EB' }}>{h}</th>)}</tr>
+                    <tr>{['Fila','Sucursal','Año','Marca','Modelo','Color','Chasis','Motor','Estado',''].map(h=><th key={h} style={{ padding:'6px 8px',textAlign:'left',fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',borderBottom:'1px solid #E5E7EB' }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {importPreview.rows.map((r,i)=>{
@@ -1384,7 +1361,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           <td style={{ padding:'5px 8px',fontFamily:"'SF Mono',Consolas,monospace",fontSize:10 }}>{r.chassis||'-'}</td>
                           <td style={{ padding:'5px 8px',fontFamily:"'SF Mono',Consolas,monospace",fontSize:10 }}>{r.motor_num||'-'}</td>
                           <td style={{ padding:'5px 8px' }}>{r.status}</td>
-                          <td style={{ padding:'5px 8px' }}>{r.price?fmt(r.price):'-'}</td>
                           <td style={{ padding:'5px 8px',color:ic,fontSize:10,fontWeight:600 }}>
                             {r._status==='ok'?'Nueva':r._status==='warning'?`Incompleta · ${r._warnings?.join(', ')}`:r._status==='duplicate'?'Ya existe':r._errors?.join(', ')}
                           </td>
