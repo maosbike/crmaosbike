@@ -220,24 +220,26 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {/* Colores + fotos por color */}
           {!editing&&colors.length>0&&(
             <div style={{marginBottom:14}}>
-              <div style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",fontWeight:600,marginBottom:8}}>Colores disponibles</div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <div style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",fontWeight:600,marginBottom:8,letterSpacing:"0.06em"}}>
+                Colores disponibles <span style={{color:"#D1D5DB",fontWeight:400,textTransform:"none"}}>({colors.length})</span>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {colors.map(c=>{
                   const photoUrl=getColorPhoto(c);
                   return(
-                    <div key={c} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <div key={c} style={{width:76,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                       {photoUrl
-                        ?<a href={photoUrl} target="_blank" rel="noreferrer">
+                        ?<a href={photoUrl} target="_blank" rel="noreferrer" style={{display:"block"}}>
                             <img src={photoUrl} alt={c} loading="lazy"
-                              style={{width:64,height:48,objectFit:"cover",borderRadius:8,border:"1px solid #E5E7EB",display:"block",cursor:"pointer"}}
-                              onMouseEnter={e=>e.currentTarget.style.opacity=0.8}
+                              style={{width:76,height:56,objectFit:"cover",borderRadius:9,border:"1.5px solid #E5E7EB",display:"block",transition:"opacity 0.15s"}}
+                              onMouseEnter={e=>e.currentTarget.style.opacity=0.75}
                               onMouseLeave={e=>e.currentTarget.style.opacity=1}/>
                           </a>
-                        :<div style={{width:64,height:48,borderRadius:8,background:"#F3F4F6",border:"1px dashed #D1D5DB",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                        :<div style={{width:76,height:56,borderRadius:9,background:"#F3F4F6",border:"1px dashed #D1D5DB",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                           </div>
                       }
-                      <span style={{fontSize:10,color:"#6B7280",textAlign:"center",maxWidth:64,wordBreak:"break-word"}}>{c}</span>
+                      <span style={{fontSize:10,color:"#374151",fontWeight:500,textAlign:"center",lineHeight:1.2,width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c}</span>
                     </div>
                   );
                 })}
@@ -404,52 +406,53 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 {gallery.length===0&&<div style={{fontSize:11,color:"#9CA3AF"}}>Sin fotos en galería. Máximo {MAX_GALLERY}, 5 MB cada una.</div>}
               </div>
               <div style={{marginBottom:14}}>
-                <div style={{fontSize:10,color:"#6B7280",marginBottom:8}}>Colores y fotos por color</div>
-                {/* Lista de colores con foto por color */}
+                <div style={{fontSize:10,color:"#6B7280",marginBottom:8,fontWeight:600}}>Colores</div>
                 {form.colors.length>0&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                     {form.colors.map(c=>{
                       const photoUrl=getColorPhoto(c);
                       const isUploading=colorPhotoUploading===c;
                       return(
-                        <div key={c} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"#F8FAFC",borderRadius:9,border:"1px solid #E5E7EB"}}>
-                          {/* Miniatura foto */}
-                          <div style={{flexShrink:0}}>
-                            {photoUrl
-                              ?<img src={photoUrl} alt={c} style={{width:52,height:40,objectFit:"cover",borderRadius:6,border:"1px solid #E2E8F0",display:"block"}}/>
-                              :<div style={{width:52,height:40,borderRadius:6,background:"#F1F5F9",border:"1px dashed #CBD5E1",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                        <div key={c} style={{width:76,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                          {/* Foto clicable para subir/cambiar */}
+                          <label style={{cursor:colorPhotoUploading?"default":"pointer",display:"block",width:76}} title={photoUrl?"Cambiar foto":"Subir foto"}>
+                            {isUploading
+                              ?<div style={{width:76,height:56,borderRadius:9,background:"#FFF8EF",border:"1.5px solid #FDBA74",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                  <span style={{fontSize:9,color:"#F28100",fontWeight:600}}>...</span>
                                 </div>
+                              :photoUrl
+                                ?<img src={photoUrl} alt={c} style={{width:76,height:56,objectFit:"cover",borderRadius:9,border:"1.5px solid #F28100",display:"block"}}/>
+                                :<div style={{width:76,height:56,borderRadius:9,background:"#F3F4F6",border:"1.5px dashed #D1D5DB",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,transition:"border-color 0.1s"}}
+                                    onMouseEnter={e=>{e.currentTarget.style.borderColor="#F28100";}}
+                                    onMouseLeave={e=>{e.currentTarget.style.borderColor="#D1D5DB";}}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                    <span style={{fontSize:8,color:"#C9D0D8"}}>+ foto</span>
+                                  </div>
                             }
-                          </div>
-                          {/* Nombre color */}
-                          <span style={{flex:1,fontSize:12,fontWeight:600,color:"#374151"}}>{c}</span>
-                          {/* Acciones foto */}
-                          <div style={{display:"flex",gap:5,flexShrink:0}}>
-                            <label style={{fontSize:10,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 8px",background:"#FFFBF0",whiteSpace:"nowrap"}}>
-                              {isUploading?"Subiendo…":(photoUrl?"Cambiar":"+ Foto")}
-                              <input type="file" accept="image/*" style={{display:"none"}} disabled={!!colorPhotoUploading}
-                                onChange={e=>e.target.files[0]&&handleUploadColorPhoto(c,e.target.files[0])}/>
-                            </label>
-                            {photoUrl&&!isUploading&&(
-                              <button onClick={()=>handleRemoveColorPhoto(c)} title="Quitar foto"
-                                style={{fontSize:10,color:"#9CA3AF",cursor:"pointer",border:"1px solid #E5E7EB",borderRadius:6,padding:"3px 7px",background:"transparent"}}>
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                          {/* Quitar color */}
-                          <button onClick={()=>removeColor(c)}
-                            style={{background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",padding:0,fontSize:14,lineHeight:1,flexShrink:0}}>
+                            <input type="file" accept="image/*" style={{display:"none"}} disabled={!!colorPhotoUploading}
+                              onChange={e=>e.target.files[0]&&handleUploadColorPhoto(c,e.target.files[0])}/>
+                          </label>
+                          {/* Nombre del color */}
+                          <span style={{fontSize:10,color:"#374151",fontWeight:500,textAlign:"center",lineHeight:1.2,width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c}</span>
+                          {/* × quitar color (badge top-right) */}
+                          <button onClick={()=>removeColor(c)} title="Quitar color"
+                            style={{position:"absolute",top:-5,right:-5,width:16,height:16,borderRadius:"50%",background:"#374151",border:"2px solid #fff",color:"#fff",cursor:"pointer",fontSize:10,lineHeight:"12px",textAlign:"center",padding:0,fontWeight:700}}>
                             ×
                           </button>
+                          {/* × quitar solo la foto (badge top-left) */}
+                          {photoUrl&&!isUploading&&(
+                            <button onClick={()=>handleRemoveColorPhoto(c)} title="Quitar foto"
+                              style={{position:"absolute",top:-5,left:-5,width:16,height:16,borderRadius:"50%",background:"#EF4444",border:"2px solid #fff",color:"#fff",cursor:"pointer",fontSize:9,lineHeight:"12px",textAlign:"center",padding:0}}>
+                              ✕
+                            </button>
+                          )}
                         </div>
                       );
                     })}
                   </div>
                 )}
                 <div style={{display:"flex",gap:6}}>
-                  <input value={colorInput} onChange={e=>setColorInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addColor()} placeholder="Agregar color..." style={{...S.inp,flex:1}}/>
+                  <input value={colorInput} onChange={e=>setColorInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addColor()} placeholder="Agregar color..." style={{...S.inp,flex:1,fontSize:12}}/>
                   <button onClick={addColor} style={{...S.btn,padding:"6px 12px",fontSize:12}}>+</button>
                 </div>
               </div>
@@ -635,9 +638,12 @@ function ModelCard({m,onClick}){
           </div>
         )}
         {colors.length>0&&(
-          <div style={{display:"flex",gap:3,marginTop:6,flexWrap:"wrap"}}>
-            {colors.slice(0,4).map(c=><span key={c} style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#6B7280"}}>{c}</span>)}
-            {colors.length>4&&<span style={{fontSize:8,padding:"2px 6px",borderRadius:8,background:"#F3F4F6",color:"#444"}}>+{colors.length-4}</span>}
+          <div style={{marginTop:7,paddingTop:7,borderTop:"1px solid #F1F5F9"}}>
+            <div style={{fontSize:8,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>Colores</div>
+            <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+              {colors.slice(0,6).map(c=><span key={c} style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"#F3F4F6",color:"#374151",fontWeight:500,border:"1px solid #E5E7EB"}}>{c}</span>)}
+              {colors.length>6&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:"#F3F4F6",color:"#6B7280",fontWeight:600}}>+{colors.length-6}</span>}
+            </div>
           </div>
         )}
       </div>
