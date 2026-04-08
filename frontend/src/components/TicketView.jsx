@@ -340,7 +340,7 @@ export function TicketView({lead,user,nav,updLead}){
               return <div style={{ marginTop:6, display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:color+'18', border:`1px solid ${color}40`, fontSize:10, fontWeight:700, color }}><span style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>Autofin: {ev}</div>;
             })()}
           </div>
-          {slaReassigned&&<div style={slaBox("rgba(139,92,246,0.07)","rgba(139,92,246,0.22)","#7C3AED")}><Ic.users size={12} color="#7C3AED"/><span><strong>Reasignado</strong> · {s.fn}{s.ln?` ${s.ln}`:''}</span></div>}
+          {slaReassigned&&<div style={slaBox("rgba(139,92,246,0.07)","rgba(139,92,246,0.22)","#7C3AED")}><Ic.transfer size={12} color="#7C3AED"/><span><strong>Reasignado</strong> · {s.fn}{s.ln?` ${s.ln}`:''}</span></div>}
           {slaBreach&&!slaReassigned&&<div style={slaBox("rgba(239,68,68,0.07)","rgba(239,68,68,0.22)","#EF4444")}><Ic.alert size={12} color="#EF4444"/><span><strong>Vencido</strong> · {sinContactoH}h sin gestión</span></div>}
           {slaWarning&&<div style={slaBox("rgba(249,115,22,0.07)","rgba(249,115,22,0.22)","#F97316")}><Ic.clock size={12} color="#F97316"/><span><strong>Atender ya</strong> · {8-sinContactoH}h restantes</span></div>}
           {/* ── Estado visual grande ── */}
