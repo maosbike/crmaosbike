@@ -5,7 +5,7 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SR
 // ─── Datos de configuración ────────────────────────────────────────────────────
 
 const BLANK_NW = () => ({
-  branch_id:'', year:new Date().getFullYear(), brand:'', model:'', color:'', chassis:'', motor_num:'', price:0,
+  branch_id:'', year:new Date().getFullYear(), model_id:'', brand:'', model:'', color:'', chassis:'', motor_num:'',
   added_as_sold:false, sold_at:new Date().toISOString().split('T')[0],
   sold_by:'', ticket_id:'', sale_notes:'', payment_method:'', sale_type:'completa',
 });
@@ -75,6 +75,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [nw,     setNw]     = useState(BLANK_NW());
   const [sellers,setSellers]= useState([]);
   const [openTickets,setOpenTickets] = useState([]);
+  const [catalogModels,setCatalogModels] = useState([]);
   const [showSell,  setShowSell]   = useState(false);
   const [sellUnit,  setSellUnit]   = useState(null);
   const [sellForm,  setSellForm]   = useState(BLANK_SELL());
@@ -128,6 +129,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const clearFilters = () => { setSearch(''); setBrF(''); setStF(''); setBrandF(''); };
 
   useEffect(() => {
+    if (!showAdd) return;
+    api.getModels().then(d => setCatalogModels(Array.isArray(d) ? d : [])).catch(() => {});
+  }, [showAdd]);
+
+  useEffect(() => {
     if (!showAdd && !showSell) return;
     api.getSellers().then(d => setSellers(Array.isArray(d) ? d : [])).catch(() => {});
     // Fetching without status filter — backend only supports exact match, not comma-separated.
@@ -145,8 +151,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     try {
       await api.createInventory({
         branch_id:nw.branch_id||null, year:Number(nw.year),
-        brand:nw.brand, model:nw.model, color:nw.color,
-        chassis:nw.chassis, motor_num:nw.motor_num||null, price:Number(nw.price),
+        model_id:nw.model_id||null, brand:nw.brand, model:nw.model, color:nw.color,
+        chassis:nw.chassis, motor_num:nw.motor_num||null,
         added_as_sold:nw.added_as_sold,
         ...(nw.added_as_sold ? {
           sold_at:nw.sold_at||null, sold_by:nw.sold_by||null,
@@ -1126,17 +1132,26 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {showAdd && (
         <Modal onClose={()=>{setShowAdd(false);setNw(BLANK_NW());}} title="Agregar Unidad al Inventario" wide>
           <form onSubmit={handleAdd}>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:10 }}>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 80px',gap:10,marginBottom:10 }}>
               <Field label="Sucursal *" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:'',l:'Seleccionar...'},...brs.map(b=>({v:b.id,l:b.name}))]} req/>
               <Field label="Año" value={nw.year} onChange={v=>setNw({...nw,year:v})} type="number"/>
-              <Field label="Marca *" value={nw.brand} onChange={v=>setNw({...nw,brand:v})} req/>
             </div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:10 }}>
-              <Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/>
+            <div style={{ marginBottom:10 }}>
+              <Field label="Modelo del catálogo *"
+                value={nw.model_id}
+                onChange={v => {
+                  const m = catalogModels.find(x => x.id === v);
+                  setNw({ ...nw, model_id:v, brand: m ? m.brand.toUpperCase() : '', model: m ? m.model.toUpperCase() : '' });
+                }}
+                opts={[{v:'',l:'Seleccionar modelo del catálogo…'}, ...catalogModels.map(m=>({v:m.id, l:`${m.brand} — ${m.model}`}))]}
+                req
+              />
+              {nw.model_id && nw.brand && (
+                <div style={{ fontSize:11,color:'#059669',marginTop:4 }}>✓ {nw.brand} — {nw.model}</div>
+              )}
+            </div>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:14 }}>
               <Field label="Color *" value={nw.color} onChange={v=>setNw({...nw,color:v})} req/>
-              <Field label="Precio" value={nw.price} onChange={v=>setNw({...nw,price:v})} type="number"/>
-            </div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14 }}>
               <Field label="N° Chasis *" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})} req/>
               <Field label="N° Motor" value={nw.motor_num} onChange={v=>setNw({...nw,motor_num:v})}/>
             </div>

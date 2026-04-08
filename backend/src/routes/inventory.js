@@ -97,7 +97,7 @@ router.get('/counts', async (req, res) => {
 router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
     const {
-      branch_id, year, brand, model, color, chassis, motor_num, price,
+      branch_id, year, brand, model, model_id, color, chassis, motor_num,
       // Sale fields (optional — only when added_as_sold = true)
       added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type
     } = req.body;
@@ -110,13 +110,13 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
 
     const { rows } = await db.query(
       `INSERT INTO inventory
-         (branch_id, year, brand, model, color, chassis, motor_num, status, price,
+         (branch_id, year, brand, model, model_id, color, chassis, motor_num, status, price,
           added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING *`,
       [
-        branch_id, year, brand, model, color, chassis, motor_num || null,
-        finalStatus, price || 0,
+        branch_id, year, brand, model, model_id || null, color, chassis, motor_num || null,
+        finalStatus, 0,
         isSold, finalSoldAt,
         sold_by || null, ticket_id || null, sale_notes || null,
         payment_method || null, sale_type || null, req.user.id
