@@ -20,7 +20,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:14}}>
           <Stat icon={Ic.alert} ic="#EF4444" ib="rgba(239,68,68,0.1)" label="Sin atender" val={kpi("vencidos","sla_vencidos")} al={kpi("vencidos","sla_vencidos")>0} sub="Vencidos sin gestión"/>
           <Stat icon={Ic.clock} ic="#F97316" ib="rgba(249,115,22,0.1)" label="Atender ya" val={kpi("prox_vencer","proximos_vencer")} sub="Quedan menos de 2h"/>
-          <Stat icon={Ic.users} ic="#6B7280" ib="rgba(107,114,128,0.1)" label="Sin gestionar" val={kpi("sin_tocar")} sub="Esperando primera acción"/>
+          <Stat icon={Ic.msg} ic="#6B7280" ib="rgba(107,114,128,0.1)" label="Sin gestionar" val={kpi("sin_tocar")} sub="Esperando primera acción"/>
           <Stat icon={Ic.remind} ic="#8B5CF6" ib="rgba(139,92,246,0.1)" label="Tareas hoy" val={kpi("recordatorios_hoy")}/>
           <Stat icon={Ic.bell} ic="#F28100" ib="rgba(242,129,0,0.1)" label="Reasignados" val={kpi("reasignados_hoy")} sub="Hoy"/>
         </div>
@@ -40,7 +40,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
       </>}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",gap:10,marginBottom:18}}>
-        <Stat icon={Ic.users} ic="#3B82F6" ib="rgba(59,130,246,0.1)" label="Tickets Activos" val={active.length} sub={`${ganados.length} ganados`}/>
+        <Stat icon={Ic.ticket} ic="#3B82F6" ib="rgba(59,130,246,0.1)" label="Tickets Activos" val={active.length} sub={`${ganados.length} ganados`}/>
         <Stat icon={Ic.target} ic="#10B981" ib="rgba(16,185,129,0.1)" label="Ganados" val={ganados.length} sub={`${leads.length>0?((ganados.length/leads.length)*100).toFixed(0):0}% conversión`} sc="#10B981"/>
         <Stat icon={Ic.box} ic="#8B5CF6" ib="rgba(139,92,246,0.1)" label="Stock Disponible" val={avail} sub={`${inv.length} total`}/>
         <Stat icon={Ic.alert} ic="#EF4444" ib="rgba(239,68,68,0.1)" label="Perdidos" val={leads.filter(l=>l.status==="perdido").length} al={leads.filter(l=>l.status==="perdido").length>0}/>
