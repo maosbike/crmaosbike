@@ -1216,7 +1216,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </div>
               <div style={{ display:'flex',gap:8 }}>
                 <button type="button" onClick={()=>{setShowAdd(false);setNw(BLANK_NW());setAddErr('');}} style={S.btn2}>Cancelar</button>
-                <button type="submit" disabled={adding} style={{ ...S.btn,opacity:adding?0.7:1,background:nw.added_as_sold?'#EF4444':undefined }}>
+                <button type="submit" disabled={adding} style={{ ...S.btn,opacity:adding?0.7:1,background:nw.added_as_sold?'#EF4444':'#F28100' }}>
                   {adding?'Guardando...':nw.added_as_sold?'Registrar como vendida':'Agregar al inventario'}
                 </button>
               </div>
