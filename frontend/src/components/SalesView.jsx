@@ -497,6 +497,8 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   async function handleCreate() {
     if (!form.brand || !form.model) { setErr('Marca y modelo son obligatorios'); return; }
     if (!isReserva && !form.sold_by) { setErr('Vendedor obligatorio'); return; }
+    if (!selUnit && !form.branch_id) { setErr('Sucursal obligatoria'); return; }
+    if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
     setSaving(true); setErr('');
     try {
       if (selUnit && !isReserva) {
@@ -514,10 +516,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         });
       } else if (isReserva) {
         await api.createInventory({
-          branch_id: form.branch_id || null, year: Number(form.year) || null,
-          brand: form.brand, model: form.model, color: form.color || null,
+          branch_id: form.branch_id, year: Number(form.year) || null,
+          brand: form.brand, model: form.model, color: form.color || '',
           chassis: form.chassis || null, motor_num: form.motor_num || null,
-          notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
+          sale_notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
         });
       } else {
         await api.createSale({ ...form });
@@ -649,7 +651,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 <Field label="Marca *"   value={form.brand}     onChange={set('brand')}     ph="YAMAHA" />
                 <Field label="Modelo *"  value={form.model}     onChange={set('model')}     ph="MT-07" />
                 <Field label="Año"       value={form.year}      onChange={set('year')}      type="number" />
-                <Field label="Color"     value={form.color}     onChange={set('color')}     ph="Negro" />
+                <Field label="Color *"   value={form.color}     onChange={set('color')}     ph="Negro" />
                 <Field label="N° Chasis (opcional)" value={form.chassis}   onChange={set('chassis')}   ph="9CDKDE0…" />
                 <Field label="N° Motor"  value={form.motor_num} onChange={set('motor_num')} ph="opcional" />
               </>
@@ -664,7 +666,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <Field label="Vendedor *" value={form.sold_by} onChange={set('sold_by')}
                 opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]} />
             )}
-            <Field label="Sucursal" value={form.branch_id} onChange={set('branch_id')}
+            <Field label="Sucursal *" value={form.branch_id} onChange={set('branch_id')}
               opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]} />
             <Field label={isReserva ? 'Fecha reserva' : 'Fecha venta'} value={form.sold_at} onChange={set('sold_at')} type="date" />
             {!isReserva && (
