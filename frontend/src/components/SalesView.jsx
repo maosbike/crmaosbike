@@ -27,6 +27,8 @@ const EMPTY_FORM = {
   ticket_id: '', payment_method: '', sale_type: '', sale_notes: '',
   delivered: false, client_name: '', client_rut: '',
   client_phone: '', client_email: '', client_address: '', client_commune: '',
+  client_type: 'persona',
+  empresa_name: '', empresa_rut: '', empresa_giro: '', empresa_email: '', empresa_phone: '',
 };
 
 // ─── Helpers visuales ─────────────────────────────────────────────────────────
@@ -314,7 +316,7 @@ const PAY_MODES = [
   { v: 'Tarjeta Crédito', l: 'Tarjeta Crédito (+2%)' },
   { v: 'Crédito Autofin', l: 'Crédito Autofin' },
   { v: 'Financiamiento',  l: 'Financiamiento (con pie)' },
-  { v: 'Mixto',           l: 'Mixto (varios medios)' },
+  { v: 'Mixto',           l: 'Mixto / Varias transferencias' },
 ];
 
 function computeTotals({ sale_price, accessories = [], discount = '', payMode = '', finPct = '', payLines = [] }) {
@@ -351,110 +353,50 @@ function buildNoteHTML(data, type) {
   const today  = fmtDateDoc(data.sold_at || new Date().toISOString().slice(0, 10));
   const t      = computeTotals(data);
   const photo  = data.modelPhotoUrl || '';
+  const isEmpresa = data.client_type === 'empresa';
 
   const priceRows = [
-    `<tr><td class="pd">${data.brand || ''} ${data.model || ''} ${data.year || ''} — ${data.color || ''}</td><td class="pa">${fmtCLP(t.motoAmt)}</td></tr>`,
-    ...(data.accessories || []).filter(a => a.name && Number(a.amount) > 0).map(a =>
+    `<tr><td class="pd">${data.brand||''} ${data.model||''} ${data.year||''} — ${data.color||''}</td><td class="pa">${fmtCLP(t.motoAmt)}</td></tr>`,
+    ...(data.accessories||[]).filter(a => a.name && Number(a.amount) > 0).map(a =>
       `<tr><td class="pd">${a.name}</td><td class="pa">${fmtCLP(Number(a.amount))}</td></tr>`),
-    t.discAmt > 0 ? `<tr class="drow"><td class="pd">Descuento ${data.discount}%</td><td class="pa">−${fmtCLP(t.discAmt)}</td></tr>` : '',
-    `<tr class="srow"><td class="pd">Subtotal</td><td class="pa">${fmtCLP(t.netTotal)}</td></tr>`,
     t.cardSurcharge > 0 ? `<tr class="crow"><td class="pd">Recargo tarjeta 2%</td><td class="pa">+${fmtCLP(t.cardSurcharge)}</td></tr>` : '',
     `<tr class="trow"><td class="pd">TOTAL</td><td class="pa">${fmtCLP(t.grandTotal)}</td></tr>`,
   ].filter(Boolean).join('');
 
   let payRows = '';
   if (data.payMode === 'Mixto') {
-    payRows = (data.payLines || []).filter(l => l.method && Number(l.amount) > 0).map(l => {
+    payRows = (data.payLines||[]).filter(l => l.method && Number(l.amount) > 0).map(l => {
       const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
-      return `<tr><td class="pd">${l.method}${sur > 0 ? ` (incl. recargo 2% = ${fmtCLP(sur)})` : ''}</td><td class="pa">${fmtCLP(Number(l.amount) + sur)}</td></tr>`;
+      return `<tr><td class="pd">${l.method}${sur > 0 ? ' (incl. recargo 2%)' : ''}</td><td class="pa">${fmtCLP(Number(l.amount) + sur)}</td></tr>`;
     }).join('');
   } else if (data.payMode === 'Financiamiento') {
-    const pie = Math.round(t.netTotal * (Number(data.finPct) || 0) / 100);
+    const pie = Math.round(t.netTotal * (Number(data.finPct)||0) / 100);
     payRows = `<tr><td class="pd">Pie inicial ${data.finPct}%</td><td class="pa">${fmtCLP(pie)}</td></tr>
                <tr><td class="pd">Monto a financiar</td><td class="pa">${fmtCLP(t.netTotal - pie)}</td></tr>`;
   } else if (data.payMode) {
-    payRows = `<tr><td class="pd">${data.payMode}${t.cardSurcharge > 0 ? ` (incl. recargo 2% = ${fmtCLP(t.cardSurcharge)})` : ''}</td><td class="pa">${fmtCLP(t.abonoAmt)}</td></tr>`;
+    payRows = `<tr><td class="pd">${data.payMode}${t.cardSurcharge > 0 ? ' (incl. recargo 2%)' : ''}</td><td class="pa">${fmtCLP(t.abonoAmt)}</td></tr>`;
   }
 
   const saldoRow = t.saldo > 0
     ? `<tr class="salrow"><td class="pd">Saldo pendiente</td><td class="pa">${fmtCLP(t.saldo)}</td></tr>`
-    : `<tr class="pagrow"><td class="pd">Cancelado en su totalidad</td><td class="pa">${fmtCLP(t.abonoAmt)}</td></tr>`;
+    : `<tr class="pagrow"><td class="pd">Cancelado en su totalidad</td><td class="pa">${fmtCLP(t.grandTotal)}</td></tr>`;
 
-  const copy = (label) => `<div class="copy">
-  <div class="hdr">
-    <div class="hdr-l">
-      <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
-      <div><div class="co-name">MAOS BIKE</div><div class="co-rut">RUT 76.405.840-2</div></div>
-    </div>
-    <div class="hdr-r">
-      <div class="doc-title">${title}</div>
-      <div class="doc-sub">Fecha: ${today} &nbsp;·&nbsp; Sucursal: ${data.branchName || '—'}</div>
-      <div class="doc-sub">Vendedor: ${data.sellerName || '—'}</div>
-    </div>
-  </div>
+  const clientRows = isEmpresa
+    ? `<tr><td class="kk">Empresa</td><td class="kv2">${data.empresa_name||'—'}</td></tr>
+       <tr><td class="kk">RUT empresa</td><td class="kv2">${data.empresa_rut||'—'}</td></tr>
+       ${data.empresa_giro ? `<tr><td class="kk">Giro</td><td class="kv2">${data.empresa_giro}</td></tr>` : ''}
+       <tr><td class="kk">Representante</td><td class="kv2">${data.client_name||'—'}</td></tr>
+       ${(data.empresa_phone||data.client_phone) ? `<tr><td class="kk">Teléfono</td><td class="kv2">${data.empresa_phone||data.client_phone}</td></tr>` : ''}
+       ${(data.empresa_email||data.client_email) ? `<tr><td class="kk">Email</td><td class="kv2">${data.empresa_email||data.client_email}</td></tr>` : ''}`
+    : `<tr><td class="kk">Nombre</td><td class="kv2">${data.client_name||'—'}</td></tr>
+       <tr><td class="kk">RUT</td><td class="kv2">${data.client_rut||'—'}</td></tr>
+       ${data.client_phone ? `<tr><td class="kk">Teléfono</td><td class="kv2">${data.client_phone}</td></tr>` : ''}
+       ${data.client_email ? `<tr><td class="kk">Email</td><td class="kv2">${data.client_email}</td></tr>` : ''}
+       ${data.client_address ? `<tr><td class="kk">Dirección</td><td class="kv2">${data.client_address}${data.client_commune ? ', ' + data.client_commune : ''}</td></tr>` : ''}`;
 
-  <div class="two-col">
-    <div>
-      <div class="col-lbl">DATOS DEL CLIENTE</div>
-      <table class="kv"><tbody>
-        <tr><td class="kk">Nombre</td><td class="kv2">${data.client_name || '—'}</td></tr>
-        <tr><td class="kk">RUT</td><td class="kv2">${data.client_rut || '—'}</td></tr>
-        ${data.client_phone ? `<tr><td class="kk">Teléfono</td><td class="kv2">${data.client_phone}</td></tr>` : ''}
-        ${data.client_email ? `<tr><td class="kk">Email</td><td class="kv2">${data.client_email}</td></tr>` : ''}
-        ${data.client_address ? `<tr><td class="kk">Dirección</td><td class="kv2">${data.client_address}${data.client_commune ? ', ' + data.client_commune : ''}</td></tr>` : ''}
-      </tbody></table>
-    </div>
-    <div>
-      <div class="col-lbl">VEHÍCULO</div>
-      <table class="kv"><tbody>
-        <tr><td class="kk">Marca</td><td class="kv2">${data.brand || '—'}</td></tr>
-        <tr><td class="kk">Modelo</td><td class="kv2">${data.model || '—'}</td></tr>
-        <tr><td class="kk">Año</td><td class="kv2">${data.year || '—'}</td></tr>
-        <tr><td class="kk">Color</td><td class="kv2">${data.color || '—'}</td></tr>
-        ${data.chassis ? `<tr><td class="kk">N° Chasis</td><td class="kv2">${data.chassis}</td></tr>` : ''}
-        ${data.motor_num ? `<tr><td class="kk">N° Motor</td><td class="kv2">${data.motor_num}</td></tr>` : ''}
-      </tbody></table>
-    </div>
-    ${photo ? `<div class="photo-w"><img src="${photo}" class="moto-img" onerror="this.style.display='none'"/></div>` : ''}
-  </div>
-
-  <table class="dtbl">
-    <thead><tr><th class="pd">Descripción</th><th class="pa">Monto</th></tr></thead>
-    <tbody>${priceRows}</tbody>
-  </table>
-
-  <table class="dtbl" style="margin-top:0">
-    <thead><tr><th class="pd">Forma de pago</th><th class="pa">Monto</th></tr></thead>
-    <tbody>${payRows}${saldoRow}</tbody>
-  </table>
-
-  ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
-
-  <div class="legal">
-    <b>INDICACIÓN:</b> Al momento de cancelar con tarjeta de crédito o débito se suma un 2% del monto a cancelar.<br/>
-    <b>CONDICIONES DE VENTA:</b>
-    <ul>
-      <li>El tiempo estimado para la entrega será de 4 a 5 días hábiles después de haber completado el pago.</li>
-      <li>En caso de cancelación después de pago en efectivo o transferencia, la devolución se realiza de igual manera en un plazo de 10 a 12 días hábiles.</li>
-      <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
-      <li>Los gastos por comisiones de terminal serán cubiertos por el cliente.</li>
-    </ul>
-  </div>
-
-  <div class="sigs">
-    <div class="sig">
-      <div class="sigline"></div>
-      <b>Firma y aclaración del cliente</b><br/>
-      <span class="sig-sub">${data.client_name || '________________________________'} &nbsp; RUT: ${data.client_rut || '____________'}</span>
-    </div>
-    <div class="sig">
-      <div class="sigline"></div>
-      <b>Firma del vendedor / empresa</b><br/>
-      <span class="sig-sub">${data.sellerName || '________________________________'}</span>
-    </div>
-  </div>
-  <div class="copy-tag">${label} · MAOS BIKE · ${today}</div>
-</div>`;
+  const sigName = isEmpresa
+    ? `${data.empresa_name||'________________________________'} &nbsp; RUT: ${data.empresa_rut||'____________'}`
+    : `${data.client_name||'________________________________'} &nbsp; RUT: ${data.client_rut||'____________'}`;
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
 <title>${title} — MAOS BIKE</title>
@@ -463,31 +405,26 @@ function buildNoteHTML(data, type) {
 body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A;font-size:9pt}
 .page{max-width:800px;margin:0 auto;padding:10px}
 .copy{border:1.5px solid #CBD5E1;border-radius:5px;padding:14px 18px}
-.divider{border:none;border-top:2px dashed #94A3B8;margin:10px 0}
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:8px;border-bottom:2.5px solid #0F172A;margin-bottom:10px}
-.hdr-l{display:flex;align-items:center;gap:8px}
-.logo{height:38px;object-fit:contain}
-.co-name{font-size:12pt;font-weight:900;line-height:1}
-.co-rut{font-size:7.5pt;color:#64748B;margin-top:1px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:8px;border-bottom:2.5px solid #F28100;margin-bottom:10px}
+.hdr-l{display:flex;align-items:center}
+.logo{height:44px;object-fit:contain}
 .hdr-r{text-align:right}
 .doc-title{font-size:14pt;font-weight:900;letter-spacing:-0.3px;line-height:1}
 .doc-sub{font-size:7.5pt;color:#475569;margin-top:2px}
-.two-col{display:grid;grid-template-columns:1fr 1fr${photo ? ' 88px' : ''};gap:10px;margin-bottom:8px}
-.col-lbl{font-size:6.5pt;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #E2E8F0}
+.two-col{display:grid;grid-template-columns:1fr 1fr${photo ? ' 92px' : ''};gap:10px;margin-bottom:8px}
+.col-lbl{font-size:6.5pt;font-weight:800;color:#F28100;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #FED7AA}
 .kv{width:100%;border-collapse:collapse}
 .kv td{padding:2px 0;font-size:8pt;vertical-align:top;line-height:1.25}
 .kk{color:#64748B;width:34%;padding-right:4px}
 .kv2{font-weight:600}
 .photo-w{display:flex;align-items:flex-start}
-.moto-img{width:88px;height:78px;object-fit:cover;border-radius:4px;border:1px solid #E2E8F0}
+.moto-img{width:90px;height:80px;object-fit:cover;border-radius:4px;border:1px solid #E2E8F0}
 .dtbl{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:8pt}
-.dtbl thead tr{background:#0F172A;color:#fff}
+.dtbl thead tr{background:#F28100;color:#fff}
 .dtbl thead th{padding:4px 7px;text-align:left;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 .dtbl tbody tr{border-bottom:1px solid #F1F5F9}
 .pd{padding:3px 7px}
 .pa{padding:3px 7px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.srow{background:#F8FAFC;font-style:italic}
-.drow td{color:#059669}
 .crow td{color:#B45309}
 .trow td{font-weight:900;font-size:9.5pt;background:#0F172A;color:#fff}
 .trow .pa{color:#F28100}
@@ -501,31 +438,90 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A
 .sigline{border-bottom:1.5px solid #0F172A;height:30px;margin-bottom:3px}
 .sig{font-size:7.5pt}
 .sig-sub{font-size:7pt;color:#64748B}
-.copy-tag{text-align:right;font-size:6.5pt;color:#94A3B8;margin-top:4px}
 .no-print{position:fixed;bottom:14px;right:14px;display:flex;gap:8px;z-index:999}
 .btn-p{background:#F28100;color:#fff;border:none;padding:9px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(242,129,0,.4)}
 .btn-c{background:#0F172A;color:#fff;border:none;padding:9px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer}
 @media print{.no-print{display:none!important}.page{padding:0;max-width:100%}@page{margin:7mm;size:A4}*{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 </style></head><body>
 <div class="no-print">
-  <button class="btn-p" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <button class="btn-p" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   <button class="btn-c" onclick="window.close()">Cerrar</button>
 </div>
-<div class="page">
-${copy('Copia cliente')}
-<hr class="divider"/>
-${copy('Copia empresa')}
-</div>
-<script>setTimeout(()=>window.print(),500)</script>
+<div class="page"><div class="copy">
+  <div class="hdr">
+    <div class="hdr-l">
+      <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
+    </div>
+    <div class="hdr-r">
+      <div class="doc-title">${title}</div>
+      <div class="doc-sub">Fecha: ${today} &nbsp;·&nbsp; Sucursal: ${data.branchName||'—'}</div>
+      <div class="doc-sub">Vendedor: ${data.sellerName||'—'}</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="col-lbl">${isEmpresa ? 'DATOS DE LA EMPRESA' : 'DATOS DEL CLIENTE'}</div>
+      <table class="kv"><tbody>${clientRows}</tbody></table>
+    </div>
+    <div>
+      <div class="col-lbl">VEHÍCULO</div>
+      <table class="kv"><tbody>
+        <tr><td class="kk">Marca</td><td class="kv2">${data.brand||'—'}</td></tr>
+        <tr><td class="kk">Modelo</td><td class="kv2">${data.model||'—'}</td></tr>
+        <tr><td class="kk">Año</td><td class="kv2">${data.year||'—'}</td></tr>
+        <tr><td class="kk">Color</td><td class="kv2">${data.color||'—'}</td></tr>
+        ${data.chassis ? `<tr><td class="kk">N° Chasis</td><td class="kv2">${data.chassis}</td></tr>` : ''}
+        ${data.motor_num ? `<tr><td class="kk">N° Motor</td><td class="kv2">${data.motor_num}</td></tr>` : ''}
+      </tbody></table>
+    </div>
+    ${photo ? `<div class="photo-w"><img src="${photo}" class="moto-img" onerror="this.style.display='none'"/></div>` : ''}
+  </div>
+
+  <table class="dtbl">
+    <thead><tr><th class="pd">Descripción</th><th class="pa">Monto</th></tr></thead>
+    <tbody>${priceRows}</tbody>
+  </table>
+
+  ${payRows ? `<table class="dtbl" style="margin-top:0">
+    <thead><tr><th class="pd">Forma de pago</th><th class="pa">Monto</th></tr></thead>
+    <tbody>${payRows}${saldoRow}</tbody>
+  </table>` : ''}
+
+  ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
+
+  <div class="legal">
+    <b>INDICACIÓN:</b> Al momento de cancelar con tarjeta de crédito o débito se suma un 2% del monto a cancelar.<br/>
+    <b>CONDICIONES DE VENTA:</b>
+    <ul>
+      <li>El tiempo estimado para la entrega será de 4 a 5 días hábiles después de haber completado el pago.</li>
+      <li>En caso de cancelación después de pago en efectivo o transferencia, la devolución se realiza de igual manera en un plazo de 10 a 12 días hábiles.</li>
+      <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
+    </ul>
+  </div>
+
+  <div class="sigs">
+    <div class="sig">
+      <div class="sigline"></div>
+      <b>Firma y aclaración del cliente</b><br/>
+      <span class="sig-sub">${sigName}</span>
+    </div>
+    <div class="sig">
+      <div class="sigline"></div>
+      <b>Firma del vendedor / empresa</b><br/>
+      <span class="sig-sub">${data.sellerName||'________________________________'}</span>
+    </div>
+  </div>
+</div></div>
 </body></html>`;
 }
 
 function openNote(data, type) {
   const html = buildNoteHTML(data, type);
-  const win  = window.open('', '_blank', 'width=920,height=720');
-  if (!win) { alert('Habilitá las ventanas emergentes para ver el documento.'); return; }
-  win.document.write(html);
-  win.document.close();
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, '_blank');
+  if (!win) { alert('Habilitá las ventanas emergentes para ver el documento.'); }
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
@@ -574,8 +570,15 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   useEffect(() => { api.getBrands().then(setBrands).catch(() => {}); }, []);
 
   useEffect(() => {
-    if (!form.brand) { setCatMods([]); setSelMod(null); return; }
-    api.getModels({ brand: form.brand }).then(setCatMods).catch(() => {});
+    if (!form.brand) { setCatMods([]); if (!selUnit) setSelMod(null); return; }
+    api.getModels({ brand: form.brand }).then(mods => {
+      setCatMods(mods);
+      // If we have a selUnit, try to find its model for color photos
+      if (selUnit) {
+        const m = mods.find(x => x.model?.toUpperCase() === selUnit.model?.toUpperCase());
+        if (m) setSelMod(m);
+      }
+    }).catch(() => {});
   }, [form.brand]);
 
   useEffect(() => {
@@ -625,6 +628,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     setSaving(true); setErr('');
     try {
       const clientExtra = [
+        form.client_type === 'empresa'
+          ? `Empresa: ${form.empresa_name||''} RUT: ${form.empresa_rut||''}`
+          : null,
         form.client_phone   ? `Tel: ${form.client_phone}` : null,
         form.client_email   ? `Email: ${form.client_email}` : null,
         form.client_address ? `Dir: ${form.client_address}${form.client_commune ? ', ' + form.client_commune : ''}` : null,
@@ -641,20 +647,15 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         });
       } else if (selUnit && isReserva) {
         await api.updateInventory(selUnit.id, { status: 'reservada', notes: clientExtra || null });
-      } else if (isReserva) {
-        await api.createInventory({
-          branch_id: form.branch_id, year: Number(form.year) || null,
-          brand: form.brand, model: form.model, color: form.color || '',
-          chassis: form.chassis || null, motor_num: form.motor_num || null,
-          sale_notes: clientExtra || null,
-        });
       } else {
+        // Nota de venta o reserva sin unidad de inventario → solo registrar en ventas
         await api.createSale({ ...form, payment_method: payMode || null, sale_notes: clientExtra || null });
       }
 
       const sellerObj   = sellers.find(s => String(s.id) === String(form.sold_by));
       const branchObj   = branches.find(b => String(b.id) === String(selUnit?.branch_id || form.branch_id));
       const colorPhotos = Array.isArray(selMod?.color_photos) ? selMod.color_photos : [];
+      const selectedColor = (selUnit?.color || form.color || '').toLowerCase().trim();
 
       setSavedDoc({
         brand:      selUnit?.brand     || form.brand,
@@ -666,13 +667,19 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         sold_at:    form.sold_at,
         branchName: branchObj?.name || selUnit?.branch_name || '',
         sellerName: sellerObj ? `${sellerObj.first_name} ${sellerObj.last_name}`.trim() : '',
+        client_type:    form.client_type,
         client_name:    form.client_name,    client_rut:     form.client_rut,
         client_phone:   form.client_phone,   client_email:   form.client_email,
         client_address: form.client_address, client_commune: form.client_commune,
+        empresa_name:   form.empresa_name,   empresa_rut:    form.empresa_rut,
+        empresa_giro:   form.empresa_giro,   empresa_email:  form.empresa_email,
+        empresa_phone:  form.empresa_phone,
         sale_notes: form.sale_notes,
         sale_price: form.sale_price,
         accessories: accs, discount, payMode, payLines, finPct,
-        modelPhotoUrl: colorPhotos.find(cp => cp.color === (selUnit?.color || form.color))?.url || null,
+        modelPhotoUrl: colorPhotos.find(cp =>
+          (cp.color||'').toLowerCase().trim() === selectedColor
+        )?.url || null,
       });
       setStep(3);
       onCreated();
@@ -787,12 +794,37 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
             {/* CLIENTE */}
             <SEC>Datos del cliente</SEC>
-            <Field label="Nombre completo *" value={form.client_name}    onChange={set('client_name')} />
-            <Field label="RUT"               value={form.client_rut}     onChange={set('client_rut')}  ph="12.345.678-9" />
-            <Field label="Teléfono"          value={form.client_phone}   onChange={set('client_phone')} ph="+56 9 XXXX XXXX" />
-            <Field label="Email"             value={form.client_email}   onChange={set('client_email')} />
-            <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
-            <Field label="Comuna"            value={form.client_commune} onChange={set('client_commune')} />
+            {/* Tipo: persona / empresa */}
+            <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8, marginBottom: 4 }}>
+              {['persona', 'empresa'].map(t => (
+                <button key={t} type="button" onClick={() => set('client_type')(t)}
+                  style={{ padding: '5px 16px', borderRadius: 20, border: `1.5px solid ${form.client_type === t ? '#F28100' : '#E5E7EB'}`,
+                           background: form.client_type === t ? '#FFF7ED' : '#fff',
+                           color: form.client_type === t ? '#F28100' : '#6B7280',
+                           fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
+                  {t === 'persona' ? 'Persona natural' : 'Empresa'}
+                </button>
+              ))}
+            </div>
+            {form.client_type === 'empresa' ? (
+              <>
+                <Field label="Nombre empresa *"  value={form.empresa_name}  onChange={set('empresa_name')} />
+                <Field label="RUT empresa *"      value={form.empresa_rut}   onChange={set('empresa_rut')}  ph="76.XXX.XXX-X" />
+                <Field label="Giro"               value={form.empresa_giro}  onChange={set('empresa_giro')} />
+                <Field label="Representante"      value={form.client_name}   onChange={set('client_name')} />
+                <Field label="Teléfono empresa"   value={form.empresa_phone} onChange={set('empresa_phone')} ph="+56 2 XXXX XXXX" />
+                <Field label="Email empresa"      value={form.empresa_email} onChange={set('empresa_email')} />
+              </>
+            ) : (
+              <>
+                <Field label="Nombre completo *" value={form.client_name}    onChange={set('client_name')} />
+                <Field label="RUT"               value={form.client_rut}     onChange={set('client_rut')}  ph="12.345.678-9" />
+                <Field label="Teléfono"          value={form.client_phone}   onChange={set('client_phone')} ph="+56 9 XXXX XXXX" />
+                <Field label="Email"             value={form.client_email}   onChange={set('client_email')} />
+                <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
+                <Field label="Comuna"            value={form.client_commune} onChange={set('client_commune')} />
+              </>
+            )}
 
             {/* OPERACIÓN */}
             <SEC>{isReserva ? 'Reserva' : 'Venta'}</SEC>
@@ -810,9 +842,8 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             )}
 
             {/* PRECIO */}
-            <SEC>Precio y descuento</SEC>
+            <SEC>Precio</SEC>
             <Field label="Precio de la moto ($)" value={form.sale_price} onChange={set('sale_price')} type="number" />
-            <Field label="Descuento (%)"          value={discount}        onChange={setDiscount}        type="number" ph="0" />
 
             {/* ACCESORIOS */}
             <div style={{ gridColumn: '1/-1' }}>
