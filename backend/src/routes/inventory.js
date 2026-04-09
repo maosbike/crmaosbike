@@ -541,6 +541,18 @@ router.post('/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
 });
 
+// ─── DELETE ───────────────────────────────────────────────────────────────────
+router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      'DELETE FROM inventory WHERE id=$1 RETURNING id, brand, model, chassis',
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
+    res.json({ ok: true, deleted: rows[0] });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al eliminar' }); }
+});
+
 // ─── EXPORT — genera XLSX con todo el inventario ──────────────────────────────
 router.get('/export', async (req, res) => {
   try {

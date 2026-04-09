@@ -105,6 +105,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [eSaving,    setESaving]    = useState(false);
   const [eErr,       setEErr]       = useState('');
   const [addErr,     setAddErr]     = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deletingUnit,  setDeletingUnit]  = useState(false);
+  const [branchPhotos,  setBranchPhotos]  = useState({});
+
+  // Inicializar fotos de sucursales desde realBranches
+  useEffect(() => {
+    const map = {};
+    brs.forEach(b => { if (b.photo_url) map[b.id] = b.photo_url; });
+    setBranchPhotos(map);
+  }, [realBranches]);
 
   // Drag-and-drop (solo super_admin)
   const dragItem    = useRef(null);
@@ -204,7 +214,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     try { await api.updateInventory(id, {branch_id}); reload(); } catch(ex) { alert(ex.message); reload(); }
   };
   const openEdit = (unit) => {
-    setEErr('');
+    setEErr(''); setDeleteConfirm(false);
     setEForm({
       branch_id: unit.branch_id || '',
       brand:     unit.brand     || '',
@@ -274,6 +284,29 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       api.reorderInventory(items).catch(() => reload());
       return result;
     });
+  };
+
+  const handleBranchPhoto = (branchId) => {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+    input.onchange = async e => {
+      const file = e.target.files[0]; if (!file) return;
+      try {
+        const r = await api.uploadBranchPhoto(branchId, file);
+        setBranchPhotos(p => ({ ...p, [branchId]: r.url }));
+      } catch (ex) { alert(ex.message || 'Error al subir foto'); }
+    };
+    input.click();
+  };
+
+  const handleDelete = async () => {
+    if (!editTarget) return;
+    setDeletingUnit(true);
+    try {
+      await api.deleteInventory(editTarget.id);
+      setInv(p => p.filter(x => x.id !== editTarget.id));
+      setEditTarget(null); setDeleteConfirm(false);
+    } catch (ex) { alert(ex.message || 'Error al eliminar'); }
+    finally { setDeletingUnit(false); }
   };
 
   const handleExport = async () => {
@@ -489,15 +522,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {/* ══════ HUB: vista por sucursal ══════ */}
       {showHub ? (
         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap:16, marginTop:8 }}>
-          {[
-            { code:'MOV',  id: brs.find(b=>b.code==='MOV')?.id  },
-            { code:'MPN',  id: brs.find(b=>b.code==='MPN')?.id  },
-            { code:'MPS',  id: brs.find(b=>b.code==='MPS')?.id  },
-            { code:'MPSY', id: brs.find(b=>b.code==='MPSY')?.id },
-          ].map(({ code, id }) => {
-            const cfg  = BRANCH_CFG[code] || FALLBACK_BRANCH;
-            const cnt  = inv.filter(x => x.branch_id === id && x.status !== 'vendida').length;
-            const vend = inv.filter(x => x.branch_id === id && x.status === 'vendida').length;
+          {['MOV','MPN','MPS','MPSY'].map(code => {
+            const cfg    = BRANCH_CFG[code] || FALLBACK_BRANCH;
+            const brData = brs.find(b => b.code === code);
+            const id     = brData?.id;
+            const brPhoto= branchPhotos[id] || brData?.photo_url;
+            const cnt    = inv.filter(x => x.branch_id === id && x.status !== 'vendida').length;
+            const vend   = inv.filter(x => x.branch_id === id && x.status === 'vendida').length;
             return (
               <button key={code} onClick={() => id && setBrF(id)}
                 style={{
@@ -513,9 +544,20 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 onMouseLeave={e=>{ e.currentTarget.style.boxShadow=`0 2px 12px ${cfg.color}18`; e.currentTarget.style.transform='translateY(0)'; }}
               >
                 <div style={{ position:'absolute', top:0, left:0, right:0, height:5, background:cfg.color, borderRadius:'18px 18px 0 0' }}/>
-                {/* Placeholder foto sucursal */}
-                <div style={{ width:'100%', aspectRatio:'16/9', borderRadius:10, background:`${cfg.color}12`, border:`1px dashed ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
-                  <span style={{ fontSize:11, color:cfg.color, fontWeight:600, opacity:0.5 }}>Foto próximamente</span>
+                {/* Foto sucursal */}
+                <div onClick={e=>e.stopPropagation()} style={{ width:'100%', aspectRatio:'16/9', borderRadius:10, overflow:'hidden', marginBottom:14, position:'relative', background:`${cfg.color}12`, border:`1px dashed ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  {brPhoto
+                    ? <img src={brPhoto} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} alt={cfg.label}/>
+                    : isAdmin
+                      ? <button onClick={()=>id && handleBranchPhoto(id)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:cfg.color, fontWeight:700, opacity:0.7 }}>+ Agregar foto</button>
+                      : <span style={{ fontSize:11, color:cfg.color, fontWeight:600, opacity:0.4 }}>Sin foto</span>
+                  }
+                  {brPhoto && isAdmin && (
+                    <button onClick={()=>id && handleBranchPhoto(id)} title="Cambiar foto"
+                      style={{ position:'absolute', bottom:5, right:5, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'#fff', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
+                      ✎ Cambiar
+                    </button>
+                  )}
                 </div>
                 <div style={{ fontSize:16, fontWeight:900, color:'#0F172A', marginBottom:4 }}>{cfg.label}</div>
                 <div style={{ fontSize:12, color:'#6B7280' }}>
@@ -588,13 +630,17 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     {/* Main body: photo + info */}
                     <div style={{ display:'flex', padding:'10px 12px 10px 10px', alignItems:'flex-start' }}>
                       {/* Photo */}
-                      <div style={{ flexShrink:0, marginRight:12 }}>
+                      <div style={{ flexShrink:0, marginRight:12, position:'relative' }}>
                         {x.unit_photo
-                          ? <img
-                              src={x.unit_photo}
-                              onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
-                              style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
-                            />
+                          ? <>
+                              <img
+                                src={x.unit_photo}
+                                onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
+                                style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
+                              />
+                              <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'unit_photo');}} title="Cambiar foto"
+                                style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, padding:0 }}>✎</button>
+                            </>
                           : <button
                               onClick={()=>handlePhoto(x.id,'unit_photo')}
                               title="Agregar foto"
@@ -779,14 +825,18 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     overflow:'hidden',
                   }}>
                     {/* Foto de la moto */}
-                    <div style={{ flexShrink:0 }}>
+                    <div style={{ flexShrink:0, position:'relative' }} onClick={e=>e.stopPropagation()}>
                       {x.unit_photo
-                        ? <img
-                            src={x.unit_photo}
-                            onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
-                            className="crm-inv-photo"
-                            style={{ width:92, height:92, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
-                          />
+                        ? <>
+                            <img
+                              src={x.unit_photo}
+                              onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
+                              className="crm-inv-photo"
+                              style={{ width:92, height:92, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
+                            />
+                            <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
+                              style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, padding:0 }}>✎</button>
+                          </>
                         : <button
                             onClick={()=>handlePhoto(x.id,'unit_photo')}
                             title="Agregar foto de la moto"
@@ -865,9 +915,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           {x.chassis}
                         </span>
                         {x.chassis_photo
-                          ? <img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})}
+                          ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
                               style={{ width:26,height:26,borderRadius:6,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0',flexShrink:0 }}/>
-                          : <button onClick={()=>handlePhoto(x.id,'chassis_photo')} title="Agregar foto de chasis"
+                          : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'chassis_photo');}} title="Agregar foto de chasis"
                               style={{ width:24,height:24,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,padding:0 }}>+</button>
                         }
                       </div>
@@ -884,9 +934,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                                 border:'1px solid #E9EAEC', letterSpacing:'0.02em',
                               }}>{x.motor_num}</span>
                               {x.motor_photo
-                                ? <img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})}
+                                ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
                                     style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0' }}/>
-                                : <button onClick={()=>handlePhoto(x.id,'motor_photo')} title="Agregar foto de motor"
+                                : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'motor_photo');}} title="Agregar foto de motor"
                                     style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                               }
                             </>
@@ -1110,14 +1160,33 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
             {eErr && <div style={{ marginTop:10,padding:'8px 12px',background:'#FEF2F2',borderRadius:8,fontSize:12,color:'#DC2626',border:'1px solid #FECACA' }}>{eErr}</div>}
 
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:18 }}>
-              <button type="button" onClick={()=>{setEditTarget(null);setEErr('');}} style={{ ...S.gh, padding:'8px 18px', borderRadius:8, fontSize:13 }}>
-                Cancelar
-              </button>
-              <button type="submit" disabled={eSaving}
-                style={{ background:'#0F172A', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                {eSaving ? 'Guardando…' : 'Guardar cambios'}
-              </button>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:18 }}>
+              {/* Eliminar */}
+              {isAdmin && (
+                deleteConfirm
+                  ? <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontSize:12, color:'#DC2626', fontWeight:600 }}>¿Eliminar definitivamente?</span>
+                      <button type="button" disabled={deletingUnit} onClick={handleDelete}
+                        style={{ background:'#DC2626', color:'#fff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                        {deletingUnit ? 'Eliminando…' : 'Sí, eliminar'}
+                      </button>
+                      <button type="button" onClick={()=>setDeleteConfirm(false)}
+                        style={{ ...S.gh, padding:'6px 12px', borderRadius:7, fontSize:12 }}>No</button>
+                    </div>
+                  : <button type="button" onClick={()=>setDeleteConfirm(true)}
+                      style={{ background:'none', border:'1px solid #FCA5A5', color:'#DC2626', borderRadius:7, padding:'6px 14px', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                      Eliminar unidad
+                    </button>
+              )}
+              <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
+                <button type="button" onClick={()=>{setEditTarget(null);setEErr('');setDeleteConfirm(false);}} style={{ ...S.gh, padding:'8px 18px', borderRadius:8, fontSize:13 }}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={eSaving}
+                  style={{ background:'#0F172A', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                  {eSaving ? 'Guardando…' : 'Guardar cambios'}
+                </button>
+              </div>
             </div>
           </form>
         </Modal>

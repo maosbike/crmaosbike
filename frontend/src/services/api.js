@@ -105,6 +105,12 @@ export const api = {
   sellInventory: (id, data) => request('POST', `/inventory/${id}/sell`, data),
   getInventoryHistory: (id) => request('GET', `/inventory/${id}/history`),
   reorderInventory: (items) => request('PUT', '/inventory/reorder', { items }),
+  deleteInventory: (id) => request('DELETE', `/inventory/${id}`),
+  uploadBranchPhoto: (id, file) => {
+    const fd = new FormData();
+    fd.append('photo', file);
+    return request('POST', `/catalog/branches/${id}/photo`, fd);
+  },
   exportInventory: (params) => {
     const qs = params ? '?' + new URLSearchParams(params) : '';
     return requestBlob('GET', `/inventory/export${qs}`);

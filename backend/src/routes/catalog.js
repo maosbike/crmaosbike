@@ -249,6 +249,17 @@ router.get('/branches', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+router.post('/branches/:id/photo', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
+    const b64 = req.file.buffer.toString('base64');
+    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, { folder: 'crmaosbike/branches', resource_type: 'image' });
+    const { rows } = await db.query('UPDATE branches SET photo_url=$1 WHERE id=$2 RETURNING id, photo_url', [result.secure_url, req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
+    res.json({ url: result.secure_url });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
+});
+
 // ── USERS ──
 router.get('/users', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
