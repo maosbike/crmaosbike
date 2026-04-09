@@ -26,6 +26,7 @@ const EMPTY_FORM = {
   sold_by: '', branch_id: '', sold_at: new Date().toISOString().slice(0, 10),
   ticket_id: '', payment_method: '', sale_type: '', sale_notes: '',
   delivered: false, client_name: '', client_rut: '',
+  client_phone: '', client_email: '', client_address: '', client_commune: '',
 };
 
 // ─── Helpers visuales ─────────────────────────────────────────────────────────
@@ -292,8 +293,8 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
 // ─── Generador de documento imprimible ───────────────────────────────────────
 
 function fmtCLP(n) {
-  if (!n) return '—';
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
+  if (!n && n !== 0) return '—';
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(n));
 }
 
 function fmtDateDoc(s) {
@@ -302,181 +303,288 @@ function fmtDateDoc(s) {
   return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
+const CARD_METHODS = ['Tarjeta Débito', 'Tarjeta Crédito'];
+const isTarjeta   = (m) => CARD_METHODS.includes(m);
+
+const PAY_MODES = [
+  { v: '',                l: '— Seleccionar —' },
+  { v: 'Contado',         l: 'Contado (efectivo)' },
+  { v: 'Transferencia',   l: 'Transferencia bancaria' },
+  { v: 'Tarjeta Débito',  l: 'Tarjeta Débito (+2%)' },
+  { v: 'Tarjeta Crédito', l: 'Tarjeta Crédito (+2%)' },
+  { v: 'Crédito Autofin', l: 'Crédito Autofin' },
+  { v: 'Financiamiento',  l: 'Financiamiento (con pie)' },
+  { v: 'Mixto',           l: 'Mixto (varios medios)' },
+];
+
+function computeTotals({ sale_price, accessories = [], discount = '', payMode = '', finPct = '', payLines = [] }) {
+  const motoAmt  = Number(sale_price) || 0;
+  const accAmt   = accessories.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+  const subtotal = motoAmt + accAmt;
+  const discAmt  = discount ? Math.round(subtotal * Number(discount) / 100) : 0;
+  const netTotal = subtotal - discAmt;
+
+  let cardSurcharge = 0;
+  if (payMode === 'Mixto') {
+    cardSurcharge = payLines.reduce((s, l) =>
+      s + (isTarjeta(l.method) ? Math.round((Number(l.amount) || 0) * 0.02) : 0), 0);
+  } else if (isTarjeta(payMode)) {
+    cardSurcharge = Math.round(netTotal * 0.02);
+  }
+
+  const grandTotal = netTotal + cardSurcharge;
+  let abonoAmt = grandTotal;
+  if (payMode === 'Financiamiento') {
+    abonoAmt = Math.round(netTotal * (Number(finPct) || 0) / 100);
+  } else if (payMode === 'Mixto') {
+    abonoAmt = payLines.reduce((s, l) => s + (Number(l.amount) || 0), 0) + cardSurcharge;
+  }
+
+  const saldo = Math.max(0, grandTotal - abonoAmt);
+  return { motoAmt, accAmt, subtotal, discAmt, netTotal, cardSurcharge, grandTotal, abonoAmt, saldo };
+}
+
 function buildNoteHTML(data, type) {
-  const isRes = type === 'reserva';
-  const title = isRes ? 'NOTA DE RESERVA' : 'NOTA DE VENTA';
-  const logo  = window.location.origin + '/logo.png';
-  const today = fmtDateDoc(data.sold_at || new Date().toISOString().slice(0,10));
+  const isRes  = type === 'reserva';
+  const title  = isRes ? 'NOTA DE RESERVA' : 'NOTA DE VENTA';
+  const logo   = window.location.origin + '/logo.png';
+  const today  = fmtDateDoc(data.sold_at || new Date().toISOString().slice(0, 10));
+  const t      = computeTotals(data);
+  const photo  = data.modelPhotoUrl || '';
 
-  const row = (label, value) => value
-    ? `<tr><td class="lbl">${label}</td><td class="val">${value}</td></tr>`
-    : '';
-
-  const motoRows = [
-    row('Marca',        data.brand),
-    row('Modelo',       data.model),
-    row('Año',          data.year),
-    row('Color',        data.color),
-    row('N° Chasis',    data.chassis),
-    row('N° Motor',     data.motor_num),
+  const priceRows = [
+    `<tr><td class="pd">${data.brand || ''} ${data.model || ''} ${data.year || ''} — ${data.color || ''}</td><td class="pa">${fmtCLP(t.motoAmt)}</td></tr>`,
+    ...(data.accessories || []).filter(a => a.name && Number(a.amount) > 0).map(a =>
+      `<tr><td class="pd">${a.name}</td><td class="pa">${fmtCLP(Number(a.amount))}</td></tr>`),
+    t.discAmt > 0 ? `<tr class="drow"><td class="pd">Descuento ${data.discount}%</td><td class="pa">−${fmtCLP(t.discAmt)}</td></tr>` : '',
+    `<tr class="srow"><td class="pd">Subtotal</td><td class="pa">${fmtCLP(t.netTotal)}</td></tr>`,
+    t.cardSurcharge > 0 ? `<tr class="crow"><td class="pd">Recargo tarjeta 2%</td><td class="pa">+${fmtCLP(t.cardSurcharge)}</td></tr>` : '',
+    `<tr class="trow"><td class="pd">TOTAL</td><td class="pa">${fmtCLP(t.grandTotal)}</td></tr>`,
   ].filter(Boolean).join('');
 
-  const saleRows = [
-    !isRes ? row('Precio de venta', fmtCLP(data.sale_price)) : '',
-    !isRes ? row('Forma de pago',   data.payment_method) : '',
-    !isRes ? row('Tipo de entrega', data.sale_type) : '',
-    row('Sucursal',    data.branchName),
-    row('Vendedor',    data.sellerName),
-    row('Fecha',       today),
-  ].filter(Boolean).join('');
+  let payRows = '';
+  if (data.payMode === 'Mixto') {
+    payRows = (data.payLines || []).filter(l => l.method && Number(l.amount) > 0).map(l => {
+      const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
+      return `<tr><td class="pd">${l.method}${sur > 0 ? ` (incl. recargo 2% = ${fmtCLP(sur)})` : ''}</td><td class="pa">${fmtCLP(Number(l.amount) + sur)}</td></tr>`;
+    }).join('');
+  } else if (data.payMode === 'Financiamiento') {
+    const pie = Math.round(t.netTotal * (Number(data.finPct) || 0) / 100);
+    payRows = `<tr><td class="pd">Pie inicial ${data.finPct}%</td><td class="pa">${fmtCLP(pie)}</td></tr>
+               <tr><td class="pd">Monto a financiar</td><td class="pa">${fmtCLP(t.netTotal - pie)}</td></tr>`;
+  } else if (data.payMode) {
+    payRows = `<tr><td class="pd">${data.payMode}${t.cardSurcharge > 0 ? ` (incl. recargo 2% = ${fmtCLP(t.cardSurcharge)})` : ''}</td><td class="pa">${fmtCLP(t.abonoAmt)}</td></tr>`;
+  }
 
-  const notes = data.sale_notes
-    ? `<div class="notes"><strong>Observaciones:</strong> ${data.sale_notes}</div>` : '';
+  const saldoRow = t.saldo > 0
+    ? `<tr class="salrow"><td class="pd">Saldo pendiente</td><td class="pa">${fmtCLP(t.saldo)}</td></tr>`
+    : `<tr class="pagrow"><td class="pd">Cancelado en su totalidad</td><td class="pa">${fmtCLP(t.abonoAmt)}</td></tr>`;
 
-  const block = `
-    <div class="copy">
-      <div class="header">
-        <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'" />
-        <div class="header-right">
-          <div class="doc-title">${title}</div>
-          <div class="doc-date">${today}</div>
-        </div>
-      </div>
+  const copy = (label) => `<div class="copy">
+  <div class="hdr">
+    <div class="hdr-l">
+      <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
+      <div><div class="co-name">MAOS BIKE</div><div class="co-rut">RUT 76.405.840-2</div></div>
+    </div>
+    <div class="hdr-r">
+      <div class="doc-title">${title}</div>
+      <div class="doc-sub">Fecha: ${today} &nbsp;·&nbsp; Sucursal: ${data.branchName || '—'}</div>
+      <div class="doc-sub">Vendedor: ${data.sellerName || '—'}</div>
+    </div>
+  </div>
 
-      <div class="sections">
-        <div class="section">
-          <div class="section-title">CLIENTE</div>
-          <table class="data-table">
-            ${row('Nombre', data.client_name || '—')}
-            ${row('RUT',    data.client_rut  || '—')}
-          </table>
-        </div>
+  <div class="two-col">
+    <div>
+      <div class="col-lbl">DATOS DEL CLIENTE</div>
+      <table class="kv"><tbody>
+        <tr><td class="kk">Nombre</td><td class="kv2">${data.client_name || '—'}</td></tr>
+        <tr><td class="kk">RUT</td><td class="kv2">${data.client_rut || '—'}</td></tr>
+        ${data.client_phone ? `<tr><td class="kk">Teléfono</td><td class="kv2">${data.client_phone}</td></tr>` : ''}
+        ${data.client_email ? `<tr><td class="kk">Email</td><td class="kv2">${data.client_email}</td></tr>` : ''}
+        ${data.client_address ? `<tr><td class="kk">Dirección</td><td class="kv2">${data.client_address}${data.client_commune ? ', ' + data.client_commune : ''}</td></tr>` : ''}
+      </tbody></table>
+    </div>
+    <div>
+      <div class="col-lbl">VEHÍCULO</div>
+      <table class="kv"><tbody>
+        <tr><td class="kk">Marca</td><td class="kv2">${data.brand || '—'}</td></tr>
+        <tr><td class="kk">Modelo</td><td class="kv2">${data.model || '—'}</td></tr>
+        <tr><td class="kk">Año</td><td class="kv2">${data.year || '—'}</td></tr>
+        <tr><td class="kk">Color</td><td class="kv2">${data.color || '—'}</td></tr>
+        ${data.chassis ? `<tr><td class="kk">N° Chasis</td><td class="kv2">${data.chassis}</td></tr>` : ''}
+        ${data.motor_num ? `<tr><td class="kk">N° Motor</td><td class="kv2">${data.motor_num}</td></tr>` : ''}
+      </tbody></table>
+    </div>
+    ${photo ? `<div class="photo-w"><img src="${photo}" class="moto-img" onerror="this.style.display='none'"/></div>` : ''}
+  </div>
 
-        <div class="section">
-          <div class="section-title">VEHÍCULO</div>
-          <table class="data-table">${motoRows || row('Unidad', '—')}</table>
-        </div>
+  <table class="dtbl">
+    <thead><tr><th class="pd">Descripción</th><th class="pa">Monto</th></tr></thead>
+    <tbody>${priceRows}</tbody>
+  </table>
 
-        <div class="section">
-          <div class="section-title">${isRes ? 'RESERVA' : 'CONDICIONES'}</div>
-          <table class="data-table">${saleRows}</table>
-        </div>
-      </div>
+  <table class="dtbl" style="margin-top:0">
+    <thead><tr><th class="pd">Forma de pago</th><th class="pa">Monto</th></tr></thead>
+    <tbody>${payRows}${saldoRow}</tbody>
+  </table>
 
-      ${notes}
+  ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
 
-      <div class="signatures">
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <div class="sig-label">Firma y aclaración del cliente</div>
-          <div class="sig-sub">Nombre: ${data.client_name || '___________________________'}</div>
-          <div class="sig-sub">RUT: ${data.client_rut || '___________________________'}</div>
-        </div>
-        <div class="sig-box">
-          <div class="sig-line"></div>
-          <div class="sig-label">Firma del vendedor</div>
-          <div class="sig-sub">Nombre: ${data.sellerName || '___________________________'}</div>
-          <div class="sig-sub">Sucursal: ${data.branchName || '___________________________'}</div>
-        </div>
-      </div>
+  <div class="legal">
+    <b>INDICACIÓN:</b> Al momento de cancelar con tarjeta de crédito o débito se suma un 2% del monto a cancelar.<br/>
+    <b>CONDICIONES DE VENTA:</b>
+    <ul>
+      <li>El tiempo estimado para la entrega será de 4 a 5 días hábiles después de haber completado el pago.</li>
+      <li>En caso de cancelación después de pago en efectivo o transferencia, la devolución se realiza de igual manera en un plazo de 10 a 12 días hábiles.</li>
+      <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
+      <li>Los gastos por comisiones de terminal serán cubiertos por el cliente.</li>
+    </ul>
+  </div>
 
-      <div class="footer">
-        MAOS BIKE · ${isRes ? 'Copia de reserva' : 'Copia de venta'} — ${today}
-      </div>
-    </div>`;
+  <div class="sigs">
+    <div class="sig">
+      <div class="sigline"></div>
+      <b>Firma y aclaración del cliente</b><br/>
+      <span class="sig-sub">${data.client_name || '________________________________'} &nbsp; RUT: ${data.client_rut || '____________'}</span>
+    </div>
+    <div class="sig">
+      <div class="sigline"></div>
+      <b>Firma del vendedor / empresa</b><br/>
+      <span class="sig-sub">${data.sellerName || '________________________________'}</span>
+    </div>
+  </div>
+  <div class="copy-tag">${label} · MAOS BIKE · ${today}</div>
+</div>`;
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
 <title>${title} — MAOS BIKE</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#0F172A; font-size:11pt; }
-  .page { max-width:820px; margin:0 auto; padding:20px; }
-  .copy { border:1px solid #CBD5E1; border-radius:6px; padding:24px 28px; margin-bottom:0; }
-  .divider { border:none; border-top:2px dashed #94A3B8; margin:24px 0; }
-  .copy + .divider + .copy { margin-top:0; }
-  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; padding-bottom:16px; border-bottom:3px solid #0F172A; }
-  .logo { height:52px; object-fit:contain; }
-  .header-right { text-align:right; }
-  .doc-title { font-size:18pt; font-weight:900; color:#0F172A; letter-spacing:-0.5px; line-height:1; }
-  .doc-date { font-size:9pt; color:#64748B; margin-top:4px; }
-  .sections { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
-  .section { }
-  .section-title { font-size:7pt; font-weight:800; color:#94A3B8; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #E2E8F0; }
-  .data-table { width:100%; border-collapse:collapse; }
-  .data-table td { padding:3px 0; vertical-align:top; font-size:9.5pt; line-height:1.4; }
-  .data-table .lbl { color:#64748B; width:42%; font-size:8.5pt; padding-right:6px; }
-  .data-table .val { font-weight:600; color:#0F172A; }
-  .notes { background:#F8FAFC; border-left:3px solid #CBD5E1; padding:8px 12px; margin-bottom:16px; font-size:9.5pt; color:#374151; border-radius:0 4px 4px 0; }
-  .signatures { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:24px; padding-top:20px; border-top:1px solid #E2E8F0; }
-  .sig-box { }
-  .sig-line { border-bottom:1.5px solid #0F172A; margin-bottom:8px; height:42px; }
-  .sig-label { font-size:8.5pt; font-weight:700; color:#374151; margin-bottom:4px; }
-  .sig-sub { font-size:8pt; color:#64748B; margin-top:2px; }
-  .footer { text-align:center; margin-top:16px; padding-top:12px; border-top:1px solid #F1F5F9; font-size:8pt; color:#94A3B8; }
-  .no-print { position:fixed; bottom:20px; right:20px; display:flex; gap:10px; z-index:999; }
-  .btn-print { background:#F28100; color:#fff; border:none; padding:12px 24px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(242,129,0,0.4); }
-  .btn-close { background:#0F172A; color:#fff; border:none; padding:12px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
-  @media print {
-    body { font-size:10pt; }
-    .no-print { display:none !important; }
-    .page { padding:0; max-width:100%; }
-    .copy { border:1px solid #CBD5E1; }
-    @page { margin:1cm; size:A4; }
-    * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-  }
-</style>
-</head>
-<body>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A;font-size:9pt}
+.page{max-width:800px;margin:0 auto;padding:10px}
+.copy{border:1.5px solid #CBD5E1;border-radius:5px;padding:14px 18px}
+.divider{border:none;border-top:2px dashed #94A3B8;margin:10px 0}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:8px;border-bottom:2.5px solid #0F172A;margin-bottom:10px}
+.hdr-l{display:flex;align-items:center;gap:8px}
+.logo{height:38px;object-fit:contain}
+.co-name{font-size:12pt;font-weight:900;line-height:1}
+.co-rut{font-size:7.5pt;color:#64748B;margin-top:1px}
+.hdr-r{text-align:right}
+.doc-title{font-size:14pt;font-weight:900;letter-spacing:-0.3px;line-height:1}
+.doc-sub{font-size:7.5pt;color:#475569;margin-top:2px}
+.two-col{display:grid;grid-template-columns:1fr 1fr${photo ? ' 88px' : ''};gap:10px;margin-bottom:8px}
+.col-lbl{font-size:6.5pt;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #E2E8F0}
+.kv{width:100%;border-collapse:collapse}
+.kv td{padding:2px 0;font-size:8pt;vertical-align:top;line-height:1.25}
+.kk{color:#64748B;width:34%;padding-right:4px}
+.kv2{font-weight:600}
+.photo-w{display:flex;align-items:flex-start}
+.moto-img{width:88px;height:78px;object-fit:cover;border-radius:4px;border:1px solid #E2E8F0}
+.dtbl{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:8pt}
+.dtbl thead tr{background:#0F172A;color:#fff}
+.dtbl thead th{padding:4px 7px;text-align:left;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.dtbl tbody tr{border-bottom:1px solid #F1F5F9}
+.pd{padding:3px 7px}
+.pa{padding:3px 7px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.srow{background:#F8FAFC;font-style:italic}
+.drow td{color:#059669}
+.crow td{color:#B45309}
+.trow td{font-weight:900;font-size:9.5pt;background:#0F172A;color:#fff}
+.trow .pa{color:#F28100}
+.salrow td{font-weight:700;background:#FEF3C7;color:#92400E}
+.pagrow td{font-weight:700;background:#ECFDF5;color:#065F46}
+.obs{background:#EFF6FF;border-left:2px solid #60A5FA;padding:4px 8px;margin-bottom:6px;font-size:7.5pt;border-radius:0 3px 3px 0}
+.legal{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:3px;padding:5px 9px;margin:6px 0;font-size:6.5pt;color:#374151;line-height:1.45}
+.legal ul{padding-left:12px}
+.legal li{margin-bottom:1px}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0}
+.sigline{border-bottom:1.5px solid #0F172A;height:30px;margin-bottom:3px}
+.sig{font-size:7.5pt}
+.sig-sub{font-size:7pt;color:#64748B}
+.copy-tag{text-align:right;font-size:6.5pt;color:#94A3B8;margin-top:4px}
+.no-print{position:fixed;bottom:14px;right:14px;display:flex;gap:8px;z-index:999}
+.btn-p{background:#F28100;color:#fff;border:none;padding:9px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(242,129,0,.4)}
+.btn-c{background:#0F172A;color:#fff;border:none;padding:9px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer}
+@media print{.no-print{display:none!important}.page{padding:0;max-width:100%}@page{margin:7mm;size:A4}*{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+</style></head><body>
 <div class="no-print">
-  <button class="btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>
-  <button class="btn-close" onclick="window.close()">Cerrar</button>
+  <button class="btn-p" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <button class="btn-c" onclick="window.close()">Cerrar</button>
 </div>
 <div class="page">
-  ${block}
-  <hr class="divider" />
-  ${block.replace('Copia de reserva', 'Copia empresa').replace('Copia de venta', 'Copia empresa')}
+${copy('Copia cliente')}
+<hr class="divider"/>
+${copy('Copia empresa')}
 </div>
-<script>setTimeout(()=>window.print(),400);</script>
-</body>
-</html>`;
+<script>setTimeout(()=>window.print(),500)</script>
+</body></html>`;
 }
 
 function openNote(data, type) {
   const html = buildNoteHTML(data, type);
-  const win = window.open('', '_blank', 'width=900,height=700');
+  const win  = window.open('', '_blank', 'width=920,height=720');
   if (!win) { alert('Habilitá las ventanas emergentes para ver el documento.'); return; }
   win.document.write(html);
   win.document.close();
 }
 
-// ─── Modal: nueva venta ───────────────────────────────────────────────────────
+// ─── Sección label para el formulario ────────────────────────────────────────
+const SEC = ({ children }) => (
+  <div style={{ gridColumn: '1/-1', fontSize: 9, fontWeight: 800, color: '#94A3B8',
+                textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 12,
+                paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>{children}</div>
+);
+
+// ─── Modal: nueva venta/reserva ───────────────────────────────────────────────
 
 function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta' }) {
   const isReserva = noteType === 'reserva';
-  const [step,       setStep]       = useState(0); // 0=source, 1=unit_from_inv, 2=form, 3=done
-  const [hasInvUnit, setHasInvUnit] = useState(null); // null | true | false
-  const [invUnits,   setInvUnits]   = useState([]);
-  const [invSearch,  setInvSearch]  = useState('');
-  const [savedDoc,   setSavedDoc]   = useState(null);
-  const [selUnit,    setSelUnit]     = useState(null);
-  const [form,       setForm]       = useState({ ...EMPTY_FORM });
-  const [saving,     setSaving]     = useState(false);
-  const [err,        setErr]        = useState('');
+  const [step,       setStep]     = useState(0);
+  const [hasInvUnit, setHasInvUnit] = useState(null);
+  const [invUnits,   setInvUnits] = useState([]);
+  const [invSearch,  setInvSearch]= useState('');
+  const [selUnit,    setSelUnit]  = useState(null);
+  const [savedDoc,   setSavedDoc] = useState(null);
+  const [form,       setForm]     = useState({ ...EMPTY_FORM });
+  const [saving,     setSaving]   = useState(false);
+  const [err,        setErr]      = useState('');
+
+  // Catalog
+  const [brands,   setBrands]  = useState([]);
+  const [catMods,  setCatMods] = useState([]);
+  const [selMod,   setSelMod]  = useState(null);
+
+  // Payment
+  const [payMode,  setPayMode] = useState('');
+  const [finPct,   setFinPct]  = useState('');
+  const [payLines, setPayLines]= useState([{ method: '', amount: '' }]);
+
+  // Extras
+  const [accs,     setAccs]    = useState([]);
+  const [discount, setDiscount]= useState('');
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Load available inventory when user picks "Sí"
+  const resetForm = () => {
+    setSelUnit(null); setSelMod(null); setForm({ ...EMPTY_FORM });
+    setPayMode(''); setFinPct(''); setPayLines([{ method: '', amount: '' }]);
+    setAccs([]); setDiscount(''); setCatMods([]);
+  };
+
+  useEffect(() => { api.getBrands().then(setBrands).catch(() => {}); }, []);
+
+  useEffect(() => {
+    if (!form.brand) { setCatMods([]); setSelMod(null); return; }
+    api.getModels({ brand: form.brand }).then(setCatMods).catch(() => {});
+  }, [form.brand]);
+
   useEffect(() => {
     if (hasInvUnit !== true) return;
-    api.getInventory({ status: isReserva ? 'disponible' : 'disponible' })
+    api.getInventory({})
       .then(d => setInvUnits(Array.isArray(d) ? d.filter(u => u.status !== 'vendida') : []))
       .catch(() => {});
   }, [hasInvUnit]);
 
-  // When a unit is selected from inventory, pre-fill form
   const pickUnit = (u) => {
     setSelUnit(u);
     setForm(f => ({
@@ -488,11 +596,26 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     setStep(2);
   };
 
+  const pickBrand = (brand) => {
+    setForm(f => ({ ...f, brand, model: '', color: '', year: new Date().getFullYear() }));
+    setSelMod(null);
+  };
+
+  const pickModel = (modelId) => {
+    const m = catMods.find(x => String(x.id) === String(modelId));
+    if (!m) { setSelMod(null); setForm(f => ({ ...f, model: '', color: '' })); return; }
+    setSelMod(m);
+    setForm(f => ({ ...f, model: m.model, color: '', year: m.year || f.year }));
+  };
+
   const filteredUnits = invUnits.filter(u => {
     if (!invSearch) return true;
     const q = invSearch.toLowerCase();
     return `${u.brand} ${u.model} ${u.chassis} ${u.color} ${u.branch_name||''}`.toLowerCase().includes(q);
   });
+
+  const colors = Array.isArray(selMod?.colors) ? selMod.colors : [];
+  const totals = computeTotals({ sale_price: form.sale_price, accessories: accs, discount, payMode, finPct, payLines });
 
   async function handleCreate() {
     if (!form.brand || !form.model) { setErr('Marca y modelo son obligatorios'); return; }
@@ -501,71 +624,84 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
     setSaving(true); setErr('');
     try {
+      const clientExtra = [
+        form.client_phone   ? `Tel: ${form.client_phone}` : null,
+        form.client_email   ? `Email: ${form.client_email}` : null,
+        form.client_address ? `Dir: ${form.client_address}${form.client_commune ? ', ' + form.client_commune : ''}` : null,
+        form.sale_notes     || null,
+      ].filter(Boolean).join(' | ');
+
       if (selUnit && !isReserva) {
         await api.sellInventory(selUnit.id, {
           sold_by: form.sold_by, sold_at: form.sold_at || null,
-          ticket_id: form.ticket_id || null, payment_method: form.payment_method || null,
-          sale_type: form.sale_type || null, sale_notes: form.sale_notes || null,
+          ticket_id: form.ticket_id || null, payment_method: payMode || null,
+          sale_type: form.sale_type || null, sale_notes: clientExtra || null,
           client_name: form.client_name || null, client_rut: form.client_rut || null,
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
         });
       } else if (selUnit && isReserva) {
-        await api.updateInventory(selUnit.id, {
-          status: 'reservada',
-          notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
-        });
+        await api.updateInventory(selUnit.id, { status: 'reservada', notes: clientExtra || null });
       } else if (isReserva) {
         await api.createInventory({
           branch_id: form.branch_id, year: Number(form.year) || null,
           brand: form.brand, model: form.model, color: form.color || '',
           chassis: form.chassis || null, motor_num: form.motor_num || null,
-          sale_notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
+          sale_notes: clientExtra || null,
         });
       } else {
-        await api.createSale({ ...form });
+        await api.createSale({ ...form, payment_method: payMode || null, sale_notes: clientExtra || null });
       }
-      const sellerObj = sellers.find(s => String(s.id) === String(form.sold_by));
-      const branchObj = branches.find(b => String(b.id) === String(selUnit?.branch_id || form.branch_id));
-      const docData = {
-        ...form,
-        brand:      selUnit?.brand      || form.brand,
-        model:      selUnit?.model      || form.model,
-        year:       selUnit?.year       || form.year,
-        color:      selUnit?.color      || form.color,
-        chassis:    selUnit?.chassis    || form.chassis,
-        motor_num:  selUnit?.motor_num  || form.motor_num,
-        sellerName: sellerObj ? `${sellerObj.first_name} ${sellerObj.last_name}`.trim() : '',
+
+      const sellerObj   = sellers.find(s => String(s.id) === String(form.sold_by));
+      const branchObj   = branches.find(b => String(b.id) === String(selUnit?.branch_id || form.branch_id));
+      const colorPhotos = Array.isArray(selMod?.color_photos) ? selMod.color_photos : [];
+
+      setSavedDoc({
+        brand:      selUnit?.brand     || form.brand,
+        model:      selUnit?.model     || form.model,
+        year:       selUnit?.year      || form.year,
+        color:      selUnit?.color     || form.color,
+        chassis:    selUnit?.chassis   || form.chassis,
+        motor_num:  selUnit?.motor_num || form.motor_num,
+        sold_at:    form.sold_at,
         branchName: branchObj?.name || selUnit?.branch_name || '',
-      };
-      setSavedDoc(docData);
+        sellerName: sellerObj ? `${sellerObj.first_name} ${sellerObj.last_name}`.trim() : '',
+        client_name:    form.client_name,    client_rut:     form.client_rut,
+        client_phone:   form.client_phone,   client_email:   form.client_email,
+        client_address: form.client_address, client_commune: form.client_commune,
+        sale_notes: form.sale_notes,
+        sale_price: form.sale_price,
+        accessories: accs, discount, payMode, payLines, finPct,
+        modelPhotoUrl: colorPhotos.find(cp => cp.color === (selUnit?.color || form.color))?.url || null,
+      });
       setStep(3);
       onCreated();
     } catch (e) { setErr(e.message || 'Error al registrar'); setSaving(false); }
   }
 
-  const title = isReserva ? 'Nueva nota de reserva' : 'Nueva nota de venta';
+  const modalTitle = isReserva ? 'Nueva nota de reserva' : 'Nueva nota de venta';
 
   return (
-    <Modal onClose={onClose} title={title} wide>
+    <Modal onClose={onClose} title={modalTitle} wide>
 
-      {/* STEP 0: ¿Unidad en inventario? */}
+      {/* STEP 0 */}
       {step === 0 && (
-        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+        <div style={{ textAlign: 'center', padding: '28px 0' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
-            ¿La unidad ya está en inventario?
+            ¿La unidad ya está cargada en inventario?
           </div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 28 }}>
-            Si está cargada en stock, podés asociarla directamente.
+            Si está en stock podés asociarla directamente.
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button onClick={() => { setHasInvUnit(true); setStep(1); }}
-              style={{ padding: '12px 32px', borderRadius: 10, border: '2px solid #0F172A',
-                       background: '#0F172A', color: '#FFFFFF', fontSize: 14, fontWeight: 700,
+              style={{ padding: '12px 28px', borderRadius: 10, border: '2px solid #0F172A',
+                       background: '#0F172A', color: '#fff', fontSize: 14, fontWeight: 700,
                        cursor: 'pointer', fontFamily: 'inherit' }}>
               Sí, está en stock
             </button>
             <button onClick={() => { setHasInvUnit(false); setStep(2); }}
-              style={{ padding: '12px 32px', borderRadius: 10, border: '2px solid #E5E7EB',
+              style={{ padding: '12px 28px', borderRadius: 10, border: '2px solid #E5E7EB',
                        background: '#F9FAFB', color: '#374151', fontSize: 14, fontWeight: 700,
                        cursor: 'pointer', fontFamily: 'inherit' }}>
               No, ingresar datos
@@ -574,14 +710,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         </div>
       )}
 
-      {/* STEP 1: Selector de unidad del inventario */}
+      {/* STEP 1: Inventory */}
       {step === 1 && (
         <div>
-          <button onClick={() => setStep(0)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
-                     color: '#6B7280', marginBottom: 12, padding: 0, fontFamily: 'inherit' }}>
-            ← Volver
-          </button>
+          <button onClick={() => setStep(0)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6B7280', marginBottom: 12, padding: 0, fontFamily: 'inherit' }}>← Volver</button>
           <input value={invSearch} onChange={e => setInvSearch(e.target.value)}
             placeholder="Buscar por modelo, chasis, color, sucursal..."
             style={{ ...S.inp, width: '100%', marginBottom: 12, fontSize: 13 }} />
@@ -593,10 +725,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             )}
             {filteredUnits.map(u => (
               <button key={u.id} onClick={() => pickUnit(u)}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px',
-                         borderRadius: 10, border: '1px solid #E5E7EB', background: '#FFFFFF',
-                         cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                         transition: 'border-color 0.1s' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#F28100'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#E5E7EB'}>
                 <div style={{ flex: 1 }}>
@@ -614,84 +743,192 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         </div>
       )}
 
-      {/* STEP 2: Formulario */}
+      {/* STEP 2: Form */}
       {step === 2 && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <button onClick={() => { setSelUnit(null); setStep(0); setForm({ ...EMPTY_FORM }); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
-                       color: '#6B7280', padding: 0, fontFamily: 'inherit' }}>
+        <div style={{ maxHeight: '72vh', overflowY: 'auto', paddingRight: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <button onClick={() => { resetForm(); setStep(0); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6B7280', padding: 0, fontFamily: 'inherit' }}>
               ← Volver
             </button>
             {selUnit && (
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A',
-                            background: '#F0FDF4', border: '1px solid #86EFAC',
-                            borderRadius: 8, padding: '4px 12px' }}>
-                Unidad: {selUnit.brand} {selUnit.model} {selUnit.chassis ? `· ${selUnit.chassis}` : ''}
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '4px 12px' }}>
+                Unidad: {selUnit.brand} {selUnit.model}{selUnit.chassis ? ` · ${selUnit.chassis}` : ''}
               </div>
             )}
           </div>
 
-          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 
-            {/* Cliente */}
-            <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                          textTransform: 'uppercase', letterSpacing: '0.1em' }}>Cliente</div>
-            <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
-            <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
-            {!isReserva && (
-              <Field label="N° Ticket (opcional)" value={form.ticket_id} onChange={set('ticket_id')} ph="UUID del ticket" />
-            )}
-
-            {/* Moto — solo si NO viene de inventario */}
+            {/* MOTO */}
             {!selUnit && (
               <>
-                <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                              textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Moto</div>
-                <Field label="Marca *"   value={form.brand}     onChange={set('brand')}     ph="YAMAHA" />
-                <Field label="Modelo *"  value={form.model}     onChange={set('model')}     ph="MT-07" />
-                <Field label="Año"       value={form.year}      onChange={set('year')}      type="number" />
-                <Field label="Color *"   value={form.color}     onChange={set('color')}     ph="Negro" />
-                <Field label="N° Chasis (opcional)" value={form.chassis}   onChange={set('chassis')}   ph="9CDKDE0…" />
-                <Field label="N° Motor"  value={form.motor_num} onChange={set('motor_num')} ph="opcional" />
+                <SEC>Moto</SEC>
+                <Field label="Marca *"
+                  value={form.brand}
+                  opts={[{ v: '', l: '— Seleccionar marca —' }, ...brands.map(b => ({ v: b, l: b }))]}
+                  onChange={pickBrand} />
+                <Field label="Modelo *"
+                  value={selMod?.id || ''}
+                  opts={[{ v: '', l: form.brand ? (catMods.length ? '— Seleccionar modelo —' : 'Sin modelos en catálogo') : '— Primero elegí una marca —' },
+                         ...catMods.map(m => ({ v: m.id, l: `${m.model}${m.year ? ' ' + m.year : ''}` }))]}
+                  onChange={pickModel}
+                  disabled={!form.brand} />
+                <Field label="Año" value={form.year} onChange={set('year')} type="number" />
+                <Field label="Color *"
+                  value={form.color}
+                  opts={colors.length ? [{ v: '', l: '— Seleccionar color —' }, ...colors.map(c => ({ v: c, l: c }))] : undefined}
+                  onChange={set('color')}
+                  ph={colors.length ? undefined : 'Ej. Negro'} />
+                <Field label="N° Chasis (opcional)" value={form.chassis} onChange={set('chassis')} ph="9CDKDE0…" />
+                <Field label="N° Motor (opcional)"  value={form.motor_num} onChange={set('motor_num')} />
               </>
             )}
 
-            {/* Venta / Reserva */}
-            <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                          textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>
-              {isReserva ? 'Reserva' : 'Venta'}
-            </div>
+            {/* CLIENTE */}
+            <SEC>Datos del cliente</SEC>
+            <Field label="Nombre completo *" value={form.client_name}    onChange={set('client_name')} />
+            <Field label="RUT"               value={form.client_rut}     onChange={set('client_rut')}  ph="12.345.678-9" />
+            <Field label="Teléfono"          value={form.client_phone}   onChange={set('client_phone')} ph="+56 9 XXXX XXXX" />
+            <Field label="Email"             value={form.client_email}   onChange={set('client_email')} />
+            <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
+            <Field label="Comuna"            value={form.client_commune} onChange={set('client_commune')} />
+
+            {/* OPERACIÓN */}
+            <SEC>{isReserva ? 'Reserva' : 'Venta'}</SEC>
             {!isReserva && (
-              <Field label="Vendedor *" value={form.sold_by} onChange={set('sold_by')}
-                opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]} />
+              <Field label="Vendedor *" value={form.sold_by}
+                opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]}
+                onChange={set('sold_by')} />
             )}
-            <Field label="Sucursal *" value={form.branch_id} onChange={set('branch_id')}
-              opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]} />
+            <Field label="Sucursal *" value={form.branch_id}
+              opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]}
+              onChange={set('branch_id')} />
             <Field label={isReserva ? 'Fecha reserva' : 'Fecha venta'} value={form.sold_at} onChange={set('sold_at')} type="date" />
             {!isReserva && (
-              <>
-                <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
-                  opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-                <Field label="Tipo de entrega" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
-              </>
+              <Field label="Tipo de entrega" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
             )}
-            {!isReserva && (
-              <>
-                <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                              textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Precios</div>
-                <Field label="Precio venta al cliente" value={form.sale_price} onChange={set('sale_price')} type="number" />
-                <Field label="Precio lista (ref.)"     value={form.price}      onChange={set('price')}      type="number" />
-              </>
-            )}
+
+            {/* PRECIO */}
+            <SEC>Precio y descuento</SEC>
+            <Field label="Precio de la moto ($)" value={form.sale_price} onChange={set('sale_price')} type="number" />
+            <Field label="Descuento (%)"          value={discount}        onChange={setDiscount}        type="number" ph="0" />
+
+            {/* ACCESORIOS */}
             <div style={{ gridColumn: '1/-1' }}>
+              <SEC>Accesorios</SEC>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                {accs.map((a, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input value={a.name} onChange={e => setAccs(p => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                      placeholder="Descripción accesorio" style={{ ...S.inp, flex: 2, fontSize: 12 }} />
+                    <input value={a.amount} type="number" onChange={e => setAccs(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                      placeholder="Monto $" style={{ ...S.inp, flex: 1, fontSize: 12 }} />
+                    <button onClick={() => setAccs(p => p.filter((_, j) => j !== i))}
+                      style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+                  </div>
+                ))}
+                <button onClick={() => setAccs(p => [...p, { name: '', amount: '' }])}
+                  style={{ ...S.btn2, fontSize: 11, padding: '5px 12px', alignSelf: 'flex-start' }}>
+                  + Agregar accesorio
+                </button>
+              </div>
+            </div>
+
+            {/* FORMA DE PAGO */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <SEC>Forma de pago</SEC>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 6 }}>
+                <div style={{ gridColumn: '1/-1' }}>
+                  <Field label="Medio de pago" value={payMode} opts={PAY_MODES}
+                    onChange={v => { setPayMode(v); setPayLines([{ method: '', amount: '' }]); setFinPct(''); }} />
+                </div>
+
+                {isTarjeta(payMode) && totals.netTotal > 0 && (
+                  <div style={{ gridColumn: '1/-1', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
+                    Recargo 2% tarjeta: <strong>+{fmtCLP(totals.cardSurcharge)}</strong> — Total con recargo: <strong>{fmtCLP(totals.grandTotal)}</strong>
+                  </div>
+                )}
+
+                {payMode === 'Financiamiento' && (
+                  <>
+                    <Field label="% Pie inicial" value={finPct} onChange={setFinPct} type="number" ph="30" />
+                    {finPct && totals.netTotal > 0 && (
+                      <div style={{ gridColumn: '1/-1', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#065F46' }}>
+                        Pie ({finPct}%): <strong>{fmtCLP(totals.abonoAmt)}</strong> · A financiar: <strong>{fmtCLP(totals.grandTotal - totals.abonoAmt)}</strong>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {payMode === 'Mixto' && (
+                  <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {payLines.map((l, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <select value={l.method} onChange={e => setPayLines(p => p.map((x, j) => j === i ? { ...x, method: e.target.value } : x))}
+                          style={{ ...S.inp, flex: '2 1 120px', fontSize: 12 }}>
+                          <option value="">— Forma —</option>
+                          {PAYMENT_TYPES.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                        <input value={l.amount} type="number" onChange={e => setPayLines(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                          placeholder="Monto $" style={{ ...S.inp, flex: '1 1 80px', fontSize: 12 }} />
+                        {isTarjeta(l.method) && Number(l.amount) > 0 && (
+                          <span style={{ fontSize: 10, color: '#B45309', whiteSpace: 'nowrap' }}>
+                            +2% = {fmtCLP(Math.round(Number(l.amount) * 0.02))}
+                          </span>
+                        )}
+                        {payLines.length > 1 && (
+                          <button onClick={() => setPayLines(p => p.filter((_, j) => j !== i))}
+                            style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => setPayLines(p => [...p, { method: '', amount: '' }])}
+                      style={{ ...S.btn2, fontSize: 11, padding: '5px 12px', alignSelf: 'flex-start' }}>
+                      + Agregar línea de pago
+                    </button>
+                    {totals.grandTotal > 0 && (
+                      <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
+                        Abono: <strong>{fmtCLP(totals.abonoAmt)}</strong> · Saldo: <strong style={{ color: totals.saldo > 0 ? '#B45309' : '#065F46' }}>{fmtCLP(totals.saldo)}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RESUMEN */}
+            {totals.grandTotal > 0 && (
+              <div style={{ gridColumn: '1/-1', background: '#0F172A', borderRadius: 10, padding: '12px 16px', marginTop: 4 }}>
+                {[
+                  ['Precio moto', fmtCLP(totals.motoAmt), '#CBD5E1'],
+                  totals.accAmt > 0  ? [`Accesorios`, fmtCLP(totals.accAmt), '#CBD5E1'] : null,
+                  totals.discAmt > 0 ? [`Descuento ${discount}%`, `−${fmtCLP(totals.discAmt)}`, '#10B981'] : null,
+                  totals.cardSurcharge > 0 ? [`Recargo tarjeta 2%`, `+${fmtCLP(totals.cardSurcharge)}`, '#FCD34D'] : null,
+                ].filter(Boolean).map(([lbl, val, clr]) => (
+                  <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', color: '#94A3B8', fontSize: 11, marginBottom: 4 }}>
+                    <span>{lbl}</span><span style={{ color: clr }}>{val}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontSize: 15, fontWeight: 900, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 4 }}>
+                  <span>TOTAL</span><span style={{ color: '#F28100' }}>{fmtCLP(totals.grandTotal)}</span>
+                </div>
+                {totals.saldo > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#FCD34D', fontSize: 11, marginTop: 4 }}>
+                    <span>Saldo pendiente</span><span>{fmtCLP(totals.saldo)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* OBSERVACIONES */}
+            <div style={{ gridColumn: '1/-1', marginTop: 4 }}>
               <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
             </div>
           </div>
 
-          {err && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 10, padding: '6px 10px',
-                                background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          {err && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 10, padding: '6px 10px', background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button onClick={handleCreate} disabled={saving} style={{ ...S.btn, flex: 1 }}>
               {saving ? 'Registrando…' : isReserva ? 'Registrar reserva' : 'Registrar venta'}
             </button>
@@ -700,59 +937,39 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         </div>
       )}
 
-      {/* STEP 3: Documento generado */}
+      {/* STEP 3: Documento */}
       {step === 3 && savedDoc && (
-        <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>
+        <div style={{ textAlign: 'center', padding: '28px 12px' }}>
+          <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>
             {isReserva ? 'Reserva registrada' : 'Venta registrada'}
           </div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 28 }}>
-            El documento está listo para imprimir o descargar.
+          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>
+            El documento está listo para imprimir o descargar como PDF.
           </div>
-
-          {/* Preview card */}
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10,
-                        padding: '16px 20px', marginBottom: 24, textAlign: 'left' }}>
-            <div style={{ fontSize: 9, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase',
-                          letterSpacing: '0.1em', marginBottom: 10 }}>
-              {isReserva ? 'NOTA DE RESERVA' : 'NOTA DE VENTA'}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
-              {[
-                ['Cliente',   savedDoc.client_name || '—'],
-                ['RUT',       savedDoc.client_rut  || '—'],
-                ['Moto',      `${savedDoc.brand} ${savedDoc.model}${savedDoc.year ? ` ${savedDoc.year}` : ''}`],
-                ['Chasis',    savedDoc.chassis     || '—'],
-                ['Color',     savedDoc.color       || '—'],
-                !isReserva ? ['Precio', savedDoc.sale_price ? fmtCLP(savedDoc.sale_price) : '—'] : null,
-                !isReserva ? ['Forma pago', savedDoc.payment_method || '—'] : null,
-                ['Vendedor',  savedDoc.sellerName  || '—'],
-                ['Sucursal',  savedDoc.branchName  || '—'],
-              ].filter(Boolean).map(([lbl, val]) => (
-                <div key={lbl} style={{ display: 'flex', gap: 6, padding: '3px 0',
-                                        borderBottom: '1px solid #F1F5F9' }}>
-                  <span style={{ fontSize: 10, color: '#94A3B8', minWidth: 76 }}>{lbl}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#0F172A' }}>{val}</span>
-                </div>
-              ))}
-            </div>
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10, padding: '14px 18px', marginBottom: 20, textAlign: 'left' }}>
+            {[
+              ['Cliente',  savedDoc.client_name || '—'],
+              ['RUT',      savedDoc.client_rut  || '—'],
+              ['Moto',     `${savedDoc.brand} ${savedDoc.model} ${savedDoc.year || ''}`.trim()],
+              ['Color',    savedDoc.color || '—'],
+              ['Sucursal', savedDoc.branchName  || '—'],
+              ['Total',    fmtCLP(computeTotals(savedDoc).grandTotal)],
+              computeTotals(savedDoc).saldo > 0 ? ['Saldo', fmtCLP(computeTotals(savedDoc).saldo)] : null,
+            ].filter(Boolean).map(([l, v]) => (
+              <div key={l} style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid #F1F5F9' }}>
+                <span style={{ fontSize: 10, color: '#94A3B8', minWidth: 70 }}>{l}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#0F172A' }}>{v}</span>
+              </div>
+            ))}
           </div>
-
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => openNote(savedDoc, noteType)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F28100',
-                       border: 'none', color: '#fff', borderRadius: 10, fontSize: 13,
-                       fontWeight: 700, cursor: 'pointer', padding: '12px 24px',
-                       boxShadow: '0 4px 12px rgba(242,129,0,0.35)', fontFamily: 'inherit' }}>
+            <button onClick={() => openNote(savedDoc, noteType)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F28100', border: 'none', color: '#fff', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px rgba(242,129,0,.35)', fontFamily: 'inherit' }}>
               🖨 Imprimir / Descargar PDF
             </button>
             <button onClick={onClose}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFFFFF',
-                       border: '1.5px solid #CBD5E1', color: '#374151', borderRadius: 10,
-                       fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                       padding: '12px 20px', fontFamily: 'inherit' }}>
+              style={{ background: '#fff', border: '1.5px solid #CBD5E1', color: '#374151', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '12px 20px', fontFamily: 'inherit' }}>
               Cerrar
             </button>
           </div>
