@@ -289,14 +289,178 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
   );
 }
 
+// ─── Generador de documento imprimible ───────────────────────────────────────
+
+function fmtCLP(n) {
+  if (!n) return '—';
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
+}
+
+function fmtDateDoc(s) {
+  if (!s) return '—';
+  const d = new Date(s + 'T12:00:00');
+  return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function buildNoteHTML(data, type) {
+  const isRes = type === 'reserva';
+  const title = isRes ? 'NOTA DE RESERVA' : 'NOTA DE VENTA';
+  const logo  = window.location.origin + '/logo.png';
+  const today = fmtDateDoc(data.sold_at || new Date().toISOString().slice(0,10));
+
+  const row = (label, value) => value
+    ? `<tr><td class="lbl">${label}</td><td class="val">${value}</td></tr>`
+    : '';
+
+  const motoRows = [
+    row('Marca',        data.brand),
+    row('Modelo',       data.model),
+    row('Año',          data.year),
+    row('Color',        data.color),
+    row('N° Chasis',    data.chassis),
+    row('N° Motor',     data.motor_num),
+  ].filter(Boolean).join('');
+
+  const saleRows = [
+    !isRes ? row('Precio de venta', fmtCLP(data.sale_price)) : '',
+    !isRes ? row('Forma de pago',   data.payment_method) : '',
+    !isRes ? row('Tipo de entrega', data.sale_type) : '',
+    row('Sucursal',    data.branchName),
+    row('Vendedor',    data.sellerName),
+    row('Fecha',       today),
+  ].filter(Boolean).join('');
+
+  const notes = data.sale_notes
+    ? `<div class="notes"><strong>Observaciones:</strong> ${data.sale_notes}</div>` : '';
+
+  const block = `
+    <div class="copy">
+      <div class="header">
+        <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'" />
+        <div class="header-right">
+          <div class="doc-title">${title}</div>
+          <div class="doc-date">${today}</div>
+        </div>
+      </div>
+
+      <div class="sections">
+        <div class="section">
+          <div class="section-title">CLIENTE</div>
+          <table class="data-table">
+            ${row('Nombre', data.client_name || '—')}
+            ${row('RUT',    data.client_rut  || '—')}
+          </table>
+        </div>
+
+        <div class="section">
+          <div class="section-title">VEHÍCULO</div>
+          <table class="data-table">${motoRows || row('Unidad', '—')}</table>
+        </div>
+
+        <div class="section">
+          <div class="section-title">${isRes ? 'RESERVA' : 'CONDICIONES'}</div>
+          <table class="data-table">${saleRows}</table>
+        </div>
+      </div>
+
+      ${notes}
+
+      <div class="signatures">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <div class="sig-label">Firma y aclaración del cliente</div>
+          <div class="sig-sub">Nombre: ${data.client_name || '___________________________'}</div>
+          <div class="sig-sub">RUT: ${data.client_rut || '___________________________'}</div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <div class="sig-label">Firma del vendedor</div>
+          <div class="sig-sub">Nombre: ${data.sellerName || '___________________________'}</div>
+          <div class="sig-sub">Sucursal: ${data.branchName || '___________________________'}</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        MAOS BIKE · ${isRes ? 'Copia de reserva' : 'Copia de venta'} — ${today}
+      </div>
+    </div>`;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>${title} — MAOS BIKE</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#0F172A; font-size:11pt; }
+  .page { max-width:820px; margin:0 auto; padding:20px; }
+  .copy { border:1px solid #CBD5E1; border-radius:6px; padding:24px 28px; margin-bottom:0; }
+  .divider { border:none; border-top:2px dashed #94A3B8; margin:24px 0; }
+  .copy + .divider + .copy { margin-top:0; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; padding-bottom:16px; border-bottom:3px solid #0F172A; }
+  .logo { height:52px; object-fit:contain; }
+  .header-right { text-align:right; }
+  .doc-title { font-size:18pt; font-weight:900; color:#0F172A; letter-spacing:-0.5px; line-height:1; }
+  .doc-date { font-size:9pt; color:#64748B; margin-top:4px; }
+  .sections { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
+  .section { }
+  .section-title { font-size:7pt; font-weight:800; color:#94A3B8; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #E2E8F0; }
+  .data-table { width:100%; border-collapse:collapse; }
+  .data-table td { padding:3px 0; vertical-align:top; font-size:9.5pt; line-height:1.4; }
+  .data-table .lbl { color:#64748B; width:42%; font-size:8.5pt; padding-right:6px; }
+  .data-table .val { font-weight:600; color:#0F172A; }
+  .notes { background:#F8FAFC; border-left:3px solid #CBD5E1; padding:8px 12px; margin-bottom:16px; font-size:9.5pt; color:#374151; border-radius:0 4px 4px 0; }
+  .signatures { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:24px; padding-top:20px; border-top:1px solid #E2E8F0; }
+  .sig-box { }
+  .sig-line { border-bottom:1.5px solid #0F172A; margin-bottom:8px; height:42px; }
+  .sig-label { font-size:8.5pt; font-weight:700; color:#374151; margin-bottom:4px; }
+  .sig-sub { font-size:8pt; color:#64748B; margin-top:2px; }
+  .footer { text-align:center; margin-top:16px; padding-top:12px; border-top:1px solid #F1F5F9; font-size:8pt; color:#94A3B8; }
+  .no-print { position:fixed; bottom:20px; right:20px; display:flex; gap:10px; z-index:999; }
+  .btn-print { background:#F28100; color:#fff; border:none; padding:12px 24px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(242,129,0,0.4); }
+  .btn-close { background:#0F172A; color:#fff; border:none; padding:12px 20px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
+  @media print {
+    body { font-size:10pt; }
+    .no-print { display:none !important; }
+    .page { padding:0; max-width:100%; }
+    .copy { border:1px solid #CBD5E1; }
+    @page { margin:1cm; size:A4; }
+    * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button class="btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <button class="btn-close" onclick="window.close()">Cerrar</button>
+</div>
+<div class="page">
+  ${block}
+  <hr class="divider" />
+  ${block.replace('Copia de reserva', 'Copia empresa').replace('Copia de venta', 'Copia empresa')}
+</div>
+<script>setTimeout(()=>window.print(),400);</script>
+</body>
+</html>`;
+}
+
+function openNote(data, type) {
+  const html = buildNoteHTML(data, type);
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('Habilitá las ventanas emergentes para ver el documento.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
 // ─── Modal: nueva venta ───────────────────────────────────────────────────────
 
 function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta' }) {
   const isReserva = noteType === 'reserva';
-  const [step,       setStep]       = useState(0); // 0=source, 1=unit_from_inv, 2=form
+  const [step,       setStep]       = useState(0); // 0=source, 1=unit_from_inv, 2=form, 3=done
   const [hasInvUnit, setHasInvUnit] = useState(null); // null | true | false
   const [invUnits,   setInvUnits]   = useState([]);
   const [invSearch,  setInvSearch]  = useState('');
+  const [savedDoc,   setSavedDoc]   = useState(null);
   const [selUnit,    setSelUnit]     = useState(null);
   const [form,       setForm]       = useState({ ...EMPTY_FORM });
   const [saving,     setSaving]     = useState(false);
@@ -336,7 +500,6 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     setSaving(true); setErr('');
     try {
       if (selUnit && !isReserva) {
-        // Sell existing unit
         await api.sellInventory(selUnit.id, {
           sold_by: form.sold_by, sold_at: form.sold_at || null,
           ticket_id: form.ticket_id || null, payment_method: form.payment_method || null,
@@ -345,13 +508,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
         });
       } else if (selUnit && isReserva) {
-        // Reserve existing unit
         await api.updateInventory(selUnit.id, {
           status: 'reservada',
           notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
         });
       } else if (isReserva) {
-        // Reserve without inventory unit — just create as reservada
         await api.createInventory({
           branch_id: form.branch_id || null, year: Number(form.year) || null,
           brand: form.brand, model: form.model, color: form.color || null,
@@ -359,9 +520,23 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
         });
       } else {
-        // Venta sin unidad en inventario
         await api.createSale({ ...form });
       }
+      const sellerObj = sellers.find(s => String(s.id) === String(form.sold_by));
+      const branchObj = branches.find(b => String(b.id) === String(selUnit?.branch_id || form.branch_id));
+      const docData = {
+        ...form,
+        brand:      selUnit?.brand      || form.brand,
+        model:      selUnit?.model      || form.model,
+        year:       selUnit?.year       || form.year,
+        color:      selUnit?.color      || form.color,
+        chassis:    selUnit?.chassis    || form.chassis,
+        motor_num:  selUnit?.motor_num  || form.motor_num,
+        sellerName: sellerObj ? `${sellerObj.first_name} ${sellerObj.last_name}`.trim() : '',
+        branchName: branchObj?.name || selUnit?.branch_name || '',
+      };
+      setSavedDoc(docData);
+      setStep(3);
       onCreated();
     } catch (e) { setErr(e.message || 'Error al registrar'); setSaving(false); }
   }
@@ -519,6 +694,65 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               {saving ? 'Registrando…' : isReserva ? 'Registrar reserva' : 'Registrar venta'}
             </button>
             <button onClick={onClose} style={{ ...S.btn2, flex: 1 }}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: Documento generado */}
+      {step === 3 && savedDoc && (
+        <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>
+            {isReserva ? 'Reserva registrada' : 'Venta registrada'}
+          </div>
+          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 28 }}>
+            El documento está listo para imprimir o descargar.
+          </div>
+
+          {/* Preview card */}
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 10,
+                        padding: '16px 20px', marginBottom: 24, textAlign: 'left' }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase',
+                          letterSpacing: '0.1em', marginBottom: 10 }}>
+              {isReserva ? 'NOTA DE RESERVA' : 'NOTA DE VENTA'}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
+              {[
+                ['Cliente',   savedDoc.client_name || '—'],
+                ['RUT',       savedDoc.client_rut  || '—'],
+                ['Moto',      `${savedDoc.brand} ${savedDoc.model}${savedDoc.year ? ` ${savedDoc.year}` : ''}`],
+                ['Chasis',    savedDoc.chassis     || '—'],
+                ['Color',     savedDoc.color       || '—'],
+                !isReserva ? ['Precio', savedDoc.sale_price ? fmtCLP(savedDoc.sale_price) : '—'] : null,
+                !isReserva ? ['Forma pago', savedDoc.payment_method || '—'] : null,
+                ['Vendedor',  savedDoc.sellerName  || '—'],
+                ['Sucursal',  savedDoc.branchName  || '—'],
+              ].filter(Boolean).map(([lbl, val]) => (
+                <div key={lbl} style={{ display: 'flex', gap: 6, padding: '3px 0',
+                                        borderBottom: '1px solid #F1F5F9' }}>
+                  <span style={{ fontSize: 10, color: '#94A3B8', minWidth: 76 }}>{lbl}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#0F172A' }}>{val}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => openNote(savedDoc, noteType)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F28100',
+                       border: 'none', color: '#fff', borderRadius: 10, fontSize: 13,
+                       fontWeight: 700, cursor: 'pointer', padding: '12px 24px',
+                       boxShadow: '0 4px 12px rgba(242,129,0,0.35)', fontFamily: 'inherit' }}>
+              🖨 Imprimir / Descargar PDF
+            </button>
+            <button onClick={onClose}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFFFFF',
+                       border: '1.5px solid #CBD5E1', color: '#374151', borderRadius: 10,
+                       fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                       padding: '12px 20px', fontFamily: 'inherit' }}>
+              Cerrar
+            </button>
           </div>
         </div>
       )}
@@ -877,8 +1111,8 @@ export function SalesView({ user, realBranches }) {
           noteType={showNew}
           sellers={sellers}
           branches={realBranches || []}
-          onClose={() => setShowNew(null)}
-          onCreated={() => { setShowNew(null); load(); }}
+          onClose={() => { setShowNew(null); load(); }}
+          onCreated={() => load()}
         />
       )}
     </div>
