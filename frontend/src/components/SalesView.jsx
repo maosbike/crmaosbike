@@ -7,7 +7,7 @@ import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
 const SALE_TYPES = [
   { v: '',            l: '— Seleccionar —' },
   { v: 'inscripcion', l: 'Solo inscripción' },
-  { v: 'completa',    l: 'Entrega completa' },
+  { v: 'completa',    l: 'Documentación completa' },
 ];
 
 const DOC_LABELS = {
@@ -291,76 +291,237 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
 
 // ─── Modal: nueva venta ───────────────────────────────────────────────────────
 
-function NewSaleModal({ sellers, branches, onClose, onCreated }) {
-  const [form,   setForm]   = useState({ ...EMPTY_FORM });
-  const [saving, setSaving] = useState(false);
-  const [err,    setErr]    = useState('');
+function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta' }) {
+  const isReserva = noteType === 'reserva';
+  const [step,       setStep]       = useState(0); // 0=source, 1=unit_from_inv, 2=form
+  const [hasInvUnit, setHasInvUnit] = useState(null); // null | true | false
+  const [invUnits,   setInvUnits]   = useState([]);
+  const [invSearch,  setInvSearch]  = useState('');
+  const [selUnit,    setSelUnit]     = useState(null);
+  const [form,       setForm]       = useState({ ...EMPTY_FORM });
+  const [saving,     setSaving]     = useState(false);
+  const [err,        setErr]        = useState('');
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Load available inventory when user picks "Sí"
+  useEffect(() => {
+    if (hasInvUnit !== true) return;
+    api.getInventory({ status: isReserva ? 'disponible' : 'disponible' })
+      .then(d => setInvUnits(Array.isArray(d) ? d.filter(u => u.status !== 'vendida') : []))
+      .catch(() => {});
+  }, [hasInvUnit]);
+
+  // When a unit is selected from inventory, pre-fill form
+  const pickUnit = (u) => {
+    setSelUnit(u);
+    setForm(f => ({
+      ...f,
+      brand: u.brand || '', model: u.model || '', year: u.year || f.year,
+      color: u.color || '', chassis: u.chassis || '', motor_num: u.motor_num || '',
+      branch_id: u.branch_id || '',
+    }));
+    setStep(2);
+  };
+
+  const filteredUnits = invUnits.filter(u => {
+    if (!invSearch) return true;
+    const q = invSearch.toLowerCase();
+    return `${u.brand} ${u.model} ${u.chassis} ${u.color} ${u.branch_name||''}`.toLowerCase().includes(q);
+  });
+
   async function handleCreate() {
-    if (!form.brand || !form.model || !form.chassis) { setErr('Marca, modelo y chasis son obligatorios'); return; }
-    if (!form.sold_by) { setErr('Vendedor obligatorio'); return; }
+    if (!form.brand || !form.model) { setErr('Marca y modelo son obligatorios'); return; }
+    if (!isReserva && !form.sold_by) { setErr('Vendedor obligatorio'); return; }
     setSaving(true); setErr('');
     try {
-      await api.createSale(form);
+      if (selUnit && !isReserva) {
+        // Sell existing unit
+        await api.sellInventory(selUnit.id, {
+          sold_by: form.sold_by, sold_at: form.sold_at || null,
+          ticket_id: form.ticket_id || null, payment_method: form.payment_method || null,
+          sale_type: form.sale_type || null, sale_notes: form.sale_notes || null,
+          client_name: form.client_name || null, client_rut: form.client_rut || null,
+          sale_price: form.sale_price ? parseInt(form.sale_price) : null,
+        });
+      } else if (selUnit && isReserva) {
+        // Reserve existing unit
+        await api.updateInventory(selUnit.id, {
+          status: 'reservada',
+          notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
+        });
+      } else if (isReserva) {
+        // Reserve without inventory unit — just create as reservada
+        await api.createInventory({
+          branch_id: form.branch_id || null, year: Number(form.year) || null,
+          brand: form.brand, model: form.model, color: form.color || null,
+          chassis: form.chassis || null, motor_num: form.motor_num || null,
+          notes: [form.sale_notes, form.client_name ? `Cliente: ${form.client_name}` : null].filter(Boolean).join(' | ') || null,
+        });
+      } else {
+        // Venta sin unidad en inventario
+        await api.createSale({ ...form });
+      }
       onCreated();
-    } catch (e) { setErr(e.message || 'Error al crear'); setSaving(false); }
+    } catch (e) { setErr(e.message || 'Error al registrar'); setSaving(false); }
   }
 
+  const title = isReserva ? 'Nueva nota de reserva' : 'Nueva nota de venta';
+
   return (
-    <Modal onClose={onClose} title="Registrar venta" wide>
-      <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                      textTransform: 'uppercase', letterSpacing: '0.1em' }}>Unidad</div>
-        <Field label="Marca *"     value={form.brand}     onChange={set('brand')}     ph="YAMAHA" />
-        <Field label="Modelo *"    value={form.model}     onChange={set('model')}     ph="MT-07" />
-        <Field label="Año"         value={form.year}      onChange={set('year')}      type="number" />
-        <Field label="Color"       value={form.color}     onChange={set('color')}     ph="Negro" />
-        <Field label="N° Chasis *" value={form.chassis}   onChange={set('chassis')}   ph="9CDKDE0…" />
-        <Field label="N° Motor"    value={form.motor_num} onChange={set('motor_num')} ph="opcional" />
+    <Modal onClose={onClose} title={title} wide>
 
-        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                      textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Venta</div>
-        <Field label="Vendedor *" value={form.sold_by} onChange={set('sold_by')}
-          opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}` }))]} />
-        <Field label="Sucursal" value={form.branch_id} onChange={set('branch_id')}
-          opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]} />
-        <Field label="Fecha venta" value={form.sold_at} onChange={set('sold_at')} type="date" />
-        <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
-          opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-        <Field label="Tipo de entrega" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
-
-        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                      textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Precios</div>
-        <Field label="Precio lista (ref.)"        value={form.price}          onChange={set('price')}          type="number" />
-        <Field label="Precio venta al cliente"    value={form.sale_price}     onChange={set('sale_price')}     type="number" />
-        <Field label="Costo compra distribuidor"  value={form.cost_price}     onChange={set('cost_price')}     type="number" />
-        <Field label="Monto facturado dist."      value={form.invoice_amount} onChange={set('invoice_amount')} type="number" />
-
-        <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                      textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Cliente</div>
-        <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
-        <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
-        <Field label="N° Ticket (opcional)" value={form.ticket_id} onChange={set('ticket_id')} ph="UUID del ticket" />
-
-        <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-          <input type="checkbox" id="new_delivered" checked={!!form.delivered}
-            onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
-          <label htmlFor="new_delivered" style={{ fontSize: 13 }}>Moto entregada al cliente</label>
+      {/* STEP 0: ¿Unidad en inventario? */}
+      {step === 0 && (
+        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
+            ¿La unidad ya está en inventario?
+          </div>
+          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 28 }}>
+            Si está cargada en stock, podés asociarla directamente.
+          </div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button onClick={() => { setHasInvUnit(true); setStep(1); }}
+              style={{ padding: '12px 32px', borderRadius: 10, border: '2px solid #0F172A',
+                       background: '#0F172A', color: '#FFFFFF', fontSize: 14, fontWeight: 700,
+                       cursor: 'pointer', fontFamily: 'inherit' }}>
+              Sí, está en stock
+            </button>
+            <button onClick={() => { setHasInvUnit(false); setStep(2); }}
+              style={{ padding: '12px 32px', borderRadius: 10, border: '2px solid #E5E7EB',
+                       background: '#F9FAFB', color: '#374151', fontSize: 14, fontWeight: 700,
+                       cursor: 'pointer', fontFamily: 'inherit' }}>
+              No, ingresar datos
+            </button>
+          </div>
         </div>
-        <div style={{ gridColumn: '1/-1' }}>
-          <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
+      )}
+
+      {/* STEP 1: Selector de unidad del inventario */}
+      {step === 1 && (
+        <div>
+          <button onClick={() => setStep(0)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
+                     color: '#6B7280', marginBottom: 12, padding: 0, fontFamily: 'inherit' }}>
+            ← Volver
+          </button>
+          <input value={invSearch} onChange={e => setInvSearch(e.target.value)}
+            placeholder="Buscar por modelo, chasis, color, sucursal..."
+            style={{ ...S.inp, width: '100%', marginBottom: 12, fontSize: 13 }} />
+          <div style={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {filteredUnits.length === 0 && (
+              <div style={{ textAlign: 'center', color: '#9CA3AF', padding: 24, fontSize: 13 }}>
+                {invUnits.length === 0 ? 'Cargando...' : 'Sin resultados'}
+              </div>
+            )}
+            {filteredUnits.map(u => (
+              <button key={u.id} onClick={() => pickUnit(u)}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px',
+                         borderRadius: 10, border: '1px solid #E5E7EB', background: '#FFFFFF',
+                         cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                         transition: 'border-color 0.1s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#F28100'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#E5E7EB'}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#0F172A' }}>{u.brand} {u.model}</div>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                    {u.color && <span>{u.color} · </span>}
+                    {u.chassis && <span>Chasis: {u.chassis} · </span>}
+                    <span>{u.branch_name || u.branch_code || '—'}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#F28100' }}>Seleccionar →</div>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-      {err && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 10, padding: '6px 10px',
-                            background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button onClick={handleCreate} disabled={saving} style={{ ...S.btn, flex: 1 }}>
-          {saving ? 'Registrando…' : 'Registrar venta'}
-        </button>
-        <button onClick={onClose} style={{ ...S.btn2, flex: 1 }}>Cancelar</button>
-      </div>
+      )}
+
+      {/* STEP 2: Formulario */}
+      {step === 2 && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <button onClick={() => { setSelUnit(null); setStep(0); setForm({ ...EMPTY_FORM }); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
+                       color: '#6B7280', padding: 0, fontFamily: 'inherit' }}>
+              ← Volver
+            </button>
+            {selUnit && (
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A',
+                            background: '#F0FDF4', border: '1px solid #86EFAC',
+                            borderRadius: 8, padding: '4px 12px' }}>
+                Unidad: {selUnit.brand} {selUnit.model} {selUnit.chassis ? `· ${selUnit.chassis}` : ''}
+              </div>
+            )}
+          </div>
+
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+            {/* Cliente */}
+            <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                          textTransform: 'uppercase', letterSpacing: '0.1em' }}>Cliente</div>
+            <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
+            <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
+            {!isReserva && (
+              <Field label="N° Ticket (opcional)" value={form.ticket_id} onChange={set('ticket_id')} ph="UUID del ticket" />
+            )}
+
+            {/* Moto — solo si NO viene de inventario */}
+            {!selUnit && (
+              <>
+                <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                              textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Moto</div>
+                <Field label="Marca *"   value={form.brand}     onChange={set('brand')}     ph="YAMAHA" />
+                <Field label="Modelo *"  value={form.model}     onChange={set('model')}     ph="MT-07" />
+                <Field label="Año"       value={form.year}      onChange={set('year')}      type="number" />
+                <Field label="Color"     value={form.color}     onChange={set('color')}     ph="Negro" />
+                <Field label="N° Chasis (opcional)" value={form.chassis}   onChange={set('chassis')}   ph="9CDKDE0…" />
+                <Field label="N° Motor"  value={form.motor_num} onChange={set('motor_num')} ph="opcional" />
+              </>
+            )}
+
+            {/* Venta / Reserva */}
+            <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                          textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>
+              {isReserva ? 'Reserva' : 'Venta'}
+            </div>
+            {!isReserva && (
+              <Field label="Vendedor *" value={form.sold_by} onChange={set('sold_by')}
+                opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]} />
+            )}
+            <Field label="Sucursal" value={form.branch_id} onChange={set('branch_id')}
+              opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]} />
+            <Field label={isReserva ? 'Fecha reserva' : 'Fecha venta'} value={form.sold_at} onChange={set('sold_at')} type="date" />
+            {!isReserva && (
+              <>
+                <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
+                  opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
+                <Field label="Tipo de entrega" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
+              </>
+            )}
+            {!isReserva && (
+              <>
+                <div style={{ gridColumn: '1/-1', fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                              textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>Precios</div>
+                <Field label="Precio venta al cliente" value={form.sale_price} onChange={set('sale_price')} type="number" />
+                <Field label="Precio lista (ref.)"     value={form.price}      onChange={set('price')}      type="number" />
+              </>
+            )}
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
+            </div>
+          </div>
+
+          {err && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 10, padding: '6px 10px',
+                                background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button onClick={handleCreate} disabled={saving} style={{ ...S.btn, flex: 1 }}>
+              {saving ? 'Registrando…' : isReserva ? 'Registrar reserva' : 'Registrar venta'}
+            </button>
+            <button onClick={onClose} style={{ ...S.btn2, flex: 1 }}>Cancelar</button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
@@ -377,7 +538,7 @@ export function SalesView({ user, realBranches }) {
   const [sellers,  setSellers]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [selSale,  setSelSale]  = useState(null);
-  const [showNew,  setShowNew]  = useState(false);
+  const [showNew,  setShowNew]  = useState(null);
 
   const [q,              setQ]              = useState('');
   const [fromDate,       setFromDate]       = useState('');
@@ -448,12 +609,22 @@ export function SalesView({ user, realBranches }) {
           </h1>
         </div>
         {canCreate && (
-          <button onClick={() => setShowNew(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F28100', border: 'none',
-                     color: '#FFFFFF', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                     padding: '9px 18px', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(242,129,0,0.35)' }}>
-            <Ic.plus size={14} color="#fff" /> Nueva venta
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setShowNew('reserva')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFFFFF',
+                       border: '1.5px solid #0F172A', color: '#0F172A', borderRadius: 9,
+                       fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                       padding: '9px 18px', fontFamily: 'inherit' }}>
+              <Ic.plus size={14} color="#0F172A" /> Nota de reserva
+            </button>
+            <button onClick={() => setShowNew('venta')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F28100',
+                       border: 'none', color: '#FFFFFF', borderRadius: 9, fontSize: 12,
+                       fontWeight: 700, cursor: 'pointer', padding: '9px 18px',
+                       fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(242,129,0,0.35)' }}>
+              <Ic.plus size={14} color="#fff" /> Nota de venta
+            </button>
+          </div>
         )}
       </div>
 
@@ -703,10 +874,11 @@ export function SalesView({ user, realBranches }) {
       )}
       {showNew && (
         <NewSaleModal
+          noteType={showNew}
           sellers={sellers}
-          branches={realBranches}
-          onClose={() => setShowNew(false)}
-          onCreated={() => { load(); setShowNew(false); }}
+          branches={realBranches || []}
+          onClose={() => setShowNew(null)}
+          onCreated={() => { setShowNew(null); load(); }}
         />
       )}
     </div>

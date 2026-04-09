@@ -221,8 +221,8 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
       client_name, client_rut,
     } = req.body;
 
-    if (!brand || !model || !chassis)
-      return res.status(400).json({ error: 'Marca, modelo y chasis son obligatorios' });
+    if (!brand || !model)
+      return res.status(400).json({ error: 'Marca y modelo son obligatorios' });
     if (!sold_by)
       return res.status(400).json({ error: 'Vendedor obligatorio' });
 
@@ -248,7 +248,7 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
         brand.trim().toUpperCase(),
         model.trim().toUpperCase(),
         color  || null,
-        chassis.trim().toUpperCase(),
+        chassis ? chassis.trim().toUpperCase() : null,
         motor_num || null,
         price     ? parseInt(price)  : 0,
         finalSoldAt,

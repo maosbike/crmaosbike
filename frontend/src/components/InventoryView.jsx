@@ -9,7 +9,6 @@ const BLANK_NW = () => ({
   added_as_sold:false, sold_at:new Date().toISOString().split('T')[0],
   sold_by:'', ticket_id:'', sale_notes:'', payment_method:'', sale_type:'completa',
 });
-const BLANK_SELL = () => ({ sold_by:'', sold_at:new Date().toISOString().split('T')[0], ticket_id:'', payment_method:'', sale_type:'completa', sale_notes:'' });
 const HIST_ICONS  = { created:'C', imported:'I', sold:'V', status_changed:'E', moved:'T', note:'N' };
 const HIST_LABELS = { created:'Creada', imported:'Importada', sold:'Venta', status_changed:'Cambio estado', moved:'Traslado', note:'Nota' };
 
@@ -75,11 +74,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [nw,     setNw]     = useState(BLANK_NW());
   const [sellers,setSellers]= useState([]);
   const [openTickets,setOpenTickets] = useState([]);
-  const [showSell,  setShowSell]   = useState(false);
-  const [sellUnit,  setSellUnit]   = useState(null);
-  const [sellForm,  setSellForm]   = useState(BLANK_SELL());
-  const [selling,   setSelling]    = useState(false);
-  const [ticketSearch, setTicketSearch] = useState('');
   const [histOpen,  setHistOpen]   = useState(new Set());
   const [histData,  setHistData]   = useState({});
   const [histLoading,setHistLoading] = useState({});
@@ -134,7 +128,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const clearFilters = () => { setSearch(''); setBrF(''); setStF(''); setBrandF(''); };
 
   useEffect(() => {
-    if (!showAdd && !showSell) return;
+    if (!showAdd) return;
     api.getSellers().then(d => setSellers(Array.isArray(d) ? d : [])).catch(() => {});
     // Fetching without status filter — backend only supports exact match, not comma-separated.
     // Filter out definitively closed statuses on the frontend.
@@ -142,7 +136,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       const all = d.data || [];
       setOpenTickets(all.filter(t => !['perdido'].includes(t.status)));
     }).catch(() => {});
-  }, [showAdd, showSell]);
+  }, [showAdd]);
 
   // ── Handlers (sin cambios de lógica) ────────────────────────────────────────
 
@@ -208,22 +202,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const handleMove = async (id, branch_id) => {
     setInv(p => p.map(x => x.id===id ? {...x,branch_id} : x));
     try { await api.updateInventory(id, {branch_id}); reload(); } catch(ex) { alert(ex.message); reload(); }
-  };
-  const openSell = (unit, preTicketId) => { setSellUnit(unit); setSellForm({...BLANK_SELL(), ticket_id: preTicketId||''}); setTicketSearch(''); setShowSell(true); };
-  const handleSell = async e => {
-    e.preventDefault(); if (!sellUnit||!sellForm.sold_by) return;
-    setSelling(true);
-    try {
-      await api.sellInventory(sellUnit.id, {
-        sold_by:sellForm.sold_by, sold_at:sellForm.sold_at||null,
-        ticket_id:sellForm.ticket_id||null, payment_method:sellForm.payment_method||null,
-        sale_type:sellForm.sale_type||null, sale_notes:sellForm.sale_notes||null,
-      });
-      setShowSell(false); setSellUnit(null);
-      if (histOpen.has(sellUnit.id)) api.getInventoryHistory(sellUnit.id).then(d=>setHistData(p=>({...p,[sellUnit.id]:d}))).catch(()=>{});
-      reload();
-    } catch(ex) { alert(ex.message||'Error al registrar venta'); }
-    finally { setSelling(false); }
   };
   const openEdit = (unit) => {
     setEErr('');
@@ -653,12 +631,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         style={{ padding:'5px 10px', borderRadius:7, border:`1px solid ${isExpanded?'#A5B4FC':'#E2E8F0'}`, background:isExpanded?'#EEF2FF':'#F8FAFC', color:isExpanded?'#4F46E5':'#64748B', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                         {isExpanded ? '▲' : '▼ Detalles'}
                       </button>
-                      {!isSold && (
-                        <button onClick={e=>{e.stopPropagation();openSell(x);}}
-                          style={{ padding:'6px 14px', borderRadius:7, background:'#15803D', color:'#fff', border:'none', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                          Vender
-                        </button>
-                      )}
                     </div>
                     {/* Expanded details */}
                     {isExpanded && (
@@ -978,18 +950,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   }}>
                     {!isSold ? (
                       <>
-                        <button onClick={()=>openSell(x)}
-                          style={{
-                            padding:'8px 0', borderRadius:8,
-                            background:'#15803D', color:'#FFFFFF',
-                            border:'none', fontSize:12, fontWeight:700,
-                            cursor:'pointer', letterSpacing:'0.01em', width:'100%',
-                            transition:'background 0.1s',
-                          }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#166534'}
-                          onMouseLeave={e=>e.currentTarget.style.background='#15803D'}>
-                          Registrar venta
-                        </button>
                         <div style={{ display:'flex', gap:5 }}>
                           <button onClick={()=>toggleHist(x.id)}
                             style={{
@@ -1224,171 +1184,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           </form>
         </Modal>
       )}
-
-      {/* ══════════════════════════════════════════════════════════
-          MODAL — REGISTRAR VENTA
-      ══════════════════════════════════════════════════════════ */}
-      {showSell && sellUnit && (() => {
-        const bName = brs.find(b=>b.id===sellUnit.branch_id)?.name || '—';
-        return (
-          <Modal onClose={()=>{setShowSell(false);setSellUnit(null);}} title="Registrar venta" wide>
-            <form onSubmit={handleSell}>
-              <div style={{ background:'#F8F9FB',border:'1px solid #E5E7EB',borderRadius:10,padding:'14px 18px',marginBottom:18,display:'flex',gap:18,flexWrap:'wrap' }}>
-                <div style={{ flex:'1 1 180px' }}>
-                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Unidad</div>
-                  <div style={{ fontWeight:900,fontSize:17,color:'#0F172A',marginBottom:2 }}>{sellUnit.brand} {sellUnit.model}</div>
-                  <div style={{ fontSize:12,color:'#6B7280' }}>Color: {sellUnit.color} · Año {sellUnit.year}</div>
-                </div>
-                <div style={{ flex:'1 1 160px' }}>
-                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Identificación</div>
-                  <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
-                    <span style={{ fontSize:9,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'0.08em',width:34,flexShrink:0 }}>Chasis</span>
-                    <span style={{ fontSize:11,fontWeight:700,color:'#1E293B',background:'#F1F5F9',padding:'3px 9px',borderRadius:6,border:'1px solid #E2E8F0',letterSpacing:'0.02em' }}>{sellUnit.chassis}</span>
-                  </div>
-                  {sellUnit.motor_num && (
-                    <div style={{ display:'flex',alignItems:'center',gap:6 }}>
-                      <span style={{ fontSize:9,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'0.08em',width:34,flexShrink:0 }}>Motor</span>
-                      <span style={{ fontSize:11,fontWeight:600,color:'#475569',background:'#F8FAFC',padding:'3px 9px',borderRadius:6,border:'1px solid #E9EAEC',letterSpacing:'0.02em' }}>{sellUnit.motor_num}</span>
-                    </div>
-                  )}
-                </div>
-                <div style={{ flex:'1 1 120px' }}>
-                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5 }}>Sucursal</div>
-                  <div style={{ fontWeight:700,fontSize:12,color:'#374151' }}>{bName}</div>
-                </div>
-              </div>
-              <div style={{ fontSize:11,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:12 }}>Datos de la venta</div>
-              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>
-                <div>
-                  <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:4 }}>Vendedor responsable *</label>
-                  {sellers.length > 0
-                    ? <select value={sellForm.sold_by} onChange={e=>setSellForm(p=>({...p,sold_by:e.target.value}))} style={{...S.inp,width:'100%'}}>
-                        <option value="">Seleccionar vendedor...</option>
-                        {sellers.map(s=>(
-                          <option key={s.id} value={s.id}>
-                            {`${s.first_name||''} ${s.last_name||''}`.trim()}{s.branch_code?` · ${s.branch_code}`:''}
-                          </option>
-                        ))}
-                      </select>
-                    : <div style={{ padding:'8px 12px',borderRadius:8,border:'1px solid #FCD34D',background:'#FFFBEB',fontSize:11,color:'#92400E',fontWeight:500 }}>
-                        No se encontraron vendedores activos
-                      </div>
-                  }
-                </div>
-                <Field label="Fecha de venta *" value={sellForm.sold_at} onChange={v=>setSellForm(p=>({...p,sold_at:v}))} type="date"/>
-              </div>
-              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>
-                <div>
-                  <Field label="Modalidad de entrega documental" value={sellForm.sale_type} onChange={v=>setSellForm(p=>({...p,sale_type:v}))} opts={[{v:'completa',l:'Documentación completa'},{v:'inscripcion',l:'Solo inscripción'}]}/>
-                  <div style={{ fontSize:10,color:'#9CA3AF',marginTop:3 }}>Se puede modificar después en Ventas</div>
-                </div>
-                <Field label="Método de pago" value={sellForm.payment_method} onChange={v=>setSellForm(p=>({...p,payment_method:v}))} opts={[{v:'',l:'Seleccionar...'},{v:'Contado',l:'Contado'},{v:'Transferencia',l:'Transferencia bancaria'},{v:'Tarjeta Débito',l:'Tarjeta Débito'},{v:'Tarjeta Crédito',l:'Tarjeta Crédito'},{v:'Crédito Autofin',l:'Crédito Autofin'},{v:'Mixto',l:'Mixto'}]}/>
-              </div>
-              {/* ── Lead asociado ── */}
-              <div style={{ marginBottom:12 }}>
-                <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:6 }}>
-                  Lead asociado <span style={{ color:'#9CA3AF',fontWeight:400 }}>(opcional)</span>
-                </label>
-                {(() => {
-                  const selT = sellForm.ticket_id ? openTickets.find(t=>String(t.id)===String(sellForm.ticket_id)) : null;
-                  const q = ticketSearch.trim().toLowerCase();
-                  const results = q.length >= 2
-                    ? openTickets.filter(t =>
-                        `${t.ticket_num||''} ${t.first_name||''} ${t.last_name||''} ${t.phone||''} ${t.rut||''}`
-                          .toLowerCase().includes(q)
-                      ).slice(0, 8)
-                    : [];
-
-                  // ── Ticket ya seleccionado (manual o auto-asociado) ──
-                  if (selT) return (
-                    <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 13px',borderRadius:9,background:'#EFF6FF',border:'1.5px solid #BFDBFE' }}>
-                      <div>
-                        <div style={{ fontSize:11,fontWeight:700,color:'#1E40AF',marginBottom:2 }}>
-                          {selT.ticket_num && <span style={{ marginRight:7,background:'#DBEAFE',padding:'2px 7px',borderRadius:4,fontSize:10,fontWeight:800 }}>{selT.ticket_num}</span>}
-                          {[selT.first_name,selT.last_name].filter(Boolean).join(' ')||'Sin nombre'}
-                        </div>
-                        {selT.phone && <div style={{ fontSize:10,color:'#3B82F6' }}>{selT.phone}</div>}
-                      </div>
-                      <div style={{ display:'flex',gap:6,flexShrink:0 }}>
-                        {nav && (
-                          <button type="button"
-                            onClick={()=>{ setShowSell(false); setSellUnit(null); nav('ticket', selT.id); }}
-                            style={{ padding:'5px 10px',borderRadius:7,border:'1px solid #93C5FD',background:'#FFFFFF',color:'#2563EB',fontSize:11,fontWeight:700,cursor:'pointer' }}>
-                            Ver lead →
-                          </button>
-                        )}
-                        <button type="button"
-                          onClick={()=>{ setSellForm(p=>({...p,ticket_id:''})); setTicketSearch(''); }}
-                          style={{ padding:'5px 9px',borderRadius:7,border:'1px solid #E2E8F0',background:'#FFFFFF',color:'#6B7280',fontSize:11,cursor:'pointer' }}>
-                          Quitar
-                        </button>
-                      </div>
-                    </div>
-                  );
-
-                  // ── Sin ticket seleccionado: campo de búsqueda ──
-                  return (
-                    <div style={{ position:'relative' }}>
-                      <input
-                        type="text"
-                        value={ticketSearch}
-                        onChange={e=>setTicketSearch(e.target.value)}
-                        placeholder="Buscar por nombre, teléfono o N° ticket..."
-                        style={{...S.inp, width:'100%'}}
-                      />
-                      {q.length > 0 && q.length < 2 && (
-                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>Escribe al menos 2 caracteres para buscar</div>
-                      )}
-                      {q.length >= 2 && results.length === 0 && (
-                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>Sin resultados para "{ticketSearch}"</div>
-                      )}
-                      {results.length > 0 && (
-                        <div style={{ position:'absolute',top:'100%',left:0,right:0,zIndex:20,background:'#FFFFFF',border:'1px solid #E2E8F0',borderRadius:9,boxShadow:'0 4px 16px rgba(0,0,0,0.1)',marginTop:3,overflow:'hidden' }}>
-                          {results.map(t=>(
-                            <button key={t.id} type="button"
-                              onClick={()=>{ setSellForm(p=>({...p,ticket_id:String(t.id)})); setTicketSearch(''); }}
-                              style={{ width:'100%',textAlign:'left',padding:'9px 13px',background:'transparent',border:'none',borderBottom:'1px solid #F3F4F6',cursor:'pointer',display:'flex',flexDirection:'column',gap:2 }}
-                              onMouseEnter={e=>e.currentTarget.style.background='#F8FAFC'}
-                              onMouseLeave={e=>e.currentTarget.style.background='transparent'}
-                            >
-                              <div style={{ fontSize:12,fontWeight:700,color:'#0F172A' }}>
-                                {t.ticket_num && <span style={{ marginRight:7,color:'#6366F1',fontSize:10,fontWeight:800 }}>{t.ticket_num}</span>}
-                                {[t.first_name,t.last_name].filter(Boolean).join(' ')||'Sin nombre'}
-                              </div>
-                              <div style={{ fontSize:10,color:'#94A3B8' }}>
-                                {[t.phone, t.status].filter(Boolean).join(' · ')}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {!ticketSearch && (
-                        <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>Sin lead asociado — deja vacío o busca uno</div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-              <div style={{ marginBottom:18 }}>
-                <Field label="Observaciones" value={sellForm.sale_notes} onChange={v=>setSellForm(p=>({...p,sale_notes:v}))} rows={2} ph="Ej: Entrega pactada para el lunes..."/>
-              </div>
-              <div style={{ background:'rgba(16,185,129,0.05)',border:'1px solid rgba(16,185,129,0.2)',borderRadius:8,padding:'10px 14px',marginBottom:16,fontSize:11,color:'#065f46' }}>
-                Al confirmar, la unidad saldrá del stock y quedará registrada como vendida con trazabilidad completa.
-              </div>
-              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',gap:8 }}>
-                <div style={{ fontSize:11,color:'#9CA3AF' }}>* Campos obligatorios</div>
-                <div style={{ display:'flex',gap:8 }}>
-                  <button type="button" onClick={()=>{setShowSell(false);setSellUnit(null);}} style={S.btn2}>Cancelar</button>
-                  <button type="submit" disabled={selling||!sellForm.sold_by||!sellForm.sold_at}
-                    style={{ ...S.btn,background:'#10B981',opacity:(selling||!sellForm.sold_by||!sellForm.sold_at)?0.6:1,padding:'8px 20px' }}>
-                    {selling?'Registrando...':'Confirmar venta'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </Modal>
-        );
-      })()}
 
       {/* ══════════════════════════════════════════════════════════
           MODAL — IMPORTAR EXCEL
