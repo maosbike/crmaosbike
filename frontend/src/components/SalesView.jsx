@@ -436,63 +436,63 @@ function buildNoteHTML(data, type) {
 <html lang="es"><head><meta charset="utf-8"><title>${docLabel} — MAOS BIKE</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#111;font-size:9.5pt;background:#fff;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+html,body{background:#ccc;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#111;font-size:10pt;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.page{background:#fff;width:210mm;min-height:297mm;margin:10px auto;padding:14mm 15mm 12mm;box-shadow:0 2px 20px rgba(0,0,0,.25)}
 @page{size:A4;margin:10mm}
+@media print{html,body{background:#fff}.page{width:100%;min-height:auto;margin:0;padding:0;box-shadow:none}}
 
 /* HEADER */
-.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:9px;border-bottom:2.5px solid #E5E7EB;margin-bottom:14px}
-.logo{height:44px;object-fit:contain}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:2px solid #E5E7EB;margin-bottom:16px}
+.logo{height:46px;object-fit:contain}
 .hdr-r{text-align:right}
-.badge{display:inline-block;background:#F28100;color:#fff;font-size:6.5pt;font-weight:700;letter-spacing:.14em;padding:3px 10px;border-radius:2px;text-transform:uppercase;margin-bottom:4px}
-.hdr-meta{font-size:7.5pt;color:#444;line-height:1.8}
+.badge{display:inline-block;background:#F28100;color:#fff;font-size:7pt;font-weight:700;letter-spacing:.14em;padding:3px 12px;border-radius:3px;text-transform:uppercase;margin-bottom:5px}
+.hdr-meta{font-size:8pt;color:#444;line-height:1.8}
 .hdr-meta b{color:#111}
 
-/* TOP SECTION: info left + photo right */
-.top{display:grid;grid-template-columns:1fr${photo ? ' 200px' : ''};gap:14px;margin-bottom:12px}
-.info-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.sec{font-size:6pt;font-weight:700;color:#F28100;text-transform:uppercase;letter-spacing:.14em;border-bottom:1px solid #FDDCAD;padding-bottom:3px;margin-bottom:7px}
+/* TOP */
+.top{display:grid;grid-template-columns:1fr 1fr${photo ? ' 190px' : ''};gap:16px;margin-bottom:14px}
+.sec{font-size:6.5pt;font-weight:700;color:#F28100;text-transform:uppercase;letter-spacing:.14em;border-bottom:1px solid #FDDCAD;padding-bottom:3px;margin-bottom:8px}
 table.kv{border-collapse:collapse;width:100%}
-.kl{color:#555;font-size:8pt;padding:2.5px 8px 2.5px 0;vertical-align:top;white-space:nowrap;width:38%}
-.kv{font-weight:600;color:#111;font-size:8.5pt;padding:2.5px 0;vertical-align:top}
+.kl{color:#555;font-size:8pt;padding:3px 8px 3px 0;vertical-align:top;white-space:nowrap;width:38%}
+.kv{font-weight:600;color:#111;font-size:8.5pt;padding:3px 0;vertical-align:top}
 .photo-wrap{display:flex;flex-direction:column}
-.moto-img{width:200px;height:175px;object-fit:contain;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB}
+.moto-img{width:190px;height:160px;object-fit:contain;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB}
 
 /* TITULAR */
-.titular{border:1px solid #E5E7EB;border-radius:4px;padding:7px 12px;margin-bottom:11px;background:#FAFAFA}
+.titular{border:1px solid #E5E7EB;border-radius:4px;padding:8px 12px;margin-bottom:12px;background:#FAFAFA}
 
 /* TABLE */
-.tbl-wrap{border:1px solid #E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:10px}
+.tbl-wrap{border:1px solid #E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:12px}
 table.tbl{width:100%;border-collapse:collapse;font-size:9.5pt}
 table.tbl thead{background:#F28100;color:#fff}
-table.tbl thead th{padding:6px 10px;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:left}
+table.tbl thead th{padding:7px 12px;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:left}
 table.tbl thead th.th-r{text-align:right}
 table.tbl tbody tr{border-bottom:1px solid #F1F5F9}
 table.tbl tbody tr:last-child{border-bottom:none}
-.td-desc{padding:6.5px 10px;color:#111}
-.td-amt{padding:6.5px 10px;text-align:right;font-weight:600;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums}
+.td-desc{padding:8px 12px;color:#111}
+.td-amt{padding:8px 12px;text-align:right;font-weight:600;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums}
 .tr-sur .td-desc,.tr-sur .td-amt{color:#92400E;background:#FFFBEB}
 .tr-total .td-desc,.tr-total .td-amt{font-weight:900;font-size:11pt;background:#1E1E1E;color:#fff}
 .tr-total .td-amt{color:#F28100}
 
 /* PAYMENT BAR */
-.pay-bar{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:4px;padding:8px 12px;margin-bottom:10px;font-size:8.5pt;color:#333;line-height:1.7}
+.pay-bar{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:4px;padding:9px 14px;margin-bottom:12px;font-size:8.5pt;color:#333;line-height:1.8}
 .pay-label{font-weight:700;color:#111}
-.pay-item{color:#333}
 .pay-saldo{font-weight:700;color:#92400E;background:#FEF3C7;padding:1px 7px;border-radius:3px}
 .pay-ok{font-weight:700;color:#065F46;background:#D1FAE5;padding:1px 7px;border-radius:3px}
 
 /* OBS / LEGAL / SIGS */
-.obs{border-left:3px solid #CBD5E1;padding:6px 10px;margin-bottom:10px;font-size:8pt;color:#333;background:#F8FAFC}
-.legal{font-size:6.8pt;color:#555;line-height:1.7;margin-bottom:14px}
-.legal ul{padding-left:13px}
-.legal li{margin-bottom:1px}
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding-top:10px;border-top:1px solid #E5E7EB}
-.sigline{border-bottom:1.5px solid #333;height:46px;margin-bottom:5px}
-.sig-lbl{font-size:8pt;font-weight:600;color:#111}
+.obs{border-left:3px solid #CBD5E1;padding:7px 10px;margin-bottom:12px;font-size:8.5pt;color:#333;background:#F8FAFC}
+.legal{font-size:7pt;color:#555;line-height:1.75;margin-bottom:20px}
+.legal ul{padding-left:14px}
+.legal li{margin-bottom:2px}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding-top:12px;border-top:1px solid #E5E7EB}
+.sigline{border-bottom:1.5px solid #333;height:50px;margin-bottom:6px}
+.sig-lbl{font-size:8.5pt;font-weight:600;color:#111}
 .sig-sub{font-size:7.5pt;color:#666;margin-top:2px}
 </style>
 </head><body>
-
+<div class="page">
 <div class="hdr">
   <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
   <div class="hdr-r">
@@ -504,15 +504,13 @@ table.tbl tbody tr:last-child{border-bottom:none}
 </div>
 
 <div class="top">
-  <div class="info-cols">
-    <div>
+  <div>
       <div class="sec">${isEmpresa ? 'Empresa' : 'Cliente'}</div>
       <table class="kv"><tbody>${clientKv}</tbody></table>
-    </div>
-    <div>
-      <div class="sec">Vehículo</div>
-      <table class="kv"><tbody>${vehicleKv}</tbody></table>
-    </div>
+  </div>
+  <div>
+    <div class="sec">Vehículo</div>
+    <table class="kv"><tbody>${vehicleKv}</tbody></table>
   </div>
   ${photo ? `<div class="photo-wrap">
     <div class="sec">Foto</div>
@@ -565,8 +563,9 @@ ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` :
   </div>
 </div>
 
+</div><!-- .page -->
 <script>
-window.addEventListener('load', function() { setTimeout(function(){ window.print(); }, 300); });
+window.addEventListener('load', function() { setTimeout(function(){ window.print(); }, 400); });
 </script>
 </body></html>`;
 }
