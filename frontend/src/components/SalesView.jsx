@@ -379,7 +379,7 @@ function buildNoteHTML(data, type) {
 
   const saldoRow = t.saldo > 0
     ? `<tr class="salrow"><td class="pd">Saldo pendiente</td><td class="pa">${fmtCLP(t.saldo)}</td></tr>`
-    : `<tr class="pagrow"><td class="pd">Cancelado en su totalidad</td><td class="pa">${fmtCLP(t.grandTotal)}</td></tr>`;
+    : '';
 
   const clientRows = isEmpresa
     ? `<tr><td class="kk">Empresa</td><td class="kv2">${data.empresa_name||'—'}</td></tr>
@@ -394,6 +394,14 @@ function buildNoteHTML(data, type) {
        ${data.client_email ? `<tr><td class="kk">Email</td><td class="kv2">${data.client_email}</td></tr>` : ''}
        ${data.client_address ? `<tr><td class="kk">Dirección</td><td class="kv2">${data.client_address}${data.client_commune ? ', ' + data.client_commune : ''}</td></tr>` : ''}`;
 
+  const titularRows = (!data.titularSame && data.titular?.name)
+    ? `<tr><td class="kk">Nombre</td><td class="kv2">${data.titular.name}</td></tr>
+       <tr><td class="kk">RUT</td><td class="kv2">${data.titular.rut||'—'}</td></tr>
+       ${data.titular.phone ? `<tr><td class="kk">Teléfono</td><td class="kv2">${data.titular.phone}</td></tr>` : ''}
+       ${data.titular.email ? `<tr><td class="kk">Correo</td><td class="kv2">${data.titular.email}</td></tr>` : ''}
+       ${data.titular.address ? `<tr><td class="kk">Dirección</td><td class="kv2">${data.titular.address}${data.titular.commune ? ', ' + data.titular.commune : ''}</td></tr>` : ''}`
+    : null;
+
   const sigName = isEmpresa
     ? `${data.empresa_name||'________________________________'} &nbsp; RUT: ${data.empresa_rut||'____________'}`
     : `${data.client_name||'________________________________'} &nbsp; RUT: ${data.client_rut||'____________'}`;
@@ -402,42 +410,41 @@ function buildNoteHTML(data, type) {
 <title>${title} — MAOS BIKE</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%}
-body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f0f0;color:#0F172A;font-size:10pt}
-.page{background:#fff;width:210mm;min-height:297mm;margin:0 auto;padding:18px 24px;box-shadow:0 2px 16px rgba(0,0,0,.12)}
+html,body{width:100%}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#e8e8e8;color:#0F172A;font-size:11pt}
+.page{background:#fff;width:210mm;min-height:297mm;margin:0 auto;padding:16mm 16mm 14mm;box-shadow:0 2px 20px rgba(0,0,0,.18)}
 .hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:3px solid #F28100;margin-bottom:14px}
 .hdr-l{display:flex;align-items:center}
-.logo{height:48px;object-fit:contain}
+.logo{height:50px;object-fit:contain}
 .hdr-r{text-align:right}
-.doc-title{font-size:16pt;font-weight:900;letter-spacing:-0.5px;line-height:1;color:#0F172A}
-.doc-sub{font-size:8pt;color:#475569;margin-top:3px}
-.two-col{display:grid;grid-template-columns:1fr 1fr${photo ? ' 110px' : ''};gap:16px;margin-bottom:12px}
+.doc-title{font-size:17pt;font-weight:900;letter-spacing:-0.5px;line-height:1;color:#0F172A}
+.doc-sub{font-size:8.5pt;color:#475569;margin-top:3px}
+.two-col{display:grid;grid-template-columns:1fr 1fr${photo ? ' 120px' : ''};gap:16px;margin-bottom:12px}
 .col-lbl{font-size:7pt;font-weight:800;color:#F28100;text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px;padding-bottom:3px;border-bottom:1.5px solid #FED7AA}
 .kv{width:100%;border-collapse:collapse}
-.kv td{padding:2.5px 0;font-size:8.5pt;vertical-align:top;line-height:1.3}
+.kv td{padding:3px 0;font-size:9pt;vertical-align:top;line-height:1.35}
 .kk{color:#64748B;width:38%;padding-right:6px}
 .kv2{font-weight:600;color:#0F172A}
 .photo-w{display:flex;align-items:flex-start;justify-content:center}
-.moto-img{width:108px;height:96px;object-fit:cover;border-radius:6px;border:1px solid #E2E8F0}
-.dtbl{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:9pt}
+.moto-img{width:120px;height:auto;max-height:110px;object-fit:contain;border-radius:6px;border:1px solid #E2E8F0;background:#F8FAFC}
+.dtbl{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:9.5pt}
 .dtbl thead tr{background:#F28100;color:#fff}
-.dtbl thead th{padding:6px 10px;text-align:left;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.dtbl thead th{padding:7px 10px;text-align:left;font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .dtbl tbody tr{border-bottom:1px solid #F1F5F9}
-.pd{padding:5px 10px}
-.pa{padding:5px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pd{padding:6px 10px}
+.pa{padding:6px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .crow td{color:#B45309;background:#FFFBEB}
-.trow td{font-weight:900;font-size:11pt;background:#0F172A;color:#fff}
+.trow td{font-weight:900;font-size:12pt;background:#0F172A;color:#fff}
 .trow .pa{color:#F28100}
 .salrow td{font-weight:700;background:#FEF3C7;color:#92400E}
-.pagrow td{font-weight:700;background:#ECFDF5;color:#065F46}
-.obs{background:#EFF6FF;border-left:3px solid #60A5FA;padding:6px 10px;margin-bottom:8px;font-size:8pt;border-radius:0 4px 4px 0}
-.legal{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:4px;padding:7px 12px;margin:10px 0;font-size:7pt;color:#374151;line-height:1.55}
+.obs{background:#EFF6FF;border-left:3px solid #60A5FA;padding:7px 10px;margin-bottom:10px;font-size:9pt;border-radius:0 4px 4px 0}
+.legal{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:4px;padding:8px 12px;margin:10px 0;font-size:7.5pt;color:#374151;line-height:1.6}
 .legal ul{padding-left:14px}
 .legal li{margin-bottom:2px}
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;padding-top:10px;border-top:1px solid #E2E8F0}
-.sigline{border-bottom:1.5px solid #0F172A;height:40px;margin-bottom:4px}
-.sig{font-size:8pt}
-.sig-sub{font-size:7.5pt;color:#64748B}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:22px;padding-top:12px;border-top:1px solid #E2E8F0}
+.sigline{border-bottom:1.5px solid #0F172A;height:44px;margin-bottom:4px}
+.sig{font-size:8.5pt}
+.sig-sub{font-size:8pt;color:#64748B}
 .no-print{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:9999;background:rgba(255,255,255,0.95);padding:8px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.15)}
 .btn-p{background:#F28100;color:#fff;border:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(242,129,0,.4)}
 .btn-c{background:#0F172A;color:#fff;border:none;padding:10px 16px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer}
@@ -445,13 +452,13 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f0f0;color:#0F1
   .no-print{display:none!important}
   body{background:#fff}
   .page{box-shadow:none;width:100%;min-height:auto;padding:0;margin:0}
-  @page{margin:12mm;size:A4}
+  @page{margin:10mm;size:A4}
   *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
 </style></head><body>
 <div class="no-print">
-  <button class="btn-p" id="btn-print">🖨 Imprimir / Guardar PDF</button>
-  <button class="btn-c" id="btn-close">✕ Cerrar</button>
+  <button class="btn-p" id="btn-print">Imprimir / Guardar como PDF</button>
+  <button class="btn-c" id="btn-close">Cerrar</button>
 </div>
 <div class="page">
 <div class="hdr">
@@ -483,6 +490,11 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f0f0;color:#0F1
   </div>
   ${photo ? `<div class="photo-w"><img src="${photo}" class="moto-img" onerror="this.style.display='none'"/></div>` : ''}
 </div>
+
+${titularRows ? `<div style="margin-bottom:12px">
+  <div class="col-lbl">TITULAR DEL VEHÍCULO</div>
+  <table class="kv"><tbody>${titularRows}</tbody></table>
+</div>` : ''}
 
 <table class="dtbl">
   <thead><tr><th class="pd">Descripción</th><th class="pa">Monto</th></tr></thead>
@@ -576,12 +588,18 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [accs,     setAccs]    = useState([]);
   const [discount, setDiscount]= useState('');
 
+  // Titular del vehículo
+  const [titularSame, setTitularSame] = useState(true);
+  const [titular, setTitular] = useState({ name: '', rut: '', phone: '', email: '', address: '', commune: '' });
+  const setT = (k) => (v) => setTitular(t => ({ ...t, [k]: v }));
+
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
   const resetForm = () => {
     setSelUnit(null); setSelMod(null); setForm({ ...EMPTY_FORM });
     setPayMode(''); setFinPct(''); setPayLines([{ method: '', amount: '' }]);
     setAccs([]); setDiscount(''); setCatMods([]);
+    setTitularSame(true); setTitular({ name: '', rut: '', phone: '', email: '', address: '', commune: '' });
   };
 
   useEffect(() => { api.getBrands().then(setBrands).catch(() => {}); }, []);
@@ -706,6 +724,8 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         sale_price: form.sale_price,
         accessories: accs, discount, payMode, payLines, finPct,
         modelPhotoUrl: colorPhotoUrl,
+        titularSame,
+        titular: titularSame ? null : { ...titular },
       });
       setStep(3);
       onCreated();
@@ -803,7 +823,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                   onChange={pickBrand} />
                 <Field label="Modelo *"
                   value={selMod?.id || ''}
-                  opts={[{ v: '', l: form.brand ? (catMods.length ? '— Seleccionar modelo —' : 'Sin modelos en catálogo') : '— Primero elegí una marca —' },
+                  opts={[{ v: '', l: form.brand ? (catMods.length ? '— Seleccionar modelo —' : 'Sin modelos en catálogo') : '— Primero seleccione una marca —' },
                          ...catMods.map(m => ({ v: m.id, l: `${m.model}${m.year ? ' ' + m.year : ''}` }))]}
                   onChange={pickModel}
                   disabled={!form.brand} />
@@ -848,9 +868,39 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 <Field label="Teléfono"          value={form.client_phone}   onChange={set('client_phone')} ph="+56 9 XXXX XXXX" />
                 <Field label="Email"             value={form.client_email}   onChange={set('client_email')} />
                 <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
+                <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
                 <Field label="Comuna"            value={form.client_commune} onChange={set('client_commune')} />
               </>
             )}
+
+            {/* TITULAR */}
+            <div style={{ gridColumn: '1/-1', marginTop: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', marginBottom: 8 }}>
+                ¿La moto quedará a nombre de quien está haciendo la compra?
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: titularSame ? 0 : 12 }}>
+                {[{ v: true, l: 'Sí' }, { v: false, l: 'No' }].map(opt => (
+                  <button key={String(opt.v)} type="button" onClick={() => setTitularSame(opt.v)}
+                    style={{ padding: '5px 20px', borderRadius: 20,
+                             border: `1.5px solid ${titularSame === opt.v ? '#F28100' : '#E5E7EB'}`,
+                             background: titularSame === opt.v ? '#FFF7ED' : '#fff',
+                             color: titularSame === opt.v ? '#F28100' : '#6B7280',
+                             fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+              {!titularSame && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                  <Field label="Nombre completo titular *" value={titular.name}    onChange={setT('name')} />
+                  <Field label="RUT titular *"             value={titular.rut}     onChange={setT('rut')}     ph="12.345.678-9" />
+                  <Field label="Teléfono"                  value={titular.phone}   onChange={setT('phone')}   ph="+56 9 XXXX XXXX" />
+                  <Field label="Correo"                    value={titular.email}   onChange={setT('email')} />
+                  <Field label="Dirección"                 value={titular.address} onChange={setT('address')} />
+                  <Field label="Comuna"                    value={titular.commune} onChange={setT('commune')} />
+                </div>
+              )}
+            </div>
 
             {/* OPERACIÓN */}
             <SEC>{isReserva ? 'Reserva' : 'Venta'}</SEC>
