@@ -570,37 +570,25 @@ function openNote(data, type) {
   const safe = (s) => (s || '').replace(/[^a-zA-Z0-9áéíóúñ]/gi, '_').substring(0, 30);
   const fileName = `${isRes ? 'reserva' : 'nota_venta'}_${safe(data.brand)}_${safe(data.client_name)}.pdf`;
 
-  // Parse HTML properly with DOMParser
-  const parsed = new DOMParser().parseFromString(html, 'text/html');
-
-  // Create visible container (html2canvas needs it rendered)
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position:absolute;left:0;top:0;width:794px;background:#fff;z-index:-1;opacity:0;pointer-events:none';
-
-  // Copy <style> tags
-  parsed.querySelectorAll('style').forEach(s => {
-    wrapper.appendChild(document.adoptNode(s));
-  });
-
-  // Copy body content
-  while (parsed.body.firstChild) {
-    wrapper.appendChild(document.adoptNode(parsed.body.firstChild));
-  }
-
+  wrapper.style.cssText = 'position:fixed;left:-3000px;top:0;width:794px;background:#fff';
+  wrapper.innerHTML = html;
   document.body.appendChild(wrapper);
 
-  html2pdf()
-    .set({
-      margin:      [8, 8, 8, 8],
-      filename:    fileName,
-      image:       { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
-      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    })
-    .from(wrapper)
-    .save()
-    .then(() => { try { document.body.removeChild(wrapper); } catch(_) {} })
-    .catch((e) => { console.error('PDF error:', e); try { document.body.removeChild(wrapper); } catch(_) {} });
+  setTimeout(() => {
+    html2pdf()
+      .set({
+        margin:      [8, 8, 8, 8],
+        filename:    fileName,
+        image:       { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      })
+      .from(wrapper)
+      .save()
+      .then(() => { try { document.body.removeChild(wrapper); } catch(_) {} })
+      .catch((e) => { console.error('PDF error:', e); try { document.body.removeChild(wrapper); } catch(_) {} });
+  }, 500);
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
