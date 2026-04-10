@@ -567,45 +567,40 @@ ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` :
 function openNote(data, type) {
   const html = buildNoteHTML(data, type);
   const isRes = type === 'reserva';
-  const fileName = isRes
-    ? `reserva_${data.brand||'moto'}_${data.client_name||'cliente'}.pdf`
-    : `nota_venta_${data.brand||'moto'}_${data.client_name||'cliente'}.pdf`;
+  const safe = (s) => (s || '').replace(/[^a-zA-Z0-9áéíóúñ]/gi, '_').substring(0, 30);
+  const fileName = `${isRes ? 'reserva' : 'nota_venta'}_${safe(data.brand)}_${safe(data.client_name)}.pdf`;
 
-  // Render HTML in hidden container, generate PDF, download
-  const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm';
-  container.innerHTML = html
-    .replace(/^<!DOCTYPE[^>]*>/i, '')
-    .replace(/<html[^>]*>/i, '')
-    .replace(/<\/html>/i, '')
-    .replace(/<head>[\s\S]*?<\/head>/i, '')
-    .replace(/<\/?body[^>]*>/gi, '');
-  document.body.appendChild(container);
+  // Parse HTML properly with DOMParser
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
 
-  // Extract styles from HTML and inject into container
-  const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
-  if (styleMatch) {
-    const styleEl = document.createElement('style');
-    styleEl.textContent = styleMatch[1];
-    container.prepend(styleEl);
+  // Create visible container (html2canvas needs it rendered)
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:absolute;left:0;top:0;width:794px;background:#fff;z-index:-1;opacity:0;pointer-events:none';
+
+  // Copy <style> tags
+  parsed.querySelectorAll('style').forEach(s => {
+    wrapper.appendChild(document.adoptNode(s));
+  });
+
+  // Copy body content
+  while (parsed.body.firstChild) {
+    wrapper.appendChild(document.adoptNode(parsed.body.firstChild));
   }
+
+  document.body.appendChild(wrapper);
 
   html2pdf()
     .set({
-      margin:       [10, 10, 10, 10],
-      filename:     fileName.replace(/[^a-zA-Z0-9_.\-áéíóúñÁÉÍÓÚÑ ]/g, '_'),
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      margin:      [8, 8, 8, 8],
+      filename:    fileName,
+      image:       { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
     })
-    .from(container)
+    .from(wrapper)
     .save()
-    .then(() => {
-      document.body.removeChild(container);
-    })
-    .catch(() => {
-      document.body.removeChild(container);
-    });
+    .then(() => { try { document.body.removeChild(wrapper); } catch(_) {} })
+    .catch((e) => { console.error('PDF error:', e); try { document.body.removeChild(wrapper); } catch(_) {} });
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
