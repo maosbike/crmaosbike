@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import html2pdf from 'html2pdf.js';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { api } from '../services/api';
 import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
 
@@ -347,262 +348,202 @@ function computeTotals({ sale_price, accessories = [], discount = '', payMode = 
   return { motoAmt, accAmt, subtotal, discAmt, netTotal, cardSurcharge, grandTotal, abonoAmt, saldo };
 }
 
-function buildNoteHTML(data, type) {
-  const isRes     = type === 'reserva';
-  const docLabel  = isRes ? 'NOTA DE RESERVA' : 'NOTA DE VENTA';
-  const logo      = window.location.origin + '/logo.png';
-  const today     = fmtDateDoc(data.sold_at || new Date().toISOString().slice(0, 10));
-  const t         = computeTotals(data);
-  const photo     = data.modelPhotoUrl || '';
-  const isEmpresa = data.client_type === 'empresa';
-
-  const kv = (pairs) => pairs.filter(Boolean)
-    .map(([k, v]) => `<tr><td class="kl">${k}</td><td class="kv">${v}</td></tr>`)
-    .join('');
-
-  const clientKv = isEmpresa
-    ? kv([
-        ['Empresa',       data.empresa_name  || '—'],
-        ['RUT',           data.empresa_rut   || '—'],
-        data.empresa_giro ? ['Giro', data.empresa_giro] : null,
-        ['Representante', data.client_name   || '—'],
-        (data.empresa_phone||data.client_phone) ? ['Teléfono', data.empresa_phone||data.client_phone] : null,
-        (data.empresa_email||data.client_email) ? ['Correo',   data.empresa_email||data.client_email] : null,
-      ])
-    : kv([
-        ['Nombre',    data.client_name    || '—'],
-        ['RUT',       data.client_rut     || '—'],
-        data.client_phone   ? ['Teléfono', data.client_phone]   : null,
-        data.client_email   ? ['Correo',   data.client_email]   : null,
-        data.client_address ? ['Dirección', data.client_address + (data.client_commune ? ', ' + data.client_commune : '')] : null,
-      ]);
-
-  const titularKv = (!data.titularSame && data.titular?.name)
-    ? kv([
-        ['Nombre',    data.titular.name],
-        data.titular.rut     ? ['RUT',      data.titular.rut]     : null,
-        data.titular.phone   ? ['Teléfono', data.titular.phone]   : null,
-        data.titular.email   ? ['Correo',   data.titular.email]   : null,
-        data.titular.address ? ['Dirección', data.titular.address + (data.titular.commune ? ', ' + data.titular.commune : '')] : null,
-      ])
-    : null;
-
-  const vehicleKv = kv([
-    ['Marca',   data.brand    || '—'],
-    ['Modelo',  data.model    || '—'],
-    ['Año',     data.year     || '—'],
-    ['Color',   data.color    || '—'],
-    data.chassis   ? ['N° Chasis', data.chassis]   : null,
-    data.motor_num ? ['N° Motor',  data.motor_num] : null,
-  ]);
-
-  // Tabla de items — total aparece UNA sola vez al final
-  const itemRows = [
-    `<tr><td class="td-desc">${data.brand||''} ${data.model||''} ${data.year ? '('+data.year+')' : ''} — ${data.color||''}</td><td class="td-amt">${fmtCLP(t.motoAmt)}</td></tr>`,
-    ...(data.accessories||[]).filter(a => a.name && Number(a.amount) > 0).map(a =>
-      `<tr><td class="td-desc">${a.name}</td><td class="td-amt">${fmtCLP(Number(a.amount))}</td></tr>`),
-    t.cardSurcharge > 0
-      ? `<tr class="tr-sur"><td class="td-desc">Recargo tarjeta (2%)</td><td class="td-amt">+${fmtCLP(t.cardSurcharge)}</td></tr>`
-      : '',
-  ].filter(Boolean).join('');
-
-  // Sección de pago — sin repetir el total, solo método y estado
-  let paySection = '';
-  if (data.payMode) {
-    let payDetail = '';
-    if (data.payMode === 'Mixto') {
-      payDetail = (data.payLines||[]).filter(l => l.method && Number(l.amount) > 0).map(l => {
-        const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
-        return `<span class="pay-item">${l.method}: ${fmtCLP(Number(l.amount) + sur)}${sur > 0 ? ' (incl. 2%)' : ''}</span>`;
-      }).join(' &nbsp;·&nbsp; ');
-    } else if (data.payMode === 'Financiamiento') {
-      const pie = Math.round(t.netTotal * (Number(data.finPct)||0) / 100);
-      payDetail = `<span class="pay-item">Pie ${data.finPct}%: ${fmtCLP(pie)}</span> &nbsp;·&nbsp; <span class="pay-item">Financiado: ${fmtCLP(t.netTotal - pie)}</span>`;
-    } else {
-      payDetail = `<span class="pay-item">${data.payMode}</span>`;
-    }
-    const estado = t.saldo > 0
-      ? `<span class="pay-saldo">Saldo pendiente: ${fmtCLP(t.saldo)}</span>`
-      : `<span class="pay-ok">Cancelado en su totalidad</span>`;
-    paySection = `<div class="pay-bar">
-      <span class="pay-label">Forma de pago:</span> ${payDetail} &nbsp;&nbsp; ${estado}
-    </div>`;
-  }
-
-  const sigName = isEmpresa
-    ? `${data.empresa_name||'________________________________'} — RUT: ${data.empresa_rut||'____________'}`
-    : `${data.client_name||'________________________________'} — RUT: ${data.client_rut||'____________'}`;
-
-  return `<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"><title>${docLabel} — MAOS BIKE</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{background:#fff;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#111;font-size:10pt}
-body{padding:0;margin:0}
-
-/* HEADER */
-.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:2px solid #E5E7EB;margin-bottom:16px}
-.logo{height:46px;object-fit:contain}
-.hdr-r{text-align:right}
-.badge{display:inline-block;background:#F28100;color:#fff;font-size:7pt;font-weight:700;letter-spacing:.14em;padding:3px 12px;border-radius:3px;text-transform:uppercase;margin-bottom:5px}
-.hdr-meta{font-size:8pt;color:#444;line-height:1.8}
-.hdr-meta b{color:#111}
-
-/* TOP */
-.top{display:grid;grid-template-columns:1fr 1fr${photo ? ' 190px' : ''};gap:16px;margin-bottom:14px}
-.sec{font-size:6.5pt;font-weight:700;color:#F28100;text-transform:uppercase;letter-spacing:.14em;border-bottom:1px solid #FDDCAD;padding-bottom:3px;margin-bottom:8px}
-table.kv{border-collapse:collapse;width:100%}
-.kl{color:#555;font-size:8pt;padding:3px 8px 3px 0;vertical-align:top;white-space:nowrap;width:38%}
-.kv{font-weight:600;color:#111;font-size:8.5pt;padding:3px 0;vertical-align:top}
-.photo-wrap{display:flex;flex-direction:column}
-.moto-img{width:190px;height:160px;object-fit:contain;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB}
-
-/* TITULAR */
-.titular{border:1px solid #E5E7EB;border-radius:4px;padding:8px 12px;margin-bottom:12px;background:#FAFAFA}
-
-/* TABLE */
-.tbl-wrap{border:1px solid #E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:12px}
-table.tbl{width:100%;border-collapse:collapse;font-size:9.5pt}
-table.tbl thead{background:#F28100;color:#fff}
-table.tbl thead th{padding:7px 12px;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:left}
-table.tbl thead th.th-r{text-align:right}
-table.tbl tbody tr{border-bottom:1px solid #F1F5F9}
-table.tbl tbody tr:last-child{border-bottom:none}
-.td-desc{padding:8px 12px;color:#111}
-.td-amt{padding:8px 12px;text-align:right;font-weight:600;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums}
-.tr-sur .td-desc,.tr-sur .td-amt{color:#92400E;background:#FFFBEB}
-.tr-total .td-desc,.tr-total .td-amt{font-weight:900;font-size:11pt;background:#1E1E1E;color:#fff}
-.tr-total .td-amt{color:#F28100}
-
-/* PAYMENT BAR */
-.pay-bar{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:4px;padding:9px 14px;margin-bottom:12px;font-size:8.5pt;color:#333;line-height:1.8}
-.pay-label{font-weight:700;color:#111}
-.pay-saldo{font-weight:700;color:#92400E;background:#FEF3C7;padding:1px 7px;border-radius:3px}
-.pay-ok{font-weight:700;color:#065F46;background:#D1FAE5;padding:1px 7px;border-radius:3px}
-
-/* OBS / LEGAL / SIGS */
-.obs{border-left:3px solid #CBD5E1;padding:7px 10px;margin-bottom:12px;font-size:8.5pt;color:#333;background:#F8FAFC}
-.legal{font-size:7pt;color:#555;line-height:1.75;margin-bottom:20px}
-.legal ul{padding-left:14px}
-.legal li{margin-bottom:2px}
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding-top:12px;border-top:1px solid #E5E7EB}
-.sigline{border-bottom:1.5px solid #333;height:50px;margin-bottom:6px}
-.sig-lbl{font-size:8.5pt;font-weight:600;color:#111}
-.sig-sub{font-size:7.5pt;color:#666;margin-top:2px}
-</style>
-</head><body>
-<div class="hdr">
-  <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
-  <div class="hdr-r">
-    <div><span class="badge">${docLabel}</span></div>
-    <div class="hdr-meta">
-      Fecha:&nbsp;<b>${today}</b>&nbsp;&nbsp;|&nbsp;&nbsp;Sucursal:&nbsp;<b>${data.branchName||'—'}</b>&nbsp;&nbsp;|&nbsp;&nbsp;Vendedor:&nbsp;<b>${data.sellerName||'—'}</b>
-    </div>
-  </div>
-</div>
-
-<div class="top">
-  <div>
-      <div class="sec">${isEmpresa ? 'Empresa' : 'Cliente'}</div>
-      <table class="kv"><tbody>${clientKv}</tbody></table>
-  </div>
-  <div>
-    <div class="sec">Vehículo</div>
-    <table class="kv"><tbody>${vehicleKv}</tbody></table>
-  </div>
-  ${photo ? `<div class="photo-wrap">
-    <div class="sec">Foto</div>
-    <img src="${photo}" class="moto-img" onerror="this.style.display='none'"/>
-  </div>` : ''}
-</div>
-
-${titularKv ? `<div class="titular">
-  <div class="sec">Titular del vehículo</div>
-  <table class="kv"><tbody>${titularKv}</tbody></table>
-</div>` : ''}
-
-<div class="tbl-wrap">
-  <table class="tbl">
-    <thead><tr><th>Descripción</th><th class="th-r">Monto</th></tr></thead>
-    <tbody>
-      ${itemRows}
-      <tr class="tr-total">
-        <td class="td-desc">Total</td>
-        <td class="td-amt">${fmtCLP(t.grandTotal)}</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-${paySection}
-
-${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
-
-<div class="legal">
-  <b>Condiciones de venta:</b>
-  <ul>
-    <li>El plazo estimado de entrega es de 4 a 5 días hábiles tras completar el pago.</li>
-    <li>En caso de cancelación por efectivo o transferencia, la devolución se efectúa en 10 a 12 días hábiles.</li>
-    <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
-    <li>Al pagar con tarjeta de crédito o débito se aplica un recargo del 2% sobre el monto total.</li>
-  </ul>
-</div>
-
-<div class="sigs">
-  <div>
-    <div class="sigline"></div>
-    <div class="sig-lbl">Firma del cliente</div>
-    <div class="sig-sub">${sigName}</div>
-  </div>
-  <div>
-    <div class="sigline"></div>
-    <div class="sig-lbl">Firma del vendedor</div>
-    <div class="sig-sub">${data.sellerName||'________________________________'}</div>
-  </div>
-</div>
-
-</body></html>`;
-}
-
-function openNote(data, type) {
-  const html = buildNoteHTML(data, type);
+async function openNote(data, type) {
   const isRes = type === 'reserva';
   const safe = (s) => (s || '').replace(/[^a-zA-Z0-9áéíóúñ]/gi, '_').substring(0, 30);
   const fileName = `${isRes ? 'reserva' : 'nota_venta'}_${safe(data.brand)}_${safe(data.client_name)}.pdf`;
+  const t = computeTotals(data);
+  const today = fmtDateDoc(data.sold_at || new Date().toISOString().slice(0, 10));
+  const isEmpresa = data.client_type === 'empresa';
+  const docLabel = isRes ? 'NOTA DE RESERVA' : 'NOTA DE VENTA';
 
-  // Extraer CSS y body del HTML generado
-  const cssMatch = html.match(/<style>([\s\S]*?)<\/style>/);
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  if (!cssMatch || !bodyMatch) return;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+  const cw = W - M * 2; // content width
+  const orange = [242, 129, 0];
+  const dark = [17, 17, 17];
+  const gray = [100, 100, 100];
+  const lightGray = [200, 200, 200];
 
-  // Reemplazar selector body{} por .pdf-root{} para que aplique al div
-  const css = cssMatch[1].replace(/\bbody\b\s*\{/g, '.pdf-root{');
-  const bodyHtml = bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '');
+  let y = M;
 
-  const wrapper = document.createElement('div');
-  wrapper.className = 'pdf-root';
-  wrapper.style.cssText = 'position:fixed;left:-4000px;top:0;width:794px;background:#fff';
+  // ── HEADER ──
+  // Logo (intentar cargar)
+  try {
+    const logoImg = await loadImage(window.location.origin + '/logo.png');
+    doc.addImage(logoImg, 'PNG', M, y, 30, 12);
+  } catch(_) {}
 
-  const styleEl = document.createElement('style');
-  styleEl.textContent = css;
-  wrapper.appendChild(styleEl);
-  wrapper.insertAdjacentHTML('beforeend', bodyHtml);
-  document.body.appendChild(wrapper);
+  // Badge
+  doc.setFillColor(...orange);
+  doc.roundedRect(W - M - 32, y, 32, 5, 1, 1, 'F');
+  doc.setFontSize(6); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold');
+  doc.text(docLabel, W - M - 16, y + 3.5, { align: 'center' });
 
-  setTimeout(() => {
-    html2pdf()
-      .set({
-        margin:      [8, 8, 8, 8],
-        filename:    fileName,
-        image:       { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
-        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      })
-      .from(wrapper)
-      .save()
-      .then(() => { try { document.body.removeChild(wrapper); } catch(_) {} })
-      .catch((e) => { console.error('PDF error:', e); try { document.body.removeChild(wrapper); } catch(_) {} });
-  }, 600);
+  // Meta
+  doc.setFontSize(7); doc.setTextColor(...gray); doc.setFont('helvetica', 'normal');
+  doc.text(`Fecha: ${today}  |  Sucursal: ${data.branchName || '—'}  |  Vendedor: ${data.sellerName || '—'}`, W - M, y + 9, { align: 'right' });
+
+  y += 16;
+  doc.setDrawColor(...lightGray); doc.line(M, y, W - M, y); y += 6;
+
+  // ── CLIENTE + VEHICULO (2 columnas) ──
+  const colW = (cw - 6) / 2;
+  const drawKvBlock = (title, pairs, x, startY) => {
+    doc.setFontSize(6); doc.setTextColor(...orange); doc.setFont('helvetica', 'bold');
+    doc.text(title.toUpperCase(), x, startY);
+    doc.setDrawColor(253, 220, 173); doc.line(x, startY + 1, x + colW, startY + 1);
+    let ly = startY + 5;
+    doc.setFontSize(8);
+    pairs.filter(Boolean).forEach(([k, v]) => {
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
+      doc.text(k, x, ly);
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
+      doc.text(String(v || '—'), x + 24, ly);
+      ly += 4.2;
+    });
+    return ly;
+  };
+
+  const clientPairs = isEmpresa
+    ? [['Empresa', data.empresa_name], ['RUT', data.empresa_rut], data.empresa_giro ? ['Giro', data.empresa_giro] : null, ['Representante', data.client_name], (data.empresa_phone||data.client_phone) ? ['Teléfono', data.empresa_phone||data.client_phone] : null, (data.empresa_email||data.client_email) ? ['Correo', data.empresa_email||data.client_email] : null]
+    : [['Nombre', data.client_name], ['RUT', data.client_rut], data.client_phone ? ['Teléfono', data.client_phone] : null, data.client_email ? ['Correo', data.client_email] : null, data.client_address ? ['Dirección', data.client_address + (data.client_commune ? ', ' + data.client_commune : '')] : null];
+
+  const vehiclePairs = [['Marca', data.brand], ['Modelo', data.model], ['Año', data.year], ['Color', data.color], data.chassis ? ['N° Chasis', data.chassis] : null, data.motor_num ? ['N° Motor', data.motor_num] : null];
+
+  const y1 = drawKvBlock(isEmpresa ? 'Empresa' : 'Cliente', clientPairs, M, y);
+  const y2 = drawKvBlock('Vehículo', vehiclePairs, M + colW + 6, y);
+  y = Math.max(y1, y2) + 2;
+
+  // ── FOTO ──
+  if (data.modelPhotoUrl) {
+    try {
+      const photoImg = await loadImage(data.modelPhotoUrl);
+      const imgH = 35, imgW = 50;
+      const imgX = W - M - imgW;
+      const imgY = y - 30; // junto a los datos
+      doc.addImage(photoImg, 'JPEG', imgX, Math.max(imgY, M + 16), imgW, imgH);
+    } catch(_) {}
+  }
+
+  // ── TITULAR ──
+  if (!data.titularSame && data.titular?.name) {
+    y += 2;
+    doc.setFillColor(250, 250, 250); doc.roundedRect(M, y, cw, 20, 1, 1, 'F');
+    doc.setDrawColor(...lightGray); doc.roundedRect(M, y, cw, 20, 1, 1, 'S');
+    const titPairs = [['Nombre', data.titular.name], data.titular.rut ? ['RUT', data.titular.rut] : null, data.titular.phone ? ['Teléfono', data.titular.phone] : null];
+    y = drawKvBlock('Titular del vehículo', titPairs, M + 3, y + 4);
+    y += 4;
+  }
+
+  y += 3;
+
+  // ── TABLA DE ITEMS ──
+  const tableBody = [
+    [`${data.brand || ''} ${data.model || ''} ${data.year ? '(' + data.year + ')' : ''} — ${data.color || ''}`, fmtCLP(t.motoAmt)],
+    ...(data.accessories || []).filter(a => a.name && Number(a.amount) > 0).map(a => [a.name, fmtCLP(Number(a.amount))]),
+  ];
+  if (t.cardSurcharge > 0) tableBody.push(['Recargo tarjeta (2%)', '+' + fmtCLP(t.cardSurcharge)]);
+  tableBody.push(['TOTAL', fmtCLP(t.grandTotal)]);
+
+  doc.autoTable({
+    startY: y,
+    margin: { left: M, right: M },
+    head: [['Descripción', 'Monto']],
+    body: tableBody,
+    styles: { fontSize: 9, cellPadding: 3, textColor: dark, lineColor: [230, 230, 230], lineWidth: 0.2 },
+    headStyles: { fillColor: orange, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+    didParseCell: (d) => {
+      if (d.section === 'body' && d.row.index === tableBody.length - 1) {
+        d.cell.styles.fillColor = [30, 30, 30];
+        d.cell.styles.textColor = d.column.index === 1 ? orange : [255, 255, 255];
+        d.cell.styles.fontStyle = 'bold';
+        d.cell.styles.fontSize = 11;
+      }
+    },
+  });
+
+  y = doc.lastAutoTable.finalY + 4;
+
+  // ── FORMA DE PAGO ──
+  if (data.payMode) {
+    doc.setFillColor(249, 250, 251); doc.roundedRect(M, y, cw, 8, 1, 1, 'F');
+    doc.setDrawColor(...lightGray); doc.roundedRect(M, y, cw, 8, 1, 1, 'S');
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
+    let payText = `Forma de pago: ${data.payMode}`;
+    if (data.payMode === 'Mixto') {
+      const parts = (data.payLines||[]).filter(l => l.method && Number(l.amount) > 0).map(l => {
+        const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
+        return `${l.method}: ${fmtCLP(Number(l.amount) + sur)}`;
+      });
+      payText = `Forma de pago: ${parts.join(' / ')}`;
+    } else if (data.payMode === 'Financiamiento') {
+      const pie = Math.round(t.netTotal * (Number(data.finPct)||0) / 100);
+      payText = `Forma de pago: Pie ${data.finPct}% (${fmtCLP(pie)}) — Financiado: ${fmtCLP(t.netTotal - pie)}`;
+    }
+    doc.text(payText, M + 4, y + 4);
+    const estado = t.saldo > 0 ? `Saldo pendiente: ${fmtCLP(t.saldo)}` : 'Cancelado en su totalidad';
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(t.saldo > 0 ? 146 : 6, t.saldo > 0 ? 64 : 95, t.saldo > 0 ? 14 : 70);
+    doc.text(estado, W - M - 4, y + 4, { align: 'right' });
+    y += 12;
+  }
+
+  // ── OBSERVACIONES ──
+  if (data.sale_notes) {
+    doc.setFontSize(8); doc.setTextColor(...gray); doc.setFont('helvetica', 'italic');
+    doc.text(`Observaciones: ${data.sale_notes}`, M, y + 3);
+    y += 8;
+  }
+
+  // ── CONDICIONES ──
+  y += 2;
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
+  doc.text('Condiciones de venta:', M, y); y += 3.5;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
+  const conds = [
+    'El plazo estimado de entrega es de 4 a 5 días hábiles tras completar el pago.',
+    'En caso de cancelación por efectivo o transferencia, la devolución se efectúa en 10 a 12 días hábiles.',
+    'Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.',
+    'Al pagar con tarjeta de crédito o débito se aplica un recargo del 2% sobre el monto total.',
+  ];
+  conds.forEach(c => { doc.text('• ' + c, M + 2, y); y += 3.5; });
+
+  // ── FIRMAS ──
+  y = Math.max(y + 10, 245);
+  doc.setDrawColor(60, 60, 60); doc.setLineWidth(0.3);
+  doc.line(M, y, M + 70, y);
+  doc.line(W - M - 70, y, W - M, y);
+  y += 4;
+  doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
+  doc.text('Firma del cliente', M, y);
+  doc.text('Firma del vendedor', W - M - 70, y);
+  y += 3.5;
+  doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
+  const sigName = isEmpresa
+    ? `${data.empresa_name || ''} — RUT: ${data.empresa_rut || ''}`
+    : `${data.client_name || ''} — RUT: ${data.client_rut || ''}`;
+  doc.text(sigName, M, y);
+  doc.text(data.sellerName || '', W - M - 70, y);
+
+  doc.save(fileName);
+}
+
+// Helper: cargar imagen como base64 para jsPDF
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
