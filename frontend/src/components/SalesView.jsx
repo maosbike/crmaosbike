@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import html2pdf from 'html2pdf.js';
 import { api } from '../services/api';
 import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
 
@@ -436,10 +437,8 @@ function buildNoteHTML(data, type) {
 <html lang="es"><head><meta charset="utf-8"><title>${docLabel} — MAOS BIKE</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{background:#ccc;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#111;font-size:10pt;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-.page{background:#fff;width:210mm;min-height:297mm;margin:10px auto;padding:14mm 15mm 12mm;box-shadow:0 2px 20px rgba(0,0,0,.25)}
-@page{size:A4;margin:10mm}
-@media print{html,body{background:#fff}.page{width:100%;min-height:auto;margin:0;padding:0;box-shadow:none}}
+html,body{background:#fff;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#111;font-size:10pt}
+body{padding:0;margin:0}
 
 /* HEADER */
 .hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:2px solid #E5E7EB;margin-bottom:16px}
@@ -492,7 +491,6 @@ table.tbl tbody tr:last-child{border-bottom:none}
 .sig-sub{font-size:7.5pt;color:#666;margin-top:2px}
 </style>
 </head><body>
-<div class="page">
 <div class="hdr">
   <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
   <div class="hdr-r">
@@ -563,23 +561,51 @@ ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` :
   </div>
 </div>
 
-</div><!-- .page -->
-<script>
-window.addEventListener('load', function() { setTimeout(function(){ window.print(); }, 400); });
-</script>
 </body></html>`;
 }
 
 function openNote(data, type) {
   const html = buildNoteHTML(data, type);
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const tab  = window.open(url, '_blank');
-  if (!tab) {
-    const a = document.createElement('a');
-    a.href = url; a.download = 'nota-venta.html'; a.click();
+  const isRes = type === 'reserva';
+  const fileName = isRes
+    ? `reserva_${data.brand||'moto'}_${data.client_name||'cliente'}.pdf`
+    : `nota_venta_${data.brand||'moto'}_${data.client_name||'cliente'}.pdf`;
+
+  // Render HTML in hidden container, generate PDF, download
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm';
+  container.innerHTML = html
+    .replace(/^<!DOCTYPE[^>]*>/i, '')
+    .replace(/<html[^>]*>/i, '')
+    .replace(/<\/html>/i, '')
+    .replace(/<head>[\s\S]*?<\/head>/i, '')
+    .replace(/<\/?body[^>]*>/gi, '');
+  document.body.appendChild(container);
+
+  // Extract styles from HTML and inject into container
+  const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+  if (styleMatch) {
+    const styleEl = document.createElement('style');
+    styleEl.textContent = styleMatch[1];
+    container.prepend(styleEl);
   }
-  setTimeout(function() { URL.revokeObjectURL(url); }, 120000);
+
+  html2pdf()
+    .set({
+      margin:       [10, 10, 10, 10],
+      filename:     fileName.replace(/[^a-zA-Z0-9_.\-áéíóúñÁÉÍÓÚÑ ]/g, '_'),
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    })
+    .from(container)
+    .save()
+    .then(() => {
+      document.body.removeChild(container);
+    })
+    .catch(() => {
+      document.body.removeChild(container);
+    });
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
@@ -1102,7 +1128,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => openNote(savedDoc, noteType)}
               style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F28100', border: 'none', color: '#fff', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px rgba(242,129,0,.35)', fontFamily: 'inherit' }}>
-              🖨 Imprimir / Descargar PDF
+              Descargar PDF
             </button>
             <button onClick={onClose}
               style={{ background: '#fff', border: '1.5px solid #CBD5E1', color: '#374151', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '12px 20px', fontFamily: 'inherit' }}>
