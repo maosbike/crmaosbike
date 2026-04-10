@@ -402,126 +402,137 @@ function buildNoteHTML(data, type) {
 <title>${title} — MAOS BIKE</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A;font-size:9pt}
-.page{max-width:800px;margin:0 auto;padding:10px}
-.copy{border:1.5px solid #CBD5E1;border-radius:5px;padding:14px 18px}
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:8px;border-bottom:2.5px solid #F28100;margin-bottom:10px}
+html,body{width:100%;height:100%}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A;font-size:10pt;padding:18px 24px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:3px solid #F28100;margin-bottom:14px}
 .hdr-l{display:flex;align-items:center}
-.logo{height:44px;object-fit:contain}
+.logo{height:48px;object-fit:contain}
 .hdr-r{text-align:right}
-.doc-title{font-size:14pt;font-weight:900;letter-spacing:-0.3px;line-height:1}
-.doc-sub{font-size:7.5pt;color:#475569;margin-top:2px}
-.two-col{display:grid;grid-template-columns:1fr 1fr${photo ? ' 92px' : ''};gap:10px;margin-bottom:8px}
-.col-lbl{font-size:6.5pt;font-weight:800;color:#F28100;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #FED7AA}
+.doc-title{font-size:16pt;font-weight:900;letter-spacing:-0.5px;line-height:1;color:#0F172A}
+.doc-sub{font-size:8pt;color:#475569;margin-top:3px}
+.two-col{display:grid;grid-template-columns:1fr 1fr${photo ? ' 110px' : ''};gap:16px;margin-bottom:12px}
+.col-lbl{font-size:7pt;font-weight:800;color:#F28100;text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px;padding-bottom:3px;border-bottom:1.5px solid #FED7AA}
 .kv{width:100%;border-collapse:collapse}
-.kv td{padding:2px 0;font-size:8pt;vertical-align:top;line-height:1.25}
-.kk{color:#64748B;width:34%;padding-right:4px}
-.kv2{font-weight:600}
-.photo-w{display:flex;align-items:flex-start}
-.moto-img{width:90px;height:80px;object-fit:cover;border-radius:4px;border:1px solid #E2E8F0}
-.dtbl{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:8pt}
+.kv td{padding:2.5px 0;font-size:8.5pt;vertical-align:top;line-height:1.3}
+.kk{color:#64748B;width:38%;padding-right:6px}
+.kv2{font-weight:600;color:#0F172A}
+.photo-w{display:flex;align-items:flex-start;justify-content:center}
+.moto-img{width:108px;height:96px;object-fit:cover;border-radius:6px;border:1px solid #E2E8F0}
+.dtbl{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:9pt}
 .dtbl thead tr{background:#F28100;color:#fff}
-.dtbl thead th{padding:4px 7px;text-align:left;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.dtbl thead th{padding:6px 10px;text-align:left;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .dtbl tbody tr{border-bottom:1px solid #F1F5F9}
-.pd{padding:3px 7px}
-.pa{padding:3px 7px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.crow td{color:#B45309}
-.trow td{font-weight:900;font-size:9.5pt;background:#0F172A;color:#fff}
+.pd{padding:5px 10px}
+.pa{padding:5px 10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.crow td{color:#B45309;background:#FFFBEB}
+.trow td{font-weight:900;font-size:11pt;background:#0F172A;color:#fff}
 .trow .pa{color:#F28100}
 .salrow td{font-weight:700;background:#FEF3C7;color:#92400E}
 .pagrow td{font-weight:700;background:#ECFDF5;color:#065F46}
-.obs{background:#EFF6FF;border-left:2px solid #60A5FA;padding:4px 8px;margin-bottom:6px;font-size:7.5pt;border-radius:0 3px 3px 0}
-.legal{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:3px;padding:5px 9px;margin:6px 0;font-size:6.5pt;color:#374151;line-height:1.45}
-.legal ul{padding-left:12px}
-.legal li{margin-bottom:1px}
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;padding-top:6px;border-top:1px solid #E2E8F0}
-.sigline{border-bottom:1.5px solid #0F172A;height:30px;margin-bottom:3px}
-.sig{font-size:7.5pt}
-.sig-sub{font-size:7pt;color:#64748B}
-.no-print{position:fixed;bottom:14px;right:14px;display:flex;gap:8px;z-index:999}
-.btn-p{background:#F28100;color:#fff;border:none;padding:9px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(242,129,0,.4)}
-.btn-c{background:#0F172A;color:#fff;border:none;padding:9px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer}
-@media print{.no-print{display:none!important}.page{padding:0;max-width:100%}@page{margin:7mm;size:A4}*{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+.obs{background:#EFF6FF;border-left:3px solid #60A5FA;padding:6px 10px;margin-bottom:8px;font-size:8pt;border-radius:0 4px 4px 0}
+.legal{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:4px;padding:7px 12px;margin:10px 0;font-size:7pt;color:#374151;line-height:1.55}
+.legal ul{padding-left:14px}
+.legal li{margin-bottom:2px}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;padding-top:10px;border-top:1px solid #E2E8F0}
+.sigline{border-bottom:1.5px solid #0F172A;height:40px;margin-bottom:4px}
+.sig{font-size:8pt}
+.sig-sub{font-size:7.5pt;color:#64748B}
+.no-print{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:9999;background:rgba(255,255,255,0.95);padding:8px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.15)}
+.btn-p{background:#F28100;color:#fff;border:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(242,129,0,.4)}
+.btn-c{background:#0F172A;color:#fff;border:none;padding:10px 16px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer}
+@media print{
+  .no-print{display:none!important}
+  body{padding:0}
+  @page{margin:12mm;size:A4}
+  *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
 </style></head><body>
 <div class="no-print">
-  <button class="btn-p" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
-  <button class="btn-c" onclick="window.close()">Cerrar</button>
+  <button class="btn-p" id="btn-print">🖨 Imprimir / Guardar PDF</button>
+  <button class="btn-c" id="btn-close">✕ Cerrar</button>
 </div>
-<div class="page"><div class="copy">
-  <div class="hdr">
-    <div class="hdr-l">
-      <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
-    </div>
-    <div class="hdr-r">
-      <div class="doc-title">${title}</div>
-      <div class="doc-sub">Fecha: ${today} &nbsp;·&nbsp; Sucursal: ${data.branchName||'—'}</div>
-      <div class="doc-sub">Vendedor: ${data.sellerName||'—'}</div>
-    </div>
+<div class="hdr">
+  <div class="hdr-l">
+    <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
   </div>
-
-  <div class="two-col">
-    <div>
-      <div class="col-lbl">${isEmpresa ? 'DATOS DE LA EMPRESA' : 'DATOS DEL CLIENTE'}</div>
-      <table class="kv"><tbody>${clientRows}</tbody></table>
-    </div>
-    <div>
-      <div class="col-lbl">VEHÍCULO</div>
-      <table class="kv"><tbody>
-        <tr><td class="kk">Marca</td><td class="kv2">${data.brand||'—'}</td></tr>
-        <tr><td class="kk">Modelo</td><td class="kv2">${data.model||'—'}</td></tr>
-        <tr><td class="kk">Año</td><td class="kv2">${data.year||'—'}</td></tr>
-        <tr><td class="kk">Color</td><td class="kv2">${data.color||'—'}</td></tr>
-        ${data.chassis ? `<tr><td class="kk">N° Chasis</td><td class="kv2">${data.chassis}</td></tr>` : ''}
-        ${data.motor_num ? `<tr><td class="kk">N° Motor</td><td class="kv2">${data.motor_num}</td></tr>` : ''}
-      </tbody></table>
-    </div>
-    ${photo ? `<div class="photo-w"><img src="${photo}" class="moto-img" onerror="this.style.display='none'"/></div>` : ''}
+  <div class="hdr-r">
+    <div class="doc-title">${title}</div>
+    <div class="doc-sub">Fecha: ${today} &nbsp;·&nbsp; Sucursal: ${data.branchName||'—'}</div>
+    <div class="doc-sub">Vendedor: ${data.sellerName||'—'}</div>
   </div>
+</div>
 
-  <table class="dtbl">
-    <thead><tr><th class="pd">Descripción</th><th class="pa">Monto</th></tr></thead>
-    <tbody>${priceRows}</tbody>
-  </table>
-
-  ${payRows ? `<table class="dtbl" style="margin-top:0">
-    <thead><tr><th class="pd">Forma de pago</th><th class="pa">Monto</th></tr></thead>
-    <tbody>${payRows}${saldoRow}</tbody>
-  </table>` : ''}
-
-  ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
-
-  <div class="legal">
-    <b>INDICACIÓN:</b> Al momento de cancelar con tarjeta de crédito o débito se suma un 2% del monto a cancelar.<br/>
-    <b>CONDICIONES DE VENTA:</b>
-    <ul>
-      <li>El tiempo estimado para la entrega será de 4 a 5 días hábiles después de haber completado el pago.</li>
-      <li>En caso de cancelación después de pago en efectivo o transferencia, la devolución se realiza de igual manera en un plazo de 10 a 12 días hábiles.</li>
-      <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
-    </ul>
+<div class="two-col">
+  <div>
+    <div class="col-lbl">${isEmpresa ? 'DATOS DE LA EMPRESA' : 'DATOS DEL CLIENTE'}</div>
+    <table class="kv"><tbody>${clientRows}</tbody></table>
   </div>
-
-  <div class="sigs">
-    <div class="sig">
-      <div class="sigline"></div>
-      <b>Firma y aclaración del cliente</b><br/>
-      <span class="sig-sub">${sigName}</span>
-    </div>
-    <div class="sig">
-      <div class="sigline"></div>
-      <b>Firma del vendedor / empresa</b><br/>
-      <span class="sig-sub">${data.sellerName||'________________________________'}</span>
-    </div>
+  <div>
+    <div class="col-lbl">VEHÍCULO</div>
+    <table class="kv"><tbody>
+      <tr><td class="kk">Marca</td><td class="kv2">${data.brand||'—'}</td></tr>
+      <tr><td class="kk">Modelo</td><td class="kv2">${data.model||'—'}</td></tr>
+      <tr><td class="kk">Año</td><td class="kv2">${data.year||'—'}</td></tr>
+      <tr><td class="kk">Color</td><td class="kv2">${data.color||'—'}</td></tr>
+      ${data.chassis ? `<tr><td class="kk">N° Chasis</td><td class="kv2">${data.chassis}</td></tr>` : ''}
+      ${data.motor_num ? `<tr><td class="kk">N° Motor</td><td class="kv2">${data.motor_num}</td></tr>` : ''}
+    </tbody></table>
   </div>
-</div></div>
+  ${photo ? `<div class="photo-w"><img src="${photo}" class="moto-img" onerror="this.style.display='none'"/></div>` : ''}
+</div>
+
+<table class="dtbl">
+  <thead><tr><th class="pd">Descripción</th><th class="pa">Monto</th></tr></thead>
+  <tbody>${priceRows}</tbody>
+</table>
+
+${payRows ? `<table class="dtbl" style="margin-top:0">
+  <thead><tr><th class="pd">Forma de pago</th><th class="pa">Monto</th></tr></thead>
+  <tbody>${payRows}${saldoRow}</tbody>
+</table>` : ''}
+
+${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
+
+<div class="legal">
+  <b>INDICACIÓN:</b> Al momento de cancelar con tarjeta de crédito o débito se suma un 2% del monto a cancelar.<br/>
+  <b>CONDICIONES DE VENTA:</b>
+  <ul>
+    <li>El tiempo estimado para la entrega será de 4 a 5 días hábiles después de haber completado el pago.</li>
+    <li>En caso de cancelación después de pago en efectivo o transferencia, la devolución se realiza de igual manera en un plazo de 10 a 12 días hábiles.</li>
+    <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
+  </ul>
+</div>
+
+<div class="sigs">
+  <div class="sig">
+    <div class="sigline"></div>
+    <b>Firma y aclaración del cliente</b><br/>
+    <span class="sig-sub">${sigName}</span>
+  </div>
+  <div class="sig">
+    <div class="sigline"></div>
+    <b>Firma del vendedor / empresa</b><br/>
+    <span class="sig-sub">${data.sellerName||'________________________________'}</span>
+  </div>
+</div>
+<script>
+(function(){
+  var bp = document.getElementById('btn-print');
+  var bc = document.getElementById('btn-close');
+  if(bp) bp.addEventListener('click', function(){ window.print(); });
+  if(bc) bc.addEventListener('click', function(){ window.close(); });
+})();
+</script>
 </body></html>`;
 }
 
 function openNote(data, type) {
   const html = buildNoteHTML(data, type);
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const win  = window.open(url, '_blank');
-  if (!win) { alert('Habilitá las ventanas emergentes para ver el documento.'); }
+  const win = window.open('', '_blank', 'width=960,height=760,menubar=yes,toolbar=yes');
+  if (!win) { alert('Habilitá las ventanas emergentes en el navegador para ver el documento.'); return; }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
@@ -596,6 +607,14 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       color: u.color || '', chassis: u.chassis || '', motor_num: u.motor_num || '',
       branch_id: u.branch_id || '',
     }));
+    // Load catalog model for color photos
+    if (u.brand) {
+      api.getModels({ brand: u.brand }).then(mods => {
+        setCatMods(mods);
+        const m = mods.find(x => x.model?.toUpperCase() === u.model?.toUpperCase());
+        if (m) setSelMod(m);
+      }).catch(() => {});
+    }
     setStep(2);
   };
 
@@ -654,8 +673,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
       const sellerObj   = sellers.find(s => String(s.id) === String(form.sold_by));
       const branchObj   = branches.find(b => String(b.id) === String(selUnit?.branch_id || form.branch_id));
-      const colorPhotos = Array.isArray(selMod?.color_photos) ? selMod.color_photos : [];
+      const colorPhotos  = Array.isArray(selMod?.color_photos) ? selMod.color_photos : [];
       const selectedColor = (selUnit?.color || form.color || '').toLowerCase().trim();
+      const colorPhotoUrl = colorPhotos.find(cp =>
+        (cp.color||'').toLowerCase().trim() === selectedColor
+      )?.url || selMod?.image || null;
 
       setSavedDoc({
         brand:      selUnit?.brand     || form.brand,
@@ -677,9 +699,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         sale_notes: form.sale_notes,
         sale_price: form.sale_price,
         accessories: accs, discount, payMode, payLines, finPct,
-        modelPhotoUrl: colorPhotos.find(cp =>
-          (cp.color||'').toLowerCase().trim() === selectedColor
-        )?.url || null,
+        modelPhotoUrl: colorPhotoUrl,
       });
       setStep(3);
       onCreated();
