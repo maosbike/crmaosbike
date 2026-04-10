@@ -355,12 +355,10 @@ function buildNoteHTML(data, type) {
   const photo     = data.modelPhotoUrl || '';
   const isEmpresa = data.client_type === 'empresa';
 
-  // Helper: label-value rows
   const kv = (pairs) => pairs.filter(Boolean)
-    .map(([k, v]) => `<div class="kvr"><span class="kl">${k}</span><span class="kv">${v}</span></div>`)
+    .map(([k, v]) => `<tr><td class="kl">${k}</td><td class="kv">${v}</td></tr>`)
     .join('');
 
-  // Client block
   const clientKv = isEmpresa
     ? kv([
         ['Empresa',       data.empresa_name  || '—'],
@@ -378,46 +376,56 @@ function buildNoteHTML(data, type) {
         data.client_address ? ['Dirección', data.client_address + (data.client_commune ? ', ' + data.client_commune : '')] : null,
       ]);
 
-  // Titular block
   const titularKv = (!data.titularSame && data.titular?.name)
     ? kv([
         ['Nombre',    data.titular.name],
-        data.titular.rut     ? ['RUT',       data.titular.rut]     : null,
-        data.titular.phone   ? ['Teléfono',  data.titular.phone]   : null,
-        data.titular.email   ? ['Correo',    data.titular.email]   : null,
+        data.titular.rut     ? ['RUT',      data.titular.rut]     : null,
+        data.titular.phone   ? ['Teléfono', data.titular.phone]   : null,
+        data.titular.email   ? ['Correo',   data.titular.email]   : null,
         data.titular.address ? ['Dirección', data.titular.address + (data.titular.commune ? ', ' + data.titular.commune : '')] : null,
       ])
     : null;
 
-  // Item rows — sin fila de TOTAL aquí
+  const vehicleKv = kv([
+    ['Marca',   data.brand    || '—'],
+    ['Modelo',  data.model    || '—'],
+    ['Año',     data.year     || '—'],
+    ['Color',   data.color    || '—'],
+    data.chassis   ? ['N° Chasis', data.chassis]   : null,
+    data.motor_num ? ['N° Motor',  data.motor_num] : null,
+  ]);
+
+  // Tabla de items — total aparece UNA sola vez al final
   const itemRows = [
-    `<tr>
-      <td class="itd">${data.brand||''} ${data.model||''} ${data.year ? '(' + data.year + ')' : ''}</td>
-      <td class="itd2">${data.color||''}</td>
-      <td class="itm">${fmtCLP(t.motoAmt)}</td>
-    </tr>`,
+    `<tr><td class="td-desc">${data.brand||''} ${data.model||''} ${data.year ? '('+data.year+')' : ''} — ${data.color||''}</td><td class="td-amt">${fmtCLP(t.motoAmt)}</td></tr>`,
     ...(data.accessories||[]).filter(a => a.name && Number(a.amount) > 0).map(a =>
-      `<tr><td class="itd">${a.name}</td><td class="itd2"></td><td class="itm">${fmtCLP(Number(a.amount))}</td></tr>`
-    ),
+      `<tr><td class="td-desc">${a.name}</td><td class="td-amt">${fmtCLP(Number(a.amount))}</td></tr>`),
     t.cardSurcharge > 0
-      ? `<tr class="surr"><td class="itd">Recargo tarjeta (2%)</td><td class="itd2"></td><td class="itm">+${fmtCLP(t.cardSurcharge)}</td></tr>`
+      ? `<tr class="tr-sur"><td class="td-desc">Recargo tarjeta (2%)</td><td class="td-amt">+${fmtCLP(t.cardSurcharge)}</td></tr>`
       : '',
   ].filter(Boolean).join('');
 
-  // Payment lines — para Mixto y Financiamiento mostramos desglose; para pago simple solo el método (sin repetir monto)
-  let payLines = '';
-  if (data.payMode === 'Mixto') {
-    payLines = (data.payLines||[]).filter(l => l.method && Number(l.amount) > 0).map(l => {
-      const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
-      return `<div class="prow"><span>${l.method}${sur > 0 ? ' (+2%)' : ''}</span><span>${fmtCLP(Number(l.amount) + sur)}</span></div>`;
-    }).join('');
-  } else if (data.payMode === 'Financiamiento') {
-    const pie = Math.round(t.netTotal * (Number(data.finPct)||0) / 100);
-    payLines = `<div class="prow"><span>Pie inicial (${data.finPct}%)</span><span>${fmtCLP(pie)}</span></div>
-                <div class="prow"><span>Monto a financiar</span><span>${fmtCLP(t.netTotal - pie)}</span></div>`;
-  } else if (data.payMode) {
-    // Pago simple: solo nombre del método, el monto ya está en el panel de total
-    payLines = `<div class="prow"><span>${data.payMode}</span><span style="color:#555;font-size:8.5pt">${t.saldo === 0 ? 'Cancelado' : fmtCLP(t.abonoAmt)}</span></div>`;
+  // Sección de pago — sin repetir el total, solo método y estado
+  let paySection = '';
+  if (data.payMode) {
+    let payDetail = '';
+    if (data.payMode === 'Mixto') {
+      payDetail = (data.payLines||[]).filter(l => l.method && Number(l.amount) > 0).map(l => {
+        const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
+        return `<span class="pay-item">${l.method}: ${fmtCLP(Number(l.amount) + sur)}${sur > 0 ? ' (incl. 2%)' : ''}</span>`;
+      }).join(' &nbsp;·&nbsp; ');
+    } else if (data.payMode === 'Financiamiento') {
+      const pie = Math.round(t.netTotal * (Number(data.finPct)||0) / 100);
+      payDetail = `<span class="pay-item">Pie ${data.finPct}%: ${fmtCLP(pie)}</span> &nbsp;·&nbsp; <span class="pay-item">Financiado: ${fmtCLP(t.netTotal - pie)}</span>`;
+    } else {
+      payDetail = `<span class="pay-item">${data.payMode}</span>`;
+    }
+    const estado = t.saldo > 0
+      ? `<span class="pay-saldo">Saldo pendiente: ${fmtCLP(t.saldo)}</span>`
+      : `<span class="pay-ok">Cancelado en su totalidad</span>`;
+    paySection = `<div class="pay-bar">
+      <span class="pay-label">Forma de pago:</span> ${payDetail} &nbsp;&nbsp; ${estado}
+    </div>`;
   }
 
   const sigName = isEmpresa
@@ -425,207 +433,166 @@ function buildNoteHTML(data, type) {
     : `${data.client_name||'________________________________'} — RUT: ${data.client_rut||'____________'}`;
 
   return `<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8">
-<title>${docLabel} — MAOS BIKE</title>
+<html lang="es"><head><meta charset="utf-8"><title>${docLabel} — MAOS BIKE</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Helvetica Neue',Arial,sans-serif;background:#d4d4d4;color:#111;font-size:10.5pt;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-.page{background:#fff;width:210mm;min-height:297mm;margin:0 auto;padding:13mm 15mm 12mm;box-shadow:0 3px 24px rgba(0,0,0,.22)}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;color:#111;font-size:9.5pt;background:#fff;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+@page{size:A4;margin:10mm}
 
 /* HEADER */
-.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:9px;border-bottom:2px solid #E5E7EB;margin-bottom:16px}
-.logo{height:46px;object-fit:contain}
-.hdr-right{text-align:right}
-.doc-badge{display:inline-block;background:#F28100;color:#fff;font-size:7pt;font-weight:700;letter-spacing:.12em;padding:3px 10px;border-radius:3px;margin-bottom:5px;text-transform:uppercase}
-.hdr-meta{font-size:8pt;color:#444;line-height:1.75}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:9px;border-bottom:2.5px solid #E5E7EB;margin-bottom:14px}
+.logo{height:44px;object-fit:contain}
+.hdr-r{text-align:right}
+.badge{display:inline-block;background:#F28100;color:#fff;font-size:6.5pt;font-weight:700;letter-spacing:.14em;padding:3px 10px;border-radius:2px;text-transform:uppercase;margin-bottom:4px}
+.hdr-meta{font-size:7.5pt;color:#444;line-height:1.8}
 .hdr-meta b{color:#111}
 
-/* INFO COLUMNS */
-.info-grid{display:grid;grid-template-columns:1fr 1fr${photo ? ' 170px' : ''};gap:14px;margin-bottom:14px}
-.sec-title{font-size:6.5pt;font-weight:700;color:#F28100;text-transform:uppercase;letter-spacing:.14em;border-bottom:1px solid #FDDCAD;padding-bottom:3px;margin-bottom:7px}
-.kvr{display:flex;gap:5px;padding:2.5px 0;font-size:8.5pt;line-height:1.4}
-.kl{color:#555;min-width:76px;flex-shrink:0}
-.kv{font-weight:600;color:#111}
-.photo-col{display:flex;flex-direction:column}
-.moto-img{width:100%;max-width:170px;height:auto;max-height:150px;object-fit:contain;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB}
+/* TOP SECTION: info left + photo right */
+.top{display:grid;grid-template-columns:1fr${photo ? ' 200px' : ''};gap:14px;margin-bottom:12px}
+.info-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sec{font-size:6pt;font-weight:700;color:#F28100;text-transform:uppercase;letter-spacing:.14em;border-bottom:1px solid #FDDCAD;padding-bottom:3px;margin-bottom:7px}
+table.kv{border-collapse:collapse;width:100%}
+.kl{color:#555;font-size:8pt;padding:2.5px 8px 2.5px 0;vertical-align:top;white-space:nowrap;width:38%}
+.kv{font-weight:600;color:#111;font-size:8.5pt;padding:2.5px 0;vertical-align:top}
+.photo-wrap{display:flex;flex-direction:column}
+.moto-img{width:200px;height:175px;object-fit:contain;border-radius:6px;border:1px solid #E5E7EB;background:#F9FAFB}
 
 /* TITULAR */
-.titular-wrap{border:1px solid #E5E7EB;border-radius:5px;padding:8px 12px;margin-bottom:12px;background:#FAFAFA}
+.titular{border:1px solid #E5E7EB;border-radius:4px;padding:7px 12px;margin-bottom:11px;background:#FAFAFA}
 
-/* ITEMS TABLE */
-.tbl{width:100%;border-collapse:collapse;margin-bottom:0;font-size:9.5pt}
-.tbl-wrap{border:1px solid #E5E7EB;border-radius:5px;overflow:hidden;margin-bottom:12px}
-.tbl thead{background:#F28100;color:#fff}
-.tbl thead th{padding:7px 10px;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-.tbl thead th:last-child,.itm{text-align:right}
-.tbl tbody tr{border-bottom:1px solid #F1F5F9}
-.tbl tbody tr:last-child{border-bottom:none}
-.itd{padding:7px 10px;color:#111}
-.itd2{padding:7px 4px;color:#555;font-size:8.5pt;white-space:nowrap}
-.itm{padding:7px 10px;font-weight:600;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums}
-.surr td,.surr .itd,.surr .itd2,.surr .itm{color:#92400E;background:#FFFBEB}
-.total-row td{font-weight:900;font-size:11pt;background:#111;color:#fff}
-.total-row .itm{color:#F28100}
+/* TABLE */
+.tbl-wrap{border:1px solid #E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:10px}
+table.tbl{width:100%;border-collapse:collapse;font-size:9.5pt}
+table.tbl thead{background:#F28100;color:#fff}
+table.tbl thead th{padding:6px 10px;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:left}
+table.tbl thead th.th-r{text-align:right}
+table.tbl tbody tr{border-bottom:1px solid #F1F5F9}
+table.tbl tbody tr:last-child{border-bottom:none}
+.td-desc{padding:6.5px 10px;color:#111}
+.td-amt{padding:6.5px 10px;text-align:right;font-weight:600;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tr-sur .td-desc,.tr-sur .td-amt{color:#92400E;background:#FFFBEB}
+.tr-total .td-desc,.tr-total .td-amt{font-weight:900;font-size:11pt;background:#1E1E1E;color:#fff}
+.tr-total .td-amt{color:#F28100}
 
-/* PAYMENT BLOCK */
-.pay-wrap{display:flex;border:1px solid #E5E7EB;border-radius:5px;overflow:hidden;margin-bottom:12px}
-.pay-left{flex:1;padding:10px 14px;border-right:1px solid #E5E7EB}
-.pay-right{background:#111;color:#fff;padding:10px 16px;min-width:170px;display:flex;flex-direction:column;justify-content:center;text-align:right}
-.pay-sec{font-size:6.5pt;font-weight:700;color:#F28100;text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px}
-.prow{display:flex;justify-content:space-between;font-size:9pt;padding:2px 0;color:#111}
-.total-lbl{font-size:7pt;color:#aaa;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
-.total-amt{font-size:16pt;font-weight:900;color:#F28100;letter-spacing:-.5px;line-height:1}
-.saldo-line{margin-top:8px;padding-top:8px;border-top:1px solid #333;font-size:8.5pt;color:#FCD34D;display:flex;justify-content:space-between}
-.paid-line{margin-top:6px;font-size:8pt;color:#6EE7B7}
+/* PAYMENT BAR */
+.pay-bar{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:4px;padding:8px 12px;margin-bottom:10px;font-size:8.5pt;color:#333;line-height:1.7}
+.pay-label{font-weight:700;color:#111}
+.pay-item{color:#333}
+.pay-saldo{font-weight:700;color:#92400E;background:#FEF3C7;padding:1px 7px;border-radius:3px}
+.pay-ok{font-weight:700;color:#065F46;background:#D1FAE5;padding:1px 7px;border-radius:3px}
 
 /* OBS / LEGAL / SIGS */
-.obs{border-left:3px solid #CBD5E1;padding:6px 10px;margin-bottom:10px;font-size:8.5pt;color:#333;background:#F8FAFC}
-.legal{font-size:7pt;color:#555;line-height:1.7;margin-bottom:16px}
-.legal b{color:#333}
-.legal ul{padding-left:14px}
+.obs{border-left:3px solid #CBD5E1;padding:6px 10px;margin-bottom:10px;font-size:8pt;color:#333;background:#F8FAFC}
+.legal{font-size:6.8pt;color:#555;line-height:1.7;margin-bottom:14px}
+.legal ul{padding-left:13px}
 .legal li{margin-bottom:1px}
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:30px;padding-top:10px;border-top:1px solid #E5E7EB}
-.sigline{border-bottom:1.5px solid #333;height:44px;margin-bottom:5px}
-.sig-lbl{font-size:8.5pt;font-weight:600;color:#111}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding-top:10px;border-top:1px solid #E5E7EB}
+.sigline{border-bottom:1.5px solid #333;height:46px;margin-bottom:5px}
+.sig-lbl{font-size:8pt;font-weight:600;color:#111}
 .sig-sub{font-size:7.5pt;color:#666;margin-top:2px}
-
-/* CONTROLS */
-.no-print{position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:9999;background:rgba(255,255,255,.96);padding:8px;border-radius:8px;box-shadow:0 2px 14px rgba(0,0,0,.16)}
-.btn-p{background:#F28100;color:#fff;border:none;padding:9px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
-.btn-c{background:#374151;color:#fff;border:none;padding:9px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
-
-@media print{
-  .no-print{display:none!important}
-  body{background:#fff}
-  .page{width:100%;min-height:auto;padding:0;margin:0;box-shadow:none}
-  @page{size:A4;margin:10mm}
-}
 </style>
 </head><body>
 
-<div class="no-print">
-  <button class="btn-p" id="btn-print">Imprimir / Guardar como PDF</button>
-  <button class="btn-c" id="btn-close">Cerrar</button>
+<div class="hdr">
+  <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
+  <div class="hdr-r">
+    <div><span class="badge">${docLabel}</span></div>
+    <div class="hdr-meta">
+      Fecha:&nbsp;<b>${today}</b>&nbsp;&nbsp;|&nbsp;&nbsp;Sucursal:&nbsp;<b>${data.branchName||'—'}</b>&nbsp;&nbsp;|&nbsp;&nbsp;Vendedor:&nbsp;<b>${data.sellerName||'—'}</b>
+    </div>
+  </div>
 </div>
 
-<div class="page">
-
-  <div class="hdr">
-    <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
-    <div class="hdr-right">
-      <div><span class="doc-badge">${docLabel}</span></div>
-      <div class="hdr-meta">
-        Fecha: <b>${today}</b>&nbsp;&nbsp;|&nbsp;&nbsp;Sucursal: <b>${data.branchName||'—'}</b><br/>
-        Vendedor: <b>${data.sellerName||'—'}</b>
-      </div>
-    </div>
-  </div>
-
-  <div class="info-grid">
+<div class="top">
+  <div class="info-cols">
     <div>
-      <div class="sec-title">${isEmpresa ? 'Empresa' : 'Cliente'}</div>
-      ${clientKv}
+      <div class="sec">${isEmpresa ? 'Empresa' : 'Cliente'}</div>
+      <table class="kv"><tbody>${clientKv}</tbody></table>
     </div>
     <div>
-      <div class="sec-title">Vehículo</div>
-      ${kv([
-        ['Marca',     data.brand    || '—'],
-        ['Modelo',    data.model    || '—'],
-        ['Año',       data.year     || '—'],
-        ['Color',     data.color    || '—'],
-        data.chassis   ? ['N° Chasis', data.chassis]   : null,
-        data.motor_num ? ['N° Motor',  data.motor_num] : null,
-      ])}
+      <div class="sec">Vehículo</div>
+      <table class="kv"><tbody>${vehicleKv}</tbody></table>
     </div>
-    ${photo ? `<div class="photo-col">
-      <div class="sec-title">Foto</div>
-      <img src="${photo}" class="moto-img" onerror="this.style.display='none'"/>
-    </div>` : ''}
   </div>
-
-  ${titularKv ? `<div class="titular-wrap">
-    <div class="sec-title">Titular del vehículo</div>
-    ${titularKv}
+  ${photo ? `<div class="photo-wrap">
+    <div class="sec">Foto</div>
+    <img src="${photo}" class="moto-img" onerror="this.style.display='none'"/>
   </div>` : ''}
-
-  <div class="tbl-wrap">
-    <table class="tbl">
-      <thead>
-        <tr>
-          <th class="itd" style="text-align:left">Descripción</th>
-          <th class="itd2" style="text-align:left">Detalle</th>
-          <th class="itm">Monto</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itemRows}
-        <tr class="total-row">
-          <td class="itd" colspan="2">Total</td>
-          <td class="itm">${fmtCLP(t.grandTotal)}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  ${data.payMode ? `<div class="pay-wrap">
-    <div class="pay-left">
-      <div class="pay-sec">Forma de pago</div>
-      ${payLines}
-    </div>
-    <div class="pay-right">
-      <div class="total-lbl">Total</div>
-      <div class="total-amt">${fmtCLP(t.grandTotal)}</div>
-      ${t.saldo > 0
-        ? `<div class="saldo-line"><span>Saldo pendiente</span><span>${fmtCLP(t.saldo)}</span></div>`
-        : `<div class="paid-line">Cancelado en su totalidad</div>`}
-    </div>
-  </div>` : ''}
-
-  ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
-
-  <div class="legal">
-    <b>Condiciones de venta:</b>
-    <ul>
-      <li>El plazo estimado de entrega es de 4 a 5 días hábiles tras completar el pago.</li>
-      <li>En caso de cancelación (efectivo o transferencia), la devolución se efectúa en 10 a 12 días hábiles.</li>
-      <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
-      <li>Al pagar con tarjeta de crédito o débito se aplica un recargo del 2% sobre el monto.</li>
-    </ul>
-  </div>
-
-  <div class="sigs">
-    <div>
-      <div class="sigline"></div>
-      <div class="sig-lbl">Firma del cliente</div>
-      <div class="sig-sub">${sigName}</div>
-    </div>
-    <div>
-      <div class="sigline"></div>
-      <div class="sig-lbl">Firma del vendedor</div>
-      <div class="sig-sub">${data.sellerName||'________________________________'}</div>
-    </div>
-  </div>
-
 </div>
 
-<script>
-window.addEventListener('load', function() {
-  document.getElementById('btn-print').addEventListener('click', function() { window.print(); });
-  document.getElementById('btn-close').addEventListener('click', function() { window.close(); });
-  window.print();
-});
-</script>
+${titularKv ? `<div class="titular">
+  <div class="sec">Titular del vehículo</div>
+  <table class="kv"><tbody>${titularKv}</tbody></table>
+</div>` : ''}
+
+<div class="tbl-wrap">
+  <table class="tbl">
+    <thead><tr><th>Descripción</th><th class="th-r">Monto</th></tr></thead>
+    <tbody>
+      ${itemRows}
+      <tr class="tr-total">
+        <td class="td-desc">Total</td>
+        <td class="td-amt">${fmtCLP(t.grandTotal)}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+${paySection}
+
+${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` : ''}
+
+<div class="legal">
+  <b>Condiciones de venta:</b>
+  <ul>
+    <li>El plazo estimado de entrega es de 4 a 5 días hábiles tras completar el pago.</li>
+    <li>En caso de cancelación por efectivo o transferencia, la devolución se efectúa en 10 a 12 días hábiles.</li>
+    <li>Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.</li>
+    <li>Al pagar con tarjeta de crédito o débito se aplica un recargo del 2% sobre el monto total.</li>
+  </ul>
+</div>
+
+<div class="sigs">
+  <div>
+    <div class="sigline"></div>
+    <div class="sig-lbl">Firma del cliente</div>
+    <div class="sig-sub">${sigName}</div>
+  </div>
+  <div>
+    <div class="sigline"></div>
+    <div class="sig-lbl">Firma del vendedor</div>
+    <div class="sig-sub">${data.sellerName||'________________________________'}</div>
+  </div>
+</div>
+
 </body></html>`;
 }
 
 function openNote(data, type) {
   const html = buildNoteHTML(data, type);
-  const win = window.open('', '_blank', 'width=900,height=820,menubar=yes,toolbar=yes,scrollbars=yes');
-  if (!win) { alert('Habilite las ventanas emergentes en el navegador para ver el documento.'); return; }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  win.focus();
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:0;visibility:hidden';
+  iframe.src = url;
+  iframe.onload = function() {
+    setTimeout(function() {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.addEventListener('afterprint', function() {
+          try { document.body.removeChild(iframe); } catch(_) {}
+          URL.revokeObjectURL(url);
+        });
+        iframe.contentWindow.print();
+      } catch(e) {
+        setTimeout(function() {
+          try { document.body.removeChild(iframe); } catch(_) {}
+          URL.revokeObjectURL(url);
+        }, 120000);
+      }
+    }, 600);
+  };
+  document.body.appendChild(iframe);
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
