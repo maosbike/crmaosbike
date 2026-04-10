@@ -570,31 +570,39 @@ function openNote(data, type) {
   const safe = (s) => (s || '').replace(/[^a-zA-Z0-9áéíóúñ]/gi, '_').substring(0, 30);
   const fileName = `${isRes ? 'reserva' : 'nota_venta'}_${safe(data.brand)}_${safe(data.client_name)}.pdf`;
 
-  // Crear iframe real que renderiza el HTML completo con estilos
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;left:-3000px;top:0;width:794px;height:1123px;border:0;background:#fff';
-  document.body.appendChild(iframe);
+  // Extraer CSS y body del HTML generado
+  const cssMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (!cssMatch || !bodyMatch) return;
 
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
+  // Reemplazar selector body{} por .pdf-root{} para que aplique al div
+  const css = cssMatch[1].replace(/\bbody\b\s*\{/g, '.pdf-root{');
+  const bodyHtml = bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '');
 
-  iframe.onload = () => {
-    setTimeout(() => {
-      html2pdf()
-        .set({
-          margin:      [8, 8, 8, 8],
-          filename:    fileName,
-          image:       { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
-          jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        })
-        .from(iframe.contentDocument.body)
-        .save()
-        .then(() => { try { document.body.removeChild(iframe); } catch(_) {} })
-        .catch((e) => { console.error('PDF error:', e); try { document.body.removeChild(iframe); } catch(_) {} });
-    }, 800);
-  };
+  const wrapper = document.createElement('div');
+  wrapper.className = 'pdf-root';
+  wrapper.style.cssText = 'position:fixed;left:-4000px;top:0;width:794px;background:#fff';
+
+  const styleEl = document.createElement('style');
+  styleEl.textContent = css;
+  wrapper.appendChild(styleEl);
+  wrapper.insertAdjacentHTML('beforeend', bodyHtml);
+  document.body.appendChild(wrapper);
+
+  setTimeout(() => {
+    html2pdf()
+      .set({
+        margin:      [8, 8, 8, 8],
+        filename:    fileName,
+        image:       { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      })
+      .from(wrapper)
+      .save()
+      .then(() => { try { document.body.removeChild(wrapper); } catch(_) {} })
+      .catch((e) => { console.error('PDF error:', e); try { document.body.removeChild(wrapper); } catch(_) {} });
+  }, 600);
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
