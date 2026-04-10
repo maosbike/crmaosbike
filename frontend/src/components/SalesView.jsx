@@ -403,7 +403,8 @@ function buildNoteHTML(data, type) {
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%}
-body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A;font-size:10pt;padding:18px 24px}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f0f0;color:#0F172A;font-size:10pt}
+.page{background:#fff;width:210mm;min-height:297mm;margin:0 auto;padding:18px 24px;box-shadow:0 2px 16px rgba(0,0,0,.12)}
 .hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:3px solid #F28100;margin-bottom:14px}
 .hdr-l{display:flex;align-items:center}
 .logo{height:48px;object-fit:contain}
@@ -442,7 +443,8 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A
 .btn-c{background:#0F172A;color:#fff;border:none;padding:10px 16px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer}
 @media print{
   .no-print{display:none!important}
-  body{padding:0}
+  body{background:#fff}
+  .page{box-shadow:none;width:100%;min-height:auto;padding:0;margin:0}
   @page{margin:12mm;size:A4}
   *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
@@ -451,6 +453,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;background:#fff;color:#0F172A
   <button class="btn-p" id="btn-print">🖨 Imprimir / Guardar PDF</button>
   <button class="btn-c" id="btn-close">✕ Cerrar</button>
 </div>
+<div class="page">
 <div class="hdr">
   <div class="hdr-l">
     <img src="${logo}" class="logo" alt="MAOS BIKE" onerror="this.style.display='none'"/>
@@ -515,6 +518,7 @@ ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` :
     <span class="sig-sub">${data.sellerName||'________________________________'}</span>
   </div>
 </div>
+</div>
 <script>
 (function(){
   var bp = document.getElementById('btn-print');
@@ -528,11 +532,13 @@ ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` :
 
 function openNote(data, type) {
   const html = buildNoteHTML(data, type);
-  const win = window.open('', '_blank', 'width=960,height=760,menubar=yes,toolbar=yes');
+  const win = window.open('', '_blank', 'width=900,height=800,menubar=yes,toolbar=yes,scrollbars=yes');
   if (!win) { alert('Habilitá las ventanas emergentes en el navegador para ver el documento.'); return; }
   win.document.open();
   win.document.write(html);
   win.document.close();
+  win.focus();
+  setTimeout(function() { try { win.print(); } catch(e) {} }, 400);
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
@@ -677,7 +683,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       const selectedColor = (selUnit?.color || form.color || '').toLowerCase().trim();
       const colorPhotoUrl = colorPhotos.find(cp =>
         (cp.color||'').toLowerCase().trim() === selectedColor
-      )?.url || selMod?.image || null;
+      )?.url || selMod?.image || selMod?.image_gallery?.[0] || null;
 
       setSavedDoc({
         brand:      selUnit?.brand     || form.brand,
