@@ -565,6 +565,9 @@ ${data.sale_notes ? `<div class="obs">Observaciones: ${data.sale_notes}</div>` :
   </div>
 </div>
 
+<script>
+window.addEventListener('load', function() { setTimeout(function(){ window.print(); }, 300); });
+</script>
 </body></html>`;
 }
 
@@ -572,27 +575,12 @@ function openNote(data, type) {
   const html = buildNoteHTML(data, type);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:0;visibility:hidden';
-  iframe.src = url;
-  iframe.onload = function() {
-    setTimeout(function() {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.addEventListener('afterprint', function() {
-          try { document.body.removeChild(iframe); } catch(_) {}
-          URL.revokeObjectURL(url);
-        });
-        iframe.contentWindow.print();
-      } catch(e) {
-        setTimeout(function() {
-          try { document.body.removeChild(iframe); } catch(_) {}
-          URL.revokeObjectURL(url);
-        }, 120000);
-      }
-    }, 600);
-  };
-  document.body.appendChild(iframe);
+  const tab  = window.open(url, '_blank');
+  if (!tab) {
+    const a = document.createElement('a');
+    a.href = url; a.download = 'nota-venta.html'; a.click();
+  }
+  setTimeout(function() { URL.revokeObjectURL(url); }, 120000);
 }
 
 // ─── Sección label para el formulario ────────────────────────────────────────
