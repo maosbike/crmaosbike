@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
 import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
 
@@ -349,6 +349,7 @@ function computeTotals({ sale_price, accessories = [], discount = '', payMode = 
 }
 
 async function openNote(data, type) {
+  try {
   const isRes = type === 'reserva';
   const safe = (s) => (s || '').replace(/[^a-zA-Z0-9áéíóúñ]/gi, '_').substring(0, 30);
   const fileName = `${isRes ? 'reserva' : 'nota_venta'}_${safe(data.brand)}_${safe(data.client_name)}.pdf`;
@@ -446,7 +447,7 @@ async function openNote(data, type) {
   if (t.cardSurcharge > 0) tableBody.push(['Recargo tarjeta (2%)', '+' + fmtCLP(t.cardSurcharge)]);
   tableBody.push(['TOTAL', fmtCLP(t.grandTotal)]);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: M, right: M },
     head: [['Descripción', 'Monto']],
@@ -527,6 +528,10 @@ async function openNote(data, type) {
   doc.text(data.sellerName || '', W - M - 70, y);
 
   doc.save(fileName);
+  } catch (err) {
+    console.error('Error generando PDF:', err);
+    alert('Error al generar el PDF: ' + err.message);
+  }
 }
 
 // Helper: cargar imagen como base64 para jsPDF
