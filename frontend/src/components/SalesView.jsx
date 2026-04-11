@@ -298,15 +298,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       {!editing ? (
         <div style={{ display: 'flex', gap: 8, flexWrap:'wrap' }}>
           {/* Descargar documento */}
-          <button onClick={() => openNote({
-            brand: sale.brand, model: sale.model, year: sale.year, color: sale.color,
-            chassis: sale.chassis, motor_num: sale.motor_num, sold_at: sale.sold_at,
-            branchName: sale.branch_name || '', sellerName: sale.seller_fn ? `${sale.seller_fn} ${sale.seller_ln||''}`.trim() : '',
-            client_name: sale.client_name||'', client_rut: sale.client_rut||'', client_type:'persona',
-            sale_price: sale.sale_price, abono: sale.invoice_amount||0,
-            accessories:[], discount:'', payMode: sale.payment_method||'', payLines:[], finPct:'',
-            sale_notes: sale.sale_notes, titularSame:true, titular:null,
-          }, isRes ? 'reserva' : 'venta')}
+          <button onClick={() => openNoteFromSale(sale)}
             style={{ ...S.btn2, display:'flex', alignItems:'center', gap:6 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
@@ -401,7 +393,8 @@ function fmtCLP(n) {
 
 function fmtDateDoc(s) {
   if (!s) return '—';
-  const d = new Date(s + 'T12:00:00');
+  const clean = String(s).slice(0, 10); // asegura YYYY-MM-DD aunque venga timestamp completo
+  const d = new Date(clean + 'T12:00:00');
   return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
@@ -1285,6 +1278,37 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   );
 }
 
+// Helper: abre nota de venta/reserva desde un registro del listado (busca foto en catálogo)
+async function openNoteFromSale(s) {
+  const isRes = s.status === 'reservada';
+  let modelPhotoUrl = null;
+  try {
+    const mods = await api.getModels({ brand: s.brand, q: s.model, limit: 10 });
+    const list = Array.isArray(mods) ? mods : (mods.data || []);
+    const mod  = list.find(m =>
+      (m.model||'').toUpperCase() === (s.model||'').toUpperCase() &&
+      (m.brand||'').toUpperCase() === (s.brand||'').toUpperCase()
+    ) || list[0];
+    if (mod) {
+      const selectedColor = (s.color||'').toLowerCase().trim();
+      const cp = (mod.color_photos||[]).find(c=>(c.color||'').toLowerCase().trim()===selectedColor);
+      modelPhotoUrl = cp?.url || mod.image || mod.image_gallery?.[0] || null;
+    }
+  } catch(_) {}
+  return openNote({
+    brand: s.brand, model: s.model, year: s.year, color: s.color,
+    chassis: s.chassis, motor_num: s.motor_num,
+    sold_at: s.sold_at ? String(s.sold_at).slice(0,10) : '',
+    branchName: s.branch_name || '',
+    sellerName: s.seller_fn ? `${s.seller_fn} ${s.seller_ln||''}`.trim() : '',
+    client_name: s.client_name||'', client_rut: s.client_rut||'', client_type:'persona',
+    sale_price: s.sale_price, abono: s.invoice_amount||0,
+    accessories:[], discount:'', payMode: s.payment_method||'', payLines:[], finPct:'',
+    sale_notes: s.sale_notes, titularSame:true, titular:null,
+    modelPhotoUrl,
+  }, isRes ? 'reserva' : 'venta');
+}
+
 // ─── Vista principal ──────────────────────────────────────────────────────────
 
 export function SalesView({ user, realBranches }) {
@@ -1639,15 +1663,7 @@ export function SalesView({ user, realBranches }) {
                     <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
                       {/* Descargar doc */}
                       <button title={isRes ? 'Ver nota de reserva' : 'Ver nota de venta'}
-                        onClick={() => openNote({
-                          brand: s.brand, model: s.model, year: s.year, color: s.color,
-                          chassis: s.chassis, motor_num: s.motor_num, sold_at: s.sold_at,
-                          branchName: s.branch_name || '', sellerName: s.seller_fn ? `${s.seller_fn} ${s.seller_ln||''}`.trim() : '',
-                          client_name: s.client_name||'', client_rut: s.client_rut||'', client_type:'persona',
-                          sale_price: s.sale_price, abono: s.invoice_amount||0,
-                          accessories:[], discount:'', payMode: s.payment_method||'', payLines:[], finPct:'',
-                          sale_notes: s.sale_notes, titularSame:true, titular:null,
-                        }, isRes ? 'reserva' : 'venta')}
+                        onClick={() => openNoteFromSale(s)}
                         style={{ padding:'4px 6px', borderRadius:6, border:'1px solid #E2E8F0', background:'transparent',
                                  color:'#6B7280', cursor:'pointer', lineHeight:1, display:'inline-flex', alignItems:'center' }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
