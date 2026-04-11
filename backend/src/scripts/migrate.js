@@ -6,7 +6,7 @@ const seed = require('../../migrations/002_seed');
 const maosSellerMigration = require('../../migrations/039_maos_seller');
 
 // Migrations that should run only ONCE (destructive or data-mutating)
-const ONCE_ONLY = ['010','012','013','018','032','033','034','035'];
+const ONCE_ONLY = ['010','012','013','018','032','033','034','035','040'];
 
 async function hasRun(name) {
   await db.query(`
