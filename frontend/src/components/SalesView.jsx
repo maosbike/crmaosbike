@@ -370,12 +370,20 @@ async function openNote(data, type) {
   let y = M;
 
   // ── HEADER: logo izquierda + caja doc derecha ──
-  // Logo con fondo blanco
+  // Logo — canvas con fondo blanco antes de dibujar para eliminar transparencia→negro
   try {
-    const logoImg = await loadImage(window.location.origin + '/logo.png');
-    doc.setFillColor(255, 255, 255);
-    doc.rect(M - 1, y - 1, 46, 16, 'F');
-    doc.addImage(logoImg, 'PNG', M, y, 44, 14);
+    const img = await new Promise((res, rej) => {
+      const i = new Image(); i.crossOrigin = 'anonymous';
+      i.onload = () => res(i); i.onerror = rej;
+      i.src = window.location.origin + '/logo.png';
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', M, y, 44, 14);
   } catch(_) {
     doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(...orange);
     doc.text('MAOSBIKE', M, y + 11);
@@ -473,16 +481,15 @@ async function openNote(data, type) {
     margin: { left: M, right: M },
     head: [['Descripción', 'Monto']],
     body: tableBody,
-    styles: { fontSize: 9.5, cellPadding: [3.5, 4], textColor: dark, lineColor: lightGray, lineWidth: 0.2 },
-    headStyles: { fillColor: orange, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-    columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', fontStyle: 'bold', cellWidth: 38 } },
+    styles: { fontSize: 9.5, cellPadding: [4, 5], textColor: dark, lineColor: lightGray, lineWidth: 0.2 },
+    headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 } },
     didParseCell: (d) => {
       if (d.section === 'body' && d.row.index === tableBody.length - 1) {
         d.cell.styles.fillColor = orange;
         d.cell.styles.textColor = [255, 255, 255];
         d.cell.styles.fontStyle = 'bold';
         d.cell.styles.fontSize = 12;
-        d.cell.styles.cellPadding = [4, 4];
       }
     },
     theme: 'grid',
