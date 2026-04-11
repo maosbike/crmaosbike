@@ -102,12 +102,15 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
   // Reservas pueden ser editadas por todos los roles; ventas solo por admins
   const canEdit   = isRes ? true : CAN_CREATE.includes(user.role);
 
-  const [editing,    setEditing]    = useState(false);
-  const [form,       setForm]       = useState({});
-  const [saving,     setSaving]     = useState(false);
-  const [converting, setConverting] = useState(false);
-  const [err,        setErr]        = useState('');
-  const [uploading,  setUploading]  = useState('');
+  const [editing,      setEditing]      = useState(false);
+  const [form,         setForm]         = useState({});
+  const [saving,       setSaving]       = useState(false);
+  const [converting,   setConverting]   = useState(false);
+  const [err,          setErr]          = useState('');
+  const [uploading,    setUploading]    = useState('');
+  const [toggling,     setToggling]     = useState(false);
+  const [postItems,    setPostItems]    = useState([]);
+  const [savingItems,  setSavingItems]  = useState(false);
 
   useEffect(() => {
     setForm({
@@ -167,6 +170,31 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       onUpdated();
     } catch (e) { setErr(e.message || 'Error al convertir'); }
     finally { setConverting(false); }
+  }
+
+  async function handleToggleDelivered() {
+    setToggling(true);
+    try {
+      await api.updateSale(sale.id, { delivered: !sale.delivered });
+      onUpdated();
+    } catch(e) { alert(e.message || 'Error'); }
+    finally { setToggling(false); }
+  }
+
+  async function handleSavePostItems() {
+    const valid = postItems.filter(i => i.name.trim());
+    if (!valid.length) return;
+    setSavingItems(true);
+    try {
+      const itemsText = valid.map(i => `• ${i.name.trim()}${i.price ? ': ' + fmt(parseInt(i.price)) : ''}`).join('\n');
+      const totalExtra = valid.reduce((s, i) => s + (parseInt(i.price) || 0), 0);
+      const append = `\n\n— Ítems adicionales —\n${itemsText}${totalExtra > 0 ? '\nTotal extra: ' + fmt(totalExtra) : ''}`;
+      const newNotes = (sale.sale_notes || '') + append;
+      await api.updateSale(sale.id, { sale_notes: newNotes });
+      setPostItems([]);
+      onUpdated();
+    } catch(e) { alert(e.message || 'Error'); }
+    finally { setSavingItems(false); }
   }
 
   async function handleDocUpload(field, file) {
@@ -232,6 +260,29 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
         </div>
       </div>
 
+      {/* Entregada — botón prominente */}
+      {!isRes && (
+        <button onClick={handleToggleDelivered} disabled={toggling}
+          style={{ display:'flex', alignItems:'center', gap:10, width:'100%', marginBottom:14,
+            padding:'12px 16px', borderRadius:10, border:'none', cursor:'pointer', fontFamily:'inherit',
+            background: sale.delivered ? '#ECFDF5' : '#FFF7ED',
+            outline: `2px solid ${sale.delivered ? '#059669' : '#F28100'}`,
+            transition:'all 0.15s' }}>
+          <div style={{ width:28, height:28, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+            background: sale.delivered ? '#059669' : '#F28100' }}>
+            <span style={{ color:'#fff', fontSize:16, lineHeight:1 }}>{sale.delivered ? '✓' : '○'}</span>
+          </div>
+          <div style={{ textAlign:'left' }}>
+            <div style={{ fontSize:13, fontWeight:700, color: sale.delivered ? '#065F46' : '#92400E' }}>
+              {toggling ? 'Actualizando…' : sale.delivered ? 'Moto entregada al cliente' : 'Moto pendiente de entrega'}
+            </div>
+            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:1 }}>
+              {sale.delivered ? 'Tocá para marcar como pendiente' : 'Tocá para confirmar la entrega'}
+            </div>
+          </div>
+        </button>
+      )}
+
       {/* Info principal — grilla */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px', marginBottom: 16 }}>
         {[
@@ -242,7 +293,6 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
           ['Ticket',      sale.ticket_num  || '—'],
           ['Forma pago',  sale.payment_method || '—'],
           ['Modalidad',   SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type || '—'],
-          ['Entregada',   sale.delivered ? 'Sí ✓' : 'Pendiente'],
         ].map(([label, val]) => (
           <div key={label} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
             <span style={{ color: '#9CA3AF', fontSize: 11, minWidth: 90, flexShrink: 0 }}>{label}</span>
@@ -291,6 +341,38 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Ítems post-venta */}
+      <div style={{ marginBottom:16, background:'#F8FAFC', borderRadius:10, padding:'12px 14px', border:'1px solid #E2E8F0' }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+          + Ítems adicionales post-venta
+        </div>
+        {postItems.length === 0 && (
+          <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:8 }}>
+            Agregá accesorios u otros ítems que el cliente compró al retirar la moto.
+          </div>
+        )}
+        {postItems.map((item, i) => (
+          <div key={i} style={{ display:'flex', gap:6, marginBottom:6, alignItems:'center' }}>
+            <input value={item.name} onChange={e => setPostItems(p => p.map((x,j) => j===i ? {...x,name:e.target.value} : x))}
+              placeholder="Ej: Guantes, Casco…" style={{ ...S.inp, flex:2, fontSize:12 }} />
+            <input value={item.price} type="number" onChange={e => setPostItems(p => p.map((x,j) => j===i ? {...x,price:e.target.value} : x))}
+              placeholder="Precio $" style={{ ...S.inp, flex:1, fontSize:12 }} />
+            <button onClick={() => setPostItems(p => p.filter((_,j) => j!==i))}
+              style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:18, padding:'0 4px', lineHeight:1 }}>✕</button>
+          </div>
+        ))}
+        <div style={{ display:'flex', gap:8, marginTop:6 }}>
+          <button onClick={() => setPostItems(p => [...p, {name:'',price:''}])}
+            style={{ ...S.btn2, fontSize:11, padding:'5px 12px' }}>+ Agregar ítem</button>
+          {postItems.length > 0 && (
+            <button onClick={handleSavePostItems} disabled={savingItems}
+              style={{ ...S.btn, fontSize:11, padding:'5px 16px' }}>
+              {savingItems ? 'Guardando…' : 'Guardar ítems'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -349,21 +431,12 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
                 onChange={set('sale_type')} opts={SALE_TYPES} />
             )}
           </div>
-          {!isRes && (
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                <input type="checkbox" checked={!!form.delivered}
-                  onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
-                Moto entregada al cliente
-              </label>
-              {isAdmin && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                  <input type="checkbox" checked={!!form.distributor_paid}
-                    onChange={e => setForm(f => ({ ...f, distributor_paid: e.target.checked }))} />
-                  Pagada al distribuidor
-                </label>
-              )}
-            </div>
+          {!isRes && isAdmin && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="checkbox" checked={!!form.distributor_paid}
+                onChange={e => setForm(f => ({ ...f, distributor_paid: e.target.checked }))} />
+              Pagada al distribuidor
+            </label>
           )}
           <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
