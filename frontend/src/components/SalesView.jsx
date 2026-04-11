@@ -360,91 +360,110 @@ async function openNote(data, type) {
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
-  const cw = W - M * 2; // content width
+  const cw = W - M * 2;
   const orange = [242, 129, 0];
   const dark = [17, 17, 17];
-  const gray = [100, 100, 100];
-  const lightGray = [200, 200, 200];
+  const gray = [110, 110, 110];
+  const lightGray = [218, 218, 218];
+  const colW = (cw - 6) / 2; // columna para cliente / vehículo
 
   let y = M;
 
-  // ── HEADER ──
-  // Logo (intentar cargar)
+  // ── HEADER: logo izquierda + caja doc derecha ──
   try {
     const logoImg = await loadImage(window.location.origin + '/logo.png');
-    doc.addImage(logoImg, 'PNG', M, y, 30, 12);
-  } catch(_) {}
+    // Ratio logo MAOSBIKE ≈ 3.14:1 → 44mm × 14mm
+    doc.addImage(logoImg, 'PNG', M, y, 44, 14);
+  } catch(_) {
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(...orange);
+    doc.text('MAOSBIKE', M, y + 11);
+  }
 
-  // Badge
-  doc.setFillColor(...orange);
-  doc.roundedRect(W - M - 32, y, 32, 5, 1, 1, 'F');
-  doc.setFontSize(6); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold');
-  doc.text(docLabel, W - M - 16, y + 3.5, { align: 'center' });
+  // Caja doc tipo (estilo factura) — derecha
+  const boxW = 58, boxX = W - M - boxW;
+  doc.setLineWidth(0.6); doc.setDrawColor(...orange);
+  doc.rect(boxX, y, boxW, 22);
+  doc.setFillColor(...orange); doc.rect(boxX, y, boxW, 7, 'F');
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+  doc.text(docLabel, boxX + boxW / 2, y + 5, { align: 'center' });
+  doc.setFontSize(8); doc.setTextColor(...dark); doc.setFont('helvetica', 'normal');
+  doc.text(today, boxX + boxW / 2, y + 12, { align: 'center' });
+  doc.setFontSize(7); doc.setTextColor(...gray);
+  doc.text(`Sucursal: ${data.branchName || '—'}`, boxX + boxW / 2, y + 17, { align: 'center' });
+  doc.text(`Vendedor: ${data.sellerName || '—'}`, boxX + boxW / 2, y + 21, { align: 'center' });
 
-  // Meta
-  doc.setFontSize(7); doc.setTextColor(...gray); doc.setFont('helvetica', 'normal');
-  doc.text(`Fecha: ${today}  |  Sucursal: ${data.branchName || '—'}  |  Vendedor: ${data.sellerName || '—'}`, W - M, y + 9, { align: 'right' });
+  y += 26;
+  doc.setLineWidth(0.3); doc.setDrawColor(...lightGray);
+  doc.line(M, y, W - M, y);
+  y += 4;
 
-  y += 16;
-  doc.setDrawColor(...lightGray); doc.line(M, y, W - M, y); y += 6;
+  // ── CLIENTE y VEHÍCULO: dos tablas side-by-side ──
+  const clientPairs = isEmpresa
+    ? [['Empresa', data.empresa_name], ['RUT', data.empresa_rut], data.empresa_giro ? ['Giro', data.empresa_giro] : null, ['Representante', data.client_name], (data.empresa_phone||data.client_phone) ? ['Teléfono', data.empresa_phone||data.client_phone] : null, (data.empresa_email||data.client_email) ? ['Correo', data.empresa_email||data.client_email] : null].filter(Boolean)
+    : [['Nombre', data.client_name], ['RUT', data.client_rut], data.client_phone ? ['Teléfono', data.client_phone] : null, data.client_email ? ['Correo', data.client_email] : null, data.client_address ? ['Dirección', data.client_address + (data.client_commune ? ', ' + data.client_commune : '')] : null].filter(Boolean);
 
-  // ── CLIENTE + VEHICULO (2 columnas) ──
-  const colW = (cw - 6) / 2;
-  const drawKvBlock = (title, pairs, x, startY) => {
-    doc.setFontSize(6); doc.setTextColor(...orange); doc.setFont('helvetica', 'bold');
-    doc.text(title.toUpperCase(), x, startY);
-    doc.setDrawColor(253, 220, 173); doc.line(x, startY + 1, x + colW, startY + 1);
-    let ly = startY + 5;
-    doc.setFontSize(8);
-    pairs.filter(Boolean).forEach(([k, v]) => {
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
-      doc.text(k, x, ly);
-      doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
-      doc.text(String(v || '—'), x + 24, ly);
-      ly += 4.2;
-    });
-    return ly;
+  const vehiclePairs = [['Marca', data.brand], ['Modelo', data.model], ['Año', data.year], ['Color', data.color], data.chassis ? ['N° Chasis', data.chassis] : null, data.motor_num ? ['N° Motor', data.motor_num] : null].filter(Boolean);
+
+  const infoTableStyles = {
+    styles: { fontSize: 8.5, cellPadding: [2.5, 3], lineColor: lightGray, lineWidth: 0.2, textColor: dark },
+    headStyles: { fillColor: [245, 245, 245], textColor: orange, fontStyle: 'bold', fontSize: 7, cellPadding: [2.5, 3] },
+    columnStyles: { 0: { fontStyle: 'normal', textColor: gray, cellWidth: 24 }, 1: { fontStyle: 'bold' } },
+    theme: 'grid',
   };
 
-  const clientPairs = isEmpresa
-    ? [['Empresa', data.empresa_name], ['RUT', data.empresa_rut], data.empresa_giro ? ['Giro', data.empresa_giro] : null, ['Representante', data.client_name], (data.empresa_phone||data.client_phone) ? ['Teléfono', data.empresa_phone||data.client_phone] : null, (data.empresa_email||data.client_email) ? ['Correo', data.empresa_email||data.client_email] : null]
-    : [['Nombre', data.client_name], ['RUT', data.client_rut], data.client_phone ? ['Teléfono', data.client_phone] : null, data.client_email ? ['Correo', data.client_email] : null, data.client_address ? ['Dirección', data.client_address + (data.client_commune ? ', ' + data.client_commune : '')] : null];
+  // Tabla cliente (columna izquierda)
+  autoTable(doc, {
+    startY: y,
+    margin: { left: M, right: M + colW + 6 },
+    head: [[{ content: isEmpresa ? 'EMPRESA' : 'CLIENTE', colSpan: 2, styles: { fillColor: [245, 245, 245], textColor: orange, fontStyle: 'bold', fontSize: 7, halign: 'left' } }]],
+    body: clientPairs,
+    ...infoTableStyles,
+  });
+  const clientEndY = doc.lastAutoTable.finalY;
 
-  const vehiclePairs = [['Marca', data.brand], ['Modelo', data.model], ['Año', data.year], ['Color', data.color], data.chassis ? ['N° Chasis', data.chassis] : null, data.motor_num ? ['N° Motor', data.motor_num] : null];
+  // Tabla vehículo (columna derecha)
+  autoTable(doc, {
+    startY: y,
+    margin: { left: M + colW + 6, right: M },
+    head: [[{ content: 'VEHÍCULO', colSpan: 2, styles: { fillColor: [245, 245, 245], textColor: orange, fontStyle: 'bold', fontSize: 7, halign: 'left' } }]],
+    body: vehiclePairs,
+    ...infoTableStyles,
+  });
+  const vehicleEndY = doc.lastAutoTable.finalY;
 
-  const y1 = drawKvBlock(isEmpresa ? 'Empresa' : 'Cliente', clientPairs, M, y);
-  const y2 = drawKvBlock('Vehículo', vehiclePairs, M + colW + 6, y);
-  y = Math.max(y1, y2) + 2;
-
-  // ── FOTO ──
+  // Foto del modelo — debajo de la tabla vehículo, columna derecha
+  let photoBottomY = vehicleEndY;
   if (data.modelPhotoUrl) {
     try {
       const photoImg = await loadImage(data.modelPhotoUrl);
-      const imgH = 35, imgW = 50;
-      const imgX = W - M - imgW;
-      const imgY = y - 30; // junto a los datos
-      doc.addImage(photoImg, 'JPEG', imgX, Math.max(imgY, M + 16), imgW, imgH);
+      const imgW = colW, imgH = Math.round(imgW * 0.6);
+      doc.addImage(photoImg, 'JPEG', M + colW + 6, vehicleEndY + 2, imgW, imgH, '', 'MEDIUM');
+      photoBottomY = vehicleEndY + 2 + imgH;
     } catch(_) {}
   }
 
-  // ── TITULAR ──
-  if (!data.titularSame && data.titular?.name) {
-    y += 2;
-    doc.setFillColor(250, 250, 250); doc.roundedRect(M, y, cw, 20, 1, 1, 'F');
-    doc.setDrawColor(...lightGray); doc.roundedRect(M, y, cw, 20, 1, 1, 'S');
-    const titPairs = [['Nombre', data.titular.name], data.titular.rut ? ['RUT', data.titular.rut] : null, data.titular.phone ? ['Teléfono', data.titular.phone] : null];
-    y = drawKvBlock('Titular del vehículo', titPairs, M + 3, y + 4);
-    y += 4;
-  }
+  y = Math.max(clientEndY, photoBottomY) + 4;
 
-  y += 3;
+  // ── TITULAR DEL VEHÍCULO ──
+  if (!data.titularSame && data.titular?.name) {
+    const titPairs = [['Nombre', data.titular.name], data.titular.rut ? ['RUT', data.titular.rut] : null, data.titular.phone ? ['Teléfono', data.titular.phone] : null].filter(Boolean);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      head: [[{ content: 'TITULAR DEL VEHÍCULO', colSpan: 2, styles: { fillColor: [245, 245, 245], textColor: orange, fontStyle: 'bold', fontSize: 7, halign: 'left' } }]],
+      body: titPairs,
+      ...infoTableStyles,
+      columnStyles: { 0: { fontStyle: 'normal', textColor: gray, cellWidth: 24 }, 1: { fontStyle: 'bold' } },
+    });
+    y = doc.lastAutoTable.finalY + 4;
+  }
 
   // ── TABLA DE ITEMS ──
   const tableBody = [
     [`${data.brand || ''} ${data.model || ''} ${data.year ? '(' + data.year + ')' : ''} — ${data.color || ''}`, fmtCLP(t.motoAmt)],
     ...(data.accessories || []).filter(a => a.name && Number(a.amount) > 0).map(a => [a.name, fmtCLP(Number(a.amount))]),
   ];
-  if (t.cardSurcharge > 0) tableBody.push(['Recargo tarjeta (2%)', '+' + fmtCLP(t.cardSurcharge)]);
+  if (t.cardSurcharge > 0) tableBody.push(['Recargo tarjeta de crédito/débito (2%)', '+' + fmtCLP(t.cardSurcharge)]);
   tableBody.push(['TOTAL', fmtCLP(t.grandTotal)]);
 
   autoTable(doc, {
@@ -452,26 +471,29 @@ async function openNote(data, type) {
     margin: { left: M, right: M },
     head: [['Descripción', 'Monto']],
     body: tableBody,
-    styles: { fontSize: 9, cellPadding: 3, textColor: dark, lineColor: [230, 230, 230], lineWidth: 0.2 },
-    headStyles: { fillColor: orange, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
-    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+    styles: { fontSize: 9.5, cellPadding: [3.5, 4], textColor: dark, lineColor: lightGray, lineWidth: 0.2 },
+    headStyles: { fillColor: orange, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', fontStyle: 'bold', cellWidth: 38 } },
     didParseCell: (d) => {
       if (d.section === 'body' && d.row.index === tableBody.length - 1) {
-        d.cell.styles.fillColor = [30, 30, 30];
+        d.cell.styles.fillColor = [25, 25, 25];
         d.cell.styles.textColor = d.column.index === 1 ? orange : [255, 255, 255];
         d.cell.styles.fontStyle = 'bold';
-        d.cell.styles.fontSize = 11;
+        d.cell.styles.fontSize = 12;
+        d.cell.styles.cellPadding = [4, 4];
       }
     },
+    theme: 'grid',
   });
 
   y = doc.lastAutoTable.finalY + 4;
 
   // ── FORMA DE PAGO ──
   if (data.payMode) {
-    doc.setFillColor(249, 250, 251); doc.roundedRect(M, y, cw, 8, 1, 1, 'F');
-    doc.setDrawColor(...lightGray); doc.roundedRect(M, y, cw, 8, 1, 1, 'S');
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
+    doc.setFillColor(249, 250, 251);
+    doc.setDrawColor(...lightGray); doc.setLineWidth(0.2);
+    doc.roundedRect(M, y, cw, 9, 1, 1, 'FD');
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
     let payText = `Forma de pago: ${data.payMode}`;
     if (data.payMode === 'Mixto') {
       const parts = (data.payLines||[]).filter(l => l.method && Number(l.amount) > 0).map(l => {
@@ -483,49 +505,53 @@ async function openNote(data, type) {
       const pie = Math.round(t.netTotal * (Number(data.finPct)||0) / 100);
       payText = `Forma de pago: Pie ${data.finPct}% (${fmtCLP(pie)}) — Financiado: ${fmtCLP(t.netTotal - pie)}`;
     }
-    doc.text(payText, M + 4, y + 4);
+    doc.text(payText, M + 4, y + 5.5);
     const estado = t.saldo > 0 ? `Saldo pendiente: ${fmtCLP(t.saldo)}` : 'Cancelado en su totalidad';
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(t.saldo > 0 ? 146 : 6, t.saldo > 0 ? 64 : 95, t.saldo > 0 ? 14 : 70);
-    doc.text(estado, W - M - 4, y + 4, { align: 'right' });
-    y += 12;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(t.saldo > 0 ? 146 : 34, t.saldo > 0 ? 64 : 139, t.saldo > 0 ? 14 : 34);
+    doc.text(estado, W - M - 4, y + 5.5, { align: 'right' });
+    y += 14;
   }
 
   // ── OBSERVACIONES ──
   if (data.sale_notes) {
     doc.setFontSize(8); doc.setTextColor(...gray); doc.setFont('helvetica', 'italic');
-    doc.text(`Observaciones: ${data.sale_notes}`, M, y + 3);
-    y += 8;
+    doc.text(`Obs.: ${data.sale_notes}`, M, y);
+    y += 7;
   }
 
   // ── CONDICIONES ──
   y += 2;
-  doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
-  doc.text('Condiciones de venta:', M, y); y += 3.5;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
+  doc.setLineWidth(0.2); doc.setDrawColor(...lightGray);
+  doc.line(M, y, W - M, y);
+  y += 4;
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(70, 70, 70);
+  doc.text('Condiciones de venta:', M, y); y += 4;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...gray);
   const conds = [
     'El plazo estimado de entrega es de 4 a 5 días hábiles tras completar el pago.',
     'En caso de cancelación por efectivo o transferencia, la devolución se efectúa en 10 a 12 días hábiles.',
     'Los pagos con tarjeta anulados por el cliente serán reembolsados en un máximo de 30 días.',
     'Al pagar con tarjeta de crédito o débito se aplica un recargo del 2% sobre el monto total.',
   ];
-  conds.forEach(c => { doc.text('• ' + c, M + 2, y); y += 3.5; });
+  conds.forEach(c => { doc.text('• ' + c, M + 2, y); y += 4; });
 
   // ── FIRMAS ──
-  y = Math.max(y + 10, 245);
-  doc.setDrawColor(60, 60, 60); doc.setLineWidth(0.3);
-  doc.line(M, y, M + 70, y);
-  doc.line(W - M - 70, y, W - M, y);
+  y += 14;
+  doc.setLineWidth(0.3); doc.setDrawColor(80, 80, 80);
+  doc.line(M, y, M + 72, y);
+  doc.line(W - M - 72, y, W - M, y);
   y += 4;
-  doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
   doc.text('Firma del cliente', M, y);
-  doc.text('Firma del vendedor', W - M - 70, y);
-  y += 3.5;
-  doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
+  doc.text('Firma del vendedor', W - M - 72, y);
+  y += 4;
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
   const sigName = isEmpresa
     ? `${data.empresa_name || ''} — RUT: ${data.empresa_rut || ''}`
     : `${data.client_name || ''} — RUT: ${data.client_rut || ''}`;
   doc.text(sigName, M, y);
-  doc.text(data.sellerName || '', W - M - 70, y);
+  doc.text(data.sellerName || '', W - M - 72, y);
 
   doc.save(fileName);
   } catch (err) {
