@@ -178,7 +178,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px', marginBottom: 16 }}>
         {[
           ['Vendedor',    sellerName],
-          ['Sucursal',    sale.branch_name || '—'],
+          ['Sucursal',    sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega directa' : (sale.branch_name || '—')],
           ['Cliente',     sale.client_name || '—'],
           ['RUT',         sale.client_rut  || '—'],
           ['Ticket',      sale.ticket_num  || '—'],
@@ -1367,6 +1367,13 @@ export function SalesView({ user, realBranches }) {
                   {isAdmin && (
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: 11, color: '#6B7280' }}>
                       {s.branch_name || '—'}
+                      {s.added_as_sold && (
+                        <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, color: '#7C3AED',
+                                      background: '#EDE9FE', borderRadius: 4, padding: '1px 5px',
+                                      display: 'inline-block', letterSpacing: '0.05em' }}>
+                          BODEGA DIRECTA
+                        </div>
+                      )}
                     </td>
                   )}
 
