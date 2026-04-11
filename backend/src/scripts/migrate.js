@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../config/db');
 const seed = require('../../migrations/002_seed');
+const maosSellerMigration = require('../../migrations/039_maos_seller');
 
 // Migrations that should run only ONCE (destructive or data-mutating)
 const ONCE_ONLY = ['010','012','013','018','032','033','034','035'];
@@ -75,6 +76,17 @@ async function migrate() {
     await runMigration('036', 'chassis nullable',               m('036_chassis_nullable.sql'));
     await runMigration('037', 'bono condicion y tipo',          m('037_bono_condicion.sql'));
     await runMigration('038', 'color photos por modelo',        m('038_color_photos.sql'));
+
+    // Migration 039: Maos seller (JS migration — once-only)
+    if (!(await hasRun('039'))) {
+      await maosSellerMigration(db);
+      await markRan('039');
+      console.log('✓ Migration 039 (maos seller) applied');
+    } else {
+      console.log('↩ Migration 039 (maos seller) already applied — skipping');
+    }
+
+    await runMigration('040', 'branch photo_url',              m('040_branch_photo.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');
