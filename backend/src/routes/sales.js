@@ -52,6 +52,7 @@ function sanitizeSale(sale, userRole) {
 const BASE_SELECT = `
   SELECT
     i.id,
+    i.status,
     i.brand, i.model, i.year, i.chassis, i.color, i.motor_num,
     i.price,
     i.sale_price, i.cost_price, i.invoice_amount,
@@ -81,15 +82,19 @@ const BASE_SELECT = `
   LEFT JOIN users    sv ON i.sold_by   = sv.id
   LEFT JOIN branches b  ON i.branch_id = b.id
   LEFT JOIN tickets  t  ON i.ticket_id = t.id
-  WHERE i.status = 'vendida'
+  WHERE i.status IN ('vendida', 'reservada')
 `;
 
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const { from, to, branch_id, seller_id, q } = req.query;
+    const { from, to, branch_id, seller_id, q, status } = req.query;
     const where = [], params = [];
     let idx = 1;
+
+    // Filtro de tipo: reserva o venta
+    if (status === 'vendida')   { where.push(`i.status = $${idx++}`); params.push('vendida'); }
+    else if (status === 'reservada') { where.push(`i.status = $${idx++}`); params.push('reservada'); }
 
     if (req.user.role === 'vendedor') {
       where.push(`sv.id = $${idx++}`);
@@ -300,7 +305,7 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
 });
 
 // ─── PATCH /api/sales/:id ─────────────────────────────────────────────────────
-router.patch('/:id', roleCheck('super_admin', 'backoffice'), async (req, res) => {
+router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
     const UPDATABLE = [
       'sale_price', 'cost_price', 'invoice_amount',
@@ -325,7 +330,7 @@ router.patch('/:id', roleCheck('super_admin', 'backoffice'), async (req, res) =>
 
     const { rows } = await db.query(
       `UPDATE inventory SET ${sets.join(', ')}, updated_at = NOW()
-       WHERE id = $${idx} AND status = 'vendida'
+       WHERE id = $${idx} AND status IN ('vendida', 'reservada')
        RETURNING *`,
       params
     );

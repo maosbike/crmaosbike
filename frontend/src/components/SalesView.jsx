@@ -97,12 +97,15 @@ function KpiCard({ label, value, color = '#374151', bg = '#F9FAFB', border = '#E
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
 function SaleDetailModal({ sale, user, onClose, onUpdated }) {
-  const isAdmin  = CAN_ADMIN.includes(user.role);
-  const canEdit  = CAN_CREATE.includes(user.role);
+  const isAdmin   = CAN_ADMIN.includes(user.role);
+  const isRes     = sale.status === 'reservada';
+  // Reservas pueden ser editadas por todos los roles; ventas solo por admins
+  const canEdit   = isRes ? true : CAN_CREATE.includes(user.role);
 
   const [editing,    setEditing]    = useState(false);
   const [form,       setForm]       = useState({});
   const [saving,     setSaving]     = useState(false);
+  const [converting, setConverting] = useState(false);
   const [err,        setErr]        = useState('');
   const [uploading,  setUploading]  = useState('');
 
@@ -118,6 +121,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       distributor_paid: !!sale.distributor_paid,
       client_name:      sale.client_name      || '',
       client_rut:       sale.client_rut       || '',
+      sold_by:          sale.seller_id        || '',
     });
   }, [sale]);
 
@@ -126,11 +130,43 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
   async function handleSave() {
     setSaving(true); setErr('');
     try {
-      await api.updateSale(sale.id, form);
+      if (isRes) {
+        // Reservas: actualizar via inventory PUT
+        await api.updateInventory(sale.id, {
+          sale_price:     form.sale_price     ? parseInt(form.sale_price)     : null,
+          invoice_amount: form.invoice_amount ? parseInt(form.invoice_amount) : null,
+          payment_method: form.payment_method || null,
+          sale_notes:     form.sale_notes     || null,
+          client_name:    form.client_name    || null,
+          client_rut:     form.client_rut     || null,
+          sold_by:        form.sold_by        || null,
+        });
+      } else {
+        await api.updateSale(sale.id, form);
+      }
       onUpdated();
       setEditing(false);
     } catch (e) { setErr(e.message || 'Error al guardar'); }
     finally { setSaving(false); }
+  }
+
+  async function handleConvertToVenta() {
+    if (!window.confirm('¿Confirmar conversión a nota de venta? Esta acción no se puede deshacer.')) return;
+    setConverting(true); setErr('');
+    try {
+      await api.sellInventory(sale.id, {
+        sold_by:        form.sold_by        || sale.seller_id,
+        sale_price:     form.sale_price     ? parseInt(form.sale_price)     : (sale.sale_price     || null),
+        invoice_amount: form.invoice_amount ? parseInt(form.invoice_amount) : (sale.invoice_amount || null),
+        client_name:    form.client_name    || sale.client_name    || null,
+        client_rut:     form.client_rut     || sale.client_rut     || null,
+        payment_method: form.payment_method || sale.payment_method || null,
+        sale_notes:     form.sale_notes     || sale.sale_notes     || null,
+        sold_at:        new Date().toISOString(),
+      });
+      onUpdated();
+    } catch (e) { setErr(e.message || 'Error al convertir'); }
+    finally { setConverting(false); }
   }
 
   async function handleDocUpload(field, file) {
@@ -145,23 +181,34 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
 
   const sellerName = sale.seller_fn ? `${sale.seller_fn} ${sale.seller_ln || ''}`.trim() : '—';
 
+  const saldo = sale.sale_price > 0 ? Math.max(0, sale.sale_price - (sale.invoice_amount || 0)) : 0;
+
   return (
-    <Modal onClose={onClose} title={`Venta · ${sale.brand} ${sale.model}`} wide>
+    <Modal onClose={onClose} title={isRes ? `Reserva · ${sale.brand} ${sale.model}` : `Venta · ${sale.brand} ${sale.model}`} wide>
 
       {/* Cabecera: unidad */}
       <div style={{
-        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+        background: isRes ? 'linear-gradient(135deg, #78350F 0%, #92400E 100%)' : 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
         borderRadius: 12, padding: '16px 20px', marginBottom: 18, color: '#FFFFFF',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap',
       }}>
         <div>
-          <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+            {isRes ? (
+              <span style={{ fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:6,
+                background:'rgba(255,255,255,0.2)', color:'#FEF3C7', letterSpacing:'0.08em' }}>◐ RESERVA</span>
+            ) : (
+              <span style={{ fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:6,
+                background:'rgba(255,255,255,0.2)', color:'#A7F3D0', letterSpacing:'0.08em' }}>✓ VENTA</span>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: isRes?'#FDE68A':'#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
             {sale.brand}
           </div>
           <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 2 }}>
             {sale.model} {sale.year ? `· ${sale.year}` : ''}
           </div>
-          <div style={{ fontSize: 11, color: '#94A3B8', letterSpacing: '0.04em' }}>
+          <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#94A3B8', letterSpacing: '0.04em' }}>
             {sale.chassis}{sale.color ? ` · ${sale.color}` : ''}
           </div>
         </div>
@@ -171,8 +218,17 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
               {fmt(sale.sale_price)}
             </div>
           )}
-          <div style={{ fontSize: 11, color: '#94A3B8' }}>{fD(sale.sold_at)}</div>
-          <DistributorBadge paid={sale.distributor_paid} />
+          {isRes && sale.sale_price > 0 && (
+            <div style={{ fontSize: 12 }}>
+              <span style={{ color:'#86EFAC' }}>Abonado: {fmt(sale.invoice_amount||0)}</span>
+              {' · '}
+              <span style={{ color: saldo > 0 ? '#FCA5A5' : '#86EFAC', fontWeight:700 }}>
+                {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
+              </span>
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#94A3B8' }}>{fD(sale.sold_at)}</div>
+          {!isRes && <DistributorBadge paid={sale.distributor_paid} />}
         </div>
       </div>
 
@@ -238,45 +294,83 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
         </div>
       </div>
 
-      {/* Confirmación de eliminación — aparece cuando se activa con el trash */}
-      {/* Botón editar */}
+      {/* Acciones principales */}
       {!editing ? (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap:'wrap' }}>
+          {/* Descargar documento */}
+          <button onClick={() => openNote({
+            brand: sale.brand, model: sale.model, year: sale.year, color: sale.color,
+            chassis: sale.chassis, motor_num: sale.motor_num, sold_at: sale.sold_at,
+            branchName: sale.branch_name || '', sellerName: sale.seller_fn ? `${sale.seller_fn} ${sale.seller_ln||''}`.trim() : '',
+            client_name: sale.client_name||'', client_rut: sale.client_rut||'', client_type:'persona',
+            sale_price: sale.sale_price, abono: sale.invoice_amount||0,
+            accessories:[], discount:'', payMode: sale.payment_method||'', payLines:[], finPct:'',
+            sale_notes: sale.sale_notes, titularSame:true, titular:null,
+          }, isRes ? 'reserva' : 'venta')}
+            style={{ ...S.btn2, display:'flex', alignItems:'center', gap:6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            Ver documento
+          </button>
           {canEdit && (
             <button onClick={() => setEditing(true)} style={{ ...S.btn2, flex: 1 }}>
-              Editar seguimiento
+              {isRes ? 'Editar reserva' : 'Editar seguimiento'}
+            </button>
+          )}
+          {/* Convertir a venta (solo reservas saldadas o cualquiera) */}
+          {isRes && canEdit && (
+            <button onClick={handleConvertToVenta} disabled={converting}
+              style={{ ...S.btn, flex: 1, background: saldo === 0 ? '#059669' : '#F28100',
+                       display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+              {converting ? 'Convirtiendo…' : saldo === 0 ? '✓ Pasar a venta (saldado)' : '→ Registrar como venta'}
             </button>
           )}
         </div>
       ) : (
         <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#F28100', textTransform: 'uppercase',
-                        letterSpacing: '0.08em', marginBottom: 2 }}>Editar seguimiento</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: isRes?'#B45309':'#F28100', textTransform: 'uppercase',
+                        letterSpacing: '0.08em', marginBottom: 2 }}>
+            {isRes ? 'Editar reserva' : 'Editar seguimiento'}
+          </div>
           <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="Precio venta al cliente ($)" value={form.sale_price}
+            <Field label="Precio total ($)" value={form.sale_price}
               onChange={set('sale_price')} type="number" />
-            {isAdmin && (
+            {isRes ? (
+              <div>
+                <Field label="Abono recibido ($)" value={form.invoice_amount}
+                  onChange={set('invoice_amount')} type="number" />
+                {form.sale_price > 0 && form.invoice_amount >= 0 && (
+                  <div style={{ fontSize:11, marginTop:4, color:'#B45309' }}>
+                    Saldo: <strong>{fmt(Math.max(0, parseInt(form.sale_price||0) - parseInt(form.invoice_amount||0)))}</strong>
+                  </div>
+                )}
+              </div>
+            ) : isAdmin && (
               <Field label="Costo compra distribuidor ($)" value={form.cost_price}
                 onChange={set('cost_price')} type="number" />
             )}
             <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
               opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-            <Field label="Tipo de entrega" value={form.sale_type}
-              onChange={set('sale_type')} opts={SALE_TYPES} />
+            {!isRes && (
+              <Field label="Tipo de entrega" value={form.sale_type}
+                onChange={set('sale_type')} opts={SALE_TYPES} />
+            )}
           </div>
-          {/* Checkboxes: entrega + pago distribuidor */}
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-              <input type="checkbox" checked={!!form.delivered}
-                onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
-              Moto entregada al cliente
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-              <input type="checkbox" checked={!!form.distributor_paid}
-                onChange={e => setForm(f => ({ ...f, distributor_paid: e.target.checked }))} />
-              Pagada al distribuidor
-            </label>
-          </div>
+          {!isRes && (
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={!!form.delivered}
+                  onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
+                Moto entregada al cliente
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={!!form.distributor_paid}
+                  onChange={e => setForm(f => ({ ...f, distributor_paid: e.target.checked }))} />
+                Pagada al distribuidor
+              </label>
+            </div>
+          )}
           <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
             <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
@@ -1208,6 +1302,7 @@ export function SalesView({ user, realBranches }) {
   const [toDate,         setToDate]         = useState('');
   const [fBranch,        setFBranch]        = useState('');
   const [fSeller,        setFSeller]        = useState('');
+  const [fType,          setFType]          = useState('');  // '' | 'vendida' | 'reservada'
   const [confirmDeleteId,setConfirmDeleteId]= useState(null);
   const [deleting,       setDeleting]       = useState(false);
 
@@ -1220,6 +1315,7 @@ export function SalesView({ user, realBranches }) {
       if (toDate)   params.to        = toDate;
       if (fBranch)  params.branch_id = fBranch;
       if (fSeller && isAdmin) params.seller_id = fSeller;
+      if (fType)    params.status    = fType;
 
       const [salesRes, statsRes] = await Promise.all([
         api.getSales(params),
@@ -1230,15 +1326,15 @@ export function SalesView({ user, realBranches }) {
       setStats(statsRes);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [q, fromDate, toDate, fBranch, fSeller, isAdmin]);
+  }, [q, fromDate, toDate, fBranch, fSeller, fType, isAdmin]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (isAdmin) api.getSellers().then(s => setSellers(s || [])).catch(() => {});
   }, [isAdmin]);
 
-  const hasFilters = q || fromDate || toDate || fBranch || fSeller;
-  const clearFilters = () => { setQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); };
+  const hasFilters = q || fromDate || toDate || fBranch || fSeller || fType;
+  const clearFilters = () => { setQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); setFType(''); };
 
   const handleDeleted = (deletedId, ticketIdWas) => {
     setSales(prev => prev.filter(s => s.id !== deletedId));
@@ -1311,6 +1407,19 @@ export function SalesView({ user, realBranches }) {
         </div>
       )}
 
+      {/* ── Filtro tipo (Todas / Reservas / Ventas) ── */}
+      <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+        {[['','Todas','#6B7280'],['reservada','Reservas','#B45309'],['vendida','Ventas','#065F46']].map(([v,l,c])=>(
+          <button key={v} onClick={()=>setFType(v)}
+            style={{ padding:'7px 18px', borderRadius:8, border:`1.5px solid ${fType===v?c:'#E5E7EB'}`,
+              background: fType===v ? (v==='reservada'?'#FFFBEB':v==='vendida'?'#ECFDF5':'#F1F5F9') : '#fff',
+              color: fType===v?c:'#6B7280', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit',
+              transition:'all 0.12s' }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
       {/* ── Filtros ── */}
       <div style={{
         background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
@@ -1365,13 +1474,14 @@ export function SalesView({ user, realBranches }) {
           <thead>
             <tr style={{ borderBottom: '2px solid #F1F3F5', background: '#FAFAFA' }}>
               {[
+                ['Tipo',        'center', 'nowrap'],
                 ['Fecha',       'left',   'nowrap'],
                 ['Cliente',     'left',   'nowrap'],
                 ['Vendedor',    'left',   'nowrap'],
                 ...(isAdmin ? [['Sucursal', 'left', 'nowrap']] : []),
                 ['Moto',        'left',   'nowrap'],
                 ['Chasis',      'left',   'nowrap'],
-                ['P. Venta',    'right',  'nowrap'],
+                ['Precio / Abono', 'right', 'nowrap'],
                 ['Distribuidor','center', 'nowrap'],
                 ['Entregada',   'center', 'nowrap'],
                 ['Docs',        'center', 'nowrap'],
@@ -1399,15 +1509,31 @@ export function SalesView({ user, realBranches }) {
               </td></tr>
             )}
             {!loading && sales.map(s => {
+              const isRes = s.status === 'reservada';
               const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
               const docsOk = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
               const docCount = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
+              const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
+              const bgRow = isRes ? '#FFFDF5' : 'transparent';
               return (
                 <tr key={s.id}
                   onClick={() => setSelSale(s)}
-                  style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s', cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#FAFBFF'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  style={{ borderBottom: `1px solid ${isRes ? '#FEF3C7' : '#F3F4F6'}`, background: bgRow, transition: 'background 0.1s', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = isRes ? '#FEF9EC' : '#FAFBFF'}
+                  onMouseLeave={e => e.currentTarget.style.background = bgRow}>
+
+                  {/* Tipo */}
+                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                    {isRes ? (
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 7px', borderRadius: 6,
+                        background: '#FFFBEB', color: '#B45309', border: '1px solid #FCD34D',
+                        textTransform: 'uppercase', letterSpacing: '0.06em' }}>RESERVA</span>
+                    ) : (
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 7px', borderRadius: 6,
+                        background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0',
+                        textTransform: 'uppercase', letterSpacing: '0.06em' }}>VENTA</span>
+                    )}
+                  </td>
 
                   {/* Fecha */}
                   <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#6B7280', fontSize: 11 }}>
@@ -1464,60 +1590,90 @@ export function SalesView({ user, realBranches }) {
                     </span>
                   </td>
 
-                  {/* Precio venta */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap',
-                               fontWeight: 700, color: s.sale_price ? '#0F172A' : '#D1D5DB' }}>
-                    {s.sale_price ? fmt(s.sale_price) : '—'}
+                  {/* Precio / Abono */}
+                  <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontWeight: 700, color: s.sale_price ? '#0F172A' : '#D1D5DB' }}>
+                      {s.sale_price ? fmt(s.sale_price) : '—'}
+                    </div>
+                    {isRes && s.sale_price > 0 && (
+                      <div style={{ fontSize: 10, marginTop: 2 }}>
+                        <span style={{ color: '#059669' }}>+{fmt(s.invoice_amount || 0)}</span>
+                        {' '}
+                        <span style={{ color: saldo > 0 ? '#DC2626' : '#059669', fontWeight: 700 }}>
+                          {saldo > 0 ? `falta ${fmt(saldo)}` : '✓ saldado'}
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Estado pago distribuidor */}
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                    <DistributorBadge paid={s.distributor_paid} />
+                    {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <DistributorBadge paid={s.distributor_paid} />}
                   </td>
 
                   {/* Entregada */}
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                    <StatusDot ok={s.delivered} />
+                    {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <StatusDot ok={s.delivered} />}
                   </td>
 
                   {/* Docs (resumen n/4) */}
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                      background: docsOk ? '#ECFDF5' : docCount > 0 ? '#FFFBEB' : '#F9FAFB',
-                      color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
-                      border: `1px solid ${docsOk ? '#A7F3D0' : docCount > 0 ? '#FCD34D' : '#E5E7EB'}`,
-                    }}>
-                      {docCount}/4
-                    </span>
+                    {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                        background: docsOk ? '#ECFDF5' : docCount > 0 ? '#FFFBEB' : '#F9FAFB',
+                        color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
+                        border: `1px solid ${docsOk ? '#A7F3D0' : docCount > 0 ? '#FCD34D' : '#E5E7EB'}`,
+                      }}>
+                        {docCount}/4
+                      </span>
+                    )}
                   </td>
 
                   {/* Acciones */}
-                  <td style={{ padding: '6px 10px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                    {isSuperAdmin && confirmDeleteId === s.id ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <button onClick={() => handleDeleteRow(s.id)} disabled={deleting}
-                          style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#EF4444',
-                                   color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {deleting ? '…' : 'Confirmar'}
-                        </button>
-                        <button onClick={() => setConfirmDeleteId(null)}
-                          style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB',
-                                   color: '#6B7280', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          No
-                        </button>
-                      </span>
-                    ) : isSuperAdmin ? (
-                      <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar venta de prueba"
-                        style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #FECACA', background: 'transparent',
-                                 color: '#FCA5A5', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+                      {/* Descargar doc */}
+                      <button title={isRes ? 'Ver nota de reserva' : 'Ver nota de venta'}
+                        onClick={() => openNote({
+                          brand: s.brand, model: s.model, year: s.year, color: s.color,
+                          chassis: s.chassis, motor_num: s.motor_num, sold_at: s.sold_at,
+                          branchName: s.branch_name || '', sellerName: s.seller_fn ? `${s.seller_fn} ${s.seller_ln||''}`.trim() : '',
+                          client_name: s.client_name||'', client_rut: s.client_rut||'', client_type:'persona',
+                          sale_price: s.sale_price, abono: s.invoice_amount||0,
+                          accessories:[], discount:'', payMode: s.payment_method||'', payLines:[], finPct:'',
+                          sale_notes: s.sale_notes, titularSame:true, titular:null,
+                        }, isRes ? 'reserva' : 'venta')}
+                        style={{ padding:'4px 6px', borderRadius:6, border:'1px solid #E2E8F0', background:'transparent',
+                                 color:'#6B7280', cursor:'pointer', lineHeight:1, display:'inline-flex', alignItems:'center' }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
                         </svg>
                       </button>
-                    ) : (
-                      <span style={{ fontSize: 10, color: '#CBD5E1', userSelect: 'none' }}>›</span>
-                    )}
+                      {/* Eliminar (super_admin) */}
+                      {isSuperAdmin && confirmDeleteId === s.id ? (
+                        <>
+                          <button onClick={() => handleDeleteRow(s.id)} disabled={deleting}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#EF4444',
+                                     color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            {deleting ? '…' : 'Confirmar'}
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(null)}
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB',
+                                     color: '#6B7280', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            No
+                          </button>
+                        </>
+                      ) : isSuperAdmin ? (
+                        <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar"
+                          style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #FECACA', background: 'transparent',
+                                   color: '#FCA5A5', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                          </svg>
+                        </button>
+                      ) : null}
+                    </span>
                   </td>
                 </tr>
               );
@@ -1529,7 +1685,7 @@ export function SalesView({ user, realBranches }) {
       {/* Contador */}
       {!loading && sales.length > 0 && (
         <div style={{ textAlign: 'right', fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
-          {sales.length} venta{sales.length !== 1 ? 's' : ''}
+          {sales.filter(s=>s.status==='vendida').length} venta{sales.filter(s=>s.status==='vendida').length!==1?'s':''} · {sales.filter(s=>s.status==='reservada').length} reserva{sales.filter(s=>s.status==='reservada').length!==1?'s':''}
         </div>
       )}
 
