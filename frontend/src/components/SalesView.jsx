@@ -228,7 +228,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
             </div>
           )}
           <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#94A3B8' }}>{fD(sale.sold_at)}</div>
-          {!isRes && <DistributorBadge paid={sale.distributor_paid} />}
+          {!isRes && isAdmin && <DistributorBadge paid={sale.distributor_paid} />}
         </div>
       </div>
 
@@ -364,11 +364,13 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
                   onChange={e => setForm(f => ({ ...f, delivered: e.target.checked }))} />
                 Moto entregada al cliente
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                <input type="checkbox" checked={!!form.distributor_paid}
-                  onChange={e => setForm(f => ({ ...f, distributor_paid: e.target.checked }))} />
-                Pagada al distribuidor
-              </label>
+              {isAdmin && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                  <input type="checkbox" checked={!!form.distributor_paid}
+                    onChange={e => setForm(f => ({ ...f, distributor_paid: e.target.checked }))} />
+                  Pagada al distribuidor
+                </label>
+              )}
             </div>
           )}
           <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1391,8 +1393,8 @@ export function SalesView({ user, realBranches }) {
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 24 }}>
           <KpiCard label="Ventas" value={stats.total} color="#0F172A" />
-          <KpiCard label="Pend. distribuidor" value={stats.pendiente_distribuidor}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} />
+          {isAdmin && <KpiCard label="Pend. distribuidor" value={stats.pendiente_distribuidor}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} />}
           <KpiCard label="Sin factura cli." value={stats.sin_factura_cli}
             color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.sin_factura_cli > 0} />
           <KpiCard label="Pend. homolog." value={stats.sin_homologacion}
@@ -1482,7 +1484,7 @@ export function SalesView({ user, realBranches }) {
                 ['Moto',        'left',   'nowrap'],
                 ['Chasis',      'left',   'nowrap'],
                 ['Precio / Abono', 'right', 'nowrap'],
-                ['Distribuidor','center', 'nowrap'],
+                ...(isAdmin ? [['Distribuidor','center','nowrap']] : []),
                 ['Entregada',   'center', 'nowrap'],
                 ['Docs',        'center', 'nowrap'],
                 ['',            'center', 'nowrap'],
@@ -1606,10 +1608,12 @@ export function SalesView({ user, realBranches }) {
                     )}
                   </td>
 
-                  {/* Estado pago distribuidor */}
-                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                    {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <DistributorBadge paid={s.distributor_paid} />}
-                  </td>
+                  {/* Estado pago distribuidor (solo admin) */}
+                  {isAdmin && (
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                      {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <DistributorBadge paid={s.distributor_paid} />}
+                    </td>
+                  )}
 
                   {/* Entregada */}
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
