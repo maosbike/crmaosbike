@@ -370,27 +370,29 @@ async function openNote(data, type) {
   let y = M;
 
   // ── HEADER: logo izquierda + caja doc derecha ──
+  // Logo con fondo blanco
   try {
     const logoImg = await loadImage(window.location.origin + '/logo.png');
-    // Ratio logo MAOSBIKE ≈ 3.14:1 → 44mm × 14mm
+    doc.setFillColor(255, 255, 255);
+    doc.rect(M - 1, y - 1, 46, 16, 'F');
     doc.addImage(logoImg, 'PNG', M, y, 44, 14);
   } catch(_) {
     doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(...orange);
     doc.text('MAOSBIKE', M, y + 11);
   }
 
-  // Caja doc tipo (estilo factura) — derecha
-  const boxW = 58, boxX = W - M - boxW;
-  doc.setLineWidth(0.6); doc.setDrawColor(...orange);
-  doc.rect(boxX, y, boxW, 22);
-  doc.setFillColor(...orange); doc.rect(boxX, y, boxW, 7, 'F');
-  doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
-  doc.text(docLabel, boxX + boxW / 2, y + 5, { align: 'center' });
-  doc.setFontSize(8); doc.setTextColor(...dark); doc.setFont('helvetica', 'normal');
-  doc.text(today, boxX + boxW / 2, y + 12, { align: 'center' });
-  doc.setFontSize(7); doc.setTextColor(...gray);
-  doc.text(`Sucursal: ${data.branchName || '—'}`, boxX + boxW / 2, y + 17, { align: 'center' });
-  doc.text(`Vendedor: ${data.sellerName || '—'}`, boxX + boxW / 2, y + 21, { align: 'center' });
+  // Bloque doc tipo — derecha, estilo minimalista con línea naranja izquierda
+  const cardW = 62, cardX = W - M - cardW;
+  doc.setFillColor(255, 248, 237);
+  doc.roundedRect(cardX, y, cardW, 20, 1.5, 1.5, 'F');
+  doc.setFillColor(...orange);
+  doc.roundedRect(cardX, y, 2.5, 20, 0.5, 0.5, 'F');
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...orange);
+  doc.text(docLabel, cardX + 6, y + 6);
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
+  doc.text(today, cardX + 6, y + 12);
+  doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
+  doc.text(`${data.branchName || '—'}  ·  ${data.sellerName || '—'}`, cardX + 6, y + 18);
 
   y += 26;
   doc.setLineWidth(0.3); doc.setDrawColor(...lightGray);
@@ -476,8 +478,8 @@ async function openNote(data, type) {
     columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', fontStyle: 'bold', cellWidth: 38 } },
     didParseCell: (d) => {
       if (d.section === 'body' && d.row.index === tableBody.length - 1) {
-        d.cell.styles.fillColor = [25, 25, 25];
-        d.cell.styles.textColor = d.column.index === 1 ? orange : [255, 255, 255];
+        d.cell.styles.fillColor = orange;
+        d.cell.styles.textColor = [255, 255, 255];
         d.cell.styles.fontStyle = 'bold';
         d.cell.styles.fontSize = 12;
         d.cell.styles.cellPadding = [4, 4];
