@@ -358,6 +358,12 @@ async function openNote(data, type) {
   const isEmpresa = data.client_type === 'empresa';
   const docLabel = isRes ? 'NOTA DE RESERVA' : 'NOTA DE VENTA';
 
+  // Para reserva con abono explícito, ajustar totales
+  if (isRes && data.abono != null && data.abono >= 0) {
+    t.abonoAmt = data.abono;
+    t.saldo = Math.max(0, t.grandTotal - t.abonoAmt);
+  }
+
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
   const cw = W - M * 2;
@@ -497,8 +503,22 @@ async function openNote(data, type) {
 
   y = doc.lastAutoTable.finalY + 4;
 
-  // ── FORMA DE PAGO ──
-  if (data.payMode) {
+  // ── FORMA DE PAGO / ABONO (reserva) ──
+  if (isRes && t.grandTotal > 0) {
+    doc.setFillColor(255, 248, 237);
+    doc.setDrawColor(...lightGray); doc.setLineWidth(0.2);
+    doc.roundedRect(M, y, cw, 12, 1, 1, 'FD');
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
+    doc.text(`Abono inicial: ${fmtCLP(t.abonoAmt)}`, M + 4, y + 5.5);
+    const saldoColor = t.saldo > 0 ? [180, 83, 9] : [34, 139, 34];
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(...saldoColor);
+    doc.text(t.saldo > 0 ? `Saldo pendiente: ${fmtCLP(t.saldo)}` : 'Pagado en su totalidad', W - M - 4, y + 5.5, { align: 'right' });
+    if (data.payMode) {
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
+      doc.text(`Medio: ${data.payMode}`, M + 4, y + 10);
+    }
+    y += 17;
+  } else if (data.payMode) {
     doc.setFillColor(249, 250, 251);
     doc.setDrawColor(...lightGray); doc.setLineWidth(0.2);
     doc.roundedRect(M, y, cw, 9, 1, 1, 'FD');
@@ -620,6 +640,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   // Extras
   const [accs,     setAccs]    = useState([]);
   const [discount, setDiscount]= useState('');
+  const [abono,    setAbono]   = useState('');
 
   // Titular del vehículo
   const [titularSame, setTitularSame] = useState(true);
@@ -631,7 +652,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const resetForm = () => {
     setSelUnit(null); setSelMod(null); setForm({ ...EMPTY_FORM });
     setPayMode(''); setFinPct(''); setPayLines([{ method: '', amount: '' }]);
-    setAccs([]); setDiscount(''); setCatMods([]);
+    setAccs([]); setDiscount(''); setAbono(''); setCatMods([]);
     setTitularSame(true); setTitular({ name: '', rut: '', phone: '', email: '', address: '', commune: '' });
   };
 
@@ -698,7 +719,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
   async function handleCreate() {
     if (!form.brand || !form.model) { setErr('Marca y modelo son obligatorios'); return; }
-    if (!isReserva && !form.sold_by) { setErr('Vendedor obligatorio'); return; }
+    if (!form.sold_by) { setErr('Vendedor obligatorio'); return; }
     if (!selUnit && !form.branch_id) { setErr('Sucursal obligatoria'); return; }
     if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
     setSaving(true); setErr('');
@@ -722,7 +743,17 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
         });
       } else if (selUnit && isReserva) {
-        await api.updateInventory(selUnit.id, { status: 'reservada', notes: clientExtra || null });
+        await api.updateInventory(selUnit.id, {
+          status: 'reservada',
+          notes: clientExtra || null,
+          sold_by: form.sold_by || null,
+          sale_price: form.sale_price ? parseInt(form.sale_price) : null,
+          invoice_amount: abono ? parseInt(abono) : null,
+          sale_notes: clientExtra || null,
+          client_name: form.client_name || null,
+          client_rut: form.client_rut || null,
+          payment_method: payMode || null,
+        });
       } else {
         // Nota de venta o reserva sin unidad de inventario → solo registrar en ventas
         await api.createSale({ ...form, payment_method: payMode || null, sale_notes: clientExtra || null });
@@ -755,6 +786,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         empresa_phone:  form.empresa_phone,
         sale_notes: form.sale_notes,
         sale_price: form.sale_price,
+        abono: abono ? parseInt(abono) : 0,
         accessories: accs, discount, payMode, payLines, finPct,
         modelPhotoUrl: colorPhotoUrl,
         titularSame,
@@ -937,11 +969,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
             {/* OPERACIÓN */}
             <SEC>{isReserva ? 'Reserva' : 'Venta'}</SEC>
-            {!isReserva && (
-              <Field label="Vendedor *" value={form.sold_by}
-                opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]}
-                onChange={set('sold_by')} />
-            )}
+            <Field label="Vendedor *" value={form.sold_by}
+              opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]}
+              onChange={set('sold_by')} />
             <Field label="Sucursal *" value={form.branch_id}
               opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]}
               onChange={set('branch_id')} />
@@ -953,6 +983,17 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             {/* PRECIO */}
             <SEC>Precio</SEC>
             <Field label="Precio de la moto ($)" value={form.sale_price} onChange={set('sale_price')} type="number" />
+            {isReserva && (
+              <>
+                <Field label="Abono inicial ($)" value={abono} onChange={setAbono} type="number" ph="0" />
+                {form.sale_price > 0 && abono > 0 && (
+                  <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'space-between', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 14px', fontSize: 12 }}>
+                    <span style={{ color: '#92400E' }}>Abono: <strong>{fmtCLP(Number(abono))}</strong></span>
+                    <span style={{ color: '#B45309', fontWeight: 700 }}>Saldo pendiente: {fmtCLP(Math.max(0, Number(form.sale_price) - Number(abono)))}</span>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* ACCESORIOS */}
             <div style={{ gridColumn: '1/-1' }}>

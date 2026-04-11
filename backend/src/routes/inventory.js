@@ -181,7 +181,8 @@ router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
 // Update inventory unit (edición completa para admin)
 router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
-    const { branch_id, status, color, price, notes, brand, model, year, chassis, motor_num } = req.body;
+    const { branch_id, status, color, price, notes, brand, model, year, chassis, motor_num,
+            sold_by, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method } = req.body;
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
     if (status === 'vendida') {
@@ -220,7 +221,14 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), as
       sets.push(`chassis = $${idx++}`);
       params.push(chassis.replace(/\s/g, '').toUpperCase());
     }
-    if (motor_num  !== undefined) { sets.push(`motor_num = $${idx++}`);  params.push(motor_num || null); }
+    if (motor_num      !== undefined) { sets.push(`motor_num = $${idx++}`);      params.push(motor_num || null); }
+    if (sold_by        !== undefined) { sets.push(`sold_by = $${idx++}`);        params.push(sold_by || null); }
+    if (sale_price     !== undefined) { sets.push(`sale_price = $${idx++}`);     params.push(sale_price ? parseInt(sale_price) : null); }
+    if (invoice_amount !== undefined) { sets.push(`invoice_amount = $${idx++}`); params.push(invoice_amount ? parseInt(invoice_amount) : null); }
+    if (sale_notes     !== undefined) { sets.push(`sale_notes = $${idx++}`);     params.push(sale_notes || null); }
+    if (client_name    !== undefined) { sets.push(`client_name = $${idx++}`);    params.push(client_name || null); }
+    if (client_rut     !== undefined) { sets.push(`client_rut = $${idx++}`);     params.push(client_rut || null); }
+    if (payment_method !== undefined) { sets.push(`payment_method = $${idx++}`); params.push(payment_method || null); }
 
     if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
     params.push(req.params.id);

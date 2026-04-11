@@ -104,6 +104,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [eForm,      setEForm]      = useState({});
   const [eSaving,    setESaving]    = useState(false);
   const [eErr,       setEErr]       = useState('');
+  const [convSaving, setConvSaving] = useState(false);
   const [addErr,     setAddErr]     = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deletingUnit,  setDeletingUnit]  = useState(false);
@@ -138,10 +139,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const clearFilters = () => { setSearch(''); setBrF(''); setStF(''); setBrandF(''); };
 
   useEffect(() => {
-    if (!showAdd) return;
     api.getSellers().then(d => setSellers(Array.isArray(d) ? d : [])).catch(() => {});
-    // Fetching without status filter — backend only supports exact match, not comma-separated.
-    // Filter out definitively closed statuses on the frontend.
+  }, []);
+
+  useEffect(() => {
+    if (!showAdd) return;
     api.getTickets({ limit:300 }).then(d => {
       const all = d.data || [];
       setOpenTickets(all.filter(t => !['perdido'].includes(t.status)));
@@ -216,15 +218,23 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const openEdit = (unit) => {
     setEErr(''); setDeleteConfirm(false);
     setEForm({
-      branch_id: unit.branch_id || '',
-      brand:     unit.brand     || '',
-      model:     unit.model     || '',
-      year:      unit.year      || '',
-      color:     unit.color     || '',
-      chassis:   unit.chassis   || '',
-      motor_num: unit.motor_num || '',
-      status:    unit.status    || 'disponible',
-      notes:     unit.notes     || '',
+      branch_id:      unit.branch_id      || '',
+      brand:          unit.brand          || '',
+      model:          unit.model          || '',
+      year:           unit.year           || '',
+      color:          unit.color          || '',
+      chassis:        unit.chassis        || '',
+      motor_num:      unit.motor_num      || '',
+      status:         unit.status         || 'disponible',
+      notes:          unit.notes          || '',
+      // Campos de reserva/venta
+      sold_by:        unit.sold_by        || '',
+      sale_price:     unit.sale_price     || '',
+      invoice_amount: unit.invoice_amount || '',
+      client_name:    unit.client_name    || '',
+      client_rut:     unit.client_rut     || '',
+      payment_method: unit.payment_method || '',
+      sale_notes:     unit.sale_notes     || '',
     });
     setEditTarget(unit);
   };
@@ -232,7 +242,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     e.preventDefault();
     setESaving(true); setEErr('');
     try {
-      const updated = await api.updateInventory(editTarget.id, {
+      const payload = {
         branch_id: eForm.branch_id || null,
         brand:     eForm.brand,
         model:     eForm.model,
@@ -242,12 +252,45 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         motor_num: eForm.motor_num || null,
         status:    eForm.status,
         notes:     eForm.notes || null,
-      });
+      };
+      // Si es reservada, guardar también campos de venta
+      if (editTarget?.status === 'reservada') {
+        payload.sold_by        = eForm.sold_by        || null;
+        payload.sale_price     = eForm.sale_price     ? parseInt(eForm.sale_price)     : null;
+        payload.invoice_amount = eForm.invoice_amount ? parseInt(eForm.invoice_amount) : null;
+        payload.client_name    = eForm.client_name    || null;
+        payload.client_rut     = eForm.client_rut     || null;
+        payload.payment_method = eForm.payment_method || null;
+        payload.sale_notes     = eForm.sale_notes     || null;
+      }
+      const updated = await api.updateInventory(editTarget.id, payload);
       setInv(prev => prev.map(x => x.id === editTarget.id ? { ...x, ...updated } : x));
       setEditTarget(null);
       reload();
     } catch(ex) { setEErr(ex.message || 'Error al guardar'); }
     finally { setESaving(false); }
+  };
+
+  const handleConvertToSale = async () => {
+    if (!editTarget) return;
+    if (!eForm.sold_by && !editTarget.sold_by) { setEErr('Vendedor requerido para convertir a venta'); return; }
+    setConvSaving(true); setEErr('');
+    try {
+      const updated = await api.sellInventory(editTarget.id, {
+        sold_by:        eForm.sold_by        || editTarget.sold_by,
+        sale_price:     eForm.sale_price     ? parseInt(eForm.sale_price)     : (editTarget.sale_price     || null),
+        invoice_amount: eForm.invoice_amount ? parseInt(eForm.invoice_amount) : (editTarget.invoice_amount || null),
+        client_name:    eForm.client_name    || editTarget.client_name    || null,
+        client_rut:     eForm.client_rut     || editTarget.client_rut     || null,
+        payment_method: eForm.payment_method || editTarget.payment_method || null,
+        sale_notes:     eForm.sale_notes     || editTarget.sale_notes     || null,
+        sold_at:        new Date().toISOString(),
+      });
+      setInv(prev => prev.map(x => x.id === editTarget.id ? { ...x, ...updated } : x));
+      setEditTarget(null);
+      reload();
+    } catch(ex) { setEErr(ex.message || 'Error al convertir a venta'); }
+    finally { setConvSaving(false); }
   };
 
   const handleDragStart = (e, id) => {
@@ -1158,6 +1201,79 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             {/* Notas */}
             <Field label="Notas internas" value={eForm.notes} onChange={v=>setEForm({...eForm,notes:v})} rows={2}/>
 
+            {/* ── Sección reserva activa ─────────────────────────────────── */}
+            {editTarget?.status === 'reservada' && (
+              <div style={{ marginTop:14, background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:10, padding:'14px 16px' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#B45309', marginBottom:12, textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                  ◐ Reserva activa
+                </div>
+
+                {/* Info cliente */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+                  <div>
+                    <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>Cliente</div>
+                    <div style={{ fontSize:13, color:'#1C1917' }}>{editTarget.client_name || <span style={{color:'#9CA3AF'}}>—</span>}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>RUT</div>
+                    <div style={{ fontSize:13, color:'#1C1917' }}>{editTarget.client_rut || <span style={{color:'#9CA3AF'}}>—</span>}</div>
+                  </div>
+                </div>
+
+                {/* Totales */}
+                {editTarget.sale_price > 0 && (
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:12 }}>
+                    <div style={{ background:'#FEF3C7', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
+                      <div style={{ fontSize:10, color:'#92400E', fontWeight:700, marginBottom:2 }}>PRECIO</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{fmt(editTarget.sale_price)}</div>
+                    </div>
+                    <div style={{ background:'#ECFDF5', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
+                      <div style={{ fontSize:10, color:'#065F46', fontWeight:700, marginBottom:2 }}>ABONADO</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#059669' }}>{fmt(editTarget.invoice_amount || 0)}</div>
+                    </div>
+                    <div style={{ background: Math.max(0,(editTarget.sale_price||0)-(editTarget.invoice_amount||0)) > 0 ? '#FEF2F2' : '#ECFDF5', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
+                      <div style={{ fontSize:10, color:'#991B1B', fontWeight:700, marginBottom:2 }}>SALDO</div>
+                      <div style={{ fontSize:13, fontWeight:700, color: Math.max(0,(editTarget.sale_price||0)-(editTarget.invoice_amount||0)) > 0 ? '#DC2626' : '#059669' }}>
+                        {fmt(Math.max(0,(editTarget.sale_price||0)-(editTarget.invoice_amount||0)))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actualizar abono + vendedor */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:600, color:'#78350F', marginBottom:4 }}>Actualizar abono ($)</div>
+                    <input
+                      type="number" value={eForm.invoice_amount}
+                      onChange={e=>setEForm({...eForm,invoice_amount:e.target.value})}
+                      placeholder="Monto abonado"
+                      style={{ ...S.inp, width:'100%', fontSize:13 }}
+                    />
+                    {eForm.invoice_amount > 0 && eForm.sale_price > 0 && (
+                      <div style={{ fontSize:11, color:'#B45309', marginTop:4 }}>
+                        Saldo: <strong>{fmt(Math.max(0, parseInt(eForm.sale_price) - parseInt(eForm.invoice_amount)))}</strong>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:600, color:'#78350F', marginBottom:4 }}>Vendedor</div>
+                    <select
+                      value={eForm.sold_by}
+                      onChange={e=>setEForm({...eForm,sold_by:e.target.value})}
+                      style={{ width:'100%', height:38, borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:13, color:'#374151', padding:'0 8px', fontFamily:'inherit' }}>
+                      <option value="">Seleccionar…</option>
+                      {sellers.map(s=><option key={s.id} value={s.id}>{`${s.first_name||''} ${s.last_name||''}`.trim()}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ fontSize:11, color:'#92400E', marginTop:4 }}>
+                  Guardá los cambios para actualizar el abono, o convertí a nota de venta cuando el cliente complete el pago.
+                </div>
+              </div>
+            )}
+
             {eErr && <div style={{ marginTop:10,padding:'8px 12px',background:'#FEF2F2',borderRadius:8,fontSize:12,color:'#DC2626',border:'1px solid #FECACA' }}>{eErr}</div>}
 
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:18 }}>
@@ -1182,6 +1298,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <button type="button" onClick={()=>{setEditTarget(null);setEErr('');setDeleteConfirm(false);}} style={{ ...S.gh, padding:'8px 18px', borderRadius:8, fontSize:13 }}>
                   Cancelar
                 </button>
+                {editTarget?.status === 'reservada' && (
+                  <button type="button" onClick={handleConvertToSale} disabled={convSaving || eSaving}
+                    style={{ background:'#059669', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 18px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                    {convSaving ? 'Convirtiendo…' : '✓ Convertir a venta'}
+                  </button>
+                )}
                 <button type="submit" disabled={eSaving}
                   style={{ background:'#0F172A', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                   {eSaving ? 'Guardando…' : 'Guardar cambios'}
