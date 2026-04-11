@@ -349,12 +349,12 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
 // El ticket vinculado NO se toca — su estado lo gestiona el admin manualmente.
 router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
   try {
-    // Verificar que existe y está vendida
+    // Verificar que existe y está vendida o reservada
     const { rows: cur } = await db.query(
-      `SELECT id, brand, model, chassis, ticket_id, sold_by FROM inventory WHERE id = $1 AND status = 'vendida'`,
+      `SELECT id, brand, model, chassis, ticket_id, sold_by, status FROM inventory WHERE id = $1 AND status IN ('vendida', 'reservada')`,
       [req.params.id]
     );
-    if (!cur[0]) return res.status(404).json({ error: 'Venta no encontrada o unidad no está vendida' });
+    if (!cur[0]) return res.status(404).json({ error: 'Registro no encontrado' });
 
     const unit = cur[0];
 
@@ -388,12 +388,13 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
     // Registrar en historial para trazabilidad
     await db.query(
       `INSERT INTO inventory_history (inventory_id, event_type, from_status, to_status, user_id, note, metadata)
-       VALUES ($1, 'status_changed', 'vendida', 'disponible', $2, $3, $4)`,
+       VALUES ($1, 'status_changed', $5, 'disponible', $2, $3, $4)`,
       [
         req.params.id,
         req.user.id,
-        `Venta de prueba eliminada — unidad revertida a disponible por ${req.user.first_name || req.user.email}`,
+        `${unit.status === 'reservada' ? 'Reserva' : 'Venta'} eliminada — unidad revertida a disponible por ${req.user.first_name || req.user.email}`,
         JSON.stringify({ deleted_by: req.user.id, ticket_id_was: unit.ticket_id }),
+        unit.status,
       ]
     );
 
