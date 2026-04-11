@@ -588,7 +588,7 @@ async function openNote(data, type) {
     head: [['Descripción', 'Monto']],
     body: tableBody,
     styles: { fontSize: 9.5, cellPadding: [4, 5], textColor: dark, lineColor: lightGray, lineWidth: 0.2 },
-    headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    headStyles: { fillColor: [75, 85, 99], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', fontStyle: 'bold', cellWidth: 40 } },
     didParseCell: (d) => {
       if (d.section === 'body' && d.row.index === tableBody.length - 1) {
