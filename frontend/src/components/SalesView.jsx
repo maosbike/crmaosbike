@@ -12,6 +12,8 @@ const SALE_TYPES = [
   { v: 'completa',    l: 'Documentación completa' },
 ];
 
+const INSCRIPCION_AMT = 90000;
+
 const DOC_LABELS = {
   doc_factura_dist: 'Factura dist.',
   doc_factura_cli:  'Factura cliente',
@@ -321,10 +323,11 @@ const PAY_MODES = [
   { v: 'Mixto',           l: 'Mixto / Varias transferencias' },
 ];
 
-function computeTotals({ sale_price, accessories = [], discount = '', payMode = '', finPct = '', payLines = [] }) {
+function computeTotals({ sale_price, accessories = [], discount = '', payMode = '', finPct = '', payLines = [], inscripcion = false }) {
   const motoAmt  = Number(sale_price) || 0;
   const accAmt   = accessories.reduce((s, a) => s + (Number(a.amount) || 0), 0);
-  const subtotal = motoAmt + accAmt;
+  const inscAmt  = inscripcion ? INSCRIPCION_AMT : 0;
+  const subtotal = motoAmt + accAmt + inscAmt;
   const discAmt  = discount ? Math.round(subtotal * Number(discount) / 100) : 0;
   const netTotal = subtotal - discAmt;
 
@@ -345,7 +348,7 @@ function computeTotals({ sale_price, accessories = [], discount = '', payMode = 
   }
 
   const saldo = Math.max(0, grandTotal - abonoAmt);
-  return { motoAmt, accAmt, subtotal, discAmt, netTotal, cardSurcharge, grandTotal, abonoAmt, saldo };
+  return { motoAmt, accAmt, inscAmt, subtotal, discAmt, netTotal, cardSurcharge, grandTotal, abonoAmt, saldo };
 }
 
 async function openNote(data, type) {
@@ -479,6 +482,7 @@ async function openNote(data, type) {
     [`${data.brand || ''} ${data.model || ''} ${data.year ? '(' + data.year + ')' : ''} — ${data.color || ''}`, fmtCLP(t.motoAmt)],
     ...(data.accessories || []).filter(a => a.name && Number(a.amount) > 0).map(a => [a.name, fmtCLP(Number(a.amount))]),
   ];
+  if (data.inscripcion) tableBody.push(['Inscripción vehicular', fmtCLP(INSCRIPCION_AMT)]);
   if (t.cardSurcharge > 0) tableBody.push(['Recargo tarjeta de crédito/débito (2%)', '+' + fmtCLP(t.cardSurcharge)]);
   tableBody.push(['TOTAL', fmtCLP(t.grandTotal)]);
 
@@ -638,9 +642,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [payLines, setPayLines]= useState([{ method: '', amount: '' }]);
 
   // Extras
-  const [accs,     setAccs]    = useState([]);
-  const [discount, setDiscount]= useState('');
-  const [abono,    setAbono]   = useState('');
+  const [accs,           setAccs]          = useState([]);
+  const [discount,       setDiscount]      = useState('');
+  const [abono,          setAbono]         = useState('');
+  const [inclInscripcion,setInclInscripcion]= useState(true);
 
   // Titular del vehículo
   const [titularSame, setTitularSame] = useState(true);
@@ -715,7 +720,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   });
 
   const colors = Array.isArray(selMod?.colors) ? selMod.colors : [];
-  const totals = computeTotals({ sale_price: form.sale_price, accessories: accs, discount, payMode, finPct, payLines });
+  const totals = computeTotals({ sale_price: form.sale_price, accessories: accs, discount, payMode, finPct, payLines, inscripcion: inclInscripcion });
 
   async function handleCreate() {
     if (!form.brand || !form.model) { setErr('Marca y modelo son obligatorios'); return; }
@@ -787,7 +792,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         sale_notes: form.sale_notes,
         sale_price: form.sale_price,
         abono: abono ? parseInt(abono) : 0,
-        accessories: accs, discount, payMode, payLines, finPct,
+        accessories: accs, discount, payMode, payLines, finPct, inscripcion: inclInscripcion,
         modelPhotoUrl: colorPhotoUrl,
         titularSame,
         titular: titularSame ? null : { ...titular },
@@ -994,6 +999,30 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 )}
               </>
             )}
+
+            {/* INSCRIPCIÓN */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <div
+                onClick={() => setInclInscripcion(p => !p)}
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:8, cursor:'pointer',
+                  background: inclInscripcion ? 'rgba(5,150,105,0.06)' : '#F9FAFB',
+                  border: `1px solid ${inclInscripcion ? 'rgba(5,150,105,0.3)' : '#E5E7EB'}`,
+                  transition:'all 0.15s' }}>
+                <div style={{ width:18, height:18, borderRadius:4, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
+                  border: inclInscripcion ? 'none' : '2px solid #333',
+                  background: inclInscripcion ? '#059669' : 'transparent' }}>
+                  {inclInscripcion && <span style={{ color:'#fff', fontSize:11, fontWeight:900 }}>✓</span>}
+                </div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:600, color: inclInscripcion ? '#065F46' : '#374151' }}>
+                    Incluir inscripción vehicular — {fmtCLP(INSCRIPCION_AMT)}
+                  </div>
+                  <div style={{ fontSize:11, color:'#6B7280' }}>
+                    Se agrega como ítem desglosado en la nota
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* ACCESORIOS */}
             <div style={{ gridColumn: '1/-1' }}>
