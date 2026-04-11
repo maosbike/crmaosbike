@@ -59,7 +59,6 @@ const BASE_SELECT = `
     i.delivered, i.distributor_paid,
     i.doc_factura_dist, i.doc_factura_cli, i.doc_homologacion, i.doc_inscripcion,
     i.ticket_id,
-    i.added_as_sold,
     -- Vendedor
     sv.id          AS seller_id,
     sv.first_name  AS seller_fn,

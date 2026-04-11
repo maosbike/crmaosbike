@@ -36,10 +36,7 @@ const uploadFile = multer({
 router.get('/', async (req, res) => {
   try {
     const { branch_id, status, search } = req.query;
-    // Las unidades added_as_sold=true son ventas directas de bodega — nunca
-    // estuvieron en inventario físico, por lo que se excluyen de todas las
-    // vistas de inventario. Solo aparecen en el módulo de ventas.
-    let where = ['(i.added_as_sold IS NOT TRUE)'], params = [], idx = 1;
+    let where = ['1=1'], params = [], idx = 1;
 
     if (branch_id) { where.push(`i.branch_id = $${idx++}`); params.push(branch_id); }
     if (status) { where.push(`i.status = $${idx++}`); params.push(status); }
@@ -88,9 +85,7 @@ router.get('/', async (req, res) => {
 router.get('/counts', async (req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT status, COUNT(*) as count FROM inventory
-       WHERE added_as_sold IS NOT TRUE
-       GROUP BY status`
+      `SELECT status, COUNT(*) as count FROM inventory GROUP BY status`
     );
     const counts = { disponible: 0, reservada: 0, vendida: 0, preinscrita: 0 };
     rows.forEach(r => { counts[r.status] = parseInt(r.count); });
