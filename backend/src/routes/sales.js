@@ -223,7 +223,7 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
       branch_id, year, brand, model, color, chassis, motor_num, price,
       sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes,
       sale_price, cost_price, invoice_amount, delivered,
-      client_name, client_rut,
+      client_name, client_rut, status: reqStatus,
     } = req.body;
 
     if (!brand || !model)
@@ -231,7 +231,9 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
     if (!sold_by)
       return res.status(400).json({ error: 'Vendedor obligatorio' });
 
-    const finalSoldAt = sold_at ? new Date(sold_at).toISOString() : new Date().toISOString();
+    const finalStatus  = reqStatus === 'reservada' ? 'reservada' : 'vendida';
+    const isReserva    = finalStatus === 'reservada';
+    const finalSoldAt  = sold_at ? new Date(sold_at).toISOString() : new Date().toISOString();
 
     const { rows } = await db.query(
       `INSERT INTO inventory (
@@ -241,8 +243,8 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
          sale_price, cost_price, invoice_amount, delivered,
          client_name, client_rut, created_by
        ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,'vendida',
-         true,$9,$10,$11,
+         $1,$2,$3,$4,$5,$6,$7,$8,$22,
+         $23,$9,$10,$11,
          $12,$13,$14,
          $15,$16,$17,$18,
          $19,$20,$21
@@ -269,6 +271,8 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
         client_name    || null,
         client_rut     || null,
         req.user.id,
+        finalStatus,
+        !isReserva,    // added_as_sold: true solo para ventas
       ]
     );
 
@@ -276,11 +280,13 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
 
     await db.query(
       `INSERT INTO inventory_history (inventory_id, event_type, to_status, user_id, note, metadata)
-       VALUES ($1, 'sold', 'vendida', $2, $3, $4)`,
+       VALUES ($1, $5, $6, $2, $3, $4)`,
       [
         unit.id, req.user.id,
-        `Venta registrada desde módulo de ventas${sale_notes ? '. ' + sale_notes : ''}`,
+        `${isReserva ? 'Reserva' : 'Venta'} registrada desde módulo de ventas${sale_notes ? '. ' + sale_notes : ''}`,
         JSON.stringify({ sold_by, payment_method, sale_type, ticket_id }),
+        isReserva ? 'status_changed' : 'sold',
+        finalStatus,
       ]
     );
 

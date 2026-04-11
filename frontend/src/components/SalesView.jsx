@@ -922,8 +922,14 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           payment_method: payMode || null,
         });
       } else {
-        // Nota de venta o reserva sin unidad de inventario → solo registrar en ventas
-        await api.createSale({ ...form, payment_method: payMode || null, sale_notes: clientExtra || null });
+        // Nota de venta o reserva sin unidad de inventario → registrar en inventario
+        await api.createSale({
+          ...form,
+          payment_method: payMode || null,
+          sale_notes: clientExtra || null,
+          status: isReserva ? 'reservada' : 'vendida',
+          invoice_amount: isReserva && abono ? parseInt(abono) : null,
+        });
       }
 
       const sellerObj   = sellers.find(s => String(s.id) === String(form.sold_by));
