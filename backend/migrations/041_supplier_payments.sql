@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
   receipt_url      TEXT,
   notes            TEXT,
   status           VARCHAR(30) DEFAULT 'pendiente',  -- pendiente | pagado | revisado
-  created_by       INTEGER REFERENCES users(id),
+  created_by       UUID REFERENCES users(id),
   created_at       TIMESTAMPTZ DEFAULT NOW(),
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
