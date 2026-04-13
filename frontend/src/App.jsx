@@ -91,7 +91,7 @@ export default function App(){
     {id:"calendar",icon:Ic.cal,label:"Calendario"},
     {id:"inventory",icon:Ic.box,label:"Inventario"},
     {id:"sales",icon:Ic.sale,label:"Ventas"},
-    ...(["super_admin","backoffice"].includes(r)?[{id:"supplier-payments",icon:Ic.invoice,label:"Pagos proveedor"}]:[]),
+    ...(["super_admin","admin_comercial","backoffice"].includes(r)?[{id:"supplier-payments",icon:Ic.invoice,label:"Pagos proveedor"}]:[]),
     {id:"catalog",icon:Ic.bike,label:"Catálogo"},
     ...(["super_admin","admin_comercial"].includes(r)?[{id:"reports",icon:Ic.chart,label:"Reportes"}]:[]),
     ...(r==="super_admin"?[{id:"admin",icon:Ic.gear,label:"Admin"},{id:"import",icon:Ic.dl,label:"Importar"},{id:"priceimport",icon:Ic.tag,label:"Importar Precios"}]:[]),
