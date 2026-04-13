@@ -237,42 +237,44 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
 
     const { rows } = await db.query(
       `INSERT INTO inventory (
-         branch_id, year, brand, model, color, chassis, motor_num, price, status,
-         added_as_sold, sold_at, sold_by, ticket_id,
+         status, added_as_sold,
+         branch_id, year, brand, model, color, chassis, motor_num, price,
+         sold_at, sold_by, ticket_id,
          payment_method, sale_type, sale_notes,
          sale_price, cost_price, invoice_amount, delivered,
          client_name, client_rut, created_by
        ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$22,
-         $23,$9,$10,$11,
-         $12,$13,$14,
-         $15,$16,$17,$18,
-         $19,$20,$21
+         $1, $2,
+         $3, $4, $5, $6, $7, $8, $9, $10,
+         $11, $12, $13,
+         $14, $15, $16,
+         $17, $18, $19, $20,
+         $21, $22, $23
        ) RETURNING *`,
       [
-        branch_id || null,
-        year      ? parseInt(year)   : null,
-        brand.trim().toUpperCase(),
-        model.trim().toUpperCase(),
-        color  || null,
-        chassis ? chassis.trim().toUpperCase() : null,
-        motor_num || null,
-        price     ? parseInt(price)  : 0,
-        finalSoldAt,
-        sold_by,
-        ticket_id  || null,
-        payment_method || null,
-        sale_type      || null,
-        sale_notes     || null,
-        sale_price     ? parseInt(sale_price)     : null,
-        cost_price     ? parseInt(cost_price)     : null,
-        invoice_amount ? parseInt(invoice_amount) : null,
-        delivered      ? true : false,
-        client_name    || null,
-        client_rut     || null,
-        req.user.id,
-        finalStatus,
-        !isReserva,    // added_as_sold: true solo para ventas
+        finalStatus,                                        // $1  status
+        !isReserva,                                         // $2  added_as_sold
+        branch_id || null,                                  // $3
+        year      ? parseInt(year)   : null,                // $4
+        brand.trim().toUpperCase(),                         // $5
+        model.trim().toUpperCase(),                         // $6
+        color  || null,                                     // $7
+        chassis ? chassis.trim().toUpperCase() : null,      // $8
+        motor_num || null,                                  // $9
+        price     ? parseInt(price)  : 0,                  // $10
+        finalSoldAt,                                        // $11
+        sold_by,                                            // $12
+        ticket_id  || null,                                 // $13
+        payment_method || null,                             // $14
+        sale_type      || null,                             // $15
+        sale_notes     || null,                             // $16
+        sale_price     ? parseInt(sale_price)     : null,   // $17
+        cost_price     ? parseInt(cost_price)     : null,   // $18
+        invoice_amount ? parseInt(invoice_amount) : null,   // $19
+        delivered      ? true : false,                      // $20
+        client_name    || null,                             // $21
+        client_rut     || null,                             // $22
+        req.user.id,                                        // $23
       ]
     );
 

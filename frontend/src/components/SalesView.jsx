@@ -912,7 +912,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       } else if (selUnit && isReserva) {
         await api.updateInventory(selUnit.id, {
           status: 'reservada',
-          notes: clientExtra || null,
+          sold_at: form.sold_at || new Date().toISOString().slice(0, 10),
           sold_by: form.sold_by || null,
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
           invoice_amount: abono ? parseInt(abono) : null,
