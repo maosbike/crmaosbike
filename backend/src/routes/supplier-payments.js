@@ -582,11 +582,19 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
         };
 
         if (existing[0]) {
+          // Siempre sobrescribir — re-sync debe corregir datos viejos malos
+          // Excepción: invoice_url solo si está vacío (no pisar link manual)
+          const ALWAYS = ['model','motor_num','color','commercial_year','chassis',
+                          'paid_amount','banco','payment_method','payment_date',
+                          'receipt_number','due_date','neto','iva','total_amount',
+                          'model_id','receipt_url','payer_name','provider','brand',
+                          'internal_code','invoice_date'];
           const sets = [], params = [];
           let idx = 1;
           for (const [k, v] of Object.entries(payload)) {
             if (v !== null && v !== undefined) {
-              sets.push(`${k} = COALESCE(${k}, $${idx++})`);
+              const direct = ALWAYS.includes(k);
+              sets.push(direct ? `${k} = $${idx++}` : `${k} = COALESCE(${k}, $${idx++})`);
               params.push(v);
             }
           }
