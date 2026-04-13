@@ -20,7 +20,7 @@ const upload = multer({
   },
 });
 
-// ─── Helpers de extracción ────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toISODate(d, m, y) {
   if (!d || !m || !y) return null;
@@ -34,95 +34,169 @@ function toISODate(d, m, y) {
 
 function parseAmt(s) {
   if (!s) return null;
-  // Eliminar separadores de miles (punto en formato chileno) y dejar solo dígitos
-  const clean = s.replace(/\./g,'').replace(/,(\d{2})$/,'').replace(/[^\d]/g,'');
+  // Formato chileno: puntos como separadores de miles (1.853.614)
+  const clean = String(s).replace(/\./g,'').replace(/,(\d{2})$/,'').replace(/[^\d]/g,'');
   return parseInt(clean) || null;
 }
 
+/**
+ * Extrae datos de una factura Yamaha (o similar).
+ * Basado en el formato real:
+ *   YAMAIMPORT S.A.  RUT: 79.831.090-9
+ *   FACTURA ELECTRONICA Nº 389242
+ *   Fecha Emision:27 de Febrero del 2026
+ *   N MOTOR : G3T8E0028091
+ *   N DE CHASIS : ME1RG9711T3019117
+ *   COD.MODELO : FZ-S
+ *   COLOR : NEGRO
+ *   MARCA : YAMAHA
+ *   ANO COMERCIAL : 2026
+ *   MONTO NETO$1.853.614
+ *   I.V.A. 19%$ 352.186
+ *   TOTAL$2.205.800
+ */
 function extractInvoice(text) {
   const t = text.replace(/\r/g,' ').replace(/\n+/g,' ').replace(/\s{2,}/g,' ');
 
-  // Número de factura
+  // ── Número de factura ──
   const invN =
-    t.match(/(?:FACTURA|Factura)\s+(?:ELECTR[OÓ]NICA\s+)?N[°º\.]\s*(\d{4,9})/i)?.[1] ||
-    t.match(/N[°º]\s*(\d{5,9})/)?.[1] ||
+    t.match(/(?:FACTURA[A-Z\s]*?)N[°º]\s*(\d{4,9})/i)?.[1] ||
+    t.match(/N[°º\.]\s*(\d{5,9})/)?.[1] ||
     null;
 
-  // Proveedor — primera línea con nombre largo
-  const provMatch = t.match(/^([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s,\.]{5,60}(?:S\.A\.|LTDA|SPA|CORP|CHILE|S\.A|LTDA\.)?)/);
-  const provider = provMatch?.[1]?.trim() || null;
+  // ── Proveedor — texto antes de "RUT:" ──
+  const provMatch = t.match(/([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s,\.]+?(?:S\.A\.|LTDA\.?|SPA\.?|E\.I\.R\.L\.?)?)\s*RUT/i);
+  const provider = provMatch?.[1]?.trim().replace(/\s+/g,' ') || null;
 
-  // Fechas (DD/MM/YYYY o D de Mes de YYYY)
-  const allDates = [...t.matchAll(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/g)].map(
-    m => toISODate(m[1], m[2], m[3])
-  ).filter(Boolean);
-  const litDate = t.match(/(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:de\s+)?(\d{4})/i);
-  if (litDate) allDates.unshift(toISODate(litDate[1], litDate[2], litDate[3]));
+  // ── Fecha emisión factura: "Fecha Emision:27 de Febrero del 2026" ──
+  const dateMatch =
+    t.match(/Fecha\s+Emisi[oó]n\s*:?\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
+    t.match(/(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i);
+  const invoice_date = dateMatch ? toISODate(dateMatch[1], dateMatch[2], dateMatch[3]) : null;
 
-  // Total
-  const amtMatch =
-    t.match(/(?:TOTAL\s+FACTURA|TOTAL\s+PAGAR|TOTAL)\s*\$?\s*([\d.,]+)/i) ||
-    t.match(/MONTO\s*TOTAL\s*\$?\s*([\d.,]+)/i);
-  const total_amount = parseAmt(amtMatch?.[1]);
+  // ── Importes ──
+  const netoMatch  = t.match(/MONTO\s+NETO\s*\$?\s*([\d\.,]+)/i);
+  const ivaMatch   = t.match(/I\.V\.A\.[\s\d%]*\$\s*([\d\.,]+)/i);
+  const totalMatch =
+    t.match(/\bTOTAL\s*\$\s*([\d\.,]+)/i) ||
+    t.match(/TOTAL\s+FACTURA[^$]*\$\s*([\d\.,]+)/i) ||
+    t.match(/TOTAL\s+([\d\.,]+)/i);
+  const neto         = parseAmt(netoMatch?.[1]);
+  const iva          = parseAmt(ivaMatch?.[1]);
+  const total_amount = parseAmt(totalMatch?.[1]);
 
-  // Datos del vehículo
-  const motor   = t.match(/(?:MOTOR|N[°º]\s*MOTOR)\s*:?\s*([A-Z0-9]{5,20})/i)?.[1]?.trim() || null;
-  const chassis = t.match(/(?:CHASIS|CHASSIS|N[°º]\s*CHASIS|FRAME)\s*:?\s*([A-Z0-9]{5,25})/i)?.[1]?.trim() || null;
-  const color   = t.match(/(?:COLOR)\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,20}?)(?:\s{2,}|$)/i)?.[1]?.trim() || null;
-  const year    = parseInt(t.match(/(?:AÑO|ANO|MODELO\s+AÑO)\s*:?\s*(\d{4})/i)?.[1]) || null;
-  const model   = t.match(/(?:MODELO)\s*:?\s*([A-Z0-9][A-Za-z0-9\-\s]{2,40}?)(?:\s{2,}|$)/i)?.[1]?.trim() || null;
-  const brand   = t.match(/(?:MARCA)\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]{2,20})/i)?.[1]?.trim() || null;
-  const internalCode = t.match(/(?:C[OÓ]DIGO|COD\.?)\s*:?\s*([A-Z0-9\-]{3,20})/i)?.[1]?.trim() || null;
+  // ── Datos del vehículo ──
+  const motor   = t.match(/N\s+MOTOR\s*:\s*([A-Z0-9]+)/i)?.[1]?.trim() ||
+                  t.match(/N[°º]\s*MOTOR\s*:?\s*([A-Z0-9]+)/i)?.[1]?.trim() || null;
+
+  const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9]+)/i)?.[1]?.trim() ||
+                  t.match(/CHASIS\s*:\s*([A-Z0-9]+)/i)?.[1]?.trim() || null;
+
+  // COD.MODELO es el código/nombre del modelo
+  const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-\s]*?)(?=\s+[A-Z]{2,}\s*:|$)/i) ||
+                     t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-\s]*?)(?=\s+[A-Z]{2,}|$)/i);
+  const model = modelMatch?.[1]?.trim() || null;
+
+  const colorMatch = t.match(/\bCOLOR\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i);
+  const color = colorMatch?.[1]?.trim() || null;
+
+  const brand = t.match(/\bMARCA\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i)?.[1]?.trim() || null;
+
+  const year  = parseInt(t.match(/ANO\s+COMERCIAL\s*:\s*(\d{4})/i)?.[1] ||
+                          t.match(/A[ÑN]O\s+COMERCIAL\s*:\s*(\d{4})/i)?.[1]) || null;
+
+  const internalCode = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9\-]+)/i)?.[1]?.trim() || null;
 
   return {
     provider,
     invoice_number: invN,
-    invoice_date:   allDates[0] || null,
-    due_date:       allDates[1] || null,
+    invoice_date,
+    due_date:       null,
     total_amount,
-    motor_num:      motor,
+    neto,
+    iva,
+    motor_num:       motor,
     chassis,
     color,
     commercial_year: year,
     model,
     brand,
-    internal_code:  internalCode,
+    internal_code:   internalCode,
   };
 }
 
+/**
+ * Extrae datos de un comprobante BCI (o similar).
+ * Basado en el formato real:
+ *   Institución : Banco de Credito e Invensiones (BCI)
+ *   Número de registro : #0000014829
+ *   Cliente : SOCIEDAD COMERCIALIZADORA...
+ *   Fecha operación : 13 de Abril del 2026
+ *   N. Factura: 389.242
+ *   Fecha Emisión: 27 de Febrero del 2026
+ *   Vencimiento: 28 de Abril del 2026
+ *   Monto: $ 2.205.800
+ */
 function extractReceipt(text) {
   const t = text.replace(/\r/g,' ').replace(/\n+/g,' ').replace(/\s{2,}/g,' ');
 
-  // Número de operación / comprobante
+  // ── Banco / institución ──
+  const bancoMatch = t.match(/Instituci[oó]n\s*:\s*(.+?)(?=\s+N[úu]mero|\s+Cliente|\s+Fecha|\s*$)/i);
+  const banco = bancoMatch?.[1]?.trim() || null;
+
+  // ── Número de comprobante/registro ──
   const opNum =
+    t.match(/N[úu]mero\s+de\s+registro\s*:\s*#?(\d+)/i)?.[1] ||
     t.match(/N[°º\.]\s*(?:de\s*)?(?:OPERACI[OÓ]N|COMPROBANTE|FOLIO|REFERENCIA)\s*:?\s*(\d{5,15})/i)?.[1] ||
-    t.match(/(?:COMPROBANTE|OPERACI[OÓ]N)\s*(?:N[°º\.])?\s*:?\s*(\d{5,15})/i)?.[1] ||
     null;
 
-  // Fecha de operación/pago (DD/MM/YYYY, D de Mes de YYYY, o YYYY-MM-DD)
-  const litDate = t.match(/(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:de\s+)?(\d{4})/i);
-  const numDate = t.match(/(?:FECHA)\s*(?:DE\s*(?:OPERACI[OÓ]N|PAGO|TRANSFERENCIA))?\s*:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
-  let payment_date = null;
-  if (litDate) payment_date = toISODate(litDate[1], litDate[2], litDate[3]);
-  else if (numDate) payment_date = toISODate(numDate[1], numDate[2], numDate[3]);
+  // ── Fecha de operación/pago ──
+  const payDateMatch =
+    t.match(/Fecha\s+operaci[oó]n\s*:\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
+    t.match(/Fecha\s+(?:de\s+)?(?:pago|transferencia)\s*:\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+  const payment_date = payDateMatch ? toISODate(payDateMatch[1], payDateMatch[2], payDateMatch[3]) : null;
 
-  // Monto
+  // ── Fecha de vencimiento ──
+  const dueDateMatch =
+    t.match(/Vencimiento\s*:\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
+    t.match(/Vencimiento\s*:\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+  const due_date = dueDateMatch ? toISODate(dueDateMatch[1], dueDateMatch[2], dueDateMatch[3]) : null;
+
+  // ── Monto ──
   const amtMatch =
-    t.match(/(?:MONTO|IMPORTE|TOTAL)\s*(?:PAGADO|TRANSFERIDO)?\s*:?\s*\$?\s*([\d.,]+)/i);
+    t.match(/Monto\s*:\s*\$?\s*([\d\.,]+)/i) ||
+    t.match(/(?:TOTAL|IMPORTE)\s*:?\s*\$?\s*([\d\.,]+)/i);
   const total_amount = parseAmt(amtMatch?.[1]);
 
-  // Pagador / nombre
-  const payer =
-    t.match(/(?:NOMBRE|ORDENANTE|PAGADOR|TITULAR)\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s\.]{4,50})(?=\s{2,}|RUT|\d)/i)?.[1]?.trim() || null;
+  // ── Pagador/cliente ──
+  const payerMatch = t.match(/Cliente\s*:\s*(.+?)(?=\s+Fecha|\s+N[\.°]|\s+Monto|\s*$)/i);
+  const payer_name = payerMatch?.[1]?.trim() || null;
 
-  // Referencia a número de factura en el cuerpo
+  // ── Referencia a número de factura ──
   const invRef =
-    t.match(/(?:FACTURA|FACT\.?)\s*N?[°º]?\s*:?\s*([\d\.]{5,10})/i)?.[1]?.replace(/\./g,'') || null;
+    t.match(/N[\.°º]?\s*Factura\s*:\s*([\d\.]+)/i)?.[1]?.replace(/\./g,'') ||
+    t.match(/(?:FACTURA|FACT\.?)\s*N?[°º]?\s*:?\s*([\d\.]{5,10})/i)?.[1]?.replace(/\./g,'') ||
+    null;
 
-  return { receipt_number: opNum, payment_date, total_amount, payer_name: payer, invoice_ref: invRef };
+  // ── Medio de pago ──
+  const payMethod =
+    t.match(/(?:medio|forma|tipo)\s*(?:de\s*)?pago\s*:\s*([^\n,;]+)/i)?.[1]?.trim() ||
+    (t.match(/\btransferencia\b/i) ? 'Transferencia' : null) ||
+    null;
+
+  return {
+    receipt_number:  opNum,
+    payment_date,
+    due_date,
+    total_amount,
+    payer_name,
+    invoice_ref:     invRef,
+    banco,
+    payment_method:  payMethod,
+  };
 }
 
-// ─── POST /extract — extraer datos de uno o dos PDFs ─────────────────────────
+// ─── POST /extract ────────────────────────────────────────────────────────────
 router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
   upload.fields([{ name:'invoice', maxCount:1 }, { name:'receipt', maxCount:1 }]),
   async (req, res) => {
@@ -138,17 +212,17 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
         receiptData = extractReceipt(txt);
       }
 
-      // Merge: factura toma prioridad, comprobante completa lo que falta
       const merged = {
         ...(invoiceData || {}),
         ...(receiptData ? {
-          receipt_number: receiptData.receipt_number,
-          payment_date:   receiptData.payment_date,
-          payer_name:     receiptData.payer_name,
-          // Verificar coherencia de montos
-          total_amount: invoiceData?.total_amount || receiptData.total_amount,
-          // Si el comprobante trae referencia a una factura y la factura no tiene número, usarla
-          invoice_number: invoiceData?.invoice_number || receiptData.invoice_ref || null,
+          receipt_number:  receiptData.receipt_number,
+          payment_date:    receiptData.payment_date,
+          due_date:        invoiceData?.due_date || receiptData.due_date,
+          payer_name:      receiptData.payer_name,
+          banco:           receiptData.banco,
+          payment_method:  receiptData.payment_method,
+          total_amount:    invoiceData?.total_amount || receiptData.total_amount,
+          invoice_number:  invoiceData?.invoice_number || receiptData.invoice_ref || null,
         } : {}),
       };
 
@@ -167,16 +241,16 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
     try {
       const {
         provider, invoice_number, invoice_date, due_date, payment_date,
-        total_amount, receipt_number, payer_name, brand, model, color,
-        commercial_year, motor_num, chassis, internal_code, notes, status,
+        total_amount, neto, iva, receipt_number, payer_name,
+        brand, model, color, commercial_year, motor_num, chassis, internal_code,
+        notes, status, payment_method, banco,
         invoice_url: bodyInvUrl, receipt_url: bodyRecUrl,
       } = req.body;
 
       let invoice_url = bodyInvUrl || null;
       let receipt_url = bodyRecUrl || null;
 
-      // Subir archivos a Cloudinary si se enviaron directamente
-      for (const [field] of [['invoice'],['receipt']]) {
+      for (const field of ['invoice','receipt']) {
         const file = req.files?.[field]?.[0];
         if (file) {
           const b64 = file.buffer.toString('base64');
@@ -193,21 +267,33 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
       const { rows } = await db.query(
         `INSERT INTO supplier_payments (
            provider, invoice_number, invoice_date, due_date, payment_date,
-           total_amount, receipt_number, payer_name, brand, model, color,
-           commercial_year, motor_num, chassis, internal_code,
-           invoice_url, receipt_url, notes, status, created_by
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
-         RETURNING *`,
+           total_amount, neto, iva,
+           receipt_number, payer_name,
+           brand, model, color, commercial_year, motor_num, chassis, internal_code,
+           invoice_url, receipt_url, notes, status,
+           payment_method, banco, created_by
+         ) VALUES (
+           $1,$2,$3,$4,$5,
+           $6,$7,$8,
+           $9,$10,
+           $11,$12,$13,$14,$15,$16,$17,
+           $18,$19,$20,$21,
+           $22,$23,$24
+         ) RETURNING *`,
         [
           provider||null, invoice_number||null,
           invoice_date||null, due_date||null, payment_date||null,
           total_amount ? parseInt(total_amount) : null,
+          neto         ? parseInt(neto)         : null,
+          iva          ? parseInt(iva)          : null,
           receipt_number||null, payer_name||null,
           brand||null, model||null, color||null,
           commercial_year ? parseInt(commercial_year) : null,
           motor_num||null, chassis||null, internal_code||null,
           invoice_url, receipt_url,
-          notes||null, status||'pendiente', req.user.id,
+          notes||null, status||'pendiente',
+          payment_method||null, banco||null,
+          req.user.id,
         ]
       );
       res.status(201).json(rows[0]);
@@ -253,9 +339,11 @@ router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), as
   try {
     const FIELDS = [
       'provider','invoice_number','invoice_date','due_date','payment_date',
-      'total_amount','receipt_number','payer_name','brand','model','color',
+      'total_amount','neto','iva',
+      'receipt_number','payer_name','brand','model','color',
       'commercial_year','motor_num','chassis','internal_code',
       'invoice_url','receipt_url','notes','status',
+      'payment_method','banco',
     ];
     const sets = [], params = [];
     let idx = 1;
@@ -281,33 +369,27 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
-// ─── POST /sync-drive — leer PDFs de Drive y cruzar registros ────────────────
+// ─── POST /sync-drive ─────────────────────────────────────────────────────────
 router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   const FOLDER_FACTURAS     = '17IVqwsdoFTCpURC_eagy0qC2I_6DtpRr';
   const FOLDER_COMPROBANTES = '1T6jxfQZrrqfVnsMb5p5-gubl0OGGPeKb';
 
-  // Validar que existan credenciales
   const credsJson = process.env.GCLOUD_CREDS;
   if (!credsJson) {
-    return res.status(503).json({
-      error: 'Credenciales de Google no configuradas. Agregá GCLOUD_CREDS en Railway.',
-    });
+    return res.status(503).json({ error: 'Credenciales de Google no configuradas. Agregá GCLOUD_CREDS en Railway.' });
   }
 
   let creds;
   try { creds = JSON.parse(credsJson); }
-  catch { return res.status(503).json({ error: 'GOOGLE_SERVICE_ACCOUNT_JSON no es JSON válido.' }); }
+  catch { return res.status(503).json({ error: 'GCLOUD_CREDS no es JSON válido.' }); }
 
-  const { google }  = require('googleapis');
-  const { Readable } = require('stream');
-
-  const auth = new google.auth.GoogleAuth({
+  const { google }   = require('googleapis');
+  const driveAuth = new google.auth.GoogleAuth({
     credentials: creds,
     scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   });
-  const drive = google.drive({ version: 'v3', auth });
+  const drive = google.drive({ version: 'v3', auth: driveAuth });
 
-  // Listar PDFs de una carpeta
   async function listPDFs(folderId) {
     const files = [];
     let pageToken = null;
@@ -324,7 +406,6 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
     return files;
   }
 
-  // Descargar PDF como Buffer
   async function downloadPDF(fileId) {
     const resp = await drive.files.get(
       { fileId, alt: 'media' },
@@ -341,17 +422,9 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
 
     const results = { created: 0, updated: 0, skipped: 0, errors: [] };
 
-    // Map de comprobantes por nombre de archivo para cruce posterior
-    const comprobanteMap = {};
-    for (const f of comprobantes) {
-      comprobanteMap[f.name] = f;
-    }
-
-    // Procesar facturas
     for (const factFile of facturas) {
       try {
-        // Descargar y parsear factura
-        const buf = await downloadPDF(factFile.id);
+        const buf  = await downloadPDF(factFile.id);
         const text = (await pdfParse(buf)).text;
         const inv  = extractInvoice(text);
 
@@ -360,7 +433,6 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           continue;
         }
 
-        // Buscar comprobante que haga match por número de factura en el nombre o contenido
         let recData = null;
         let recUrl  = null;
         const invNum = inv.invoice_number.replace(/\./g,'');
@@ -374,10 +446,9 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
             const recTxt = (await pdfParse(recBuf)).text;
             recData = extractReceipt(recTxt);
             recUrl  = matchRec.webViewLink;
-          } catch (e) { /* comprobante falla silenciosamente */ }
+          } catch (_) { /* comprobante falla silenciosamente */ }
         }
 
-        // ¿Ya existe el registro?
         const { rows: existing } = await db.query(
           `SELECT id FROM supplier_payments WHERE invoice_number = $1 LIMIT 1`,
           [inv.invoice_number]
@@ -387,8 +458,10 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           provider:        inv.provider,
           invoice_number:  inv.invoice_number,
           invoice_date:    inv.invoice_date,
-          due_date:        inv.due_date,
+          due_date:        inv.due_date || recData?.due_date || null,
           total_amount:    inv.total_amount,
+          neto:            inv.neto,
+          iva:             inv.iva,
           brand:           inv.brand,
           model:           inv.model,
           color:           inv.color,
@@ -398,15 +471,16 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           internal_code:   inv.internal_code,
           invoice_url:     factFile.webViewLink,
           ...(recData ? {
-            receipt_number: recData.receipt_number,
-            payment_date:   recData.payment_date,
-            payer_name:     recData.payer_name,
-            receipt_url:    recUrl,
+            receipt_number:  recData.receipt_number,
+            payment_date:    recData.payment_date,
+            payer_name:      recData.payer_name,
+            banco:           recData.banco,
+            payment_method:  recData.payment_method,
+            receipt_url:     recUrl,
           } : {}),
         };
 
         if (existing[0]) {
-          // Actualizar solo campos no nulos (no pisar ediciones manuales)
           const sets = [], params = [];
           let idx = 1;
           for (const [k, v] of Object.entries(payload)) {
@@ -427,20 +501,32 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           await db.query(
             `INSERT INTO supplier_payments (
                invoice_number, provider, invoice_date, due_date, total_amount,
+               neto, iva,
                brand, model, color, commercial_year, motor_num, chassis, internal_code,
-               invoice_url, receipt_number, payment_date, payer_name, receipt_url,
+               invoice_url, receipt_number, payment_date, payer_name,
+               banco, payment_method, receipt_url,
                status, created_by
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'pendiente',$18)`,
+             ) VALUES (
+               $1,$2,$3,$4,$5,
+               $6,$7,
+               $8,$9,$10,$11,$12,$13,$14,
+               $15,$16,$17,$18,
+               $19,$20,$21,
+               'pendiente',$22
+             )`,
             [
               payload.invoice_number, payload.provider||null,
               payload.invoice_date||null, payload.due_date||null,
               payload.total_amount||null,
+              payload.neto||null, payload.iva||null,
               payload.brand||null, payload.model||null, payload.color||null,
               payload.commercial_year||null, payload.motor_num||null,
               payload.chassis||null, payload.internal_code||null,
               payload.invoice_url||null,
               payload.receipt_number||null, payload.payment_date||null,
-              payload.payer_name||null, payload.receipt_url||null,
+              payload.payer_name||null,
+              payload.banco||null, payload.payment_method||null,
+              payload.receipt_url||null,
               req.user.id,
             ]
           );
@@ -459,7 +545,6 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
     });
   } catch (e) {
     console.error('[SupPay/sync-drive]', e);
-    // Error de permisos de Drive es el más común
     if (e.code === 403 || (e.message || '').includes('permission')) {
       return res.status(403).json({
         error: `Sin acceso a las carpetas de Drive. Compartí ambas carpetas con: ${creds.client_email}`,
