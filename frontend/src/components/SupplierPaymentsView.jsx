@@ -7,7 +7,7 @@ const EMPTY = () => ({
   invoice_number:'', invoice_date:'', due_date:'', payment_date:'',
   total_amount:'', neto:'', iva:'', paid_amount:'',
   receipt_number:'', payer_name:'', banco:'', payment_method:'',
-  brand:'', model:'', color:'', commercial_year:'',
+  brand:'', model:'', model_id:'', color:'', commercial_year:'',
   motor_num:'', chassis:'', internal_code:'',
   invoice_url:'', receipt_url:'', notes:'',
 });
@@ -38,13 +38,54 @@ function useBP() {
 
 /* ── Catalog image helper ───────────────────────────────────────────────── */
 function motoImg(p) {
-  // Try color_photos match first, then catalog main image
   if (p.catalog_color_photos && p.color) {
     const cp = (typeof p.catalog_color_photos === 'string' ? JSON.parse(p.catalog_color_photos) : p.catalog_color_photos) || [];
     const match = cp.find(c => c.color && p.color && c.color.toLowerCase() === p.color.toLowerCase());
     if (match?.url) return match.url;
   }
   return p.catalog_image || null;
+}
+
+/* ── Color chip helper ──────────────────────────────────────────────────── */
+const COLOR_HEX = {negro:'#18181B',blanco:'#F9FAFB',rojo:'#EF4444',azul:'#3B82F6',gris:'#6B7280',plata:'#9CA3AF',plateado:'#9CA3AF',verde:'#10B981',amarillo:'#F59E0B',naranja:'#F97316',celeste:'#38BDF8',violeta:'#8B5CF6',morado:'#8B5CF6',rosa:'#EC4899',marron:'#92400E',cafe:'#92400E'};
+function colorHex(name) { const k=(name||'').toLowerCase().split(/[\s\/]/)[0]; return COLOR_HEX[k]||'#9CA3AF'; }
+function ColorChip({color}) {
+  if(!color) return null;
+  const hex=colorHex(color);
+  const light = ['blanco','plata','plateado','celeste','amarillo'].includes(color.toLowerCase().split(' ')[0]);
+  return <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px 3px 6px',borderRadius:20,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:11,fontWeight:600,color:'#374151',whiteSpace:'nowrap'}}>
+    <span style={{width:10,height:10,borderRadius:'50%',background:hex,border:light?'1px solid #D1D5DB':'none',flexShrink:0}}/>
+    {color}
+  </span>;
+}
+
+/* ── Catalog model picker for edit forms ────────────────────────────────── */
+function CatalogModelPicker({ brand, model, onSelect }) {
+  const [brands,setBrands] = useState([]);
+  const [models,setModels] = useState([]);
+  const [selBrand,setSelBrand] = useState(brand||'');
+  useEffect(()=>{ api.getBrands().then(r=>setBrands(Array.isArray(r)?r:r.brands||[])).catch(()=>{}); },[]);
+  useEffect(()=>{
+    if(!selBrand){setModels([]);return;}
+    api.getModels({brand:selBrand}).then(r=>setModels(Array.isArray(r)?r:r.data||[])).catch(()=>{});
+  },[selBrand]);
+  const sel = {height:36,borderRadius:8,border:'1px solid #D1D5DB',background:'#F9FAFB',color:'#374151',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
+  return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+    <div>
+      <label style={{...S.lbl,fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Marca</label>
+      <select value={selBrand} onChange={e=>{setSelBrand(e.target.value);onSelect(null,e.target.value,'');}} style={sel}>
+        <option value="">— Seleccionar —</option>
+        {brands.map(b=><option key={b} value={b}>{b}</option>)}
+      </select>
+    </div>
+    <div>
+      <label style={{...S.lbl,fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Modelo del catálogo</label>
+      <select value={model||''} onChange={e=>{const m=models.find(x=>x.id===e.target.value);if(m)onSelect(m.id,m.brand,m.commercial_name||m.model);}} style={sel} disabled={!selBrand}>
+        <option value="">— Seleccionar —</option>
+        {models.map(m=><option key={m.id} value={m.id}>{m.commercial_name||m.model} {m.year?`(${m.year})`:''}</option>)}
+      </select>
+    </div>
+  </div>;
 }
 
 /* ── Shared inline style tokens (matching CRM palette) ─────────────────── */
@@ -194,9 +235,10 @@ function NewModal({ onClose, onCreated }) {
             </div>
           </Sec>
           <Sec title="Vehiculo" color="#374151">
+            <div style={{marginBottom:10}}>
+              <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={(id,br,mo)=>setForm(f=>({...f,model_id:id||'',brand:br||f.brand,model:mo||f.model}))}/>
+            </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="Marca" value={form.brand} onChange={s('brand')} half hl={!!hl.brand}/>
-              <F label="Modelo" value={form.model} onChange={s('model')} half hl={!!hl.model}/>
               <F label="Color" value={form.color} onChange={s('color')} half hl={!!hl.color}/>
               <F label="Ano" value={form.commercial_year} onChange={s('commercial_year')} type="number" half hl={!!hl.commercial_year}/>
               <F label="N° Motor" value={form.motor_num} onChange={s('motor_num')} half hl={!!hl.motor_num}/>
@@ -275,14 +317,17 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
               <F label="Medio pago" value={form.payment_method} onChange={st('payment_method')} half/>
               <F label="Pagador" value={form.payer_name} onChange={st('payer_name')} half/>
             </div></Sec>
-            <Sec title="Vehiculo" color="#374151"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="Marca" value={form.brand} onChange={st('brand')} half/>
-              <F label="Modelo" value={form.model} onChange={st('model')} half/>
-              <F label="Color" value={form.color} onChange={st('color')} half/>
-              <F label="Ano" value={form.commercial_year} onChange={st('commercial_year')} type="number" half/>
-              <F label="N° Motor" value={form.motor_num} onChange={st('motor_num')} half/>
-              <F label="N° Chasis" value={form.chassis} onChange={st('chassis')} half/>
-            </div></Sec>
+            <Sec title="Vehiculo" color="#374151">
+              <div style={{marginBottom:10}}>
+                <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={(id,br,mo)=>setForm(f=>({...f,model_id:id||'',brand:br||f.brand,model:mo||f.model}))}/>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
+                <F label="Color" value={form.color} onChange={st('color')} half/>
+                <F label="Ano" value={form.commercial_year} onChange={st('commercial_year')} type="number" half/>
+                <F label="N° Motor" value={form.motor_num} onChange={st('motor_num')} half/>
+                <F label="N° Chasis" value={form.chassis} onChange={st('chassis')} half/>
+              </div>
+            </Sec>
             <Sec title="Archivos / notas" color="#6B7280"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
               <F label="URL Factura" value={form.invoice_url} onChange={st('invoice_url')}/>
               <F label="URL Comprobante" value={form.receipt_url} onChange={st('receipt_url')}/>
@@ -421,7 +466,7 @@ export function SupplierPaymentsView({ user }) {
   const pending = data.filter(p=>!p.paid_amount).length;
 
   return (
-    <div style={{ fontFamily:'inherit',flex:1,display:'flex',flexDirection:'column',minHeight:0 }}>
+    <div style={{ fontFamily:'Inter,system-ui,sans-serif',flex:1,display:'flex',flexDirection:'column',minHeight:0 }}>
 
       {/* Header — matches Leads/Tickets h1 style */}
       <div style={{ display:'flex',alignItems:'flex-start',gap:12,marginBottom:20,flexWrap:'wrap' }}>
@@ -474,61 +519,68 @@ export function SupplierPaymentsView({ user }) {
             const dv=due(p);
             const ov=dv&&new Date(dv.slice(0,10)+'T12:00:00')<new Date();
             const img=motoImg(p);
-            const zone = { padding:'12px 16px', borderRight:'1px solid #F1F5F9', display:'flex', flexDirection:'column', justifyContent:'center', gap:4 };
+            const zone = { padding:'14px 18px', borderRight:'1px solid #F1F5F9', display:'flex', flexDirection:'column', justifyContent:'center' };
             return (
               <div key={p.id} onClick={()=>setSel(p)}
-                style={{...S.card,padding:0,display:'flex',alignItems:'stretch',cursor:'pointer',overflow:'hidden',transition:'box-shadow 0.1s'}}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)';}}
+                style={{...S.card,padding:0,display:'flex',alignItems:'stretch',cursor:'pointer',overflow:'hidden'}}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.10)';}}
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow=S.card.boxShadow;}}>
 
-                {/* Foto + factura */}
-                <div style={{...zone, flexShrink:0, minWidth:170, maxWidth:210, gap:6}}>
+                {/* Zona foto */}
+                <div style={{...zone, flexShrink:0, width:190, alignItems:'center', gap:10, background:'#F9FAFB'}}>
                   {img
-                    ? <img src={img} alt="" style={{width:70,height:52,objectFit:'contain',borderRadius:8,border:'1px solid #E5E7EB',background:'#F9FAFB'}}/>
-                    : <div style={{width:70,height:52,borderRadius:8,border:'1px dashed #D1D5DB',background:'#F9FAFB',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={22} color="#D1D5DB"/></div>
+                    ? <img src={img} alt="" style={{width:130,height:95,objectFit:'contain',borderRadius:10,border:'1px solid #E5E7EB',background:'#fff'}}/>
+                    : <div style={{width:130,height:95,borderRadius:10,border:'1px dashed #D1D5DB',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={36} color="#D1D5DB"/></div>
                   }
-                  <div style={{fontWeight:800,fontSize:13,color:'#0F172A'}}>{p.invoice_number||'-'}</div>
-                  <div style={{fontSize:10,color:'#9CA3AF'}}>{fd(p.invoice_date)}</div>
-                </div>
-
-                {/* Vehículo */}
-                <div style={{...zone, flex:'1 1 200px', minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:14,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.catalog_name||p.model||'-'}</div>
-                  {(p.color||p.commercial_year)&&<div style={{fontSize:12,color:'#6B7280'}}>{[p.color,p.commercial_year].filter(Boolean).join(' · ')}</div>}
-                  {p.chassis&&<div style={{fontSize:10,color:'#9CA3AF',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>Chasis: {p.chassis}</div>}
-                  {p.motor_num&&<div style={{fontSize:10,color:'#9CA3AF',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>Motor: {p.motor_num}</div>}
-                </div>
-
-                {/* Montos */}
-                <div style={{...zone, flexShrink:0, minWidth:160, alignItems:'flex-end', borderRight:'none'}}>
-                  <div style={{textAlign:'right'}}>
-                    <div style={{fontSize:10,color:'#9CA3AF',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:2}}>Total factura</div>
-                    <div style={{fontSize:16,fontWeight:800,color:'#0F172A'}}>{$(p.total_amount)}</div>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontWeight:900,fontSize:15,color:'#F28100',letterSpacing:'-0.3px'}}>#{p.invoice_number||'—'}</div>
+                    <div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{fd(p.invoice_date)}</div>
                   </div>
-                  <div style={{textAlign:'right',marginTop:4}}>
-                    <div style={{fontSize:10,color:'#9CA3AF',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:2}}>Monto pagado</div>
+                </div>
+
+                {/* Zona vehículo — aprovecha el espacio */}
+                <div style={{...zone, flex:'1 1 0', minWidth:0, gap:8}}>
+                  <div style={{fontWeight:800,fontSize:16,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.catalog_name||p.model||'—'}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                    <ColorChip color={p.color}/>
+                    {p.commercial_year&&<span style={{fontSize:11,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'3px 9px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:3,marginTop:2}}>
+                    {p.chassis&&<div style={{fontSize:11,color:'#6B7280'}}><span style={{fontWeight:600,color:'#9CA3AF',marginRight:4}}>Chasis</span>{p.chassis}</div>}
+                    {p.motor_num&&<div style={{fontSize:11,color:'#6B7280'}}><span style={{fontWeight:600,color:'#9CA3AF',marginRight:4}}>Motor</span>{p.motor_num}</div>}
+                  </div>
+                </div>
+
+                {/* Zona montos */}
+                <div style={{...zone, flexShrink:0, width:170, alignItems:'flex-end', gap:10}}>
+                  <div style={{textAlign:'right'}}>
+                    <div style={lbl9}>Total factura</div>
+                    <div style={{fontSize:18,fontWeight:900,color:'#0F172A'}}>{$(p.total_amount)}</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={lbl9}>Monto pagado</div>
                     <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#D1D5DB'}}>{$(p.paid_amount)}</div>
                   </div>
                 </div>
 
-                {/* Fechas + badges + docs */}
-                <div style={{...zone, flexShrink:0, minWidth:170, borderRight:'none', gap:6}}>
-                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                    {ov&&<Bdg l="Vencido" c="#EF4444" bg="rgba(239,68,68,0.12)"/>}
-                    {p.paid_amount&&!ov&&<Bdg l="Pagado" c="#15803D" bg="rgba(21,128,61,0.12)"/>}
+                {/* Zona fechas + docs */}
+                <div style={{...zone, flexShrink:0, width:160, borderRight:'none', gap:8}}>
+                  <div>
+                    <div style={lbl9}>Vencimiento</div>
+                    <div style={{fontSize:12,fontWeight:ov?700:500,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</div>
                   </div>
-                  <div style={{fontSize:11,color:ov?'#EF4444':'#6B7280',fontWeight:ov?700:400}}>Vence: {fd(dv)}</div>
-                  {p.payment_date&&<div style={{fontSize:11,color:'#9CA3AF'}}>Pago: {fd(p.payment_date)}</div>}
-                  <div style={{display:'flex',gap:6,marginTop:4}}>
-                    {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer"
-                      onClick={e=>e.stopPropagation()}
-                      style={{display:'flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'4px 10px',borderRadius:20,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit'}}>
-                      <Ic.file size={11}/> Factura
+                  {p.payment_date&&<div>
+                    <div style={lbl9}>Fecha pago</div>
+                    <div style={{fontSize:12,color:'#374151'}}>{fd(p.payment_date)}</div>
+                  </div>}
+                  <div style={{display:'flex',flexDirection:'column',gap:5,marginTop:4}}>
+                    {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                      style={{display:'flex',alignItems:'center',gap:5,fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:20,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit'}}>
+                      <Ic.file size={12}/> Factura
                     </a>}
-                    {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer"
-                      onClick={e=>e.stopPropagation()}
-                      style={{display:'flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'4px 10px',borderRadius:20,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit'}}>
-                      <Ic.file size={11}/> Comp.
+                    {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                      style={{display:'flex',alignItems:'center',gap:5,fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:20,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit'}}>
+                      <Ic.file size={12}/> Comprobante
                     </a>}
                   </div>
                 </div>

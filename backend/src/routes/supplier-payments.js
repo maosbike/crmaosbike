@@ -130,10 +130,14 @@ function extractInvoice(text) {
   // Motor: captura TODO hasta el siguiente campo, luego quita espacios internos
   // pdf-parse puede meter espacios (ej. "H408E -0091072") que truncan el valor
   const motorRaw = (
-    t.match(/N\s+MOTOR\s*:\s*(.+?)(?=\s+N\s+DE\s+CHASIS|\s+COD\.?\s*MODELO|\s+COLOR|\s+MARCA|\s+ANO)/i) ||
-    t.match(/N[°º]\s*MOTOR\s*:?\s*(.+?)(?=\s+N\s+DE|\s+CHASIS|\s+COD|\s+COLOR|\s+MARCA)/i) ||
-    t.match(/MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-\/\.\s]*[A-Z0-9])/i)
+    // Lazy capture between "N MOTOR :" and the next known field label
+    t.match(/N\s+MOTOR\s*:?\s*(.+?)(?=\s+N\s+DE\s+CHASIS|\s+COD\.?\s*MODELO|\s+COLOR\s*:|\s+MARCA\s*:|\s+ANO\s+COM)/i) ||
+    // Variant with ° º . prefix — allow lookahead to also match end-of-string
+    t.match(/N[°º\.]*\s*MOTOR\s*:?\s*([A-Z0-9][\w\s\-]{0,28}?)(?=\s+(?:N\s+DE|CHASIS|COD|COLOR|MARCA|ANO)|\s*$)/i) ||
+    // Fallback: capture alphanumeric+hyphen only (no spaces to avoid grabbing next field)
+    t.match(/MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-\/\.]+)/i)
   )?.[1]?.trim() || null;
+  // Remove any internal spaces pdf-parse may have inserted (e.g. "H408E -0091072" → "H408E-0091072")
   const motor = motorRaw ? motorRaw.replace(/\s+/g, '') : null;
 
   const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
@@ -141,10 +145,14 @@ function extractInvoice(text) {
 
   // COD.MODELO — capturar código y limpiar basura "0-A1" de pdf-parse
   // Ej: "YZF-R3A 0 -A1" → captura "YZF-R3A", o si pegado "YZF-R3A0-A1" → limpia a "YZF-R3A"
+  // Capture model code — stops at space so pdf-parse space-artifacts are naturally excluded
   const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i) ||
                      t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i);
   const rawModel = modelMatch?.[1]?.trim() || null;
-  const model = rawModel ? rawModel.replace(/0-?A\d*$/i, '').trim() : null;
+  // Strip trailing pdf-parse garbage like "0-A1", "0A1", "0 -A1" that get concatenated in some PDFs
+  const model = rawModel
+    ? (rawModel.replace(/\s*\d+\s*[-\s]?\s*[A-Z]\d*\s*$/i, '').trim() || rawModel)
+    : null;
 
   const colorMatch = t.match(/\bCOLOR\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i);
   const color = colorMatch?.[1]?.trim() || null;
@@ -220,15 +228,16 @@ function extractReceipt(text) {
   const due_date = dueDateMatch ? toISODate(dueDateMatch[1], dueDateMatch[2], dueDateMatch[3]) : null;
 
   // ── Monto pagado ──
-  // Prioridad 1: "Monto: $ 2.205.800" o "Monto pagado: $ ..." (label explícito)
-  const montoLabelMatch = t.match(/Monto(?:\s+pagado)?\s*:?\s*\$\s*([\d\.\s,]+)/i);
-  // Prioridad 2: monto justo después de una fecha (tabla BCI: "del 2026$ 2.205.800")
+  // Prioridad 1: label explícito "Monto: $ 2.205.800" o "Monto 2.205.800" ($ puede faltar en pdf-parse)
+  const montoLabelMatch =
+    t.match(/\bMonto\b(?:\s+(?:pagado|a\s+pagar))?\s*:?\s*\$?\s*([\d][\d\.\s,]{3,15})/i);
+  // Prioridad 2: monto justo después de una fecha (tabla BCI concatenada: "del 2026$ 2.205.800")
   const tableAmtMatch = t.match(/del?\s+\d{4}\s*\$\s*([\d\.\s,]+)/i);
-  // Prioridad 3: todas las coincidencias de $
+  // Prioridad 3: último $ del documento (el total final suele estar al final, no al principio)
   const allAmounts = [...t.matchAll(/\$\s*([\d\.\s,]+)/g)].map(m => parseAmt(m[1])).filter(Boolean);
   const total_amount = (montoLabelMatch ? parseAmt(montoLabelMatch[1]) : null)
                     || (tableAmtMatch ? parseAmt(tableAmtMatch[1]) : null)
-                    || allAmounts[0] || null;
+                    || allAmounts[allAmounts.length - 1] || null;  // último $ en vez del primero
 
   // ── Pagador/cliente ──
   const payer_name = t.match(/Cliente\s*:?\s*(.+?)(?=\s+Fecha)/i)?.[1]?.trim() || null;
