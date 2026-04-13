@@ -187,10 +187,11 @@ router.post('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial
       transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }],
     });
 
-    // Upsert: reemplazar si ya existe foto para ese color, agregar si no
+    // Upsert: preservar hex existente, reemplazar/agregar url
     const colorLow = color.toLowerCase().trim();
+    const existing = current.find(p => p.color.toLowerCase().trim() === colorLow);
     const filtered = current.filter(p => p.color.toLowerCase().trim() !== colorLow);
-    const updated = [...filtered, { color: color.trim(), url: result.secure_url }];
+    const updated = [...filtered, { color: color.trim(), hex: req.body.hex || existing?.hex || null, url: result.secure_url }];
 
     await db.query(
       'UPDATE moto_models SET color_photos = $1::jsonb, updated_at = NOW() WHERE id = $2',

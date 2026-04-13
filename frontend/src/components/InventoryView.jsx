@@ -100,10 +100,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const toggleExpand = id => setExpandedCards(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // Modal edición
-  const [editTarget, setEditTarget] = useState(null);
-  const [eForm,      setEForm]      = useState({});
-  const [eSaving,    setESaving]    = useState(false);
-  const [eErr,       setEErr]       = useState('');
+  const [editTarget,       setEditTarget]       = useState(null);
+  const [eForm,            setEForm]            = useState({});
+  const [eSaving,          setESaving]          = useState(false);
+  const [eErr,             setEErr]             = useState('');
+  const [modelColorPhotos, setModelColorPhotos] = useState([]);
   const [convSaving, setConvSaving] = useState(false);
   const [addErr,     setAddErr]     = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -237,6 +238,19 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       sale_notes:     unit.sale_notes     || '',
     });
     setEditTarget(unit);
+    // Cargar colores del modelo desde catálogo para mostrar swatches
+    setModelColorPhotos([]);
+    if (unit.brand && unit.model) {
+      api.getModels({ brand: unit.brand, q: unit.model, limit: 5 })
+        .then(mods => {
+          const mod = mods.find(x => x.model?.toUpperCase() === unit.model?.toUpperCase()) || mods[0];
+          if (mod) {
+            const cps = Array.isArray(mod.color_photos) ? mod.color_photos
+                      : (mod.color_photos ? JSON.parse(mod.color_photos) : []);
+            setModelColorPhotos(cps.filter(cp => cp.color));
+          }
+        }).catch(() => {});
+    }
   };
   const handleEditSave = async e => {
     e.preventDefault();
@@ -1185,11 +1199,32 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             {/* Color */}
             <div style={{ marginBottom:10 }}>
               <Field label="Color" value={eForm.color} onChange={v=>setEForm({...eForm,color:v})}/>
+              {/* Swatches del catálogo para este modelo */}
+              {modelColorPhotos.length > 0 && (
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:7 }}>
+                  {modelColorPhotos.map(cp => {
+                    const isSelected = eForm.color?.toLowerCase().trim() === cp.color?.toLowerCase().trim();
+                    return (
+                      <button key={cp.color} type="button"
+                        onClick={() => setEForm(f => ({...f, color: cp.color}))}
+                        title={cp.color}
+                        style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 7px 3px 4px',
+                          borderRadius:20, border: isSelected ? '2px solid #F28100' : '1.5px solid #E2E8F0',
+                          background: isSelected ? '#FFFBF0' : '#F9FAFB', cursor:'pointer' }}>
+                        <span style={{ width:14, height:14, borderRadius:7, background: cp.hex || getColorCss(cp.color) || '#E5E7EB',
+                          border:'1px solid rgba(0,0,0,0.1)', display:'inline-block', flexShrink:0 }}/>
+                        <span style={{ fontSize:10, fontWeight: isSelected?700:400, color: isSelected?'#F28100':'#6B7280', whiteSpace:'nowrap' }}>{cp.color}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {eForm.color && (()=>{
-                const cc = getColorCss(eForm.color);
+                const cp = modelColorPhotos.find(p => p.color?.toLowerCase().trim() === eForm.color?.toLowerCase().trim());
+                const cc = cp?.hex || getColorCss(eForm.color);
                 return <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5 }}>
                   <span style={{ width:20,height:14,borderRadius:3,background:cc||'#E5E7EB',border:'1px solid #D1D5DB',display:'inline-block'}}/>
-                  <span style={{ fontSize:11,color:'#9CA3AF' }}>{cc?'Color reconocido':'Color no reconocido — se guardará igual'}</span>
+                  {cc&&<span style={{ fontSize:10,color:'#9CA3AF',fontFamily:'monospace' }}>{cc}</span>}
                 </div>;
               })()}
             </div>

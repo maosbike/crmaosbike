@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
+import { ColorPicker } from './ColorPicker.jsx';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR } from '../ui.jsx';
 
 function catColor(c){return CAT_COLOR[c]||"#555";}
@@ -80,13 +81,23 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
   const gallery=Array.isArray(m.image_gallery)?m.image_gallery:(m.image_gallery?JSON.parse(m.image_gallery):[]);
   const colorPhotos=Array.isArray(m.color_photos)?m.color_photos:(m.color_photos?JSON.parse(m.color_photos):[]);
   const getColorPhoto=(color)=>colorPhotos.find(p=>p.color.toLowerCase().trim()===color.toLowerCase().trim())?.url||null;
+  const getColorData=(color)=>colorPhotos.find(p=>p.color.toLowerCase().trim()===color.toLowerCase().trim())||null;
+  const getColorCss=(color)=>{const d=getColorData(color);return d?.hex||colorToCss(color)||null;};
   const[imgUploading,setImgUploading]=useState(false);
   const[galleryUploading,setGalleryUploading]=useState(false);
   const[specUploading,setSpecUploading]=useState(false);
   const[colorPhotoUploading,setColorPhotoUploading]=useState(null);
   const[colorInput,setColorInput]=useState("");
   const[activeColor,setActiveColor]=useState(null);
+  const[newColorHex,setNewColorHex]=useState('#111111');
+  const[showNewPicker,setShowNewPicker]=useState(false);
+  const[activeColorHex,setActiveColorHex]=useState('#111111');
+  const[savingHex,setSavingHex]=useState(false);
   const MAX_GALLERY=8;
+  // Sync hex picker cuando cambia el color activo
+  useEffect(()=>{
+    if(activeColor){const d=getColorData(activeColor);setActiveColorHex(d?.hex||colorToCss(activeColor)||'#111111');}
+  },[activeColor,m.color_photos]);
 
   // Foto que se muestra en el header: la del color activo (con fallback al modelo)
   const displayPhoto=activeColor?(getColorPhoto(activeColor)||m.image_url):m.image_url;
@@ -133,8 +144,24 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
     const c=colorInput.trim();
     if(!c||colors.includes(c)){setColorInput("");return;}
     setColorInput("");
-    try{const updated=await api.updateModel(m.id,{colors:[...colors,c]});setM(updated);onSaved&&onSaved(updated);}
+    // Agregar a colors + guardar hex en color_photos
+    const newColors=[...colors,c];
+    const existingEntry=colorPhotos.find(p=>p.color.toLowerCase().trim()===c.toLowerCase().trim());
+    const newColorPhotos=existingEntry
+      ?colorPhotos.map(p=>p.color.toLowerCase().trim()===c.toLowerCase().trim()?{...p,hex:newColorHex}:p)
+      :[...colorPhotos,{color:c,hex:newColorHex,url:null}];
+    try{const updated=await api.updateModel(m.id,{colors:newColors,color_photos:newColorPhotos});setM(updated);onSaved&&onSaved(updated);}
     catch(e){alert("Error al agregar color");}
+  };
+  const saveActiveColorHex=async()=>{
+    if(!activeColor) return;
+    setSavingHex(true);
+    const newColorPhotos=colorPhotos.find(p=>p.color.toLowerCase().trim()===activeColor.toLowerCase().trim())
+      ?colorPhotos.map(p=>p.color.toLowerCase().trim()===activeColor.toLowerCase().trim()?{...p,hex:activeColorHex}:p)
+      :[...colorPhotos,{color:activeColor,hex:activeColorHex,url:null}];
+    try{const updated=await api.updateModel(m.id,{color_photos:newColorPhotos});setM(updated);onSaved&&onSaved(updated);}
+    catch(e){alert("Error al guardar hex");}
+    finally{setSavingHex(false);}
   };
   const removeColorImmediate=async(c)=>{
     if(activeColor===c) setActiveColor(null);
@@ -216,7 +243,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {/* Badge del color activo */}
           {activeColor&&(
             <div style={{position:"absolute",bottom:10,left:12,display:"flex",alignItems:"center",gap:6,background:"rgba(0,0,0,0.55)",borderRadius:20,padding:"4px 10px",backdropFilter:"blur(4px)"}}>
-              {(()=>{const css=colorToCss(activeColor);return css?<span style={{width:10,height:10,borderRadius:5,background:css,border:"1px solid rgba(255,255,255,0.4)",display:"inline-block",flexShrink:0}}/>:null;})()}
+              {(()=>{const css=getColorCss(activeColor);return css?<span style={{width:10,height:10,borderRadius:5,background:css,border:"1px solid rgba(255,255,255,0.4)",display:"inline-block",flexShrink:0}}/>:null;})()}
               <span style={{fontSize:11,fontWeight:600,color:"#FFFFFF"}}>{activeColor}</span>
             </div>
           )}
@@ -284,15 +311,26 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                   Colores{colors.length>0&&` · ${colors.length}`}
                 </div>
                 {canEdit&&(
-                  <div style={{display:"flex",gap:5}}>
-                    <input value={colorInput} onChange={e=>setColorInput(e.target.value)}
-                      onKeyDown={e=>e.key==="Enter"&&addColorImmediate()}
-                      placeholder="+ nuevo color"
-                      style={{...S.inp,width:120,fontSize:11,height:26,padding:"0 8px"}}/>
-                    <button onClick={addColorImmediate}
-                      style={{height:26,padding:"0 10px",borderRadius:6,border:"none",background:"#F28100",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                      +
-                    </button>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                    <div style={{display:"flex",gap:5}}>
+                      {/* Swatch del hex seleccionado para el nuevo color */}
+                      <button type="button" onClick={()=>setShowNewPicker(p=>!p)} title="Elegir tono"
+                        style={{width:26,height:26,borderRadius:6,background:newColorHex,border:"1.5px solid #E2E8F0",cursor:"pointer",flexShrink:0}}/>
+                      <input value={colorInput} onChange={e=>setColorInput(e.target.value)}
+                        onKeyDown={e=>e.key==="Enter"&&addColorImmediate()}
+                        placeholder="+ nuevo color"
+                        style={{...S.inp,width:110,fontSize:11,height:26,padding:"0 8px"}}/>
+                      <button onClick={addColorImmediate}
+                        style={{height:26,padding:"0 10px",borderRadius:6,border:"none",background:"#F28100",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                        +
+                      </button>
+                    </div>
+                    {showNewPicker&&(
+                      <div style={{background:"#FAFAFA",border:"1px solid #E5E7EB",borderRadius:10,padding:"10px 12px"}}>
+                        <div style={{fontSize:10,color:"#6B7280",marginBottom:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>Tono del color</div>
+                        <ColorPicker value={newColorHex} onChange={setNewColorHex}/>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -301,7 +339,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               {colors.length>0&&(
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:activeColor?12:0}}>
                   {colors.map(c=>{
-                    const css=colorToCss(c);
+                    const css=getColorCss(c);
                     const isActive=activeColor===c;
                     const hasPhoto=!!getColorPhoto(c);
                     const light=isLightColor(css);
@@ -342,46 +380,60 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               {/* Panel del color activo */}
               {activeColor&&(()=>{
                 const photoUrl=getColorPhoto(activeColor);
-                const css=colorToCss(activeColor);
+                const css=getColorCss(activeColor);
+                const hexVal=getColorData(activeColor)?.hex||null;
                 const light=isLightColor(css);
                 return(
-                  <div style={{background:"#FAFAFA",border:"1.5px solid #E5E7EB",borderRadius:12,padding:"12px 14px",display:"flex",gap:14,alignItems:"center"}}>
-                    {/* Preview foto */}
-                    <div style={{flexShrink:0}}>
-                      {photoUrl
-                        ?<img src={photoUrl} alt={activeColor}
-                            style={{width:90,height:66,objectFit:"cover",borderRadius:10,border:"1.5px solid #E2E8F0",display:"block",cursor:"pointer"}}
-                            onClick={()=>window.open(photoUrl,'_blank')}/>
-                        :<div style={{width:90,height:66,borderRadius:10,background:css||"#F3F4F6",border:`1.5px dashed ${css?"rgba(0,0,0,0.15)":"#D1D5DB"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:0.6}}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?"#fff":"#9CA3AF"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                          </div>
-                      }
-                    </div>
-                    {/* Info + acciones */}
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
-                        {css&&<span style={{width:14,height:14,borderRadius:7,background:css,border:`1.5px solid ${light?"#CBD5E1":"rgba(0,0,0,0.15)"}`,display:"inline-block",flexShrink:0}}/>}
-                        <span style={{fontSize:13,fontWeight:700,color:"#0F172A"}}>{activeColor}</span>
+                  <div style={{background:"#FAFAFA",border:"1.5px solid #E5E7EB",borderRadius:12,padding:"12px 14px",display:"flex",flexDirection:"column",gap:12}}>
+                    {/* Fila superior: foto + info */}
+                    <div style={{display:"flex",gap:14,alignItems:"center"}}>
+                      <div style={{flexShrink:0}}>
+                        {photoUrl
+                          ?<img src={photoUrl} alt={activeColor}
+                              style={{width:90,height:66,objectFit:"cover",borderRadius:10,border:"1.5px solid #E2E8F0",display:"block",cursor:"pointer"}}
+                              onClick={()=>window.open(photoUrl,'_blank')}/>
+                          :<div style={{width:90,height:66,borderRadius:10,background:css||"#F3F4F6",border:`1.5px dashed ${css?"rgba(0,0,0,0.15)":"#D1D5DB"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:0.6}}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?"#fff":"#9CA3AF"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            </div>
+                        }
                       </div>
-                      <div style={{fontSize:10,color:"#9CA3AF",marginBottom:canEdit?8:0}}>
-                        {photoUrl?"Foto específica de este color":"Sin foto — muestra la imagen general del modelo"}
-                      </div>
-                      {canEdit&&(
-                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                          <label style={{fontSize:11,fontWeight:600,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:7,padding:"5px 12px",background:"#FFFBF0",whiteSpace:"nowrap"}}>
-                            {colorPhotoUploading===activeColor?"Subiendo…":(photoUrl?"↺ Cambiar foto":"+ Subir foto")}
-                            <input type="file" accept="image/*" style={{display:"none"}} disabled={!!colorPhotoUploading}
-                              onChange={e=>e.target.files[0]&&handleUploadColorPhoto(activeColor,e.target.files[0])}/>
-                          </label>
-                          {photoUrl&&colorPhotoUploading!==activeColor&&(
-                            <button onClick={()=>handleRemoveColorPhoto(activeColor)}
-                              style={{fontSize:11,color:"#9CA3AF",cursor:"pointer",border:"1px solid #E5E7EB",borderRadius:7,padding:"5px 10px",background:"transparent"}}>
-                              Quitar foto
-                            </button>
-                          )}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+                          {css&&<span style={{width:14,height:14,borderRadius:7,background:css,border:`1.5px solid ${light?"#CBD5E1":"rgba(0,0,0,0.15)"}`,display:"inline-block",flexShrink:0}}/>}
+                          <span style={{fontSize:13,fontWeight:700,color:"#0F172A"}}>{activeColor}</span>
+                          {hexVal&&<span style={{fontSize:10,color:"#9CA3AF",fontFamily:"monospace"}}>{hexVal}</span>}
                         </div>
-                      )}
+                        <div style={{fontSize:10,color:"#9CA3AF",marginBottom:canEdit?8:0}}>
+                          {photoUrl?"Foto específica de este color":"Sin foto — muestra la imagen general del modelo"}
+                        </div>
+                        {canEdit&&(
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            <label style={{fontSize:11,fontWeight:600,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:7,padding:"5px 12px",background:"#FFFBF0",whiteSpace:"nowrap"}}>
+                              {colorPhotoUploading===activeColor?"Subiendo…":(photoUrl?"↺ Cambiar foto":"+ Subir foto")}
+                              <input type="file" accept="image/*" style={{display:"none"}} disabled={!!colorPhotoUploading}
+                                onChange={e=>e.target.files[0]&&handleUploadColorPhoto(activeColor,e.target.files[0])}/>
+                            </label>
+                            {photoUrl&&colorPhotoUploading!==activeColor&&(
+                              <button onClick={()=>handleRemoveColorPhoto(activeColor)}
+                                style={{fontSize:11,color:"#9CA3AF",cursor:"pointer",border:"1px solid #E5E7EB",borderRadius:7,padding:"5px 10px",background:"transparent"}}>
+                                Quitar foto
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    {/* Fila inferior: color picker para el hex */}
+                    {canEdit&&(
+                      <div style={{borderTop:"1px solid #F1F5F9",paddingTop:10}}>
+                        <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Tono visual</div>
+                        <ColorPicker value={activeColorHex} onChange={setActiveColorHex}/>
+                        <button type="button" onClick={saveActiveColorHex} disabled={savingHex}
+                          style={{marginTop:8,height:28,padding:"0 14px",borderRadius:7,border:"none",background:"#0F172A",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                          {savingHex?"Guardando…":"Guardar tono"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
