@@ -93,12 +93,11 @@ function extractInvoice(text) {
   const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
                   t.match(/CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
 
-  // COD.MODELO — extraer valor limpio (ej. "FZ-S"), descartar basura trailing
+  // COD.MODELO — extraer valor limpio (ej. "FZ-S")
+  // El regex se detiene en el espacio después del modelo real, no captura basura "-A1" que viene después
   const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i) ||
                      t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i);
-  const rawModel = modelMatch?.[1]?.trim() || null;
-  // Limpieza: quitar sufijos tipo "- A1", "  B2", etc.
-  const model = rawModel ? rawModel.replace(/\s*[-–]\s*[A-Z0-9]{1,4}$/, '').trim() : null;
+  const model = modelMatch?.[1]?.trim() || null;
 
   const colorMatch = t.match(/\bCOLOR\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i);
   const color = colorMatch?.[1]?.trim() || null;
@@ -147,46 +146,50 @@ function extractReceipt(text) {
   const t = text.replace(/\r/g,' ').replace(/\n+/g,' ').replace(/\s{2,}/g,' ');
 
   // ── Banco / institución ──
-  const bancoMatch = t.match(/Instituci[oó]n\s*:\s*(.+?)(?=\s+N[úu]mero|\s+Cliente|\s+Fecha|\s*$)/i);
-  const banco = bancoMatch?.[1]?.trim() || null;
+  // "Institución: Banco de Credito e Invensiones (BCI)"
+  const banco = t.match(/Instituci[oó]n\s*:?\s*(.+?)(?=\s+N[úu]mero|\s+Cliente)/i)?.[1]?.trim() || null;
 
   // ── Número de comprobante/registro ──
+  // "Número de registro: #0000014829"
   const opNum =
-    t.match(/N[úu]mero\s+de\s+registro\s*:\s*#?(\d+)/i)?.[1] ||
-    t.match(/N[°º\.]\s*(?:de\s*)?(?:OPERACI[OÓ]N|COMPROBANTE|FOLIO|REFERENCIA)\s*:?\s*(\d{5,15})/i)?.[1] ||
+    t.match(/N[úu]mero\s+de\s+registro\s*:?\s*#?(\d+)/i)?.[1] ||
+    t.match(/N[°º\.]\s*(?:de\s*)?(?:OPERACI[OÓ]N|COMPROBANTE|FOLIO)\s*:?\s*(\d{5,15})/i)?.[1] ||
     null;
 
   // ── Fecha de operación/pago ──
+  // "Fecha operación: 13 de Abril del 2026"
   const payDateMatch =
-    t.match(/Fecha\s+operaci[oó]n\s*:\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
-    t.match(/Fecha\s+(?:de\s+)?(?:pago|transferencia)\s*:\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+    t.match(/Fecha\s+operaci[oó]n\s*:?\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
+    t.match(/Fecha\s+(?:de\s+)?(?:pago|transferencia)\s*:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
   const payment_date = payDateMatch ? toISODate(payDateMatch[1], payDateMatch[2], payDateMatch[3]) : null;
 
   // ── Fecha de vencimiento ──
+  // En la tabla BCI está concatenado: "...202628 de Abril del 2026$ 2.205.800"
+  // El vencimiento es la fecha que aparece justo antes de un "$ monto"
   const dueDateMatch =
-    t.match(/Vencimiento\s*:\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
-    t.match(/Vencimiento\s*:\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+    t.match(/(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})\s*\$/i) ||
+    t.match(/Vencimiento\s*:?\s*(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
+    t.match(/Vencimiento\s*:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
   const due_date = dueDateMatch ? toISODate(dueDateMatch[1], dueDateMatch[2], dueDateMatch[3]) : null;
 
-  // ── Monto ──
-  const amtMatch =
-    t.match(/Monto\s*:\s*\$?\s*([\d\.,]+)/i) ||
-    t.match(/(?:TOTAL|IMPORTE)\s*:?\s*\$?\s*([\d\.,]+)/i);
-  const total_amount = parseAmt(amtMatch?.[1]);
+  // ── Monto pagado ──
+  // En la tabla BCI: "$ 2.205.800" — puede no tener ":" sino ser la primera aparición de $
+  const allAmounts = [...t.matchAll(/\$\s*([\d\.\s,]+)/g)].map(m => parseAmt(m[1])).filter(Boolean);
+  const total_amount = allAmounts[0] || null;
 
   // ── Pagador/cliente ──
-  const payerMatch = t.match(/Cliente\s*:\s*(.+?)(?=\s+Fecha|\s+N[\.°]|\s+Monto|\s*$)/i);
-  const payer_name = payerMatch?.[1]?.trim() || null;
+  const payer_name = t.match(/Cliente\s*:?\s*(.+?)(?=\s+Fecha)/i)?.[1]?.trim() || null;
 
   // ── Referencia a número de factura ──
+  // En tabla BCI concatenado: "1389.24227 de Febrero" → buscar formato "nnn.nnn" (factura chilena)
   const invRef =
-    t.match(/N[\.°º]?\s*Factura\s*:\s*([\d\.]+)/i)?.[1]?.replace(/\./g,'') ||
-    t.match(/(?:FACTURA|FACT\.?)\s*N?[°º]?\s*:?\s*([\d\.]{5,10})/i)?.[1]?.replace(/\./g,'') ||
+    t.match(/(\d{3}\.\d{3})/)?.[1]?.replace(/\./g,'') ||
+    t.match(/N[\.°º]?\s*Factura\s*:?\s*([\d\.]+)/i)?.[1]?.replace(/\./g,'') ||
     null;
 
   // ── Medio de pago ──
   const payMethod =
-    t.match(/(?:medio|forma|tipo)\s*(?:de\s*)?pago\s*:\s*([^\n,;]+)/i)?.[1]?.trim() ||
+    t.match(/(?:medio|forma|tipo)\s*(?:de\s*)?pago\s*:?\s*([^\n,;]+)/i)?.[1]?.trim() ||
     (t.match(/\btransferencia\b/i) ? 'Transferencia' : null) ||
     null;
 
