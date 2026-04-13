@@ -75,6 +75,15 @@ async function migrate() {
     await runMigration('036', 'chassis nullable',               m('036_chassis_nullable.sql'));
     await runMigration('037', 'bono condicion y tipo',          m('037_bono_condicion.sql'));
     await runMigration('038', 'color photos por modelo',        m('038_color_photos.sql'));
+    // 039: script JS (vendedor Maos)
+    if (!(await hasRun('039'))) {
+      const m039 = require('../../migrations/039_maos_seller');
+      await m039(db);
+      await markRan('039');
+      console.log('✓ Migration 039 (maos seller) applied');
+    }
+    await runMigration('040', 'branch photo',                   m('040_branch_photo.sql'));
+    await runMigration('041', 'supplier payments',              m('041_supplier_payments.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');

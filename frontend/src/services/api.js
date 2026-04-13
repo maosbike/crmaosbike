@@ -255,4 +255,21 @@ export const api = {
     return request('POST', `/sales/${id}/doc`, fd);
   },
   deleteSale: (id) => request('DELETE', `/sales/${id}`),
+
+  // Pagos a proveedor
+  extractSupplierPayment: (invoiceFile, receiptFile) => {
+    const fd = new FormData();
+    if (invoiceFile) fd.append('invoice', invoiceFile);
+    if (receiptFile) fd.append('receipt', receiptFile);
+    return request('POST', '/supplier-payments/extract', fd);
+  },
+  getSupplierPayments: (params) => request('GET', `/supplier-payments?${new URLSearchParams(params || {})}`),
+  getSupplierPayment:  (id) => request('GET', `/supplier-payments/${id}`),
+  createSupplierPayment: (data) => {
+    const fd = new FormData();
+    Object.entries(data).forEach(([k,v]) => { if (v !== null && v !== undefined && v !== '') fd.append(k, v); });
+    return request('POST', '/supplier-payments', fd);
+  },
+  updateSupplierPayment: (id, data) => request('PATCH', `/supplier-payments/${id}`, data),
+  deleteSupplierPayment: (id) => request('DELETE', `/supplier-payments/${id}`),
 };

@@ -69,6 +69,7 @@ app.use('/api/reassignments', require('./routes/reassignments'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
 app.use('/api/sales',  require('./routes/sales'));
+app.use('/api/supplier-payments', require('./routes/supplier-payments'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/priceimport', require('./routes/priceimport'));

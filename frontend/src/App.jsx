@@ -19,6 +19,7 @@ import { ImportView } from "./components/ImportView";
 import { StagingImportView } from "./components/StagingImportView";
 import { CalendarView } from "./components/CalendarView";
 import { NotifBell } from "./components/NotifBell";
+import { SupplierPaymentsView } from "./components/SupplierPaymentsView";
 
 export default function App(){
   const[user,setUser]=useState(null);
@@ -90,6 +91,7 @@ export default function App(){
     {id:"calendar",icon:Ic.cal,label:"Calendario"},
     {id:"inventory",icon:Ic.box,label:"Inventario"},
     {id:"sales",icon:Ic.sale,label:"Ventas"},
+    ...(["super_admin","admin_comercial","backoffice"].includes(r)?[{id:"supplier-payments",icon:Ic.invoice,label:"Pagos proveedor"}]:[]),
     {id:"catalog",icon:Ic.bike,label:"Catálogo"},
     ...(["super_admin","admin_comercial"].includes(r)?[{id:"reports",icon:Ic.chart,label:"Reportes"}]:[]),
     ...(r==="super_admin"?[{id:"admin",icon:Ic.gear,label:"Admin"},{id:"import",icon:Ic.dl,label:"Importar"},{id:"priceimport",icon:Ic.tag,label:"Importar Precios"}]:[]),
@@ -117,6 +119,7 @@ export default function App(){
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
           {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/>}
           {page==="sales"&&<SalesView user={user} realBranches={realBranches}/>}
+          {page==="supplier-payments"&&<SupplierPaymentsView user={user}/>}
           {page==="catalog"&&<CatalogView user={user}/>}
           {page==="reports"&&<ReportsView branches={realBranches}/>}
           {page==="admin"&&<AdminView/>}
