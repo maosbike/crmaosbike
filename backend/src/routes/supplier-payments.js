@@ -86,21 +86,24 @@ function extractInvoice(text) {
   const total_amount = parseAmt(totalMatch?.[1]);
 
   // ── Datos del vehículo ──
-  // Motor: captura completa incluyendo guiones y barras (H408E-0091072, G3T8E0028091)
-  const motor   = t.match(/N\s+MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-\/\.]*)/i)?.[1]?.trim() ||
-                  t.match(/N[°º]\s*MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-\/\.]*)/i)?.[1]?.trim() ||
-                  t.match(/MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-\/\.]*)/i)?.[1]?.trim() || null;
+  // Motor: captura TODO hasta el siguiente campo, luego quita espacios internos
+  // pdf-parse puede meter espacios (ej. "H408E -0091072") que truncan el valor
+  const motorRaw = (
+    t.match(/N\s+MOTOR\s*:\s*(.+?)(?=\s+N\s+DE\s+CHASIS|\s+COD\.?\s*MODELO|\s+COLOR|\s+MARCA|\s+ANO)/i) ||
+    t.match(/N[°º]\s*MOTOR\s*:?\s*(.+?)(?=\s+N\s+DE|\s+CHASIS|\s+COD|\s+COLOR|\s+MARCA)/i) ||
+    t.match(/MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-\/\.\s]*[A-Z0-9])/i)
+  )?.[1]?.trim() || null;
+  const motor = motorRaw ? motorRaw.replace(/\s+/g, '') : null;
 
   const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
                   t.match(/CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
 
-  // COD.MODELO — extraer valor limpio (ej. "FZ-S", "YZF-R3", "MT-03")
-  // Paso 1: capturar el código crudo (para en whitespace)
-  // Paso 2: limpiar sufijo de variante (letra sola tras dígito, ej. YZF-R3A → YZF-R3)
+  // COD.MODELO — capturar código y limpiar basura "0-A1" de pdf-parse
+  // Ej: "YZF-R3A 0 -A1" → captura "YZF-R3A", o si pegado "YZF-R3A0-A1" → limpia a "YZF-R3A"
   const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i) ||
                      t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i);
   const rawModel = modelMatch?.[1]?.trim() || null;
-  const model = rawModel ? rawModel.replace(/(\d)[A-Z]$/, '$1') : null;
+  const model = rawModel ? rawModel.replace(/0-?A\d*$/i, '').trim() : null;
 
   const colorMatch = t.match(/\bCOLOR\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i);
   const color = colorMatch?.[1]?.trim() || null;
