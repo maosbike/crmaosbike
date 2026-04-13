@@ -253,7 +253,7 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
        ) RETURNING *`,
       [
         finalStatus,                                        // $1  status
-        !isReserva,                                         // $2  added_as_sold
+        true,                                               // $2  added_as_sold: siempre true — no es stock real
         branch_id || null,                                  // $3
         year      ? parseInt(year)   : null,                // $4
         brand.trim().toUpperCase(),                         // $5

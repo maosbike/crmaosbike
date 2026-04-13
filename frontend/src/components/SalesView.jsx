@@ -783,8 +783,8 @@ const SEC = ({ children }) => (
 
 function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta' }) {
   const isReserva = noteType === 'reserva';
-  const [step,       setStep]     = useState(1);
-  const [hasInvUnit, setHasInvUnit] = useState(true);
+  const [step,       setStep]     = useState(0);
+  const [hasInvUnit, setHasInvUnit] = useState(null);
   const [invUnits,   setInvUnits] = useState([]);
   const [invSearch,  setInvSearch]= useState('');
   const [selUnit,    setSelUnit]  = useState(null);
@@ -885,8 +885,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const totals = computeTotals({ sale_price: form.sale_price, accessories: accs, discount, payMode, finPct, payLines, inscripcion: inclInscripcion });
 
   async function handleCreate() {
-    if (!selUnit) { setErr('Debés seleccionar una unidad del inventario'); return; }
+    if (!form.brand || !form.model) { setErr('Marca y modelo son obligatorios'); return; }
     if (!form.sold_by) { setErr('Vendedor obligatorio'); return; }
+    if (!selUnit && !form.branch_id) { setErr('Sucursal obligatoria'); return; }
+    if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
     setSaving(true); setErr('');
     try {
       const clientExtra = [
@@ -906,6 +908,15 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           sale_type: form.sale_type || null, sale_notes: clientExtra || null,
           client_name: form.client_name || null, client_rut: form.client_rut || null,
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
+        });
+      } else if (!selUnit) {
+        // Referencia comercial sin unidad de inventario — NO crea stock
+        await api.createSale({
+          ...form,
+          payment_method: payMode || null,
+          sale_notes: clientExtra || null,
+          status: isReserva ? 'reservada' : 'vendida',
+          invoice_amount: isReserva && abono ? parseInt(abono) : null,
         });
       } else if (selUnit && isReserva) {
         await api.updateInventory(selUnit.id, {
@@ -964,9 +975,36 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   return (
     <Modal onClose={onClose} title={modalTitle} wide>
 
+      {/* STEP 0 */}
+      {step === 0 && (
+        <div style={{ textAlign: 'center', padding: '28px 0' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
+            ¿La unidad ya está cargada en inventario?
+          </div>
+          <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 28 }}>
+            Si está en stock podés asociarla directamente.
+          </div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button onClick={() => { setHasInvUnit(true); setStep(1); }}
+              style={{ padding: '12px 28px', borderRadius: 10, border: '2px solid #0F172A',
+                       background: '#0F172A', color: '#fff', fontSize: 14, fontWeight: 700,
+                       cursor: 'pointer', fontFamily: 'inherit' }}>
+              Sí, está en stock
+            </button>
+            <button onClick={() => { setHasInvUnit(false); setStep(2); }}
+              style={{ padding: '12px 28px', borderRadius: 10, border: '2px solid #E5E7EB',
+                       background: '#F9FAFB', color: '#374151', fontSize: 14, fontWeight: 700,
+                       cursor: 'pointer', fontFamily: 'inherit' }}>
+              No, ingresar datos
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* STEP 1: Inventory */}
       {step === 1 && (
         <div>
+          <button onClick={() => setStep(0)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6B7280', marginBottom: 12, padding: 0, fontFamily: 'inherit' }}>← Volver</button>
           <input value={invSearch} onChange={e => setInvSearch(e.target.value)}
             placeholder="Buscar por modelo, chasis, color, sucursal..."
             style={{ ...S.inp, width: '100%', marginBottom: 12, fontSize: 13 }} />
@@ -1000,7 +1038,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       {step === 2 && (
         <div style={{ maxHeight: '72vh', overflowY: 'auto', paddingRight: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <button onClick={() => { resetForm(); setStep(1); }}
+            <button onClick={() => { resetForm(); setStep(0); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#6B7280', padding: 0, fontFamily: 'inherit' }}>
               ← Volver
             </button>
