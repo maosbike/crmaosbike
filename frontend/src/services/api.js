@@ -272,4 +272,5 @@ export const api = {
   },
   updateSupplierPayment: (id, data) => request('PATCH', `/supplier-payments/${id}`, data),
   deleteSupplierPayment: (id) => request('DELETE', `/supplier-payments/${id}`),
+  syncSupplierPaymentsFromDrive: () => request('POST', '/supplier-payments/sync-drive'),
 };

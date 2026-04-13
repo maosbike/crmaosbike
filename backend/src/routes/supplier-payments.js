@@ -281,4 +281,193 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+// ─── POST /sync-drive — leer PDFs de Drive y cruzar registros ────────────────
+router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
+  const FOLDER_FACTURAS     = '17IVqwsdoFTCpURC_eagy0qC2I_6DtpRr';
+  const FOLDER_COMPROBANTES = '1T6jxfQZrrqfVnsMb5p5-gubl0OGGPeKb';
+
+  // Validar que existan credenciales
+  const credsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!credsJson) {
+    return res.status(503).json({
+      error: 'Credenciales de Google no configuradas. Agregá GOOGLE_SERVICE_ACCOUNT_JSON en Railway.',
+    });
+  }
+
+  let creds;
+  try { creds = JSON.parse(credsJson); }
+  catch { return res.status(503).json({ error: 'GOOGLE_SERVICE_ACCOUNT_JSON no es JSON válido.' }); }
+
+  const { google }  = require('googleapis');
+  const { Readable } = require('stream');
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: creds,
+    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+  });
+  const drive = google.drive({ version: 'v3', auth });
+
+  // Listar PDFs de una carpeta
+  async function listPDFs(folderId) {
+    const files = [];
+    let pageToken = null;
+    do {
+      const resp = await drive.files.list({
+        q: `'${folderId}' in parents and mimeType='application/pdf' and trashed=false`,
+        fields: 'nextPageToken, files(id, name, webViewLink)',
+        pageSize: 100,
+        pageToken: pageToken || undefined,
+      });
+      files.push(...(resp.data.files || []));
+      pageToken = resp.data.nextPageToken;
+    } while (pageToken);
+    return files;
+  }
+
+  // Descargar PDF como Buffer
+  async function downloadPDF(fileId) {
+    const resp = await drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'arraybuffer' }
+    );
+    return Buffer.from(resp.data);
+  }
+
+  try {
+    const [facturas, comprobantes] = await Promise.all([
+      listPDFs(FOLDER_FACTURAS),
+      listPDFs(FOLDER_COMPROBANTES),
+    ]);
+
+    const results = { created: 0, updated: 0, skipped: 0, errors: [] };
+
+    // Map de comprobantes por nombre de archivo para cruce posterior
+    const comprobanteMap = {};
+    for (const f of comprobantes) {
+      comprobanteMap[f.name] = f;
+    }
+
+    // Procesar facturas
+    for (const factFile of facturas) {
+      try {
+        // Descargar y parsear factura
+        const buf = await downloadPDF(factFile.id);
+        const text = (await pdfParse(buf)).text;
+        const inv  = extractInvoice(text);
+
+        if (!inv.invoice_number) {
+          results.errors.push(`${factFile.name}: no se pudo extraer número de factura`);
+          continue;
+        }
+
+        // Buscar comprobante que haga match por número de factura en el nombre o contenido
+        let recData = null;
+        let recUrl  = null;
+        const invNum = inv.invoice_number.replace(/\./g,'');
+        const matchRec = comprobantes.find(c =>
+          c.name.replace(/\./g,'').includes(invNum) ||
+          c.name.replace(/[^0-9]/g,'').includes(invNum)
+        );
+        if (matchRec) {
+          try {
+            const recBuf = await downloadPDF(matchRec.id);
+            const recTxt = (await pdfParse(recBuf)).text;
+            recData = extractReceipt(recTxt);
+            recUrl  = matchRec.webViewLink;
+          } catch (e) { /* comprobante falla silenciosamente */ }
+        }
+
+        // ¿Ya existe el registro?
+        const { rows: existing } = await db.query(
+          `SELECT id FROM supplier_payments WHERE invoice_number = $1 LIMIT 1`,
+          [inv.invoice_number]
+        );
+
+        const payload = {
+          provider:        inv.provider,
+          invoice_number:  inv.invoice_number,
+          invoice_date:    inv.invoice_date,
+          due_date:        inv.due_date,
+          total_amount:    inv.total_amount,
+          brand:           inv.brand,
+          model:           inv.model,
+          color:           inv.color,
+          commercial_year: inv.commercial_year,
+          motor_num:       inv.motor_num,
+          chassis:         inv.chassis,
+          internal_code:   inv.internal_code,
+          invoice_url:     factFile.webViewLink,
+          ...(recData ? {
+            receipt_number: recData.receipt_number,
+            payment_date:   recData.payment_date,
+            payer_name:     recData.payer_name,
+            receipt_url:    recUrl,
+          } : {}),
+        };
+
+        if (existing[0]) {
+          // Actualizar solo campos no nulos (no pisar ediciones manuales)
+          const sets = [], params = [];
+          let idx = 1;
+          for (const [k, v] of Object.entries(payload)) {
+            if (v !== null && v !== undefined) {
+              sets.push(`${k} = COALESCE(${k}, $${idx++})`);
+              params.push(v);
+            }
+          }
+          if (sets.length) {
+            params.push(existing[0].id);
+            await db.query(
+              `UPDATE supplier_payments SET ${sets.join(', ')}, updated_at=NOW() WHERE id=$${idx}`,
+              params
+            );
+          }
+          results.updated++;
+        } else {
+          await db.query(
+            `INSERT INTO supplier_payments (
+               invoice_number, provider, invoice_date, due_date, total_amount,
+               brand, model, color, commercial_year, motor_num, chassis, internal_code,
+               invoice_url, receipt_number, payment_date, payer_name, receipt_url,
+               status, created_by
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'pendiente',$18)`,
+            [
+              payload.invoice_number, payload.provider||null,
+              payload.invoice_date||null, payload.due_date||null,
+              payload.total_amount||null,
+              payload.brand||null, payload.model||null, payload.color||null,
+              payload.commercial_year||null, payload.motor_num||null,
+              payload.chassis||null, payload.internal_code||null,
+              payload.invoice_url||null,
+              payload.receipt_number||null, payload.payment_date||null,
+              payload.payer_name||null, payload.receipt_url||null,
+              req.user.id,
+            ]
+          );
+          results.created++;
+        }
+      } catch (e) {
+        results.errors.push(`${factFile.name}: ${e.message}`);
+      }
+    }
+
+    res.json({
+      ok: true,
+      facturas_leidas:     facturas.length,
+      comprobantes_leidos: comprobantes.length,
+      ...results,
+    });
+  } catch (e) {
+    console.error('[SupPay/sync-drive]', e);
+    // Error de permisos de Drive es el más común
+    if (e.code === 403 || (e.message || '').includes('permission')) {
+      return res.status(403).json({
+        error: `Sin acceso a las carpetas de Drive. Compartí ambas carpetas con: ${creds.client_email}`,
+        service_account_email: creds.client_email,
+      });
+    }
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

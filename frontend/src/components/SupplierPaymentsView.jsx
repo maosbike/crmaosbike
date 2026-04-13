@@ -449,6 +449,19 @@ export function SupplierPaymentsView({ user }) {
   const [selected,  setSelected]  = useState(null);
   const [q,         setQ]         = useState('');
   const [fStatus,   setFStatus]   = useState('');
+  const [syncing,   setSyncing]   = useState(false);
+  const [syncResult,setSyncResult]= useState(null);
+
+  const handleSyncDrive = async () => {
+    setSyncing(true); setSyncResult(null);
+    try {
+      const res = await api.syncSupplierPaymentsFromDrive();
+      setSyncResult({ ok: true, ...res });
+      load();
+    } catch (e) {
+      setSyncResult({ ok: false, error: e.message });
+    } finally { setSyncing(false); }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -481,11 +494,35 @@ export function SupplierPaymentsView({ user }) {
         </div>
         <div style={{ flex:1 }}/>
         {canCreate && (
-          <button onClick={()=>setShowNew(true)} style={{ ...S.btn, display:'flex', alignItems:'center', gap:6 }}>
-            <span style={{ fontSize:16, lineHeight:1 }}>+</span> Nuevo pago
-          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={handleSyncDrive} disabled={syncing}
+              style={{ ...S.btn2, display:'flex', alignItems:'center', gap:6, fontWeight:700, fontSize:12 }}>
+              {syncing ? '⏳ Sincronizando…' : '🔄 Actualizar desde Drive'}
+            </button>
+            <button onClick={()=>setShowNew(true)} style={{ ...S.btn, display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:16, lineHeight:1 }}>+</span> Nuevo pago
+            </button>
+          </div>
         )}
       </div>
+
+      {/* Banner resultado sync */}
+      {syncResult && (
+        <div style={{ marginBottom:12, padding:'10px 14px', borderRadius:10, fontSize:12,
+          background: syncResult.ok ? '#F0FDF4' : '#FEF2F2',
+          border: `1px solid ${syncResult.ok ? '#86EFAC' : '#FECACA'}`,
+          color: syncResult.ok ? '#065F46' : '#991B1B',
+          display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontSize:18 }}>{syncResult.ok ? '✅' : '❌'}</span>
+          {syncResult.ok
+            ? `Sync OK — ${syncResult.created} nuevo${syncResult.created!==1?'s':''}, ${syncResult.updated} actualizado${syncResult.updated!==1?'s':''} · ${syncResult.facturas_leidas} facturas / ${syncResult.comprobantes_leidos} comprobantes leídos`
+            : syncResult.error}
+          {syncResult.ok && syncResult.errors?.length > 0 && (
+            <span style={{ marginLeft:8, color:'#92400E' }}>· {syncResult.errors.length} con error</span>
+          )}
+          <button onClick={()=>setSyncResult(null)} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', fontSize:16, opacity:0.5 }}>×</button>
+        </div>
+      )}
 
       {/* Filtros */}
       <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center', flexWrap:'wrap' }}>
