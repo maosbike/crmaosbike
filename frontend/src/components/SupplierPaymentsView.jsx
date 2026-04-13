@@ -441,7 +441,7 @@ function Row({ label, value, bold, mono, highlight, half }) {
 // ─── Vista principal ──────────────────────────────────────────────────────────
 export function SupplierPaymentsView({ user }) {
   const isSuperAdmin = user.role === 'super_admin';
-  const canCreate    = ['super_admin','admin_comercial','backoffice'].includes(user.role);
+  const canCreate    = ['super_admin','backoffice'].includes(user.role);
 
   const [payments,  setPayments]  = useState([]);
   const [loading,   setLoading]   = useState(true);

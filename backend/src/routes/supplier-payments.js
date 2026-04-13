@@ -123,7 +123,7 @@ function extractReceipt(text) {
 }
 
 // ─── POST /extract — extraer datos de uno o dos PDFs ─────────────────────────
-router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
+router.post('/extract', roleCheck('super_admin','backoffice'),
   upload.fields([{ name:'invoice', maxCount:1 }, { name:'receipt', maxCount:1 }]),
   async (req, res) => {
     try {
@@ -161,7 +161,7 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
 );
 
 // ─── POST / — crear registro ──────────────────────────────────────────────────
-router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
+router.post('/', roleCheck('super_admin','backoffice'),
   upload.fields([{ name:'invoice', maxCount:1 }, { name:'receipt', maxCount:1 }]),
   async (req, res) => {
     try {
@@ -249,7 +249,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // ─── PATCH /:id ───────────────────────────────────────────────────────────────
-router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), async (req, res) => {
+router.patch('/:id', roleCheck('super_admin','backoffice'), async (req, res) => {
   try {
     const FIELDS = [
       'provider','invoice_number','invoice_date','due_date','payment_date',
