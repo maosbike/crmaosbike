@@ -75,12 +75,19 @@ async function migrate() {
     await runMigration('036', 'chassis nullable',               m('036_chassis_nullable.sql'));
     await runMigration('037', 'bono condicion y tipo',          m('037_bono_condicion.sql'));
     await runMigration('038', 'color photos por modelo',        m('038_color_photos.sql'));
-    // 039: script JS (vendedor Maos)
+    // 039: script JS (vendedor Maos) — solo si el archivo existe
     if (!(await hasRun('039'))) {
-      const m039 = require('../../migrations/039_maos_seller');
-      await m039(db);
-      await markRan('039');
-      console.log('✓ Migration 039 (maos seller) applied');
+      try {
+        const m039 = require('../../migrations/039_maos_seller');
+        await m039(db);
+        await markRan('039');
+        console.log('✓ Migration 039 (maos seller) applied');
+      } catch (e) {
+        if (e.code === 'MODULE_NOT_FOUND') {
+          await markRan('039');
+          console.log('↩ Migration 039 (maos seller) skipped — archivo no encontrado');
+        } else { throw e; }
+      }
     }
     await runMigration('040', 'branch photo',                   m('040_branch_photo.sql'));
     await runMigration('041', 'supplier payments',              m('041_supplier_payments.sql'));
