@@ -228,6 +228,7 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
           banco:           receiptData.banco,
           payment_method:  receiptData.payment_method,
           total_amount:    invoiceData?.total_amount || receiptData.total_amount,
+          paid_amount:     receiptData.total_amount,   // monto del comprobante = lo que se pagó
           invoice_number:  invoiceData?.invoice_number || receiptData.invoice_ref || null,
         } : {}),
       };
@@ -498,6 +499,7 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
             payer_name:      recData.payer_name,
             banco:           recData.banco,
             payment_method:  recData.payment_method,
+            paid_amount:     recData.total_amount,   // monto del comprobante = lo pagado
             receipt_url:     recUrl,
           } : {}),
         };
@@ -523,24 +525,24 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           await db.query(
             `INSERT INTO supplier_payments (
                invoice_number, provider, invoice_date, due_date, total_amount,
-               neto, iva,
+               neto, iva, paid_amount,
                brand, model, color, commercial_year, motor_num, chassis, internal_code,
                invoice_url, receipt_number, payment_date, payer_name,
                banco, payment_method, receipt_url,
                status, created_by
              ) VALUES (
                $1,$2,$3,$4,$5,
-               $6,$7,
-               $8,$9,$10,$11,$12,$13,$14,
-               $15,$16,$17,$18,
-               $19,$20,$21,
-               'pendiente',$22
+               $6,$7,$8,
+               $9,$10,$11,$12,$13,$14,$15,
+               $16,$17,$18,$19,
+               $20,$21,$22,
+               'pendiente',$23
              )`,
             [
               payload.invoice_number, payload.provider||null,
               payload.invoice_date||null, payload.due_date||null,
               payload.total_amount||null,
-              payload.neto||null, payload.iva||null,
+              payload.neto||null, payload.iva||null, payload.paid_amount||null,
               payload.brand||null, payload.model||null, payload.color||null,
               payload.commercial_year||null, payload.motor_num||null,
               payload.chassis||null, payload.internal_code||null,
