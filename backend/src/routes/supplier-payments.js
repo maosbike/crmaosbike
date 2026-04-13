@@ -107,11 +107,14 @@ function extractInvoice(text) {
 
   const internalCode = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9\-]+)/i)?.[1]?.trim() || null;
 
+  // Proveedor = marca (YAMAHA), no el nombre del importador
+  const resolvedProvider = brand || provider;
+
   return {
-    provider,
-    invoice_number: invN,
+    provider:        resolvedProvider,
+    invoice_number:  invN,
     invoice_date,
-    due_date:       null,
+    due_date:        null,
     total_amount,
     neto,
     iva,
@@ -225,6 +228,12 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
           invoice_number:  invoiceData?.invoice_number || receiptData.invoice_ref || null,
         } : {}),
       };
+      // Fallback: si no hay due_date, calcular como invoice_date + 1 mes
+      if (!merged.due_date && merged.invoice_date) {
+        const d = new Date(merged.invoice_date + 'T12:00:00');
+        d.setMonth(d.getMonth() + 1);
+        merged.due_date = d.toISOString().slice(0, 10);
+      }
 
       res.json({ invoice: invoiceData, receipt: receiptData, merged });
     } catch (e) {
@@ -454,11 +463,20 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           [inv.invoice_number]
         );
 
+        // Fallback due_date = invoice_date + 1 mes
+        const rawDueDate = inv.due_date || recData?.due_date || null;
+        let computedDueDate = rawDueDate;
+        if (!computedDueDate && inv.invoice_date) {
+          const d = new Date(inv.invoice_date + 'T12:00:00');
+          d.setMonth(d.getMonth() + 1);
+          computedDueDate = d.toISOString().slice(0, 10);
+        }
+
         const payload = {
           provider:        inv.provider,
           invoice_number:  inv.invoice_number,
           invoice_date:    inv.invoice_date,
-          due_date:        inv.due_date || recData?.due_date || null,
+          due_date:        computedDueDate,
           total_amount:    inv.total_amount,
           neto:            inv.neto,
           iva:             inv.iva,

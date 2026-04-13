@@ -23,8 +23,21 @@ function fmtCLP(n) {
 }
 function fDate(s) {
   if (!s) return '—';
-  const d = new Date(s + 'T12:00:00');
-  return isNaN(d) ? s : d.toLocaleDateString('es-CL');
+  const part = String(s).slice(0, 10); // 'YYYY-MM-DD' (handles ISO strings too)
+  const [y, m, d] = part.split('-');
+  if (!y || !m || !d) return s;
+  return `${d}/${m}/${y}`;
+}
+
+// Calcula vencimiento: campo propio o factura + 1 mes
+function getDueDate(p) {
+  if (p.due_date) return p.due_date;
+  if (p.invoice_date) {
+    const d = new Date(String(p.invoice_date).slice(0,10) + 'T12:00:00');
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0,10);
+  }
+  return null;
 }
 
 // ─── Campo de formulario ──────────────────────────────────────────────────────
@@ -408,7 +421,7 @@ function DetailModal({ payment: p0, onClose, onUpdated, onDeleted, isSuperAdmin 
                 <DRow label="Proveedor"     value={p.provider}                        span/>
                 <DRow label="N° Factura"    value={p.invoice_number}      mono bold/>
                 <DRow label="Fecha emisión" value={fDate(p.invoice_date)}/>
-                <DRow label="Vencimiento"   value={fDate(p.due_date)}/>
+                <DRow label="Vencimiento"   value={fDate(getDueDate(p))}/>
                 <DRow label="Neto"          value={fmtCLP(p.neto)}/>
                 <DRow label="IVA"           value={fmtCLP(p.iva)}/>
                 <DRow label="Total"         value={fmtCLP(p.total_amount)} bold accent/>
@@ -610,12 +623,14 @@ export function SupplierPaymentsView({ user }) {
           <thead>
             <tr style={{ background:'#FAFAFA', borderBottom:'2px solid #F1F3F5' }}>
               {[
-                'Estado', 'N° Factura', 'Proveedor',
-                'F. Factura', 'Vencimiento', 'F. Pago',
-                'Neto', 'IVA', 'Total',
-                'N° Comprobante', 'Banco', 'Vehículo', 'Archivos',
-              ].map(h => (
-                <th key={h} style={{ padding:'9px 10px', textAlign:'left', fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>
+                ['Estado',''],['N° Factura',''],['Proveedor',''],
+                ['Modelo','fw'],['Color',''],['Año',''],
+                ['N° Chasis','fw'],['N° Motor','fw'],
+                ['Neto','r'],['IVA','r'],['Total','r'],
+                ['F. Factura',''],['Vencimiento',''],['F. Pago',''],
+                ['N° Comp.',''],['Banco',''],['Arch.',''],
+              ].map(([h,cls]) => (
+                <th key={h} style={{ padding:'9px 10px', textAlign: cls==='r'?'right':'left', fontSize:10, fontWeight:700, color: cls==='fw'?'#374151':'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>
                   {h}
                 </th>
               ))}
@@ -623,78 +638,81 @@ export function SupplierPaymentsView({ user }) {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={13} style={{ padding:32, textAlign:'center', color:'#9CA3AF' }}>Cargando...</td></tr>
+              <tr><td colSpan={17} style={{ padding:32, textAlign:'center', color:'#9CA3AF' }}>Cargando...</td></tr>
             )}
             {!loading && payments.length === 0 && (
-              <tr><td colSpan={13} style={{ padding:48, textAlign:'center', color:'#9CA3AF' }}>
+              <tr><td colSpan={17} style={{ padding:48, textAlign:'center', color:'#9CA3AF' }}>
                 <div style={{ fontWeight:600, marginBottom:4 }}>Sin registros</div>
                 <div style={{ fontSize:11 }}>Registrá el primer pago a proveedor</div>
               </td></tr>
             )}
             {!loading && payments.map(p => {
-              const sc = STATUS_CFG[p.status] || STATUS_CFG.pendiente;
+              const sc  = STATUS_CFG[p.status] || STATUS_CFG.pendiente;
+              const due = getDueDate(p);
+              const overdue = p.status==='pendiente' && due && new Date(due.slice(0,10)+'T12:00:00') < new Date();
               return (
                 <tr key={p.id} onClick={()=>setSelected(p)}
                   style={{ borderBottom:'1px solid #F3F4F6', cursor:'pointer' }}
                   onMouseEnter={e=>e.currentTarget.style.background='#FAFBFF'}
                   onMouseLeave={e=>e.currentTarget.style.background=''}>
-                  {/* Estado */}
                   <td style={{ padding:'9px 10px', whiteSpace:'nowrap' }}>
                     <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:12,
-                      background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>
-                      {sc.label}
-                    </span>
+                      background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{sc.label}</span>
                   </td>
-                  {/* N° Factura */}
                   <td style={{ padding:'9px 10px', fontFamily:'monospace', fontWeight:700, color:'#0F172A', whiteSpace:'nowrap' }}>
                     {p.invoice_number || '—'}
                   </td>
-                  {/* Proveedor */}
-                  <td style={{ padding:'9px 10px', color:'#374151', maxWidth:130, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  <td style={{ padding:'9px 10px', color:'#374151', maxWidth:100, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {p.provider || '—'}
                   </td>
-                  {/* F. Factura */}
-                  <td style={{ padding:'9px 10px', color:'#6B7280', whiteSpace:'nowrap' }}>{fDate(p.invoice_date)}</td>
-                  {/* Vencimiento */}
-                  <td style={{ padding:'9px 10px', color: p.status==='pendiente'&&p.due_date&&new Date(p.due_date)<new Date() ? '#DC2626' : '#6B7280', whiteSpace:'nowrap', fontWeight: p.status==='pendiente'&&p.due_date&&new Date(p.due_date)<new Date() ? 700 : 400 }}>
-                    {fDate(p.due_date)}
+                  {/* Vehículo — prominente */}
+                  <td style={{ padding:'9px 10px', fontWeight:700, color:'#0F172A', whiteSpace:'nowrap' }}>
+                    {p.model || '—'}
                   </td>
-                  {/* F. Pago */}
-                  <td style={{ padding:'9px 10px', color:'#6B7280', whiteSpace:'nowrap' }}>{fDate(p.payment_date)}</td>
-                  {/* Neto */}
+                  <td style={{ padding:'9px 10px', color:'#374151', whiteSpace:'nowrap' }}>
+                    {p.color || '—'}
+                  </td>
+                  <td style={{ padding:'9px 10px', color:'#374151', whiteSpace:'nowrap' }}>
+                    {p.commercial_year || '—'}
+                  </td>
+                  <td style={{ padding:'9px 10px', fontFamily:'monospace', fontSize:11, color:'#0F172A', whiteSpace:'nowrap' }}>
+                    {p.chassis || '—'}
+                  </td>
+                  <td style={{ padding:'9px 10px', fontFamily:'monospace', fontSize:11, color:'#374151', whiteSpace:'nowrap' }}>
+                    {p.motor_num || '—'}
+                  </td>
+                  {/* Importes */}
                   <td style={{ padding:'9px 10px', color:'#6B7280', whiteSpace:'nowrap', textAlign:'right' }}>{fmtCLP(p.neto)}</td>
-                  {/* IVA */}
                   <td style={{ padding:'9px 10px', color:'#6B7280', whiteSpace:'nowrap', textAlign:'right' }}>{fmtCLP(p.iva)}</td>
-                  {/* Total */}
                   <td style={{ padding:'9px 10px', fontWeight:700, color:'#0F172A', whiteSpace:'nowrap', textAlign:'right' }}>{fmtCLP(p.total_amount)}</td>
-                  {/* N° Comprobante */}
-                  <td style={{ padding:'9px 10px', fontFamily:'monospace', color:'#6B7280', whiteSpace:'nowrap' }}>
+                  {/* Fechas — menos protagonismo */}
+                  <td style={{ padding:'9px 10px', color:'#9CA3AF', whiteSpace:'nowrap', fontSize:11 }}>{fDate(p.invoice_date)}</td>
+                  <td style={{ padding:'9px 10px', whiteSpace:'nowrap', fontSize:11,
+                    color: overdue ? '#DC2626' : '#9CA3AF',
+                    fontWeight: overdue ? 700 : 400 }}>
+                    {fDate(due)}
+                  </td>
+                  <td style={{ padding:'9px 10px', color:'#9CA3AF', whiteSpace:'nowrap', fontSize:11 }}>{fDate(p.payment_date)}</td>
+                  {/* Comprobante + banco */}
+                  <td style={{ padding:'9px 10px', fontFamily:'monospace', fontSize:11, color:'#6B7280', whiteSpace:'nowrap' }}>
                     {p.receipt_number || '—'}
                   </td>
-                  {/* Banco */}
-                  <td style={{ padding:'9px 10px', color:'#374151', maxWidth:110, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  <td style={{ padding:'9px 10px', color:'#6B7280', maxWidth:100, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:11 }}>
                     {p.banco || '—'}
-                  </td>
-                  {/* Vehículo */}
-                  <td style={{ padding:'9px 10px', color:'#374151', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {[p.brand, p.model, p.commercial_year].filter(Boolean).join(' ')}
-                    {p.chassis && <span style={{ marginLeft:4, fontSize:10, color:'#9CA3AF', fontFamily:'monospace' }}>({p.chassis})</span>}
                   </td>
                   {/* Archivos */}
                   <td style={{ padding:'9px 10px' }}>
-                    <div style={{ display:'flex', gap:6 }}>
+                    <div style={{ display:'flex', gap:4 }}>
                       {p.invoice_url && (
-                        <a href={p.invoice_url} target="_blank" rel="noreferrer"
-                          onClick={e=>e.stopPropagation()}
-                          style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, background:'#FFF7ED', border:'1px solid #FDBA74', color:'#EA580C', textDecoration:'none', whiteSpace:'nowrap' }}>
-                          Factura
+                        <a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                          style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:5, background:'#FFF7ED', border:'1px solid #FDBA74', color:'#EA580C', textDecoration:'none', whiteSpace:'nowrap' }}>
+                          Fact.
                         </a>
                       )}
                       {p.receipt_url && (
-                        <a href={p.receipt_url} target="_blank" rel="noreferrer"
-                          onClick={e=>e.stopPropagation()}
-                          style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, background:'#EFF6FF', border:'1px solid #BFDBFE', color:'#2563EB', textDecoration:'none', whiteSpace:'nowrap' }}>
-                          Comprobante
+                        <a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                          style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:5, background:'#EFF6FF', border:'1px solid #BFDBFE', color:'#2563EB', textDecoration:'none', whiteSpace:'nowrap' }}>
+                          Comp.
                         </a>
                       )}
                     </div>
