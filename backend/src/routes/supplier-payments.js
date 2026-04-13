@@ -11,6 +11,47 @@ const pdfParse   = require('pdf-parse');
 
 router.use(auth);
 
+// ─── Auto-match model to catalog ─────────────────────────────────────────────
+async function resolveModelId(brand, model) {
+  if (!model) return null;
+  const m = model.trim();
+  const b = (brand || '').trim();
+
+  // 1. Exact match on code or model name (same brand)
+  let q = await db.query(
+    `SELECT id FROM moto_models
+     WHERE active=true AND LOWER(brand)=LOWER($1)
+       AND (LOWER(model)=LOWER($2) OR LOWER(code)=LOWER($2) OR LOWER(normalized_model)=LOWER($2))
+     LIMIT 1`,
+    [b, m]
+  );
+  if (q.rows[0]) return q.rows[0].id;
+
+  // 2. model_aliases
+  q = await db.query(
+    `SELECT ma.model_id FROM model_aliases ma
+     JOIN moto_models mm ON mm.id=ma.model_id
+     WHERE mm.active=true AND LOWER(ma.alias)=LOWER($1)
+     LIMIT 1`,
+    [m]
+  );
+  if (q.rows[0]) return q.rows[0].model_id;
+
+  // 3. Fuzzy: model contains or starts-with (same brand)
+  if (b) {
+    q = await db.query(
+      `SELECT id FROM moto_models
+       WHERE active=true AND LOWER(brand)=LOWER($1)
+         AND (LOWER(model) LIKE LOWER($2)||'%' OR LOWER($2) LIKE LOWER(model)||'%')
+       LIMIT 1`,
+      [b, m]
+    );
+    if (q.rows[0]) return q.rows[0].id;
+  }
+
+  return null;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
@@ -292,6 +333,9 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
         }
       }
 
+      // Auto-match model to catalog
+      const model_id = await resolveModelId(brand, model);
+
       const { rows } = await db.query(
         `INSERT INTO supplier_payments (
            provider, invoice_number, invoice_date, due_date, payment_date,
@@ -299,14 +343,14 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
            receipt_number, payer_name,
            brand, model, color, commercial_year, motor_num, chassis, internal_code,
            invoice_url, receipt_url, notes, status,
-           payment_method, banco, created_by
+           payment_method, banco, model_id, created_by
          ) VALUES (
            $1,$2,$3,$4,$5,
            $6,$7,$8,$9,
            $10,$11,
            $12,$13,$14,$15,$16,$17,$18,
            $19,$20,$21,$22,
-           $23,$24,$25
+           $23,$24,$25,$26
          ) RETURNING *`,
         [
           provider||null, invoice_number||null,
@@ -322,6 +366,7 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
           invoice_url, receipt_url,
           notes||null, status||'pendiente',
           payment_method||null, banco||null,
+          model_id,
           req.user.id,
         ]
       );
@@ -348,7 +393,13 @@ router.get('/', async (req, res) => {
     }
     const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const { rows } = await db.query(
-      `SELECT * FROM supplier_payments ${clause} ORDER BY created_at DESC`, params
+      `SELECT sp.*,
+        mm.image_url AS catalog_image,
+        mm.commercial_name AS catalog_name,
+        mm.color_photos AS catalog_color_photos
+       FROM supplier_payments sp
+       LEFT JOIN moto_models mm ON mm.id = sp.model_id
+       ${clause} ORDER BY sp.created_at DESC`, params
     );
     res.json({ data: rows, total: rows.length });
   } catch (e) { console.error('[SupPay] GET', e); res.status(500).json({ error: 'Error' }); }
@@ -357,7 +408,14 @@ router.get('/', async (req, res) => {
 // ─── GET /:id ─────────────────────────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM supplier_payments WHERE id=$1', [req.params.id]);
+    const { rows } = await db.query(
+      `SELECT sp.*,
+        mm.image_url AS catalog_image,
+        mm.commercial_name AS catalog_name,
+        mm.color_photos AS catalog_color_photos
+       FROM supplier_payments sp
+       LEFT JOIN moto_models mm ON mm.id = sp.model_id
+       WHERE sp.id=$1`, [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: 'Error' }); }
@@ -492,6 +550,9 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           computedDueDate = d.toISOString().slice(0, 10);
         }
 
+        // Auto-match model to catalog
+        const matchedModelId = await resolveModelId(inv.brand, inv.model);
+
         const payload = {
           provider:        inv.provider,
           invoice_number:  inv.invoice_number,
@@ -508,6 +569,7 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           chassis:         inv.chassis,
           internal_code:   inv.internal_code,
           invoice_url:     factFile.webViewLink,
+          model_id:        matchedModelId,
           ...(recData ? {
             receipt_number:  recData.receipt_number,
             payment_date:    recData.payment_date,
@@ -544,14 +606,14 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
                brand, model, color, commercial_year, motor_num, chassis, internal_code,
                invoice_url, receipt_number, payment_date, payer_name,
                banco, payment_method, receipt_url,
-               status, created_by
+               model_id, status, created_by
              ) VALUES (
                $1,$2,$3,$4,$5,
                $6,$7,$8,
                $9,$10,$11,$12,$13,$14,$15,
                $16,$17,$18,$19,
                $20,$21,$22,
-               'pendiente',$23
+               $23,'pendiente',$24
              )`,
             [
               payload.invoice_number, payload.provider||null,
@@ -566,6 +628,7 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
               payload.payer_name||null,
               payload.banco||null, payload.payment_method||null,
               payload.receipt_url||null,
+              payload.model_id||null,
               req.user.id,
             ]
           );

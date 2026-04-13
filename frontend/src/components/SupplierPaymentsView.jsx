@@ -36,6 +36,17 @@ function useBP() {
   return bp;
 }
 
+/* ── Catalog image helper ───────────────────────────────────────────────── */
+function motoImg(p) {
+  // Try color_photos match first, then catalog main image
+  if (p.catalog_color_photos && p.color) {
+    const cp = (typeof p.catalog_color_photos === 'string' ? JSON.parse(p.catalog_color_photos) : p.catalog_color_photos) || [];
+    const match = cp.find(c => c.color && p.color && c.color.toLowerCase() === p.color.toLowerCase());
+    if (match?.url) return match.url;
+  }
+  return p.catalog_image || null;
+}
+
 /* ── Shared inline style tokens (matching CRM palette) ─────────────────── */
 const lbl9 = { display:'block', fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:5 };
 const secTitle = (color='#374151') => ({ fontSize:9, fontWeight:800, color, textTransform:'uppercase', letterSpacing:'0.14em', paddingBottom:7, marginBottom:10, borderBottom:`2px solid ${color}22` });
@@ -313,6 +324,15 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
             <div style={secCard}>
               <div style={{padding:'14px 16px'}}>
                 <div style={secTitle('#374151')}>Vehiculo</div>
+                {motoImg(p)&&(
+                  <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12,padding:'10px 14px',background:'#F9FAFB',borderRadius:10,border:'1px solid #E5E7EB'}}>
+                    <img src={motoImg(p)} alt="" style={{width:80,height:60,objectFit:'contain',borderRadius:8,border:'1px solid #E5E7EB',background:'#fff'}}/>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:800,color:'#0F172A'}}>{p.catalog_name||p.model}</div>
+                      {p.color&&<div style={{fontSize:11,color:'#6B7280'}}>{p.color} {p.commercial_year?`- ${p.commercial_year}`:''}</div>}
+                    </div>
+                  </div>
+                )}
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
                   <DR label="Marca" value={p.brand}/>
                   <DR label="Modelo" value={p.model} bold/>
@@ -341,12 +361,15 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
 function Card({ p, onClick }) {
   const dv = due(p);
   const ov = dv && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
+  const img = motoImg(p);
   return (
     <div onClick={onClick} style={{ ...S.card, cursor:'pointer', marginBottom:10 }}>
-      <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
-        <span style={{ fontFamily:'inherit',fontWeight:800,fontSize:13,color:'#0F172A' }}>{p.invoice_number||'-'}</span>
-        {p.model&&<span style={{ fontSize:11,fontWeight:600,color:'#374151' }}>{p.model}</span>}
-        <span style={{ flex:1 }}/>
+      <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
+        {img&&<img src={img} alt="" style={{width:48,height:36,objectFit:'contain',borderRadius:6,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:'inherit',fontWeight:800,fontSize:13,color:'#0F172A'}}>{p.invoice_number||'-'}</div>
+          {p.model&&<div style={{fontSize:11,fontWeight:600,color:'#374151'}}>{p.catalog_name||p.model}</div>}
+        </div>
         <span style={{ fontWeight:800,fontSize:14,color:'#0F172A' }}>{$(p.total_amount)}</span>
       </div>
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 12px',fontSize:12,fontFamily:'inherit' }}>
@@ -483,12 +506,18 @@ export function SupplierPaymentsView({ user }) {
               {!loading&&data.map(p=>{
                 const dv=due(p);
                 const ov=dv&&new Date(dv.slice(0,10)+'T12:00:00')<new Date();
+                const img=motoImg(p);
                 return(
                   <tr key={p.id} onClick={()=>setSel(p)} style={{borderBottom:'1px solid #F3F4F6',cursor:'pointer'}}
                     onMouseEnter={e=>e.currentTarget.style.background='#F9FAFB'}
                     onMouseLeave={e=>e.currentTarget.style.background=''}>
                     <td style={td({fontWeight:800,color:'#0F172A'})}>{p.invoice_number||'-'}</td>
-                    <td style={td({fontWeight:700,color:'#0F172A'})}>{p.model||'-'}</td>
+                    <td style={td({fontWeight:700,color:'#0F172A'})}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        {img&&<img src={img} alt="" style={{width:32,height:24,objectFit:'contain',borderRadius:4,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>}
+                        {p.catalog_name||p.model||'-'}
+                      </div>
+                    </td>
                     <td style={td()}>{p.color||'-'}</td>
                     <td style={td()}>{p.commercial_year||'-'}</td>
                     <td style={td({color:'#0F172A',fontSize:11})}>{p.chassis||'-'}</td>
