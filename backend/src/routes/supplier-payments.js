@@ -287,10 +287,10 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
   const FOLDER_COMPROBANTES = '1T6jxfQZrrqfVnsMb5p5-gubl0OGGPeKb';
 
   // Validar que existan credenciales
-  const credsJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const credsJson = process.env.GCLOUD_CREDS;
   if (!credsJson) {
     return res.status(503).json({
-      error: 'Credenciales de Google no configuradas. Agregá GOOGLE_SERVICE_ACCOUNT_JSON en Railway.',
+      error: 'Credenciales de Google no configuradas. Agregá GCLOUD_CREDS en Railway.',
     });
   }
 
