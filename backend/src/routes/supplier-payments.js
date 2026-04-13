@@ -86,16 +86,19 @@ function extractInvoice(text) {
   const total_amount = parseAmt(totalMatch?.[1]);
 
   // ── Datos del vehículo ──
-  const motor   = t.match(/N\s+MOTOR\s*:\s*([A-Z0-9]+)/i)?.[1]?.trim() ||
-                  t.match(/N[°º]\s*MOTOR\s*:?\s*([A-Z0-9]+)/i)?.[1]?.trim() || null;
+  // Motor: incluye guiones (H408E-0091072)
+  const motor   = t.match(/N\s+MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
+                  t.match(/N[°º]\s*MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
 
-  const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9]+)/i)?.[1]?.trim() ||
-                  t.match(/CHASIS\s*:\s*([A-Z0-9]+)/i)?.[1]?.trim() || null;
+  const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
+                  t.match(/CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
 
-  // COD.MODELO es el código/nombre del modelo
-  const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-\s]*?)(?=\s+[A-Z]{2,}\s*:|$)/i) ||
-                     t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-\s]*?)(?=\s+[A-Z]{2,}|$)/i);
-  const model = modelMatch?.[1]?.trim() || null;
+  // COD.MODELO — extraer valor limpio (ej. "FZ-S"), descartar basura trailing
+  const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i) ||
+                     t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i);
+  const rawModel = modelMatch?.[1]?.trim() || null;
+  // Limpieza: quitar sufijos tipo "- A1", "  B2", etc.
+  const model = rawModel ? rawModel.replace(/\s*[-–]\s*[A-Z0-9]{1,4}$/, '').trim() : null;
 
   const colorMatch = t.match(/\bCOLOR\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i);
   const color = colorMatch?.[1]?.trim() || null;
@@ -250,7 +253,7 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
     try {
       const {
         provider, invoice_number, invoice_date, due_date, payment_date,
-        total_amount, neto, iva, receipt_number, payer_name,
+        total_amount, neto, iva, paid_amount, receipt_number, payer_name,
         brand, model, color, commercial_year, motor_num, chassis, internal_code,
         notes, status, payment_method, banco,
         invoice_url: bodyInvUrl, receipt_url: bodyRecUrl,
@@ -276,25 +279,26 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
       const { rows } = await db.query(
         `INSERT INTO supplier_payments (
            provider, invoice_number, invoice_date, due_date, payment_date,
-           total_amount, neto, iva,
+           total_amount, neto, iva, paid_amount,
            receipt_number, payer_name,
            brand, model, color, commercial_year, motor_num, chassis, internal_code,
            invoice_url, receipt_url, notes, status,
            payment_method, banco, created_by
          ) VALUES (
            $1,$2,$3,$4,$5,
-           $6,$7,$8,
-           $9,$10,
-           $11,$12,$13,$14,$15,$16,$17,
-           $18,$19,$20,$21,
-           $22,$23,$24
+           $6,$7,$8,$9,
+           $10,$11,
+           $12,$13,$14,$15,$16,$17,$18,
+           $19,$20,$21,$22,
+           $23,$24,$25
          ) RETURNING *`,
         [
           provider||null, invoice_number||null,
           invoice_date||null, due_date||null, payment_date||null,
-          total_amount ? parseInt(total_amount) : null,
-          neto         ? parseInt(neto)         : null,
-          iva          ? parseInt(iva)          : null,
+          total_amount  ? parseInt(total_amount)  : null,
+          neto          ? parseInt(neto)          : null,
+          iva           ? parseInt(iva)           : null,
+          paid_amount   ? parseInt(paid_amount)   : null,
           receipt_number||null, payer_name||null,
           brand||null, model||null, color||null,
           commercial_year ? parseInt(commercial_year) : null,
@@ -348,7 +352,7 @@ router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), as
   try {
     const FIELDS = [
       'provider','invoice_number','invoice_date','due_date','payment_date',
-      'total_amount','neto','iva',
+      'total_amount','neto','iva','paid_amount',
       'receipt_number','payer_name','brand','model','color',
       'commercial_year','motor_num','chassis','internal_code',
       'invoice_url','receipt_url','notes','status',
