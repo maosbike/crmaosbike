@@ -4,7 +4,7 @@ import { Ic, S, Modal } from '../ui.jsx';
 
 /* ── Typography ─────────────────────────────────────────────────────────────── */
 const FONT = "Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
-const MONO = "ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace";
+/* MONO eliminado de tabla — misma tipografía que Leads/Inventario */
 const T = { fontFamily: FONT, WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale' };
 
 const EMPTY = () => ({
@@ -41,14 +41,14 @@ function useBP() {
 }
 
 /* ── Form field ─────────────────────────────────────────────────────────────── */
-function F({ label, value, onChange, type='text', half, mono, hl }) {
+function F({ label, value, onChange, type='text', half, hl }) {
   return (
     <div style={{ gridColumn: half?'auto':'1/-1' }}>
       <label style={{ ...T,fontSize:10,fontWeight:500,color:hl?'#92400E':'#71717A',textTransform:'uppercase',letterSpacing:'.06em',display:'block',marginBottom:4 }}>
         {label}{hl?' *':''}
       </label>
       <input type={type} value={value||''} onChange={e=>onChange?.(e.target.value)}
-        style={{ ...T,width:'100%',fontSize:13,padding:'8px 10px',border:'1px solid '+(hl?'#FCD34D':'#E4E4E7'),borderRadius:6,background:'#FAFAFA',color:'#18181B',outline:'none',boxSizing:'border-box',fontFamily:mono?MONO:FONT }}/>
+        style={{ ...T,width:'100%',fontSize:13,padding:'8px 10px',border:'1px solid '+(hl?'#FCD34D':'#E4E4E7'),borderRadius:6,background:'#FAFAFA',color:'#18181B',outline:'none',boxSizing:'border-box' }}/>
     </div>
   );
 }
@@ -86,12 +86,12 @@ function Sec({ title, children }) {
   return <div style={{ marginBottom:18 }}><div style={{ ...T,fontSize:10,fontWeight:600,color:'#A1A1AA',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8 }}>{title}</div>{children}</div>;
 }
 
-function DR({ label, value, mono, bold, span }) {
+function DR({ label, value, bold, span }) {
   if (!value && value!==0) return null;
   return (
     <div style={{ gridColumn:span?'1/-1':'auto',padding:'6px 0',borderBottom:'1px solid #F4F4F5' }}>
       <div style={{ ...T,fontSize:10,color:'#A1A1AA',letterSpacing:'.04em',marginBottom:2 }}>{label}</div>
-      <div style={{ ...T,fontSize:13,fontWeight:bold?600:400,fontFamily:mono?MONO:FONT,color:'#18181B' }}>{value}</div>
+      <div style={{ ...T,fontSize:13,fontWeight:bold?600:400,color:'#18181B' }}>{value}</div>
     </div>
   );
 }
@@ -156,7 +156,7 @@ function NewModal({ onClose, onCreated }) {
           {Object.keys(hl).length>0&&<div style={{...T,background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:8,padding:'8px 14px',marginBottom:14,fontSize:11,color:'#92400E'}}>Campos con * fueron extraídos. Revisá antes de guardar.</div>}
           <Sec title="Factura">
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="N° Factura" value={form.invoice_number} onChange={s('invoice_number')} mono half hl={!!hl.invoice_number}/>
+              <F label="N° Factura" value={form.invoice_number} onChange={s('invoice_number')} half hl={!!hl.invoice_number}/>
               <F label="Fecha emisión" value={form.invoice_date} onChange={s('invoice_date')} type="date" half hl={!!hl.invoice_date}/>
               <F label="Fecha vencimiento" value={form.due_date} onChange={s('due_date')} type="date" half hl={!!hl.due_date}/>
               <F label="Neto ($)" value={form.neto} onChange={s('neto')} type="number" half hl={!!hl.neto}/>
@@ -167,7 +167,7 @@ function NewModal({ onClose, onCreated }) {
           </Sec>
           <Sec title="Comprobante">
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="N° Comprobante" value={form.receipt_number} onChange={s('receipt_number')} mono half hl={!!hl.receipt_number}/>
+              <F label="N° Comprobante" value={form.receipt_number} onChange={s('receipt_number')} half hl={!!hl.receipt_number}/>
               <F label="Fecha pago" value={form.payment_date} onChange={s('payment_date')} type="date" half hl={!!hl.payment_date}/>
               <F label="Banco" value={form.banco} onChange={s('banco')} hl={!!hl.banco}/>
               <F label="Medio de pago" value={form.payment_method} onChange={s('payment_method')} half hl={!!hl.payment_method}/>
@@ -180,8 +180,8 @@ function NewModal({ onClose, onCreated }) {
               <F label="Modelo" value={form.model} onChange={s('model')} half hl={!!hl.model}/>
               <F label="Color" value={form.color} onChange={s('color')} half hl={!!hl.color}/>
               <F label="Año" value={form.commercial_year} onChange={s('commercial_year')} type="number" half hl={!!hl.commercial_year}/>
-              <F label="N° Motor" value={form.motor_num} onChange={s('motor_num')} mono half hl={!!hl.motor_num}/>
-              <F label="N° Chasis" value={form.chassis} onChange={s('chassis')} mono half hl={!!hl.chassis}/>
+              <F label="N° Motor" value={form.motor_num} onChange={s('motor_num')} half hl={!!hl.motor_num}/>
+              <F label="N° Chasis" value={form.chassis} onChange={s('chassis')} half hl={!!hl.chassis}/>
             </div>
           </Sec>
           <Sec title="Archivos">
@@ -240,7 +240,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
         {editing ? (
           <div>
             <Sec title="Factura"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="N° Factura" value={form.invoice_number} onChange={st('invoice_number')} mono half/>
+              <F label="N° Factura" value={form.invoice_number} onChange={st('invoice_number')} half/>
               <F label="Fecha emisión" value={form.invoice_date} onChange={st('invoice_date')} type="date" half/>
               <F label="Vencimiento" value={form.due_date} onChange={st('due_date')} type="date" half/>
               <F label="Neto ($)" value={form.neto} onChange={st('neto')} type="number" half/>
@@ -249,7 +249,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
               <F label="Monto pagado ($)" value={form.paid_amount} onChange={st('paid_amount')} type="number" half/>
             </div></Sec>
             <Sec title="Comprobante"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="N° Comprobante" value={form.receipt_number} onChange={st('receipt_number')} mono half/>
+              <F label="N° Comprobante" value={form.receipt_number} onChange={st('receipt_number')} half/>
               <F label="Fecha pago" value={form.payment_date} onChange={st('payment_date')} type="date" half/>
               <F label="Banco" value={form.banco} onChange={st('banco')}/>
               <F label="Medio pago" value={form.payment_method} onChange={st('payment_method')} half/>
@@ -260,8 +260,8 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
               <F label="Modelo" value={form.model} onChange={st('model')} half/>
               <F label="Color" value={form.color} onChange={st('color')} half/>
               <F label="Año" value={form.commercial_year} onChange={st('commercial_year')} type="number" half/>
-              <F label="N° Motor" value={form.motor_num} onChange={st('motor_num')} mono half/>
-              <F label="N° Chasis" value={form.chassis} onChange={st('chassis')} mono half/>
+              <F label="N° Motor" value={form.motor_num} onChange={st('motor_num')} half/>
+              <F label="N° Chasis" value={form.chassis} onChange={st('chassis')} half/>
             </div></Sec>
             <Sec title="Archivos / notas"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
               <F label="URL Factura" value={form.invoice_url} onChange={st('invoice_url')}/>
@@ -276,7 +276,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
         ) : (
           <div>
             <Sec title="Factura"><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-              <DR label="N° Factura" value={p.invoice_number} mono bold/>
+              <DR label="N° Factura" value={p.invoice_number} bold/>
               <DR label="Fecha emisión" value={fd(p.invoice_date)}/>
               <DR label="Vencimiento" value={fd(dv)} bold={overdue}/>
               <DR label="Neto" value={$(p.neto)}/>
@@ -285,7 +285,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
               <DR label="Monto pagado" value={$(p.paid_amount)} bold/>
             </div></Sec>
             <Sec title="Comprobante"><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-              <DR label="N° Comprobante" value={p.receipt_number} mono bold/>
+              <DR label="N° Comprobante" value={p.receipt_number} bold/>
               <DR label="Fecha pago" value={fd(p.payment_date)}/>
               <DR label="Banco" value={p.banco} span/>
               <DR label="Medio pago" value={p.payment_method}/>
@@ -296,8 +296,8 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
               <DR label="Modelo" value={p.model} bold/>
               <DR label="Color" value={p.color}/>
               <DR label="Año" value={p.commercial_year}/>
-              <DR label="N° Motor" value={p.motor_num} mono/>
-              <DR label="N° Chasis" value={p.chassis} mono/>
+              <DR label="N° Motor" value={p.motor_num}/>
+              <DR label="N° Chasis" value={p.chassis}/>
             </div></Sec>
             {p.notes&&<div style={{...T,background:'#FAFAFA',border:'1px solid #E4E4E7',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#3F3F46',marginTop:4}}>{p.notes}</div>}
             {(p.invoice_url||p.receipt_url)&&(
@@ -320,7 +320,7 @@ function Card({ p, onClick }) {
   return (
     <div onClick={onClick} style={{ ...T,background:'#fff',border:'1px solid #E4E4E7',borderRadius:10,padding:'14px 16px',cursor:'pointer',marginBottom:10 }}>
       <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
-        <span style={{ fontFamily:MONO,fontWeight:700,fontSize:13,color:'#18181B' }}>{p.invoice_number||'—'}</span>
+        <span style={{ ...T,fontWeight:700,fontSize:13,color:'#18181B' }}>{p.invoice_number||'—'}</span>
         <span style={{ flex:1 }}/>
         <span style={{ fontWeight:700,fontSize:14,color:'#18181B' }}>{$(p.total_amount)}</span>
       </div>
@@ -329,8 +329,8 @@ function Card({ p, onClick }) {
         <div><span style={{color:'#A1A1AA',fontSize:10}}>COLOR</span> <span style={{color:'#3F3F46'}}>{p.color||'—'}</span></div>
         <div><span style={{color:'#A1A1AA',fontSize:10}}>AÑO</span> <span style={{color:'#3F3F46'}}>{p.commercial_year||'—'}</span></div>
         <div><span style={{color:'#A1A1AA',fontSize:10,fontWeight:ov?600:400,color:ov?'#DC2626':'#A1A1AA'}}>VENC.</span> <span style={{fontWeight:ov?600:400,color:ov?'#DC2626':'#3F3F46'}}>{fd(dv)}</span></div>
-        {p.chassis&&<div style={{gridColumn:'1/-1'}}><span style={{color:'#A1A1AA',fontSize:10}}>CHASIS</span> <span style={{fontFamily:MONO,fontSize:11,color:'#18181B'}}>{p.chassis}</span></div>}
-        {p.motor_num&&<div style={{gridColumn:'1/-1'}}><span style={{color:'#A1A1AA',fontSize:10}}>MOTOR</span> <span style={{fontFamily:MONO,fontSize:11,color:'#18181B'}}>{p.motor_num}</span></div>}
+        {p.chassis&&<div style={{gridColumn:'1/-1'}}><span style={{color:'#A1A1AA',fontSize:10}}>CHASIS</span> <span style={{...T,fontSize:11,color:'#18181B'}}>{p.chassis}</span></div>}
+        {p.motor_num&&<div style={{gridColumn:'1/-1'}}><span style={{color:'#A1A1AA',fontSize:10}}>MOTOR</span> <span style={{...T,fontSize:11,color:'#18181B'}}>{p.motor_num}</span></div>}
         {p.paid_amount&&<div><span style={{color:'#A1A1AA',fontSize:10}}>PAGADO</span> <strong style={{color:'#15803D'}}>{$(p.paid_amount)}</strong></div>}
       </div>
     </div>
@@ -367,9 +367,8 @@ export function SupplierPaymentsView({ user }) {
 
   const pending = data.filter(p=>!p.paid_amount).length;
 
-  /* ── Table cell style helper ── */
+  /* ── Table cell style helper — NO monospace en tabla, misma fuente que Leads/Inventario ── */
   const c  = (extra) => ({ ...T, padding:'10px 8px', whiteSpace:'nowrap', fontSize:12, ...extra });
-  const cm = (extra) => ({ ...c(extra), fontFamily:MONO, fontSize:11 });
   const ca = (extra) => ({ ...c(extra), textAlign:'right' });
 
   /* Columns definition: [header, width, visibility] */
@@ -458,12 +457,12 @@ export function SupplierPaymentsView({ user }) {
                   <tr key={p.id} onClick={()=>setSel(p)} style={{borderBottom:'1px solid #F4F4F5',cursor:'pointer'}}
                     onMouseEnter={e=>e.currentTarget.style.background='#F8FAFF'}
                     onMouseLeave={e=>e.currentTarget.style.background=''}>
-                    <td style={cm({fontWeight:700,color:'#18181B'})}>{p.invoice_number||'—'}</td>
+                    <td style={c({fontWeight:700,color:'#18181B'})}>{p.invoice_number||'—'}</td>
                     <td style={c({fontWeight:600,color:'#18181B'})}>{p.model||'—'}</td>
                     <td style={c({color:'#3F3F46'})}>{p.color||'—'}</td>
                     <td style={c({color:'#3F3F46'})}>{p.commercial_year||'—'}</td>
-                    <td style={cm({color:'#18181B'})}>{p.chassis||'—'}</td>
-                    <td style={cm({color:'#18181B'})}>{p.motor_num||'—'}</td>
+                    <td style={c({color:'#18181B',fontSize:11})}>{p.chassis||'—'}</td>
+                    <td style={c({color:'#18181B',fontSize:11})}>{p.motor_num||'—'}</td>
                     {showAll&&<td style={ca({color:'#71717A'})}>{$(p.neto)}</td>}
                     {showAll&&<td style={ca({color:'#71717A'})}>{$(p.iva)}</td>}
                     <td style={ca({fontWeight:600,color:'#18181B'})}>{$(p.total_amount)}</td>
@@ -473,7 +472,7 @@ export function SupplierPaymentsView({ user }) {
                     <td style={ca({fontWeight:600,color:p.paid_amount?'#15803D':'#D4D4D8'})}>{$(p.paid_amount)}</td>
                     {showAll&&<td style={c({color:'#71717A',fontSize:11,maxWidth:80,overflow:'hidden',textOverflow:'ellipsis'})}>{p.payment_method||'—'}</td>}
                     {showAll&&<td style={c({color:'#71717A',fontSize:11,maxWidth:100,overflow:'hidden',textOverflow:'ellipsis'})}>{p.banco||'—'}</td>}
-                    {showAll&&<td style={cm({color:'#71717A'})}>{p.receipt_number||'—'}</td>}
+                    {showAll&&<td style={c({color:'#71717A',fontSize:11})}>{p.receipt_number||'—'}</td>}
                     <td style={c()}>
                       <div style={{display:'flex',gap:4}}>
                         {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{...T,fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:4,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none'}}>F</a>}

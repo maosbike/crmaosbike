@@ -86,18 +86,21 @@ function extractInvoice(text) {
   const total_amount = parseAmt(totalMatch?.[1]);
 
   // ── Datos del vehículo ──
-  // Motor: incluye guiones (H408E-0091072)
-  const motor   = t.match(/N\s+MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
-                  t.match(/N[°º]\s*MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
+  // Motor: captura completa incluyendo guiones y barras (H408E-0091072, G3T8E0028091)
+  const motor   = t.match(/N\s+MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-\/\.]*)/i)?.[1]?.trim() ||
+                  t.match(/N[°º]\s*MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-\/\.]*)/i)?.[1]?.trim() ||
+                  t.match(/MOTOR\s*:\s*([A-Z0-9][A-Z0-9\-\/\.]*)/i)?.[1]?.trim() || null;
 
   const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
                   t.match(/CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
 
-  // COD.MODELO — extraer valor limpio (ej. "FZ-S")
-  // El regex se detiene en el espacio después del modelo real, no captura basura "-A1" que viene después
+  // COD.MODELO — extraer valor limpio (ej. "FZ-S", "YZF-R3", "MT-03")
+  // Paso 1: capturar el código crudo (para en whitespace)
+  // Paso 2: limpiar sufijo de variante (letra sola tras dígito, ej. YZF-R3A → YZF-R3)
   const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i) ||
                      t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i);
-  const model = modelMatch?.[1]?.trim() || null;
+  const rawModel = modelMatch?.[1]?.trim() || null;
+  const model = rawModel ? rawModel.replace(/(\d)[A-Z]$/, '$1') : null;
 
   const colorMatch = t.match(/\bCOLOR\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i);
   const color = colorMatch?.[1]?.trim() || null;
@@ -173,9 +176,15 @@ function extractReceipt(text) {
   const due_date = dueDateMatch ? toISODate(dueDateMatch[1], dueDateMatch[2], dueDateMatch[3]) : null;
 
   // ── Monto pagado ──
-  // En la tabla BCI: "$ 2.205.800" — puede no tener ":" sino ser la primera aparición de $
+  // Prioridad 1: "Monto: $ 2.205.800" o "Monto pagado: $ ..." (label explícito)
+  const montoLabelMatch = t.match(/Monto(?:\s+pagado)?\s*:?\s*\$\s*([\d\.\s,]+)/i);
+  // Prioridad 2: monto justo después de una fecha (tabla BCI: "del 2026$ 2.205.800")
+  const tableAmtMatch = t.match(/del?\s+\d{4}\s*\$\s*([\d\.\s,]+)/i);
+  // Prioridad 3: todas las coincidencias de $
   const allAmounts = [...t.matchAll(/\$\s*([\d\.\s,]+)/g)].map(m => parseAmt(m[1])).filter(Boolean);
-  const total_amount = allAmounts[0] || null;
+  const total_amount = (montoLabelMatch ? parseAmt(montoLabelMatch[1]) : null)
+                    || (tableAmtMatch ? parseAmt(tableAmtMatch[1]) : null)
+                    || allAmounts[0] || null;
 
   // ── Pagador/cliente ──
   const payer_name = t.match(/Cliente\s*:?\s*(.+?)(?=\s+Fecha)/i)?.[1]?.trim() || null;
