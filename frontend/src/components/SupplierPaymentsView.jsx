@@ -785,23 +785,18 @@ export function SupplierPaymentsView({ user }) {
                       <div style={{fontSize:12,color:p.payment_date?'#374151':'#CBD5E1'}}>{p.payment_date?fd(p.payment_date):'—'}</div>
                     </div>
                   </div>
-                  <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                  {/* Documentos — siempre abajo a la derecha del bloque de acciones.
+                      Espaciador superior mantiene la posición estable aunque no haya docs. */}
+                  <div style={{flex:1,minHeight:0}}/>
+                  <div style={{display:'flex',gap:6,alignItems:'center',justifyContent:'flex-end',flexWrap:'wrap',minHeight:26}}>
                     {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                      style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                      style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
                       <Ic.file size={11}/> Factura
                     </a>}
                     {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                      style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                      style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
                       <Ic.file size={11}/> Comprobante
                     </a>}
-                    <span style={{flex:1,minWidth:10}}/>
-                    {canEdit && (
-                      <button onClick={e=>{e.stopPropagation();setEditFromList(true);setSel(p);}}
-                        title="Editar ficha"
-                        style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:6, background:'#F9FAFB', border:'1px solid #D1D5DB', color:'#374151', cursor:'pointer', fontFamily:'inherit' }}>
-                        ✎ Editar
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
