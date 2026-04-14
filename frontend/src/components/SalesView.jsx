@@ -24,7 +24,7 @@ const DOC_LABELS = {
   doc_inscripcion:  'Inscripción',
 };
 
-const CAN_CREATE = ['super_admin', 'backoffice'];
+const CAN_CREATE = ['super_admin', 'admin_comercial', 'backoffice', 'vendedor'];
 const CAN_ADMIN  = ['super_admin', 'admin_comercial', 'backoffice'];
 
 const EMPTY_FORM = {
@@ -100,10 +100,12 @@ function KpiCard({ label, value, color = '#374151', bg = '#F9FAFB', border = '#E
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
 function SaleDetailModal({ sale, user, onClose, onUpdated }) {
-  const isAdmin   = CAN_ADMIN.includes(user.role);
-  const isRes     = sale.status === 'reservada';
-  // Reservas pueden ser editadas por todos los roles; ventas solo por admins
-  const canEdit   = isRes ? true : CAN_CREATE.includes(user.role);
+  const isAdmin    = CAN_ADMIN.includes(user.role);
+  const isVendedor = user.role === 'vendedor';
+  const isRes      = sale.status === 'reservada';
+  const isOwner    = sale.seller_id === user.id;
+  // Vendedor: solo puede editar sus propias notas. Admins pueden editar todo.
+  const canEdit    = isVendedor ? isOwner : (isRes ? true : CAN_CREATE.includes(user.role));
 
   const [editing,      setEditing]      = useState(false);
   const [form,         setForm]         = useState({});
@@ -340,7 +342,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
         <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
                       letterSpacing: '0.1em', marginBottom: 8 }}>Documentos adjuntos</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 6 }}>
-          {Object.entries(DOC_LABELS).map(([field, label]) => (
+          {Object.entries(DOC_LABELS).filter(([field]) => !(isVendedor && field === 'doc_factura_dist')).map(([field, label]) => (
             <div key={field} style={{
               background: '#F9FAFB', border: `1px solid ${sale[field] ? '#A7F3D0' : '#E5E7EB'}`,
               borderRadius: 8, padding: '8px 12px',
@@ -797,15 +799,17 @@ const SEC = ({ children }) => (
 
 // ─── Modal: nueva venta/reserva ───────────────────────────────────────────────
 
-function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta' }) {
-  const isReserva = noteType === 'reserva';
+function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta', user }) {
+  const isReserva  = noteType === 'reserva';
+  const isVendedor = user?.role === 'vendedor';
   const [step,       setStep]     = useState(0);
   const [hasInvUnit, setHasInvUnit] = useState(null);
   const [invUnits,   setInvUnits] = useState([]);
   const [invSearch,  setInvSearch]= useState('');
   const [selUnit,    setSelUnit]  = useState(null);
   const [savedDoc,   setSavedDoc] = useState(null);
-  const [form,       setForm]     = useState({ ...EMPTY_FORM });
+  // Vendedor: pre-fill sold_by con su propio id
+  const [form,       setForm]     = useState({ ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' });
   const [saving,     setSaving]   = useState(false);
   const [err,        setErr]      = useState('');
 
@@ -832,7 +836,8 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
   const resetForm = () => {
-    setSelUnit(null); setSelMod(null); setForm({ ...EMPTY_FORM });
+    setSelUnit(null); setSelMod(null);
+    setForm({ ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' });
     setPayMode(''); setPayLines([{ method: '', amount: '' }]);
     setAccs([]); setDiscount(''); setAbono(''); setCatMods([]);
     setChargeType('inscripcion');
@@ -1158,9 +1163,15 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
             {/* OPERACIÓN */}
             <SEC>{isReserva ? 'Reserva' : 'Venta'}</SEC>
-            <Field label="Vendedor *" value={form.sold_by}
-              opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]}
-              onChange={set('sold_by')} />
+            {isVendedor ? (
+              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#065F46', fontWeight: 600 }}>
+                Vendedor: {user?.fn} {user?.ln}
+              </div>
+            ) : (
+              <Field label="Vendedor *" value={form.sold_by}
+                opts={[{ v: '', l: '— Seleccionar vendedor —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]}
+                onChange={set('sold_by')} />
+            )}
             <Field label="Sucursal *" value={form.branch_id}
               opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]}
               onChange={set('branch_id')} />
@@ -1448,8 +1459,13 @@ export function SalesView({ user, realBranches }) {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (isAdmin) api.getSellers().then(s => setSellers(s || [])).catch(() => {});
-  }, [isAdmin]);
+    if (isAdmin) {
+      api.getSellers().then(s => setSellers(s || [])).catch(() => {});
+    } else if (user.role === 'vendedor') {
+      // Vendedor solo se ve a sí mismo en el selector de vendedor
+      setSellers([{ id: user.id, first_name: user.fn, last_name: user.ln }]);
+    }
+  }, [isAdmin, user.id]);
 
   const hasFilters = q || fromDate || toDate || fBranch || fSeller || fType;
   const clearFilters = () => { setQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); setFType(''); };
@@ -1813,6 +1829,7 @@ export function SalesView({ user, realBranches }) {
       {showNew && (
         <NewSaleModal
           noteType={showNew}
+          user={user}
           sellers={sellers}
           branches={realBranches || []}
           onClose={() => { setShowNew(null); load(); }}

@@ -264,10 +264,15 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
   try {
     const {
       branch_id, year, brand, model, color, chassis, motor_num, price,
-      sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes,
-      sale_price, cost_price, invoice_amount, delivered,
+      sold_at, ticket_id, payment_method, sale_type, sale_notes,
+      sale_price, invoice_amount, delivered,
       client_name, client_rut, status: reqStatus,
     } = req.body;
+
+    // Vendedor: solo puede registrar ventas propias. Forzamos sold_by a su propio id.
+    const sold_by = req.user.role === 'vendedor' ? req.user.id : (req.body.sold_by || null);
+    // Vendedor no puede pasar cost_price
+    const cost_price = req.user.role === 'vendedor' ? null : (req.body.cost_price || null);
 
     if (!brand || !model)
       return res.status(400).json({ error: 'Marca y modelo son obligatorios' });
@@ -330,6 +335,19 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
 router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
     const isNoteOnly = req.body.is_note_only === true || req.body.is_note_only === 'true';
+
+    // Vendedor: ownership check y bloqueo de campos sensibles
+    if (req.user.role === 'vendedor') {
+      const tbl = isNoteOnly ? 'sales_notes' : 'inventory';
+      const sc  = isNoteOnly ? '' : `AND status IN ('vendida','reservada')`;
+      const { rows: own } = await db.query(
+        `SELECT 1 FROM ${tbl} WHERE id = $1 AND sold_by = $2 ${sc}`,
+        [req.params.id, req.user.id]
+      );
+      if (!own[0]) return res.status(403).json({ error: 'Sin permiso para editar esta venta' });
+      // Bloquear campos internos
+      ['cost_price', 'distributor_paid', 'doc_factura_dist'].forEach(f => delete req.body[f]);
+    }
 
     const UPDATABLE_BASE = [
       'sale_price', 'cost_price', 'invoice_amount',
@@ -455,7 +473,7 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
 
 // ─── POST /api/sales/:id/doc ──────────────────────────────────────────────────
 // ?note=1 → sube doc a sales_notes; sin flag → a inventory
-router.post('/:id/doc', roleCheck('super_admin', 'backoffice'), uploadDoc.single('file'), async (req, res) => {
+router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadDoc.single('file'), async (req, res) => {
   try {
     const { field } = req.body;
     const isNoteOnly = req.query.note === '1';
@@ -463,13 +481,19 @@ router.post('/:id/doc', roleCheck('super_admin', 'backoffice'), uploadDoc.single
     if (!DOC_FIELDS.includes(field)) {
       return res.status(400).json({ error: `Campo inválido. Válidos: ${DOC_FIELDS.join(', ')}` });
     }
+    // Vendedor no puede subir la factura del distribuidor
+    if (req.user.role === 'vendedor' && field === 'doc_factura_dist') {
+      return res.status(403).json({ error: 'Sin permiso para subir este documento' });
+    }
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
     const table       = isNoteOnly ? 'sales_notes' : 'inventory';
-    const statusCheck = isNoteOnly ? '' : `AND status = 'vendida'`;
+    const statusCheck = isNoteOnly ? '' : `AND status IN ('vendida','reservada')`;
 
+    // Ownership check para vendedor
+    const ownerClause = req.user.role === 'vendedor' ? `AND sold_by = '${req.user.id}'` : '';
     const { rows: check } = await db.query(
-      `SELECT id FROM ${table} WHERE id = $1 ${statusCheck}`,
+      `SELECT id FROM ${table} WHERE id = $1 ${statusCheck} ${ownerClause}`,
       [req.params.id]
     );
     if (!check[0]) return res.status(404).json({ error: 'Venta no encontrada' });
