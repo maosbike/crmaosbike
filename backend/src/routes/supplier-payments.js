@@ -383,7 +383,7 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
       // Hidratar con JOIN al catálogo para que el frontend tenga imagen/nombre comercial
       const { rows: full } = await db.query(
         `SELECT sp.*, mm.image_url AS catalog_image, mm.commercial_name AS catalog_name,
-                mm.color_photos AS catalog_color_photos
+                mm.color_photos AS catalog_color_photos, mm.colors AS catalog_colors
            FROM supplier_payments sp
            LEFT JOIN moto_models mm ON mm.id = sp.model_id
           WHERE sp.id = $1`,
@@ -415,7 +415,7 @@ router.get('/', async (req, res) => {
       `SELECT sp.*,
         mm.image_url AS catalog_image,
         mm.commercial_name AS catalog_name,
-        mm.color_photos AS catalog_color_photos
+        mm.color_photos AS catalog_color_photos, mm.colors AS catalog_colors
        FROM supplier_payments sp
        LEFT JOIN moto_models mm ON mm.id = sp.model_id
        ${clause} ORDER BY sp.created_at DESC`, params
@@ -431,7 +431,7 @@ router.get('/:id', async (req, res) => {
       `SELECT sp.*,
         mm.image_url AS catalog_image,
         mm.commercial_name AS catalog_name,
-        mm.color_photos AS catalog_color_photos
+        mm.color_photos AS catalog_color_photos, mm.colors AS catalog_colors
        FROM supplier_payments sp
        LEFT JOIN moto_models mm ON mm.id = sp.model_id
        WHERE sp.id=$1`, [req.params.id]);
@@ -480,7 +480,7 @@ router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), as
     // la imagen / nombre comercial inmediatamente sin un refresh completo.
     const { rows } = await db.query(
       `SELECT sp.*, mm.image_url AS catalog_image, mm.commercial_name AS catalog_name,
-              mm.color_photos AS catalog_color_photos
+              mm.color_photos AS catalog_color_photos, mm.colors AS catalog_colors
          FROM supplier_payments sp
          LEFT JOIN moto_models mm ON mm.id = sp.model_id
         WHERE sp.id = $1`,
@@ -628,10 +628,13 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
         if (existing[0]) {
           // Siempre sobrescribir — re-sync debe corregir datos viejos malos
           // Excepción: invoice_url solo si está vacío (no pisar link manual)
-          const ALWAYS = ['model','motor_num','color','commercial_year','chassis',
+          // Re-sync sobrescribe datos básicos extraídos del PDF, PERO respeta la
+          // asociación manual del usuario: model_id y color se preservan si ya existen
+          // (fallan vía COALESCE) para no "ensuciar" modelos ya asociados al catálogo.
+          const ALWAYS = ['motor_num','commercial_year','chassis',
                           'paid_amount','banco','payment_method','payment_date',
                           'receipt_number','due_date','neto','iva','total_amount',
-                          'model_id','receipt_url','payer_name','provider','brand',
+                          'receipt_url','payer_name','provider','brand',
                           'internal_code','invoice_date'];
           const sets = [], params = [];
           let idx = 1;

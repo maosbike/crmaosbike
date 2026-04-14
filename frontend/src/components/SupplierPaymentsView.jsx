@@ -59,7 +59,7 @@ function ColorChip({color}) {
   </span>;
 }
 
-/* ── Catalog model picker for edit forms ────────────────────────────────── */
+/* ── Catalog model picker — devuelve el modelo completo (con colores y fotos) ─ */
 function CatalogModelPicker({ brand, model, onSelect }) {
   const [brands,setBrands] = useState([]);
   const [models,setModels] = useState([]);
@@ -73,19 +73,62 @@ function CatalogModelPicker({ brand, model, onSelect }) {
   return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
     <div>
       <label style={{...S.lbl,fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Marca</label>
-      <select value={selBrand} onChange={e=>{setSelBrand(e.target.value);onSelect(null,e.target.value,'');}} style={sel}>
+      <select value={selBrand} onChange={e=>{setSelBrand(e.target.value);onSelect(null);}} style={sel}>
         <option value="">— Seleccionar —</option>
         {brands.map(b=><option key={b} value={b}>{b}</option>)}
       </select>
     </div>
     <div>
       <label style={{...S.lbl,fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Modelo del catálogo</label>
-      <select value={model||''} onChange={e=>{const m=models.find(x=>x.id===e.target.value);if(m)onSelect(m.id,m.brand,m.commercial_name||m.model);}} style={sel} disabled={!selBrand}>
+      <select value={model||''} onChange={e=>{const m=models.find(x=>x.id===e.target.value);onSelect(m||null);}} style={sel} disabled={!selBrand}>
         <option value="">— Seleccionar —</option>
         {models.map(m=><option key={m.id} value={m.id}>{m.commercial_name||m.model} {m.year?`(${m.year})`:''}</option>)}
       </select>
     </div>
   </div>;
+}
+
+/* ── Color picker constreñido a los colores del modelo de catálogo ──────── */
+// Si el modelo existe en catálogo, listamos la unión de `colors` + `color_photos[].color`
+// y dejamos solo esos valores como opciones. Si el registro tiene un color "viejo"
+// que no matchea, se preserva pero marcado como "fuera de catálogo" hasta que
+// el usuario elija uno válido.
+function catalogColors(modelRow) {
+  if (!modelRow) return [];
+  const out = new Set();
+  const norm = (s) => String(s||'').trim();
+  const parseJson = (v) => typeof v === 'string' ? (()=>{ try{return JSON.parse(v);}catch{return [];}})() : (v||[]);
+  const colors = parseJson(modelRow.colors);
+  const photos = parseJson(modelRow.color_photos);
+  colors.forEach(c => { const v = norm(typeof c==='string'?c:c?.name||c?.color); if (v) out.add(v); });
+  photos.forEach(c => { const v = norm(c?.color); if (v) out.add(v); });
+  return Array.from(out);
+}
+function CatalogColorPicker({ modelRow, value, onChange }) {
+  const opts = catalogColors(modelRow);
+  const sel = {height:36,borderRadius:8,border:'1px solid #D1D5DB',background:'#F9FAFB',color:'#374151',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
+  if (opts.length === 0) {
+    return (
+      <input value={value||''} onChange={e=>onChange(e.target.value)}
+        placeholder="Color libre (modelo sin colores cargados en catálogo)"
+        style={{...S.inp, width:'100%'}}/>
+    );
+  }
+  const cur = value || '';
+  const match = opts.find(o => o.toLowerCase() === cur.toLowerCase());
+  return (
+    <div>
+      <select value={match || ''} onChange={e=>onChange(e.target.value)} style={sel}>
+        <option value="">— Seleccionar color del catálogo —</option>
+        {opts.map(c=><option key={c} value={c}>{c}</option>)}
+      </select>
+      {cur && !match && (
+        <div style={{fontSize:10,color:'#B45309',marginTop:4,fontFamily:'inherit'}}>
+          Color actual "{cur}" no está en el catálogo — elegí uno válido.
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ── Shared inline style tokens (matching CRM palette) ─────────────────── */
@@ -165,10 +208,21 @@ function NewModal({ onClose, onCreated }) {
   const [recUrl,setRecUrl]=useState('');
   const [busy,setBusy]=useState(false);
   const [form,setForm]=useState(EMPTY());
+  const [modelRow,setModelRow]=useState(null);  // modelo completo del catálogo
   const [hl,setHl]=useState({});
   const [saving,setSaving]=useState(false);
   const [err,setErr]=useState('');
   const s=k=>v=>setForm(f=>({...f,[k]:v}));
+  const pickModel = (m) => {
+    setModelRow(m);
+    if (m) {
+      setForm(f=>({...f, model_id: m.id, brand: m.brand, model: m.commercial_name||m.model,
+        // Si el color actual no está en el catálogo del nuevo modelo, lo limpiamos.
+        color: (catalogColors(m).some(c => c.toLowerCase() === (f.color||'').toLowerCase())) ? f.color : ''}));
+    } else {
+      setForm(f=>({...f, model_id:''}));
+    }
+  };
 
   const extract=async()=>{
     if(!invFile&&!recFile){setErr('Sube al menos un archivo');return;}
@@ -236,10 +290,13 @@ function NewModal({ onClose, onCreated }) {
           </Sec>
           <Sec title="Vehiculo" color="#374151">
             <div style={{marginBottom:10}}>
-              <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={(id,br,mo)=>setForm(f=>({...f,model_id:id||'',brand:br||f.brand,model:mo||f.model}))}/>
+              <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={pickModel}/>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="Color" value={form.color} onChange={s('color')} half hl={!!hl.color}/>
+              <div>
+                <label style={{...S.lbl, fontSize:10, fontWeight:600, color:hl.color?'#92400E':'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color{hl.color?' *':''}</label>
+                <CatalogColorPicker modelRow={modelRow} value={form.color} onChange={s('color')}/>
+              </div>
               <F label="Ano" value={form.commercial_year} onChange={s('commercial_year')} type="number" half hl={!!hl.commercial_year}/>
               <F label="N° Motor" value={form.motor_num} onChange={s('motor_num')} half hl={!!hl.motor_num}/>
               <F label="N° Chasis" value={form.chassis} onChange={s('chassis')} half hl={!!hl.chassis}/>
@@ -276,9 +333,30 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
   const [saving,setSaving]=useState(false);
   const [cd,setCD]=useState(false);
   const [deleting,setDel]=useState(false);
+  // modelRow = modelo del catálogo actualmente asociado (para el ColorPicker).
+  // Se hidrata desde los campos catalog_* que vienen del JOIN backend.
+  const hydrateModelRow = (src) => src?.model_id ? ({
+    id: src.model_id,
+    brand: src.brand,
+    model: src.catalog_name || src.model,
+    commercial_name: src.catalog_name,
+    colors: src.catalog_colors,
+    color_photos: src.catalog_color_photos,
+    image_url: src.catalog_image,
+  }) : null;
+  const [modelRow,setModelRow]=useState(()=> hydrateModelRow(p0));
   const st=k=>v=>setForm(f=>({...f,[k]:v}));
+  const pickModel = (m) => {
+    setModelRow(m);
+    if (m) {
+      setForm(f=>({...f, model_id: m.id, brand: m.brand, model: m.commercial_name||m.model,
+        color: (catalogColors(m).some(c => c.toLowerCase() === (f.color||'').toLowerCase())) ? f.color : ''}));
+    } else {
+      setForm(f=>({...f, model_id:''}));
+    }
+  };
 
-  const startEdit=()=>{setForm({...p,invoice_date:p.invoice_date?.slice(0,10)||'',due_date:p.due_date?.slice(0,10)||'',payment_date:p.payment_date?.slice(0,10)||''});setEditing(true);};
+  const startEdit=()=>{setForm({...p,invoice_date:p.invoice_date?.slice(0,10)||'',due_date:p.due_date?.slice(0,10)||'',payment_date:p.payment_date?.slice(0,10)||''});setModelRow(hydrateModelRow(p));setEditing(true);};
   const save=async()=>{
     setSaving(true);
     try{
@@ -345,10 +423,13 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
             </div></Sec>
             <Sec title="Vehiculo" color="#374151">
               <div style={{marginBottom:10}}>
-                <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={(id,br,mo)=>setForm(f=>({...f,model_id:id||'',brand:br||f.brand,model:mo||f.model}))}/>
+                <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={pickModel}/>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-                <F label="Color" value={form.color} onChange={st('color')} half/>
+                <div>
+                  <label style={{...S.lbl, fontSize:10, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color</label>
+                  <CatalogColorPicker modelRow={modelRow} value={form.color} onChange={st('color')}/>
+                </div>
                 <F label="Ano" value={form.commercial_year} onChange={st('commercial_year')} type="number" half/>
                 <F label="N° Motor" value={form.motor_num} onChange={st('motor_num')} half/>
                 <F label="N° Chasis" value={form.chassis} onChange={st('chassis')} half/>
