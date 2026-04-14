@@ -6,6 +6,13 @@ const xlsx = require('xlsx');
 const TelegramService = require('../services/telegramService');
 const SLAService = require('../services/slaService');
 const { calcSlaDeadline } = require('../utils/slaUtils');
+const {
+  normalizeRut,
+  formatRut,
+  validateRut,
+  normalizePhone,
+  parseChileanInt,
+} = require('../utils/normalize');
 
 // ─── Multer config ────────────────────────────────────────────
 const upload = multer({
@@ -90,37 +97,7 @@ function get(row, headerMap, field) {
   return (row[idx] ?? '').toString().trim();
 }
 
-// Para validación: elimina puntos y guion → "163459779"
-function normalizeRut(raw) {
-  return raw.replace(/\./g, '').replace(/-/g, '').toUpperCase().trim();
-}
-// Para almacenamiento: elimina puntos, conserva guion → "16345977-9"
-function formatRut(raw) {
-  const stripped = raw.replace(/\./g, '').trim();
-  // Si ya tiene guion, devolver limpio; si no, insertar guion antes del último char
-  if (stripped.includes('-')) return stripped.toUpperCase();
-  if (stripped.length < 2) return stripped.toUpperCase();
-  return (stripped.slice(0, -1) + '-' + stripped.slice(-1)).toUpperCase();
-}
-
-// Normaliza teléfonos chilenos: elimina separadores y strip prefijo país 56.
-// "+56 9 1234 5678" → "912345678" | "9.1234.5678" → "912345678" | "56912345678" → "912345678"
-function normalizePhone(raw) {
-  if (!raw) return '';
-  const digits = raw.toString().replace(/[^\d]/g, '');
-  if (!digits) return '';
-  // Código de país 56 al inicio (11 dígitos: 56 + móvil 9 dígitos)
-  if (digits.length === 11 && digits.startsWith('56')) return digits.slice(2);
-  return digits;
-}
-
-// Parsea números chilenos con puntos como separadores de miles ("1.500.000" → 1500000)
-function parseChileanInt(val) {
-  if (!val) return null;
-  const cleaned = val.toString().replace(/\./g, '').replace(/[$,\s]/g, '').trim();
-  const n = parseInt(cleaned, 10);
-  return isNaN(n) ? null : n;
-}
+// normalizeRut, formatRut, validateRut, normalizePhone, parseChileanInt viven en utils/normalize.js
 
 // ─── Resolución robusta de sucursal ──────────────────────────
 // Soporta códigos exactos (MPN), nombres exactos, y strings largos de Yamaha
@@ -328,9 +305,15 @@ function validateRow(row, headerMap, rowIndex) {
   if (telefonoRaw && !telefono)  errors.push('Teléfono no tiene dígitos válidos');
   if (telefono && !/^\d{7,12}$/.test(telefono))
                                  errors.push(`Teléfono inválido tras normalizar: ${telefono}`);
+  const warnings = [];
   if (rut) {
     const cleaned = normalizeRut(rut);
-    if (!/^\d{6,8}[0-9K]$/.test(cleaned)) errors.push('Formato de RUT inválido');
+    if (!/^\d{6,8}[0-9K]$/.test(cleaned)) {
+      errors.push('Formato de RUT inválido');
+    } else if (!validateRut(cleaned)) {
+      // Dígito verificador no coincide — no bloqueamos, dejamos registro como warning
+      warnings.push('RUT con dígito verificador sospechoso');
+    }
   }
   // Prioridad: si viene en formato desconocido, se ignora y defaultea — no es error
 
@@ -394,6 +377,8 @@ function validateRow(row, headerMap, rowIndex) {
     wants_financing,
     fin_data:        Object.keys(fin_data).length > 0 ? fin_data : null,
     errors,
+    warnings,
+    // Warnings (ej. RUT con DV sospechoso) son informativos — no bloquean el import.
     status:          errors.length > 0 ? 'error' : 'valid',
     // Resueltos después:
     branch_id:       null,
@@ -581,12 +566,14 @@ router.post('/confirm', async (req, res) => {
     // ── Least-loaded + round-robin por sucursal ────────────────
     // Usa SLAService.assignSeller como lógica oficial (branch_id + extra_branches)
     // El caché local evita queries repetidas durante importaciones masivas
+    const { TERMINAL_STATUSES } = require('../config/leadStatus');
+    const NOT_TERMINAL_SQL = `NOT IN (${TERMINAL_STATUSES.map(s => `'${s}'`).join(',')})`;
     const sellerCache = {};
     async function assignSellerForImport(branch_id) {
       if (!sellerCache[branch_id]) {
         const { rows: sellers } = await db.query(
           `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
-                  COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido')) AS active_tickets
+                  COUNT(t.id) FILTER (WHERE t.status ${NOT_TERMINAL_SQL}) AS active_tickets
            FROM users u
            LEFT JOIN tickets t ON t.assigned_to = u.id
            WHERE u.role = 'vendedor' AND u.active = true

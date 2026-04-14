@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
+const { normalizeChassis, normalizeColor, normalizeModel } = require('../utils/normalize');
 
 router.use(auth);
 
@@ -198,7 +199,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), as
 
     // Chasis: verificar unicidad si se quiere cambiar
     if (chassis !== undefined && chassis !== '') {
-      const cleanChassis = chassis.replace(/\s/g, '').toUpperCase();
+      const cleanChassis = normalizeChassis(chassis);
       const { rows: dup } = await db.query(
         `SELECT id FROM inventory WHERE UPPER(REPLACE(chassis,' ','')) = $1 AND id != $2`,
         [cleanChassis, req.params.id]
@@ -211,15 +212,15 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), as
     let idx = 1;
     if (branch_id  !== undefined) { sets.push(`branch_id = $${idx++}`);  params.push(branch_id); }
     if (status     !== undefined) { sets.push(`status = $${idx++}`);     params.push(status); }
-    if (color      !== undefined) { sets.push(`color = $${idx++}`);      params.push(String(color).toUpperCase()); }
+    if (color      !== undefined) { sets.push(`color = $${idx++}`);      params.push(normalizeColor(color)); }
     if (price      !== undefined) { sets.push(`price = $${idx++}`);      params.push(Number(price) || 0); }
     if (notes      !== undefined) { sets.push(`notes = $${idx++}`);      params.push(notes); }
-    if (brand      !== undefined) { sets.push(`brand = $${idx++}`);      params.push(String(brand).toUpperCase()); }
-    if (model      !== undefined) { sets.push(`model = $${idx++}`);      params.push(String(model).toUpperCase()); }
+    if (brand      !== undefined) { sets.push(`brand = $${idx++}`);      params.push(normalizeModel(brand)); }
+    if (model      !== undefined) { sets.push(`model = $${idx++}`);      params.push(normalizeModel(model)); }
     if (year       !== undefined) { sets.push(`year = $${idx++}`);       params.push(parseInt(year) || null); }
     if (chassis    !== undefined && chassis !== '') {
       sets.push(`chassis = $${idx++}`);
-      params.push(chassis.replace(/\s/g, '').toUpperCase());
+      params.push(normalizeChassis(chassis));
     }
     if (motor_num      !== undefined) { sets.push(`motor_num = $${idx++}`);      params.push(motor_num || null); }
     if (sold_by        !== undefined) { sets.push(`sold_by = $${idx++}`);        params.push(sold_by || null); }
@@ -449,9 +450,10 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
     const preview = raw.slice(headerIdx + 1)
       .filter(row => Array.isArray(row) && row.some(c => c !== null && c !== ''))
       .map((row, i) => {
-        const chassis   = get(row, C.chassis).replace(/\s/g,'').toUpperCase() || null;
-        const brand     = get(row, C.brand).toUpperCase();
-        const model     = get(row, C.model).toUpperCase();
+        const chassisRaw = get(row, C.chassis);
+        const chassis   = chassisRaw ? normalizeChassis(chassisRaw) : null;
+        const brand     = normalizeModel(get(row, C.brand));
+        const model     = normalizeModel(get(row, C.model));
         const branchRaw = get(row, C.branch);
         const branch_id = findBranch(branchRaw);
         // Errores bloqueantes: sin marca, sin modelo o sucursal no reconocida
@@ -470,7 +472,7 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
           branch_id, branch_raw: branchRaw,
           year:      parseInt(get(row, C.year)) || new Date().getFullYear(),
           brand, model,
-          color:     get(row, C.color).toUpperCase() || 'SIN COLOR',
+          color:     normalizeColor(get(row, C.color)) || 'SIN COLOR',
           chassis,   motor_num: get(row, C.motor) || null,
           status:    parseStatus(get(row, C.status)),
           price:     parsePrice(get(row, C.price)),

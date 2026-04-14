@@ -6,13 +6,20 @@ const SLAService = require('../services/slaService');
 const TelegramService = require('../services/telegramService');
 const NotificationService = require('../services/notificationService');
 const { calcSlaDeadline } = require('../utils/slaUtils');
+const {
+  EVIDENCE_REQUIRED,
+  CONTACT_ADVANCES_FROM,
+  FOLLOWUP_STATUSES,
+  FOLLOWUP_LABELS,
+} = require('../config/leadStatus');
+const { resolveAssignmentBranch } = require('../config/branchRouting');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
 const uploadEvidence = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Estados que requieren evidencia de contacto antes de poder ser seteados
-const EVIDENCE_REQUIRED_STATES = ['en_gestion', 'cotizado', 'financiamiento'];
+// Alias para compatibilidad con referencias existentes — usa la constante compartida.
+const EVIDENCE_REQUIRED_STATES = EVIDENCE_REQUIRED;
 
 router.use(auth);
 
@@ -99,11 +106,8 @@ router.post('/', asyncHandler(async (req, res) => {
   const { first_name, last_name, rut, email, phone, comuna, source, branch_id, model_id, priority, color_pref, assigned_to: manualSeller } = req.body;
   if (!first_name) return res.status(400).json({ error: 'Nombre requerido' });
 
-  // MOV (Movicenter) → redirigir asignación a MPN para que sus vendedores atiendan esos leads
-  const MOV_ID = 'b0000001-0001-0001-0001-000000000003';
-  const MPN_ID = 'b0000001-0001-0001-0001-000000000001';
-  const rawBranch = branch_id || req.user.branch_id;
-  const branch = rawBranch === MOV_ID ? MPN_ID : rawBranch;
+  // MOV → MPN: regla documentada en config/branchRouting.js
+  const branch = resolveAssignmentBranch(branch_id || req.user.branch_id);
 
   let seller = req.user.role === 'vendedor' ? req.user.id : null;
 
@@ -263,29 +267,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
 // Registrar seguimiento obligatorio (cuestionario cuando needs_attention)
 // Limpia el flag, deja registro en timeline y actualiza columnas de followup.
-const FOLLOWUP_STATUSES = [
-  'cliente_interesado',
-  'quedo_responder',
-  'contactar_mas_adelante',
-  'revisando_cotizacion',
-  'reuniendo_pie_docs',
-  'evaluacion_financiera',
-  'agendar_visita',
-  'requiere_nueva_llamada',
-  'otro_avance',
-];
-const FOLLOWUP_LABELS = {
-  cliente_interesado:      'Cliente sigue interesado',
-  quedo_responder:         'Quedó de responder',
-  contactar_mas_adelante:  'Pidió contactar más adelante',
-  revisando_cotizacion:    'Está revisando cotización',
-  reuniendo_pie_docs:      'Está reuniendo pie / documentos',
-  evaluacion_financiera:   'Está en evaluación financiera',
-  agendar_visita:          'Agendar visita o test ride',
-  requiere_nueva_llamada:  'Requiere nueva llamada',
-  otro_avance:             'Otro avance',
-};
-
+// FOLLOWUP_STATUSES y FOLLOWUP_LABELS viven en config/leadStatus.js
 router.post('/:id/followup', asyncHandler(async (req, res) => {
   if (req.user.role === 'vendedor') {
     const check = await db.query(
@@ -371,10 +353,11 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
   if (type === 'contact_registered') {
     await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
     await SLAService.registerAction(req.params.id, 'contact_registered');
-    // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal
+    // Auto-transición: pasa a En gestión solo si el ticket está en estados iniciales.
+    // CONTACT_ADVANCES_FROM = ['nuevo', 'abierto'] — ver config/leadStatus.js
     await db.query(
-      "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido')",
-      [req.params.id]
+      `UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status = ANY($2)`,
+      [req.params.id, CONTACT_ADVANCES_FROM]
     );
   } else if (type === 'note_added') {
     await SLAService.registerAction(req.params.id, 'note_added');

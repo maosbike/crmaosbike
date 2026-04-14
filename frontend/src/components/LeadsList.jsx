@@ -1,19 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
 // ── Helpers y constantes visuales (mismo lenguaje que InventoryView) ─────────
 const SRC_SHORT={web:"Web",redes_sociales:"RRSS",whatsapp:"WA",presencial:"Pres.",referido:"Ref.",evento:"Ev.",llamada:"Tel."};
 
-// Colores de estado alineados con TICKET_STATUS
-const ST_STRIP = {
-  nuevo:         { color:'#0891B2', light:'#ECFEFF' },
-  abierto:       { color:'#2563EB', light:'#EFF6FF' },
-  en_gestion:    { color:'#D97706', light:'#FFFBEB' },
-  cotizado:      { color:'#7C3AED', light:'#F5F3FF' },
-  financiamiento:{ color:'#F28100', light:'#FFF7ED' },
-  ganado:        { color:'#15803D', light:'#F0FDF4' },
-  perdido:       { color:'#EF4444', light:'#FEF2F2' },
+// Color + bg por estado ahora viven en TICKET_STATUS (fuente única).
+// Helper thin para mantener el shape legado {color, light} que usaba ST_STRIP.
+const stripFor = (k) => {
+  const v = TICKET_STATUS[k];
+  return v ? { color: v.c, light: v.bg || '#F9FAFB' } : { color: '#6B7280', light: '#F9FAFB' };
 };
 
 const selectCtrl={height:32,borderRadius:7,border:'1.5px solid #E5E7EB',background:'#FFFFFF',color:'#374151',fontSize:12,padding:'0 8px',cursor:'pointer',fontFamily:'inherit',outline:'none'};
@@ -33,7 +29,7 @@ function Initials({fn,ln,size=30}){
   );
 }
 
-const STATUS_ORDER=['nuevo','abierto','en_gestion','cotizado','financiamiento','ganado','perdido'];
+// STATUS_ORDER viene de ui.jsx (fuente única).
 
 export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,onFilterChange}){
   const brs=realBranches||[];
@@ -150,7 +146,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:18}}>
         {Object.entries(TICKET_STATUS).map(([k,v])=>{
           const cnt=effectiveLeads.filter(l=>l.status===k&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
-          const strip=ST_STRIP[k]||{color:v.c,light:'#F9FAFB'};
+          const strip=stripFor(k);
           const active=stF===k;
           return(
             <button key={k} onClick={()=>setStF(stF===k?'':k)} style={{
@@ -201,7 +197,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           <label style={filterLabel}>Estado</label>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
             {Object.entries(TICKET_STATUS).map(([k,v])=>{
-              const strip=ST_STRIP[k]||{color:v.c};
+              const strip=stripFor(k);
               return<button key={k} onClick={()=>setStF(stF===k?'':k)} style={{padding:'4px 10px',borderRadius:20,fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit',background:stF===k?strip.color:'transparent',color:stF===k?'#FFFFFF':'#6B7280',border:`1.5px solid ${stF===k?strip.color:'#E5E7EB'}`,transition:'all 0.12s'}}>{v.l}</button>;
             })}
           </div>
@@ -263,7 +259,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       ):(
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {(stF?f:[...f].sort((a,b)=>{const ai=STATUS_ORDER.indexOf(a.status);const bi=STATUS_ORDER.indexOf(b.status);return(ai===-1?99:ai)-(bi===-1?99:bi);})).map(x=>{
-            const stStrip=ST_STRIP[x.status]||{color:'#6B7280',light:'#F9FAFB'};
+            const stStrip=stripFor(x.status);
             const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280'};
             const prCfg=PRIORITY[x.priority]||{l:'—',c:'#9CA3AF'};
             const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_code||null;

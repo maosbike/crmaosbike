@@ -8,6 +8,15 @@ const { auth, roleCheck } = require('../middleware/auth');
 const multer  = require('multer');
 const cloudinary = require('../config/cloudinary');
 const pdfParse   = require('pdf-parse');
+const {
+  toISODate,
+  parseChileanInt,
+  normalizeModel,
+  normalizeChassis,
+} = require('../utils/normalize');
+
+// Alias: los extractores llamaban localmente a parseAmt — el nuevo nombre vive en utils/normalize.
+const parseAmt = parseChileanInt;
 
 router.use(auth);
 
@@ -61,24 +70,7 @@ const upload = multer({
   },
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function toISODate(d, m, y) {
-  if (!d || !m || !y) return null;
-  const mm = isNaN(parseInt(m)) ? {
-    enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,
-    julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12
-  }[String(m).toLowerCase()] : parseInt(m);
-  if (!mm) return null;
-  return `${y}-${String(mm).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
-
-function parseAmt(s) {
-  if (!s) return null;
-  // Formato chileno: puntos como separadores de miles (1.853.614)
-  const clean = String(s).replace(/\./g,'').replace(/,(\d{2})$/,'').replace(/[^\d]/g,'');
-  return parseInt(clean) || null;
-}
+// toISODate y parseAmt (= parseChileanInt) viven en utils/normalize.js
 
 /**
  * Extrae datos de una factura Yamaha (o similar).

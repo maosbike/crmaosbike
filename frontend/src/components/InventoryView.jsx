@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText } from '../ui.jsx';
 
 // ─── Datos de configuración ────────────────────────────────────────────────────
 
@@ -12,13 +12,22 @@ const BLANK_NW = () => ({
 const HIST_ICONS  = { created:'C', imported:'I', sold:'V', status_changed:'E', moved:'T', note:'N' };
 const HIST_LABELS = { created:'Creada', imported:'Importada', sold:'Venta', status_changed:'Cambio estado', moved:'Traslado', note:'Nota' };
 
-const BRANCH_CFG = {
-  MPN:  { color:'#2563EB', light:'#EFF6FF', label:'Mall Plaza Norte'        },
-  MPS:  { color:'#059669', light:'#ECFDF5', label:'Mall Plaza Sur'          },
-  MPSY: { color:'#7C3AED', light:'#F5F3FF', label:'Mall Plaza Sur Yamaha'   },
-  MOV:  { color:'#D97706', light:'#FFFBEB', label:'Movicenter'              },
+// Paleta de colores por código — solo la paleta está hardcodeada.
+// El label y la existencia de la sucursal vienen de realBranches (DB).
+const BRANCH_COLORS = {
+  MPN:  { color:'#2563EB', light:'#EFF6FF' },
+  MPS:  { color:'#059669', light:'#ECFDF5' },
+  MPSY: { color:'#7C3AED', light:'#F5F3FF' },
+  MOV:  { color:'#D97706', light:'#FFFBEB' },
 };
-const FALLBACK_BRANCH = { color:'#6B7280', light:'#F9FAFB', label:'—' };
+const FALLBACK_BRANCH_COLOR = { color:'#6B7280', light:'#F9FAFB' };
+// Resuelve cfg {color, light, label} combinando paleta + DB. Si la sucursal
+// existe en DB pero no está en la paleta, cae al color gris fallback.
+const branchCfg = (code, brs) => {
+  const paint = BRANCH_COLORS[code] || FALLBACK_BRANCH_COLOR;
+  const db    = (brs || []).find(b => b.code === code);
+  return { ...paint, label: db?.name || code || '—' };
+};
 
 const ST_CFG = {
   disponible:  { color:'#15803D', bg:'#F0FDF4', border:'#86EFAC', label:'Disponible',  icon:'●' },
@@ -47,16 +56,17 @@ const COLOR_CSS = {
   marron:'#92400E', beige:'#D4B896', crema:'#FEF3C7', champagne:'#F5E6C8',
   titanio:'#6B7280', grafito:'#374151', antracita:'#1F2937',
 };
-// Normaliza el string antes de buscar (quita tildes, pasa a minúsculas)
-const normalizeColor = s => (s||'').toLowerCase().trim()
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+// Resolver color CSS: usa normalizeText de utils (fuente única) para matching
+// sin acentos ni case sensitivity.
 const getColorCss = c => {
-  const key = normalizeColor(c);
-  // Búsqueda exacta primero
-  const exact = Object.entries(COLOR_CSS).find(([k]) => normalizeColor(k) === key);
+  const key = normalizeText(c);
+  const exact = Object.entries(COLOR_CSS).find(([k]) => normalizeText(k) === key);
   if (exact) return exact[1];
-  // Búsqueda parcial (e.g. "AZUL METALICO OSCURO" → "azul metalico")
-  const partial = Object.entries(COLOR_CSS).find(([k]) => key.includes(normalizeColor(k)) || normalizeColor(k).includes(key));
+  // Búsqueda parcial: "AZUL METALICO OSCURO" → "azul metalico"
+  const partial = Object.entries(COLOR_CSS).find(([k]) => {
+    const nk = normalizeText(k);
+    return key.includes(nk) || nk.includes(key);
+  });
   return partial ? partial[1] : null;
 };
 
@@ -89,14 +99,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const isAdmin      = ['super_admin','admin_comercial','backoffice'].includes(user?.role);
   const isSuperAdmin = user?.role === 'super_admin';
 
-  // Mobile detection
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 640);
+  // Mobile detection — 768px alineado con responsive.css (≤767px es mobile).
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
   const [expandedCards, setExpandedCards] = useState(new Set());
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 640);
+    const onResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+  // Banner de error de recarga — cuando la sincronización con el backend falla.
+  const [reloadErr, setReloadErr] = useState('');
   const toggleExpand = id => setExpandedCards(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // Modal edición
@@ -134,7 +146,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     return true;
   });
   const counts = Object.fromEntries(Object.keys(INV_ST).map(k => [k, inv.filter(x => x.status === k).length]));
-  const reload = () => api.getInventory().then(d => setInv(Array.isArray(d) ? d : [])).catch(() => {});
+  const reload = () => {
+    setReloadErr('');
+    return api.getInventory()
+      .then(d => setInv(Array.isArray(d) ? d : []))
+      .catch(e => setReloadErr('No se pudo actualizar el inventario: ' + (e?.message || 'error de conexión')));
+  };
   const hasFilters = search || brF || stF || brandF;
   const showHub = !brF && !search && !stF && !brandF;
   const clearFilters = () => { setSearch(''); setBrF(''); setStF(''); setBrandF(''); };
@@ -399,6 +416,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   return (
     <div style={{ maxWidth:1400 }}>
 
+      {reloadErr && (
+        <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', color:'#B91C1C', padding:'10px 14px', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <span>{reloadErr}</span>
+          <button onClick={()=>reload()} style={{ background:'#DC2626', color:'#fff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Reintentar</button>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════════
           ENCABEZADO
       ══════════════════════════════════════════════════════════ */}
@@ -579,8 +603,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {/* ══════ HUB: vista por sucursal ══════ */}
       {showHub ? (
         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap:16, marginTop:8 }}>
-          {['MOV','MPN','MPS','MPSY'].map(code => {
-            const cfg    = BRANCH_CFG[code] || FALLBACK_BRANCH;
+          {(brs.map(b=>b.code).filter(Boolean)).map(code => {
+            const cfg    = branchCfg(code, brs);
             const brData = brs.find(b => b.code === code);
             const id     = brData?.id;
             const brPhoto= branchPhotos[id] || brData?.photo_url;
@@ -665,7 +689,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             const isSold    = x.status === 'vendida';
             const stCfg     = ST_CFG[x.status] || ST_CFG.disponible;
             const bCode     = x.branch_code || brs.find(b => b.id===x.branch_id)?.code || '';
-            const bCfg      = BRANCH_CFG[bCode] || FALLBACK_BRANCH;
+            const bCfg      = branchCfg(bCode, brs);
             const isHistOpen= histOpen.has(x.id);
             const cDot      = getColorCss(x.color);
 
@@ -870,7 +894,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     padding:'6px 7px',
                   }}>
                     <span style={{ fontSize:8.5, fontWeight:800, color:'#FFFFFF', letterSpacing:'0.01em', textAlign:'center', lineHeight:1.35, wordBreak:'break-word', whiteSpace:'normal' }}>
-                      {BRANCH_CFG[bCode] ? bCfg.label : (x.branch_name || bCode || '—')}
+                      {bCfg.label}
                     </span>
                   </div>
 

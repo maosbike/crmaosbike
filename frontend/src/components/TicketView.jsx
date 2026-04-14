@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
@@ -60,10 +60,13 @@ export function TicketView({lead,user,nav,updLead}){
       api.getReassignments(lead.id).then(d=>setAssignHistory(Array.isArray(d)?d:[])).catch(()=>{});
     }
     api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
-    // Auto-transición: abrir un lead 'nuevo' lo mueve a 'abierto' (persiste en DB)
+    // Auto-transición: abrir un lead 'nuevo' lo mueve a 'abierto' (persiste en DB).
+    // Espera la respuesta del backend antes de mover el estado local — si el PATCH
+    // falla, el lead queda en 'nuevo' y el usuario no ve un estado mentiroso.
     if(lead.status==='nuevo'){
-      updLead(lead.id,{status:'abierto'});
-      api.updateTicket(lead.id,{status:'abierto'}).catch(()=>{});
+      api.updateTicket(lead.id,{status:'abierto'})
+        .then(()=>updLead(lead.id,{status:'abierto'}))
+        .catch(()=>{/* silencioso: si falla, seguirá mostrándose como 'nuevo' */});
     }
     // Capturar estado inicial para detectar qué campos cambian al guardar
     savedRef.current={fn:lead.fn,ln:lead.ln,rut:lead.rut,bday:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sitLab:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta,pie:lead.pie,wantsFin:lead.wantsFin,finStatus:lead.finStatus,rechazoMotivo:lead.rechazoMotivo,motoId:lead.motoId};
@@ -158,10 +161,11 @@ export function TicketView({lead,user,nav,updLead}){
     try{
       const entry=await api.addTimeline(lead.id,{type:"note_added",title:"Nota agregada",note:noteForm.trim()});
       addTimelineLocal(entry);
-    }catch{
-      addTimelineLocal({id:`tl-${Date.now()}`,type:"note_added",title:"Nota agregada",note:noteForm.trim(),date:new Date().toISOString(),user_fn:user.fn,user_ln:user.ln});
+      setNoteForm("");
+    }catch(ex){
+      // Sin fallback fantasma: el comentario queda en el input para reintentar.
+      setNoteErr(ex?.message||"No se pudo guardar la nota. Revisá la conexión e intentá de nuevo.");
     }
-    setNoteForm("");
   };
   const sendChat=async()=>{
     if(!chatMsg.trim()||chatSending)return;
@@ -170,9 +174,9 @@ export function TicketView({lead,user,nav,updLead}){
       const e=await api.addTimeline(lead.id,{type:'internal_comment',title:'Comentario interno',note:chatMsg.trim()});
       addTimelineLocal(e);
       setChatMsg('');
-    }catch{
-      addTimelineLocal({id:`tl-${Date.now()}`,type:'internal_comment',title:'Comentario interno',note:chatMsg.trim(),date:new Date().toISOString(),user_fn:user.fn,user_ln:user.ln,user_role:user.role});
-      setChatMsg('');
+    }catch(ex){
+      // Sin fallback fantasma: conservamos el texto en el input para reintentar.
+      alert('No se pudo enviar el comentario: '+(ex?.message||'Error de conexión'));
     }finally{setChatSending(false);}
   };
   // Cambio de estado con persistencia real y revert en error
@@ -213,18 +217,7 @@ export function TicketView({lead,user,nav,updLead}){
   const isGanado=lead.status==="ganado";
   const isPerdido=lead.status==="perdido";
 
-  // ── Modal Seguimiento Obligatorio ──
-  const FOLLOWUP_OPTS=[
-    {v:'cliente_interesado',    l:'Cliente sigue interesado'},
-    {v:'quedo_responder',       l:'Quedó de responder'},
-    {v:'contactar_mas_adelante',l:'Pidió contactar más adelante'},
-    {v:'revisando_cotizacion',  l:'Está revisando cotización'},
-    {v:'reuniendo_pie_docs',    l:'Está reuniendo pie / documentos'},
-    {v:'evaluacion_financiera', l:'Está en evaluación financiera'},
-    {v:'agendar_visita',        l:'Agendar visita o test ride'},
-    {v:'requiere_nueva_llamada',l:'Requiere nueva llamada'},
-    {v:'otro_avance',           l:'Otro avance'},
-  ];
+  // ── Modal Seguimiento Obligatorio ── (FOLLOWUP_OPTS viene de ui.jsx)
   const[showFollowup,setShowFollowup]=useState(false);
   const[fq,setFq]=useState({status:'',note:'',nextStep:'',nextAt:''});
   const[fqErr,setFqErr]=useState('');

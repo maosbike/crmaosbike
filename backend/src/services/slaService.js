@@ -3,6 +3,12 @@ const db = require('../config/db');
 const NotificationService = require('./notificationService');
 const TelegramService = require('./telegramService');
 const { calcSlaDeadline, isNowBusinessHour } = require('../utils/slaUtils');
+const { TERMINAL_STATUSES } = require('../config/leadStatus');
+
+// Fragmento SQL para excluir estados terminales — deriva de TERMINAL_STATUSES
+// para que cambiar el enum se propague automáticamente. Los valores son enum
+// internos controlados (no input de usuario) así que la interpolación es segura.
+const NOT_TERMINAL_SQL = `NOT IN (${TERMINAL_STATUSES.map(s => `'${s}'`).join(',')})`;
 
 const SLAService = {
   // Acciones que cuentan como "primera gestión válida"
@@ -63,7 +69,7 @@ const SLAService = {
   async assignSeller(branch_id) {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
-              COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido')) AS active_tickets
+              COUNT(t.id) FILTER (WHERE t.status ${NOT_TERMINAL_SQL}) AS active_tickets
        FROM users u
        LEFT JOIN tickets t ON t.assigned_to = u.id
        WHERE u.role = 'vendedor'
@@ -82,7 +88,7 @@ const SLAService = {
   async findBestSeller(branch_id, excluded_ids = []) {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
-              COUNT(t.id) FILTER (WHERE t.status NOT IN ('ganado','perdido')) AS active_tickets
+              COUNT(t.id) FILTER (WHERE t.status ${NOT_TERMINAL_SQL}) AS active_tickets
        FROM users u
        LEFT JOIN tickets t ON t.assigned_to = u.id
        WHERE u.role = 'vendedor'
@@ -236,7 +242,7 @@ const SLAService = {
         `UPDATE tickets SET sla_status = 'warning'
          WHERE id IN (
            SELECT t.id FROM tickets t
-           WHERE t.status NOT IN ('ganado', 'perdido')
+           WHERE t.status ${NOT_TERMINAL_SQL}
              AND t.first_action_at IS NULL
              AND t.sla_status IN ('normal', 'reassigned')
              AND t.sla_deadline - INTERVAL '1 hour' < NOW()
@@ -280,7 +286,7 @@ const SLAService = {
         `UPDATE tickets SET sla_status = 'breached'
          WHERE id IN (
            SELECT t.id FROM tickets t
-           WHERE t.status NOT IN ('ganado', 'perdido')
+           WHERE t.status ${NOT_TERMINAL_SQL}
              AND t.first_action_at IS NULL
              AND t.sla_status IN ('normal', 'warning', 'reassigned')
              AND t.sla_deadline < NOW()

@@ -1,7 +1,34 @@
 // ─── Shared UI: constants, styles, icons, utils ───────────────────────────────
 
 // Constants
-export const TICKET_STATUS={nuevo:{l:"Nuevo",c:"#06B6D4"},abierto:{l:"Abierto",c:"#3B82F6"},en_gestion:{l:"En Gestión",c:"#F59E0B"},cotizado:{l:"Cotizado",c:"#8B5CF6"},financiamiento:{l:"Financiamiento",c:"#F28100"},ganado:{l:"Ganado",c:"#10B981"},perdido:{l:"Perdido",c:"#EF4444"}};
+// TICKET_STATUS: fuente única de verdad para colores y labels de estados de lead.
+// bg es la versión "light" para strips/badges suaves. Mantener sincronizado con
+// backend/src/config/leadStatus.js.
+export const TICKET_STATUS={
+  nuevo:         {l:"Nuevo",          c:"#06B6D4", bg:"#ECFEFF"},
+  abierto:       {l:"Abierto",        c:"#3B82F6", bg:"#EFF6FF"},
+  en_gestion:    {l:"En Gestión",     c:"#F59E0B", bg:"#FFFBEB"},
+  cotizado:      {l:"Cotizado",       c:"#8B5CF6", bg:"#F5F3FF"},
+  financiamiento:{l:"Financiamiento", c:"#F28100", bg:"#FFF7ED"},
+  ganado:        {l:"Ganado",         c:"#10B981", bg:"#F0FDF4"},
+  perdido:       {l:"Perdido",        c:"#EF4444", bg:"#FEF2F2"},
+};
+export const STATUS_ORDER      = ['nuevo','abierto','en_gestion','cotizado','financiamiento','ganado','perdido'];
+export const ACTIVE_STATUSES   = ['nuevo','abierto','en_gestion','cotizado','financiamiento'];
+export const TERMINAL_STATUSES = ['ganado','perdido'];
+export const PIPELINE_STAGES   = ACTIVE_STATUSES;
+// 9 opciones del seguimiento obligatorio — espejo de backend/src/config/leadStatus.js
+export const FOLLOWUP_OPTS = [
+  {v:'cliente_interesado',    l:'Cliente sigue interesado'},
+  {v:'quedo_responder',       l:'Quedó de responder'},
+  {v:'contactar_mas_adelante',l:'Pidió contactar más adelante'},
+  {v:'revisando_cotizacion',  l:'Está revisando cotización'},
+  {v:'reuniendo_pie_docs',    l:'Está reuniendo pie / documentos'},
+  {v:'evaluacion_financiera', l:'Está en evaluación financiera'},
+  {v:'agendar_visita',        l:'Agendar visita o test ride'},
+  {v:'requiere_nueva_llamada',l:'Requiere nueva llamada'},
+  {v:'otro_avance',           l:'Otro avance'},
+];
 export const PRIORITY={alta:{l:"Alta",c:"#EF4444"},media:{l:"Media",c:"#F59E0B"},baja:{l:"Baja",c:"#6B7280"}};
 export const SRC={web:"Web",redes_sociales:"RRSS",whatsapp:"WhatsApp",presencial:"Presencial",referido:"Referido",evento:"Evento",llamada:"Llamada"};
 export const COMUNAS=["Huechuraba","Providencia","Las Condes","La Florida","Maipú","Santiago Centro","Ñuñoa","Vitacura","Puente Alto","San Bernardo","Cerrillos","Recoleta","Independencia","Quilicura","Lo Barnechea","Peñalolén","La Reina","Macul","San Miguel","Otra"];
@@ -18,11 +45,8 @@ export const SLA_STATUS={
   reassigned:{l:"Reasignado",   c:"#8B5CF6",bg:"rgba(139,92,246,0.12)"},
 };
 
-// Utils
-export const fmt=(n)=>n?"$"+Number(n).toLocaleString("es-CL"):"$0";
-export const fD=(d)=>d?new Date(d).toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"}):"-";
-export const fDT=(d)=>d?new Date(d).toLocaleString("es-CL",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"-";
-export const ago=(d)=>{if(!d)return"";const m=Math.floor((Date.now()-new Date(d).getTime())/6e4);if(m<60)return m+"min";const h=Math.floor(m/60);if(h<24)return h+"h";return Math.floor(h/24)+"d";};
+// Utils: re-exportados desde utils/format.js (fuente única de verdad)
+export { fmt, fD, fDT, ago, normalizeText, normalizeModel, normalizeColor, normalizeChassis, formatRut, formatPhone, parseMoney } from './utils/format.js';
 export const mapTicket=(t)=>{
   const pv=t.post_venta||{factura:false,pagoReg:false,homSol:false,homRec:false,enrolada:false,entregada:false};
   return{

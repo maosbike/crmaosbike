@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { S, Modal, PAYMENT_TYPES, fmt } from '../ui.jsx';
-
-// Normaliza para comparar brand/model sin importar mayúsculas ni espacios extra
-const normalize = s => (s || '').trim().toLowerCase();
+import { S, Modal, PAYMENT_TYPES, fmt, normalizeText as normalize } from '../ui.jsx';
 
 export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }) {
   const [inv, setInv]         = useState([]);
