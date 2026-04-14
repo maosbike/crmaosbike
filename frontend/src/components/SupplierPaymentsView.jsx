@@ -264,17 +264,43 @@ function NewModal({ onClose, onCreated }) {
 }
 
 /* ── Detail / edit modal ───────────────────────────────────────────────── */
-function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel }) {
+function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startInEdit }) {
   const [p,setP]=useState(p0);
-  const [editing,setEditing]=useState(false);
-  const [form,setForm]=useState({});
+  const [editing,setEditing]=useState(!!startInEdit);
+  const [form,setForm]=useState(()=> startInEdit ? {
+    ...p0,
+    invoice_date: p0.invoice_date?.slice(0,10)||'',
+    due_date:     p0.due_date?.slice(0,10)||'',
+    payment_date: p0.payment_date?.slice(0,10)||'',
+  } : {});
   const [saving,setSaving]=useState(false);
   const [cd,setCD]=useState(false);
   const [deleting,setDel]=useState(false);
   const st=k=>v=>setForm(f=>({...f,[k]:v}));
 
   const startEdit=()=>{setForm({...p,invoice_date:p.invoice_date?.slice(0,10)||'',due_date:p.due_date?.slice(0,10)||'',payment_date:p.payment_date?.slice(0,10)||''});setEditing(true);};
-  const save=async()=>{setSaving(true);try{const u=await api.updateSupplierPayment(p.id,form);setP(u);onUpdated(u);setEditing(false);}catch(e){alert(e.message);}finally{setSaving(false);}};
+  const save=async()=>{
+    setSaving(true);
+    try{
+      // Enviamos solo los campos editables + model_id explícito (incluso si es '' → null backend).
+      // Evitamos enviar catalog_* y metadatos que el backend igual ignora.
+      const payload = {
+        invoice_number: form.invoice_number, invoice_date: form.invoice_date,
+        due_date: form.due_date, payment_date: form.payment_date,
+        total_amount: form.total_amount, neto: form.neto, iva: form.iva,
+        paid_amount: form.paid_amount,
+        receipt_number: form.receipt_number, payer_name: form.payer_name,
+        banco: form.banco, payment_method: form.payment_method,
+        brand: form.brand, model: form.model, model_id: form.model_id || '',
+        color: form.color, commercial_year: form.commercial_year,
+        motor_num: form.motor_num, chassis: form.chassis,
+        invoice_url: form.invoice_url, receipt_url: form.receipt_url,
+        notes: form.notes, provider: form.provider,
+      };
+      const u=await api.updateSupplierPayment(p.id,payload);
+      setP(u);onUpdated(u);setEditing(false);
+    }catch(e){alert(e.message);}finally{setSaving(false);}
+  };
   const del=async()=>{setDel(true);try{await api.deleteSupplierPayment(p.id);onDeleted(p.id);onClose();}catch(e){alert(e.message);setDel(false);setCD(false);}};
 
   const dv = due(p);
@@ -435,25 +461,47 @@ function Card({ p, onClick }) {
   );
 }
 
+/* ── Summary card ─────────────────────────────────────────────────────── */
+function SumCard({ label, value, sub, color='#0F172A', bg='#FFFFFF' }) {
+  return (
+    <div style={{ ...S.card, padding:'12px 14px', background:bg, display:'flex', flexDirection:'column', gap:3 }}>
+      <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>{label}</div>
+      <div style={{ fontSize:17, fontWeight:900, color, letterSpacing:'-0.3px' }}>{value}</div>
+      {sub && <div style={{ fontSize:10, color:'#94A3B8', fontWeight:500 }}>{sub}</div>}
+    </div>
+  );
+}
+
 /* ── Main view ─────────────────────────────────────────────────────────── */
 export function SupplierPaymentsView({ user }) {
   const canDel  = user.role==='super_admin';
   const canCreate = ['super_admin','admin_comercial','backoffice'].includes(user.role);
+  const canEdit   = canCreate;
   const bp = useBP();
 
   const [data,setData]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showNew,setShowNew]=useState(false);
   const [sel,setSel]=useState(null);
-  const [q,setQ]=useState('');
+  const [editFromList,setEditFromList]=useState(false); // abrir modal directo en modo edit
   const [syncing,setSyncing]=useState(false);
   const [syncRes,setSyncRes]=useState(null);
 
+  // Filtros locales (se aplican sobre `data` ya cargado)
+  const [q,setQ]=useState('');
+  const [stF,setStF]=useState('');            // '', 'pagado', 'pendiente'
+  const [fromF,setFromF]=useState('');
+  const [toF,setToF]=useState('');
+  const [brF,setBrF]=useState('');
+  const [sortBy,setSortBy]=useState('invoice_date');   // invoice_date | due_date | total_amount | paid_amount
+  const [sortDir,setSortDir]=useState('desc');
+
   const load = useCallback(async()=>{
     setLoading(true);
-    try{const r=await api.getSupplierPayments(q?{q}:{});setData(r.data||[]);}catch(e){console.error(e);}
-    finally{setLoading(false);}
-  },[q]);
+    try{ const r=await api.getSupplierPayments(); setData(r.data||[]); }
+    catch(e){ console.error(e); }
+    finally{ setLoading(false); }
+  },[]);
   useEffect(()=>{load();},[load]);
 
   const sync=async()=>{
@@ -463,13 +511,66 @@ export function SupplierPaymentsView({ user }) {
     finally{setSyncing(false);}
   };
 
+  // ── Filtrado + orden (cliente) ──────────────────────────────────────────
+  const brands = Array.from(new Set(data.map(p=>p.brand).filter(Boolean))).sort();
+
+  const norm = (s) => (s||'').toString().toLowerCase();
+  const qn = norm(q.trim());
+  const filtered = data.filter(p=>{
+    // Búsqueda amplia — todos los campos relevantes
+    if (qn) {
+      const hay = [p.invoice_number, p.receipt_number, p.provider, p.brand, p.model,
+                   p.catalog_name, p.color, p.chassis, p.motor_num, p.banco]
+        .map(norm).join(' ');
+      if (!hay.includes(qn)) return false;
+    }
+    if (stF==='pagado'    && !p.paid_amount) return false;
+    if (stF==='pendiente' &&  p.paid_amount) return false;
+    if (brF && p.brand !== brF) return false;
+    if (fromF || toF) {
+      const d = (p.invoice_date||'').slice(0,10);
+      if (fromF && d && d < fromF) return false;
+      if (toF   && d && d > toF)   return false;
+    }
+    return true;
+  });
+  const sorted = [...filtered].sort((a,b)=>{
+    const va = sortBy==='due_date' ? (due(a)||'') : (a[sortBy]||'');
+    const vb = sortBy==='due_date' ? (due(b)||'') : (b[sortBy]||'');
+    const na = sortBy==='total_amount'||sortBy==='paid_amount' ? (parseInt(va)||0) : String(va);
+    const nb = sortBy==='total_amount'||sortBy==='paid_amount' ? (parseInt(vb)||0) : String(vb);
+    if (na < nb) return sortDir==='asc' ? -1 : 1;
+    if (na > nb) return sortDir==='asc' ?  1 : -1;
+    return 0;
+  });
+
+  // ── Resumen (sobre filtrados) ──────────────────────────────────────────
+  const sum = sorted.reduce((acc,p)=>{
+    const tot = parseInt(p.total_amount)||0;
+    const paid= parseInt(p.paid_amount)||0;
+    const dv = due(p);
+    const ov = dv && !p.paid_amount && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
+    acc.total  += tot;
+    acc.paid   += paid;
+    acc.motos  += (p.chassis || p.motor_num || p.model_id ? 1 : 0);
+    if (ov) acc.overdue++;
+    return acc;
+  }, { total:0, paid:0, motos:0, overdue:0 });
+  const saldo = Math.max(0, sum.total - sum.paid);
+
   const pending = data.filter(p=>!p.paid_amount).length;
+
+  const hasFilters = q || stF || fromF || toF || brF;
+  const clearFilters = () => { setQ(''); setStF(''); setFromF(''); setToF(''); setBrF(''); };
+
+  const ctrl = { height:32, borderRadius:7, border:'1.5px solid #E5E7EB', background:'#FFFFFF', color:'#374151', fontSize:12, padding:'0 8px', fontFamily:'inherit', outline:'none' };
+  const flt  = { fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3, display:'block' };
 
   return (
     <div style={{ fontFamily:'Inter,system-ui,sans-serif',flex:1,display:'flex',flexDirection:'column',minHeight:0 }}>
 
       {/* Header — matches Leads/Tickets h1 style */}
-      <div style={{ display:'flex',alignItems:'flex-start',gap:12,marginBottom:20,flexWrap:'wrap' }}>
+      <div style={{ display:'flex',alignItems:'flex-start',gap:12,marginBottom:16,flexWrap:'wrap' }}>
         <div>
           <h1 style={{ margin:0,fontSize:bp==='sm'?16:20,fontWeight:800,color:'#0F172A',letterSpacing:'-0.4px' }}>Pagos a proveedor</h1>
           {pending>0&&<p style={{ color:'#94A3B8',fontSize:12,margin:'3px 0 0',fontWeight:500 }}>{pending} sin monto pagado registrado</p>}
@@ -495,34 +596,85 @@ export function SupplierPaymentsView({ user }) {
         </div>
       )}
 
-      {/* Search bar — matches CRM filter bar pattern */}
-      <div style={{...S.card,padding:'14px 18px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}>
-        <Ic.search size={16} color="#9CA3AF"/>
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar factura, chasis, modelo, motor..."
-          style={{...S.inp,border:'none',background:'transparent',width:'100%',maxWidth:400,padding:'0'}}/>
-        <span style={{marginLeft:'auto',fontSize:11,color:'#9CA3AF',fontWeight:500,whiteSpace:'nowrap'}}>{data.length} registro{data.length!==1?'s':''}</span>
+      {/* ── Resumen (sobre lista filtrada) ── */}
+      <div style={{ display:'grid', gridTemplateColumns: bp==='sm' ? 'repeat(2,1fr)' : 'repeat(6,1fr)', gap:10, marginBottom:14 }}>
+        <SumCard label="Registros" value={sorted.length} sub={sorted.length!==data.length?`de ${data.length}`:null}/>
+        <SumCard label="Motos"     value={sum.motos}/>
+        <SumCard label="Facturado" value={$(sum.total)}/>
+        <SumCard label="Pagado"    value={$(sum.paid)} color="#15803D"/>
+        <SumCard label="Saldo"     value={$(saldo)} color={saldo>0?'#C2410C':'#15803D'}/>
+        <SumCard label="Vencidas"  value={sum.overdue} color={sum.overdue>0?'#EF4444':'#0F172A'}/>
+      </div>
+
+      {/* ── Filtros ── */}
+      <div style={{ ...S.card, padding:'12px 14px', marginBottom:14, display:'flex', gap:10, alignItems:'flex-end', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 1 240px', minWidth:200 }}>
+          <Ic.search size={15} color="#9CA3AF"/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Factura, comprobante, proveedor, modelo, color, chasis, motor, banco…"
+            style={{...S.inp, border:'none', background:'transparent', flex:1, padding:0, height:30, fontSize:13}}/>
+        </div>
+        <div>
+          <label style={flt}>Estado</label>
+          <select value={stF} onChange={e=>setStF(e.target.value)} style={ctrl}>
+            <option value="">Todos</option>
+            <option value="pagado">Pagado</option>
+            <option value="pendiente">Pendiente</option>
+          </select>
+        </div>
+        <div>
+          <label style={flt}>Desde</label>
+          <input type="date" value={fromF} onChange={e=>setFromF(e.target.value)} style={{...ctrl, minWidth:130}}/>
+        </div>
+        <div>
+          <label style={flt}>Hasta</label>
+          <input type="date" value={toF} onChange={e=>setToF(e.target.value)} style={{...ctrl, minWidth:130}}/>
+        </div>
+        <div>
+          <label style={flt}>Marca</label>
+          <select value={brF} onChange={e=>setBrF(e.target.value)} style={ctrl}>
+            <option value="">Todas</option>
+            {brands.map(b=><option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={flt}>Ordenar por</label>
+          <div style={{ display:'flex', gap:6 }}>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={ctrl}>
+              <option value="invoice_date">Fecha emisión</option>
+              <option value="due_date">Vencimiento</option>
+              <option value="total_amount">Total factura</option>
+              <option value="paid_amount">Monto pagado</option>
+            </select>
+            <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
+              title={sortDir==='asc'?'Ascendente':'Descendente'}
+              style={{...ctrl, cursor:'pointer', padding:'0 10px', fontWeight:700, color:'#374151'}}>
+              {sortDir==='asc'?'↑':'↓'}
+            </button>
+          </div>
+        </div>
+        {hasFilters && <button onClick={clearFilters} style={{ ...ctrl, cursor:'pointer', padding:'0 10px', fontWeight:600, color:'#6B7280', background:'#F9FAFB' }}>Limpiar</button>}
       </div>
 
       {/* Mobile: cards */}
       {bp==='sm' ? (
         <div style={{flex:1,overflowY:'auto'}}>
           {loading&&<div style={{padding:32,textAlign:'center',color:'#9CA3AF',fontFamily:'inherit'}}>Cargando...</div>}
-          {!loading&&data.length===0&&<div style={{padding:48,textAlign:'center',color:'#9CA3AF',fontWeight:500,fontFamily:'inherit'}}>Sin registros</div>}
-          {!loading&&data.map(p=><Card key={p.id} p={p} onClick={()=>setSel(p)}/>)}
+          {!loading&&sorted.length===0&&<div style={{padding:48,textAlign:'center',color:'#9CA3AF',fontWeight:500,fontFamily:'inherit'}}>{hasFilters?'Sin resultados con estos filtros':'Sin registros'}</div>}
+          {!loading&&sorted.map(p=><Card key={p.id} p={p} onClick={()=>{setEditFromList(false);setSel(p);}}/>)}
         </div>
       ) : (
         /* Desktop / tablet — card-rows, no tabla plana */
         <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:8}}>
           {loading&&<div style={{padding:40,textAlign:'center',color:'#9CA3AF'}}>Cargando...</div>}
-          {!loading&&data.length===0&&<div style={{...S.card,padding:48,textAlign:'center',color:'#9CA3AF'}}><div style={{fontWeight:700,marginBottom:4}}>Sin registros</div><div style={{fontSize:12}}>Registra el primer pago con Drive o manualmente</div></div>}
-          {!loading&&data.map(p=>{
+          {!loading&&sorted.length===0&&<div style={{...S.card,padding:48,textAlign:'center',color:'#9CA3AF'}}><div style={{fontWeight:700,marginBottom:4}}>{hasFilters?'Sin resultados con estos filtros':'Sin registros'}</div><div style={{fontSize:12}}>{hasFilters?<button onClick={clearFilters} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button>:'Registra el primer pago con Drive o manualmente'}</div></div>}
+          {!loading&&sorted.map(p=>{
             const dv=due(p);
-            const ov=dv&&new Date(dv.slice(0,10)+'T12:00:00')<new Date();
+            const ov=dv && !p.paid_amount && new Date(dv.slice(0,10)+'T12:00:00')<new Date();
             const img=motoImg(p);
             const col = { display:'flex',flexDirection:'column',justifyContent:'center' };
             const lbl = { fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:3 };
             return (
-              <div key={p.id} onClick={()=>setSel(p)}
+              <div key={p.id} onClick={()=>{setEditFromList(false);setSel(p);}}
                 style={{...S.card,padding:0,display:'flex',alignItems:'stretch',cursor:'pointer',overflow:'hidden',minHeight:0}}
                 onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.09)';}}
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow=S.card.boxShadow;}}>
@@ -541,8 +693,13 @@ export function SupplierPaymentsView({ user }) {
 
                 {/* ── CENTRAL: modelo + chips + chasis/motor ── */}
                 <div style={{...col,flex:'1 1 0',minWidth:0,padding:'14px 20px',gap:6,borderRight:'1px solid #F1F5F9'}}>
-                  <div style={{fontWeight:800,fontSize:17,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:1.2}}>
-                    {p.catalog_name||p.model||'—'}
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{fontWeight:800,fontSize:17,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:1.2,flex:1,minWidth:0}}>
+                      {p.catalog_name||p.model||'—'}
+                    </div>
+                    {!p.model_id && (p.brand||p.model) && (
+                      <span title="Sin asociar al catálogo" style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#B45309', background:'#FEF3C7', border:'1px solid #FDE68A', padding:'2px 7px', borderRadius:20, letterSpacing:'0.04em', textTransform:'uppercase' }}>Sin catálogo</span>
+                    )}
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginTop:2}}>
                     <ColorChip color={p.color}/>
@@ -562,38 +719,44 @@ export function SupplierPaymentsView({ user }) {
                   )}
                 </div>
 
-                {/* ── DERECHO: montos + fechas + docs ── */}
-                <div style={{...col,flexShrink:0,width:210,padding:'14px 18px',gap:0}}>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px 14px',marginBottom:10}}>
+                {/* ── DERECHO: grilla horizontal equilibrada ── */}
+                <div style={{...col,flexShrink:0,width:360,padding:'14px 18px',gap:10}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'0 14px',alignItems:'start'}}>
                     <div>
                       <div style={lbl}>Total factura</div>
-                      <div style={{fontSize:15,fontWeight:900,color:'#0F172A',letterSpacing:'-0.3px'}}>{$(p.total_amount)}</div>
+                      <div style={{fontSize:15,fontWeight:900,color:'#0F172A',letterSpacing:'-0.3px',whiteSpace:'nowrap'}}>{$(p.total_amount)}</div>
                     </div>
                     <div>
                       <div style={lbl}>Monto pagado</div>
-                      <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#CBD5E1'}}>{$(p.paid_amount)}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#CBD5E1',whiteSpace:'nowrap'}}>{$(p.paid_amount)}</div>
                     </div>
                     <div>
                       <div style={{...lbl,color:ov?'#EF4444':'#9CA3AF'}}>Vencimiento</div>
-                      <div style={{fontSize:12,fontWeight:ov?700:500,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</div>
+                      <div style={{fontSize:12,fontWeight:ov?700:500,color:ov?'#EF4444':'#374151',whiteSpace:'nowrap'}}>{fd(dv)}</div>
                     </div>
-                    {p.payment_date&&<div>
+                    <div>
                       <div style={lbl}>Fecha pago</div>
-                      <div style={{fontSize:12,color:'#374151'}}>{fd(p.payment_date)}</div>
-                    </div>}
-                  </div>
-                  {(p.invoice_url||p.receipt_url)&&(
-                    <div style={{display:'flex',gap:6}}>
-                      {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                        style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 6px',borderRadius:6,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
-                        <Ic.file size={11}/> Factura
-                      </a>}
-                      {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                        style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 6px',borderRadius:6,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
-                        <Ic.file size={11}/> Comprobante
-                      </a>}
+                      <div style={{fontSize:12,color:p.payment_date?'#374151':'#CBD5E1',whiteSpace:'nowrap'}}>{p.payment_date?fd(p.payment_date):'—'}</div>
                     </div>
-                  )}
+                  </div>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                      style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                      <Ic.file size={11}/> Factura
+                    </a>}
+                    {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                      style={{display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                      <Ic.file size={11}/> Comprobante
+                    </a>}
+                    <span style={{flex:1}}/>
+                    {canEdit && (
+                      <button onClick={e=>{e.stopPropagation();setEditFromList(true);setSel(p);}}
+                        title="Editar ficha"
+                        style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:6, background:'#F9FAFB', border:'1px solid #D1D5DB', color:'#374151', cursor:'pointer', fontFamily:'inherit' }}>
+                        ✎ Editar
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -602,15 +765,15 @@ export function SupplierPaymentsView({ user }) {
       )}
 
       {/* Footer */}
-      {!loading&&data.length>0&&(
+      {!loading&&sorted.length>0&&(
         <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:'#9CA3AF',fontFamily:'inherit'}}>
-          <span>{data.length} registro{data.length!==1?'s':''}</span>
-          <span>Total: <strong style={{color:'#0F172A'}}>{$(data.reduce((s,p)=>s+(parseInt(p.total_amount)||0),0))}</strong></span>
+          <span>{sorted.length} de {data.length} registro{data.length!==1?'s':''}</span>
+          <span>Facturado: <strong style={{color:'#0F172A'}}>{$(sum.total)}</strong> · Pagado: <strong style={{color:'#15803D'}}>{$(sum.paid)}</strong> · Saldo: <strong style={{color:saldo>0?'#C2410C':'#0F172A'}}>{$(saldo)}</strong></span>
         </div>
       )}
 
       {showNew&&<NewModal onClose={()=>setShowNew(false)} onCreated={p=>{setData(d=>[p,...d]);setShowNew(false);}}/>}
-      {sel&&<DetailModal payment={sel} canDel={canDel} onClose={()=>setSel(null)}
+      {sel&&<DetailModal payment={sel} canDel={canDel} startInEdit={editFromList} onClose={()=>{setSel(null);setEditFromList(false);}}
         onUpdated={p=>{setData(d=>d.map(x=>x.id===p.id?p:x));setSel(p);}}
         onDeleted={id=>{setData(d=>d.filter(x=>x.id!==id));setSel(null);}}/>}
     </div>

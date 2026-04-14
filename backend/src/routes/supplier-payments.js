@@ -129,8 +129,15 @@ function extractInvoice(text) {
     // Fallback: capture alphanumeric+hyphen only (no spaces to avoid grabbing next field)
     t.match(/MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-\/\.]+)/i)
   )?.[1]?.trim() || null;
-  // Remove any internal spaces pdf-parse may have inserted (e.g. "H408E -0091072" → "H408E-0091072")
-  const motor = motorRaw ? motorRaw.replace(/\s+/g, '') : null;
+  // 1. Quita espacios internos que pdf-parse pudo insertar (e.g. "H408E -0091072" → "H408E-0091072")
+  // 2. Elimina artefacto trailing tipo "0-A1" / "0A1" que pdf-parse a veces pega
+  //    de la siguiente celda del PDF (mismo patrón observado en COD.MODELO).
+  //    Sólo se descarta si el motor real termina con algo distinto — si todo el valor
+  //    coincide con el patrón, se preserva el original.
+  const motorCollapsed = motorRaw ? motorRaw.replace(/\s+/g, '') : null;
+  const motor = motorCollapsed
+    ? (motorCollapsed.replace(/0-?[A-Z]\d+$/i, '') || motorCollapsed)
+    : null;
 
   const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
                   t.match(/CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
@@ -373,7 +380,16 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
           req.user.id,
         ]
       );
-      res.status(201).json(rows[0]);
+      // Hidratar con JOIN al catálogo para que el frontend tenga imagen/nombre comercial
+      const { rows: full } = await db.query(
+        `SELECT sp.*, mm.image_url AS catalog_image, mm.commercial_name AS catalog_name,
+                mm.color_photos AS catalog_color_photos
+           FROM supplier_payments sp
+           LEFT JOIN moto_models mm ON mm.id = sp.model_id
+          WHERE sp.id = $1`,
+        [rows[0].id]
+      );
+      res.status(201).json(full[0] || rows[0]);
     } catch (e) {
       console.error('[SupPay] POST', e);
       res.status(500).json({ error: 'Error al crear registro: ' + e.message });
@@ -427,23 +443,48 @@ router.get('/:id', async (req, res) => {
 // ─── PATCH /:id ───────────────────────────────────────────────────────────────
 router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), async (req, res) => {
   try {
+    // model_id incluido para permitir asociación manual al catálogo desde la ficha.
     const FIELDS = [
       'provider','invoice_number','invoice_date','due_date','payment_date',
       'total_amount','neto','iva','paid_amount',
       'receipt_number','payer_name','brand','model','color',
       'commercial_year','motor_num','chassis','internal_code',
       'invoice_url','receipt_url','notes','status',
-      'payment_method','banco',
+      'payment_method','banco','model_id',
     ];
     const sets = [], params = [];
     let idx = 1;
     for (const f of FIELDS) {
-      if (req.body[f] !== undefined) { sets.push(`${f}=$${idx++}`); params.push(req.body[f] || null); }
+      if (req.body[f] !== undefined) {
+        sets.push(`${f}=$${idx++}`);
+        // model_id vacío ('') → null. Otros campos conservan string vacío como null.
+        const v = req.body[f];
+        params.push(v === '' || v == null ? null : v);
+      }
     }
     if (!sets.length) return res.status(400).json({ error: 'Nada que actualizar' });
     params.push(req.params.id);
+    // Si no se envía model_id explícito pero sí brand/model, intentamos auto-match
+    // para conservar el comportamiento de creación.
+    if (req.body.model_id === undefined && (req.body.brand !== undefined || req.body.model !== undefined)) {
+      const cur = await db.query('SELECT brand, model FROM supplier_payments WHERE id=$1', [req.params.id]);
+      const b = req.body.brand ?? cur.rows[0]?.brand;
+      const m = req.body.model ?? cur.rows[0]?.model;
+      const matched = await resolveModelId(b, m);
+      if (matched) { sets.push(`model_id=$${idx++}`); params.splice(params.length - 1, 0, matched); }
+    }
+    await db.query(
+      `UPDATE supplier_payments SET ${sets.join(',')}, updated_at=NOW() WHERE id=$${idx}`, params
+    );
+    // Devolvemos el row con el JOIN al catálogo para que el frontend actualice
+    // la imagen / nombre comercial inmediatamente sin un refresh completo.
     const { rows } = await db.query(
-      `UPDATE supplier_payments SET ${sets.join(',')}, updated_at=NOW() WHERE id=$${idx} RETURNING *`, params
+      `SELECT sp.*, mm.image_url AS catalog_image, mm.commercial_name AS catalog_name,
+              mm.color_photos AS catalog_color_photos
+         FROM supplier_payments sp
+         LEFT JOIN moto_models mm ON mm.id = sp.model_id
+        WHERE sp.id = $1`,
+      [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
     res.json(rows[0]);
