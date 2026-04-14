@@ -1,11 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#F28100"/>
-  <g fill="none" stroke="#0F0F0F" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="140" cy="340" r="70"/>
-    <circle cx="372" cy="340" r="70"/>
-    <path d="M140 340 L210 220 L310 220 L372 340"/>
-    <path d="M210 220 L260 150 L310 220"/>
-    <path d="M310 220 L360 175"/>
-    <line x1="335" y1="175" x2="385" y2="175"/>
+  <rect width="512" height="512" rx="104" fill="#F28100"/>
+  <g fill="#0F0F0F" fill-rule="evenodd">
+    <!-- Rueda trasera (aro relleno con hueco) -->
+    <path d="M128 352 a72 72 0 1 0 144 0 a72 72 0 1 0 -144 0 z M160 352 a40 40 0 1 1 80 0 a40 40 0 1 1 -80 0 z"/>
+    <!-- Rueda delantera -->
+    <path d="M340 352 a72 72 0 1 0 144 0 a72 72 0 1 0 -144 0 z M372 352 a40 40 0 1 1 80 0 a40 40 0 1 1 -80 0 z"/>
+  </g>
+  <g fill="none" stroke="#0F0F0F" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Basculante trasero: eje rueda trasera hacia motor -->
+    <path d="M200 352 L264 296"/>
+    <!-- Cuadro principal: desde basculante sube al tanque y baja al motor -->
+    <path d="M264 296 L310 220 L352 220"/>
+    <!-- Tubo central tanque-asiento -->
+    <path d="M310 220 L252 236 L232 288"/>
+    <!-- Horquilla delantera: desde rueda al manubrio -->
+    <path d="M412 352 L360 220"/>
+    <!-- Manubrio -->
+    <path d="M336 212 L402 212"/>
   </g>
 </svg>
