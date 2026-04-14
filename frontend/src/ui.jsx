@@ -53,7 +53,16 @@ export const mapTicket=(t)=>{
     first_action_at:t.first_action_at||null,
     reassignment_count:t.reassignment_count||0,
     postVenta:typeof pv==='string'?JSON.parse(pv):pv,
-    timeline:[],fin_data:t.fin_data||null,
+    timeline:t.timeline||[],fin_data:t.fin_data||null,
+    needs_attention:!!t.needs_attention,
+    needs_attention_since:t.needs_attention_since||null,
+    followup_status:t.followup_status||null,
+    followup_note:t.followup_note||null,
+    followup_next_step:t.followup_next_step||null,
+    next_followup_at:t.next_followup_at||null,
+    followup_updated_at:t.followup_updated_at||null,
+    last_contact_entry:t.last_contact_entry||null,
+    reassignment_summary:t.reassignment_summary||null,
   };
 };
 

@@ -22,10 +22,13 @@ const SLAService = {
     if (!this.REAL_ACTIONS.includes(action_type)) return;
 
     const now = new Date().toISOString();
+    // Una acción real también limpia el flag "Necesita atención" (si estaba activo)
     await db.query(
       `UPDATE tickets SET
         last_real_action_at = $1,
         first_action_at = COALESCE(first_action_at, $1),
+        needs_attention = FALSE,
+        needs_attention_since = NULL,
         sla_status = CASE
           WHEN sla_status IN ('breached', 'reassigned') THEN sla_status
           ELSE 'normal'
@@ -294,10 +297,44 @@ const SLAService = {
       }
 
       logger.info(`[SLA] Chequeo completo: ${warningTickets.length} warnings, ${breachedTickets.length} breaches`);
+
+      // 3. Leads estancados (48h sin acción real) → Necesita atención
+      const stagnant = await this.checkStagnantLeads();
+      logger.info(`[SLA] Leads marcados como "Necesita atención": ${stagnant}`);
     } finally {
       this._running = false;
     }
-  }
+  },
+
+  // Leads activos en estados de trabajo que llevan >48h sin acción real → flag needs_attention
+  async checkStagnantLeads() {
+    const { rows } = await db.query(
+      `UPDATE tickets SET
+         needs_attention = TRUE,
+         needs_attention_since = NOW()
+       WHERE status IN ('en_gestion','cotizado','financiamiento')
+         AND needs_attention = FALSE
+         AND (last_real_action_at IS NULL OR last_real_action_at < NOW() - INTERVAL '48 hours')
+         AND (last_contact_at IS NULL OR last_contact_at < NOW() - INTERVAL '48 hours')
+       RETURNING id, assigned_to, branch_id, ticket_num`
+    );
+
+    for (const t of rows) {
+      if (!t.assigned_to) continue;
+      try {
+        await NotificationService.notifyMany([t.assigned_to], {
+          type: 'lead_needs_attention',
+          title: `Lead #${t.ticket_num} necesita seguimiento`,
+          message: 'Llevan 48h sin contacto — registrá una gestión o marcá el estado.',
+          link_type: 'ticket',
+          link_id: t.id,
+        });
+      } catch (e) {
+        logger.warn('[SLA] notify stagnant error:', e.message);
+      }
+    }
+    return rows.length;
+  },
 };
 
 module.exports = SLAService;

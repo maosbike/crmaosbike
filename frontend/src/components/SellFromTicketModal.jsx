@@ -26,8 +26,14 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
   // Pre-popula precio con el precio de cotización como referencia
   const defaultPrice = quoted && quoted.price > 0 ? String(quoted.price - quoted.bonus) : '';
 
+  const [noStock, setNoStock] = useState(false); // toggle: nota sin unidad real
+
   const [form, setForm] = useState({
     inventory_id:   '',
+    brand:          quoted?.brand || '',
+    model:          quoted?.model || '',
+    year:           quoted?.year  || '',
+    color:          '',
     sold_by:        defaultSellerId,
     sold_at:        new Date().toISOString().split('T')[0],
     payment_method: '',
@@ -66,34 +72,54 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
   // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!form.inventory_id) { alert('Seleccioná una unidad de inventario'); return; }
-    if (!form.sold_by)      { alert('Seleccioná el vendedor'); return; }
+    if (!noStock && !form.inventory_id) { alert('Seleccioná una unidad de inventario o activá "Sin unidad en stock"'); return; }
+    if (noStock && (!form.brand.trim() || !form.model.trim())) { alert('Indicá la marca y modelo'); return; }
+    if (!form.sold_by) { alert('Seleccioná el vendedor'); return; }
     setSaving(true);
     try {
-      // Si hay diferencia, la anotamos automáticamente en sale_notes
-      // para que quede trazabilidad en el historial
-      let notes = form.sale_notes || '';
-      if (isMismatch) {
-        const diff = `Cotizado: ${quoted.brand} ${quoted.model} → Vendido: ${selectedUnit.brand} ${selectedUnit.model} (${selectedUnit.color || ''})`;
-        notes = notes ? `${notes} | ${diff}` : diff;
+      if (noStock) {
+        // Nota de venta sin unidad real → sales_notes
+        await api.createSale({
+          brand:          form.brand.trim(),
+          model:          form.model.trim(),
+          year:           form.year           || null,
+          color:          form.color          || null,
+          sold_by:        form.sold_by,
+          sold_at:        form.sold_at        || null,
+          ticket_id:      ticketId            || null,
+          payment_method: form.payment_method || null,
+          sale_type:      form.sale_type      || null,
+          sale_notes:     form.sale_notes     || null,
+          sale_price:     form.sale_price     ? Number(form.sale_price)     : null,
+          cost_price:     form.cost_price     ? Number(form.cost_price)     : null,
+          invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
+          client_name:    form.client_name    || null,
+          client_rut:     form.client_rut     || null,
+          status:         'vendida',
+        });
+      } else {
+        // Unidad real de inventario
+        let notes = form.sale_notes || '';
+        if (isMismatch) {
+          const diff = `Cotizado: ${quoted.brand} ${quoted.model} → Vendido: ${selectedUnit.brand} ${selectedUnit.model} (${selectedUnit.color || ''})`;
+          notes = notes ? `${notes} | ${diff}` : diff;
+        }
+        await api.sellInventory(form.inventory_id, {
+          sold_by:        form.sold_by,
+          sold_at:        form.sold_at        || null,
+          ticket_id:      ticketId,
+          payment_method: form.payment_method || null,
+          sale_type:      form.sale_type      || null,
+          sale_notes:     notes               || null,
+          sale_price:     form.sale_price     ? Number(form.sale_price)     : null,
+          cost_price:     form.cost_price     ? Number(form.cost_price)     : null,
+          invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
+          client_name:    form.client_name    || null,
+          client_rut:     form.client_rut     || null,
+        });
       }
 
-      await api.sellInventory(form.inventory_id, {
-        sold_by:        form.sold_by,
-        sold_at:        form.sold_at        || null,
-        ticket_id:      ticketId,
-        payment_method: form.payment_method || null,
-        sale_type:      form.sale_type      || null,
-        sale_notes:     notes               || null,
-        sale_price:     form.sale_price     ? Number(form.sale_price)     : null,
-        cost_price:     form.cost_price     ? Number(form.cost_price)     : null,
-        invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
-        client_name:    form.client_name    || null,
-        client_rut:     form.client_rut     || null,
-      });
-
-      // Marcar ticket como ganado (el backend también lo hace, pero lo
-      // actualizamos en cliente de inmediato para que la UI responda)
+      // Marcar ticket como ganado
       if (ticketId) await api.updateTicket(ticketId, { status: 'ganado' });
 
       onSuccess && onSuccess();
@@ -150,46 +176,80 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
         </div>
 
         {/* ═══════════════════════════════════════════════════
-            BLOQUE 2 — UNIDAD VENDIDA (inventario real)
-            El vendedor elige la unidad física que se va.
+            BLOQUE 2 — UNIDAD VENDIDA
         ═══════════════════════════════════════════════════ */}
         <div>
-          <div style={sectionLabel}>🏍️ Unidad Vendida · del inventario real</div>
+          {/* Toggle: inventario real vs. nota sin stock */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <button type="button" onClick={() => setNoStock(false)}
+              style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
+                background: !noStock ? '#1E40AF' : '#F3F4F6', color: !noStock ? '#fff' : '#6B7280',
+                border: !noStock ? 'none' : '1px solid #E5E7EB' }}>
+              🏍️ Del inventario real
+            </button>
+            <button type="button" onClick={() => setNoStock(true)}
+              style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
+                background: noStock ? '#D97706' : '#F3F4F6', color: noStock ? '#fff' : '#6B7280',
+                border: noStock ? 'none' : '1px solid #E5E7EB' }}>
+              📋 Nota sin stock
+            </button>
+          </div>
 
-          {loading ? (
-            <div style={{ fontSize: 12, color: '#6B7280', padding: '8px 0' }}>
-              Cargando unidades disponibles...
-            </div>
-          ) : inv.length === 0 ? (
-            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
-              No hay unidades disponibles en stock. Registrá la unidad primero en Inventario.
+          {noStock ? (
+            /* ── Nota de venta sin unidad real ── */
+            <div style={{ padding: '12px 14px', borderRadius: 10, background: '#FFFBEB', border: '1px solid #FCD34D' }}>
+              <div style={{ fontSize: 11, color: '#92400E', fontWeight: 600, marginBottom: 10 }}>
+                Se registrará en Ventas como nota comercial — no descuenta stock del inventario.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={S.lbl}>Marca *</label>
+                  <input value={form.brand} onChange={e => set('brand', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Ej: YAMAHA" required={noStock} />
+                </div>
+                <div>
+                  <label style={S.lbl}>Modelo *</label>
+                  <input value={form.model} onChange={e => set('model', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Ej: MT-03" required={noStock} />
+                </div>
+                <div>
+                  <label style={S.lbl}>Año</label>
+                  <input type="number" value={form.year} onChange={e => set('year', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="2025" />
+                </div>
+                <div>
+                  <label style={S.lbl}>Color</label>
+                  <input value={form.color} onChange={e => set('color', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Ej: Azul" />
+                </div>
+              </div>
             </div>
           ) : (
-            <select
-              value={form.inventory_id}
-              onChange={e => set('inventory_id', e.target.value)}
-              style={{ ...S.inp, width: '100%' }}
-              required
-            >
-              <option value="">Seleccionar unidad de inventario...</option>
-              {inv.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.brand} {u.model} {u.year} · {u.color} · Chasis: {u.chassis}
-                  {u.branch_code ? ` · ${u.branch_code}` : ''}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Detalle de la unidad seleccionada */}
-          {selectedUnit && (
-            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 7, background: '#F0FDF4', border: '1px solid #BBF7D0', fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model} {selectedUnit.year}</span>
-              <span style={{ color: '#166534' }}>· {selectedUnit.color}</span>
-              <span style={{ color: '#4B5563' }}>· Chasis: {selectedUnit.chassis}</span>
-              {selectedUnit.motor_num && <span style={{ color: '#4B5563' }}>· Motor: {selectedUnit.motor_num}</span>}
-              {selectedUnit.branch_code && <span style={{ color: '#4B5563', marginLeft: 'auto' }}>📍 {selectedUnit.branch_code}</span>}
-            </div>
+            /* ── Unidad real de inventario ── */
+            <>
+              {loading ? (
+                <div style={{ fontSize: 12, color: '#6B7280', padding: '8px 0' }}>Cargando unidades disponibles...</div>
+              ) : inv.length === 0 ? (
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
+                  No hay unidades disponibles en stock. Registrá la unidad primero en Inventario, o usá "Nota sin stock".
+                </div>
+              ) : (
+                <select value={form.inventory_id} onChange={e => set('inventory_id', e.target.value)} style={{ ...S.inp, width: '100%' }}>
+                  <option value="">Seleccionar unidad de inventario...</option>
+                  {inv.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.brand} {u.model} {u.year} · {u.color} · Chasis: {u.chassis}
+                      {u.branch_code ? ` · ${u.branch_code}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedUnit && (
+                <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 7, background: '#F0FDF4', border: '1px solid #BBF7D0', fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model} {selectedUnit.year}</span>
+                  <span style={{ color: '#166534' }}>· {selectedUnit.color}</span>
+                  <span style={{ color: '#4B5563' }}>· Chasis: {selectedUnit.chassis}</span>
+                  {selectedUnit.motor_num && <span style={{ color: '#4B5563' }}>· Motor: {selectedUnit.motor_num}</span>}
+                  {selectedUnit.branch_code && <span style={{ color: '#4B5563', marginLeft: 'auto' }}>📍 {selectedUnit.branch_code}</span>}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -339,14 +399,15 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           </button>
           <button
             type="submit"
-            disabled={saving || (inv.length === 0 && !loading)}
+            disabled={saving}
             style={{
               ...S.btn, padding: '8px 20px',
-              background: '#10B981', borderColor: '#059669',
-              opacity: (saving || (inv.length === 0 && !loading)) ? 0.6 : 1,
+              background: noStock ? '#D97706' : '#10B981',
+              borderColor: noStock ? '#B45309' : '#059669',
+              opacity: saving ? 0.6 : 1,
             }}
           >
-            {saving ? 'Registrando...' : '✓ Confirmar Venta'}
+            {saving ? 'Registrando...' : noStock ? '✓ Registrar Nota de Venta' : '✓ Confirmar Venta'}
           </button>
         </div>
 

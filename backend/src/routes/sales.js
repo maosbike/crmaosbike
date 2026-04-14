@@ -260,7 +260,7 @@ router.get('/:id', async (req, res) => {
 // ─── POST /api/sales ──────────────────────────────────────────────────────────
 // Siempre inserta en sales_notes — nunca crea filas en inventory.
 // Para vincular una unidad real usá POST /inventory/:id/sell.
-router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
+router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
     const {
       branch_id, year, brand, model, color, chassis, motor_num, price,

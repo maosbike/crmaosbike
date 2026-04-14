@@ -38,7 +38,7 @@ const STATUS_ORDER=['nuevo','abierto','en_gestion','cotizado','financiamiento','
 export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,onFilterChange}){
   const brs=realBranches||[];
   // Filtros persistidos en App.jsx para mantener contexto al volver de una ficha
-  const {search='',stF='',brF='',prF='',srcF='',selF=''}=filter||{};
+  const {search='',stF='',brF='',prF='',srcF='',selF='',attF=false}=filter||{};
   const setFilter=(key,val)=>onFilterChange(f=>({...f,[key]:val}));
   const setSearch=v=>setFilter('search',v);
   const setStF=v=>setFilter('stF',v);
@@ -46,7 +46,8 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
   const setPrF=v=>setFilter('prF',v);
   const setSrcF=v=>setFilter('srcF',v);
   const setSelF=v=>setFilter('selF',v);
-  const clearFilters=()=>onFilterChange({search:'',stF:'',brF:'',prF:'',srcF:'',selF:''});
+  const setAttF=v=>setFilter('attF',v);
+  const clearFilters=()=>onFilterChange({search:'',stF:'',brF:'',prF:'',srcF:'',selF:'',attF:false});
   const[showNew,setShowNew]=useState(false);
   const[catalogModels,setCatalogModels]=useState([]);
   const[allSellers,setAllSellers]=useState([]);
@@ -89,10 +90,11 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
     if(prF&&l.priority!==prF)return false;
     if(srcF&&l.source!==srcF)return false;
     if(selF&&String(l.seller_id)!==String(selF))return false;
+    if(attF&&!l.needs_attention)return false;
     if(user.role==="vendedor"&&l.seller_id!==user.id)return false;
     return true;
   });
-  const hasFilters=!!(search||stF||brF||prF||srcF||selF);
+  const hasFilters=!!(search||stF||brF||prF||srcF||selF||attF);
   const[adding,setAdding]=useState(false);
   const handleAdd=async e=>{
     e.preventDefault();setAdding(true);
@@ -121,6 +123,28 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           <Ic.plus size={14}/>Nuevo Ticket
         </button>
       </div>
+
+      {/* ── KPI "Necesita atención" ── */}
+      {(()=>{
+        const attCount=effectiveLeads.filter(l=>l.needs_attention&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
+        if(attCount===0&&!attF)return null;
+        return(
+          <div style={{marginBottom:12}}>
+            <button onClick={()=>setAttF(!attF)} style={{
+              display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:12,
+              border:attF?'2px solid #EF4444':'1.5px solid #FECACA',
+              background:attF?'#FEF2F2':'#FFFFFF',cursor:'pointer',fontFamily:'inherit',
+              boxShadow:attF?'0 3px 14px rgba(239,68,68,0.18)':'0 1px 3px rgba(0,0,0,0.04)'}}>
+              <span style={{fontSize:22}}>⚠️</span>
+              <div style={{textAlign:'left'}}>
+                <div style={{fontSize:22,fontWeight:900,color:'#DC2626',lineHeight:1}}>{attCount}</div>
+                <div style={{fontSize:11,fontWeight:700,color:'#B91C1C',marginTop:2}}>Necesita atención · 48h sin gestión</div>
+              </div>
+              {attF&&<span style={{marginLeft:12,fontSize:10,fontWeight:700,color:'#EF4444',background:'#FEE2E2',padding:'3px 8px',borderRadius:6}}>FILTRADO</span>}
+            </button>
+          </div>
+        );
+      })()}
 
       {/* ── KPI rápidos por estado ── */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:18}}>
@@ -252,9 +276,10 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 style={{display:'flex',alignItems:'stretch',background:'#FFFFFF',borderRadius:14,border:'1px solid #E2E5EA',overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.06)',cursor:'pointer',transition:'box-shadow 0.15s',minWidth:0}}
               >
                 {/* Strip izquierdo — color de estado */}
-                <div className="crm-lead-strip" style={{width:72,flexShrink:0,background:stStrip.color,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,padding:'10px 4px'}}>
+                <div className="crm-lead-strip" style={{width:72,flexShrink:0,background:stStrip.color,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,padding:'10px 4px',position:'relative'}}>
                   <span style={{fontSize:10,fontWeight:900,color:'#FFFFFF',letterSpacing:'0.04em',textAlign:'center',lineHeight:1.2,textTransform:'uppercase'}}>{stCfg.l}</span>
                   {x.num&&<span style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,0.7)',letterSpacing:'0.03em'}}>{x.num}</span>}
+                  {x.needs_attention&&<span title="Necesita atención · 48h sin gestión" style={{position:'absolute',top:6,right:6,fontSize:11,lineHeight:1,background:'#DC2626',color:'#fff',padding:'2px 5px',borderRadius:6,fontWeight:800,boxShadow:'0 0 0 2px #fff'}}>!</span>}
                 </div>
 
                 {/* Zona Moto */}

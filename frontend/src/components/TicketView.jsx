@@ -213,6 +213,45 @@ export function TicketView({lead,user,nav,updLead}){
   const isGanado=lead.status==="ganado";
   const isPerdido=lead.status==="perdido";
 
+  // ── Modal Seguimiento Obligatorio ──
+  const FOLLOWUP_OPTS=[
+    {v:'cliente_interesado',    l:'Cliente sigue interesado'},
+    {v:'quedo_responder',       l:'Quedó de responder'},
+    {v:'contactar_mas_adelante',l:'Pidió contactar más adelante'},
+    {v:'revisando_cotizacion',  l:'Está revisando cotización'},
+    {v:'reuniendo_pie_docs',    l:'Está reuniendo pie / documentos'},
+    {v:'evaluacion_financiera', l:'Está en evaluación financiera'},
+    {v:'agendar_visita',        l:'Agendar visita o test ride'},
+    {v:'requiere_nueva_llamada',l:'Requiere nueva llamada'},
+    {v:'otro_avance',           l:'Otro avance'},
+  ];
+  const[showFollowup,setShowFollowup]=useState(false);
+  const[fq,setFq]=useState({status:'',note:'',nextStep:'',nextAt:''});
+  const[fqErr,setFqErr]=useState('');
+  const[fqSaving,setFqSaving]=useState(false);
+  const resetFq=()=>{setFq({status:'',note:'',nextStep:'',nextAt:''});setFqErr('');};
+  const submitFollowup=async()=>{
+    setFqErr('');
+    if(!fq.status){setFqErr('Seleccioná el estado de seguimiento');return;}
+    if(fq.note.trim().length<15){setFqErr('El comentario debe tener al menos 15 caracteres');return;}
+    if(fq.nextStep.trim().length<5){setFqErr('Indicá el próximo paso');return;}
+    if(!fq.nextAt){setFqErr('Ingresá la fecha de próxima gestión');return;}
+    setFqSaving(true);
+    try{
+      const res=await api.submitFollowup(lead.id,{
+        followup_status:fq.status,
+        followup_note:fq.note.trim(),
+        followup_next_step:fq.nextStep.trim(),
+        next_followup_at:fq.nextAt,
+      });
+      addTimelineLocal(res.timeline);
+      updLead(lead.id,{needs_attention:false,needs_attention_since:null,followup_status:fq.status,followup_note:fq.note.trim(),followup_next_step:fq.nextStep.trim(),next_followup_at:fq.nextAt});
+      setShowFollowup(false);
+      resetFq();
+    }catch(e){setFqErr(e.message||'Error al guardar');}
+    finally{setFqSaving(false);}
+  };
+
   return(
     <div style={{ width:'100%' }}>
 
@@ -252,6 +291,37 @@ export function TicketView({lead,user,nav,updLead}){
           )}
         </div>
       </div>
+
+      {/* ── BANNER: Necesita atención ── */}
+      {lead.needs_attention&&!isPerdido&&!isGanado&&(
+        <div style={{ background:'rgba(239,68,68,0.07)',border:'2px solid rgba(239,68,68,0.3)',borderRadius:12,padding:'14px 18px',marginBottom:12,display:'flex',alignItems:'center',gap:14 }}>
+          <span style={{ fontSize:26 }}>⚠️</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead necesita seguimiento obligatorio</div>
+            <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Han pasado más de 48h sin gestión. Completá el cuestionario para continuar.</div>
+          </div>
+          <button onClick={()=>{resetFq();setShowFollowup(true);}}
+            style={{ padding:'10px 20px',background:'#DC2626',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
+            Registrar seguimiento
+          </button>
+        </div>
+      )}
+
+      {/* ── CARD: Último contacto real (Historial claro) ── */}
+      {lead.last_contact_entry&&(
+        <div style={{ background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:10,padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
+          <span style={{ fontSize:18,flexShrink:0,marginTop:1 }}>📞</span>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ fontSize:10,fontWeight:700,color:'#0284C7',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3 }}>Último contacto real</div>
+            <div style={{ fontSize:12,fontWeight:600,color:'#0F172A' }}>{lead.last_contact_entry.title}</div>
+            {lead.last_contact_entry.note&&<div style={{ fontSize:11,color:'#475569',marginTop:2,lineHeight:1.4 }}>{lead.last_contact_entry.note}</div>}
+            <div style={{ fontSize:10,color:'#94A3B8',marginTop:4 }}>
+              {lead.last_contact_entry.user_fn?`${lead.last_contact_entry.user_fn} ${lead.last_contact_entry.user_ln||''}`:''} · {fDT(lead.last_contact_entry.date||lead.last_contact_entry.created_at)}
+              {lead.reassignment_summary?.count>0&&<span style={{ marginLeft:10,background:'rgba(139,92,246,0.12)',color:'#7C3AED',padding:'1px 7px',borderRadius:6,fontWeight:600 }}>{lead.reassignment_summary.count} reasignación{lead.reassignment_summary.count!==1?'es':''}</span>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════
           TOP CARD — CLIENTE | PRODUCTO | CONTACTO | STATUS
@@ -770,6 +840,68 @@ export function TicketView({lead,user,nav,updLead}){
       )}
 
       {showSell&&<SellFromTicketModal ticketId={lead.id} lead={lead} user={user} onClose={()=>setShowSell(false)} onSuccess={()=>{updLead(lead.id,{status:"ganado"});}}/>}
+
+      {/* ══ MODAL SEGUIMIENTO OBLIGATORIO ═══════════════════════ */}
+      {showFollowup&&(
+        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.50)',zIndex:1002,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
+          <div style={{ background:'#fff',borderRadius:16,width:'100%',maxWidth:500,boxShadow:'0 20px 60px rgba(0,0,0,0.22)',overflow:'hidden' }}>
+            <div style={{ padding:'18px 22px',borderBottom:'1px solid #FEE2E2',background:'#FFF5F5',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+              <div>
+                <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>⚠️ Registrar seguimiento</div>
+                <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
+              </div>
+              {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+            </div>
+            <div style={{ padding:'20px 22px',display:'flex',flexDirection:'column',gap:14 }}>
+              {/* Estado de seguimiento */}
+              <div>
+                <div style={{ fontSize:11,fontWeight:700,color:'#374151',marginBottom:8 }}>¿Cuál es el estado actual del seguimiento?</div>
+                <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
+                  {FOLLOWUP_OPTS.map(o=>(
+                    <button key={o.v} type="button" onClick={()=>setFq(p=>({...p,status:o.v}))}
+                      style={{ textAlign:'left',padding:'8px 13px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:fq.status===o.v?700:400,
+                        background:fq.status===o.v?'#FEF2F2':'#F9FAFB',
+                        color:fq.status===o.v?'#B91C1C':'#374151',
+                        border:`1.5px solid ${fq.status===o.v?'#FECACA':'#E5E7EB'}`,display:'flex',alignItems:'center',gap:8 }}>
+                      <span style={{ width:8,height:8,borderRadius:'50%',flexShrink:0,background:fq.status===o.v?'#EF4444':'#D1D5DB' }}/>
+                      {o.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Comentario */}
+              <div>
+                <label style={{ ...S.lbl,marginBottom:5 }}>Comentario breve <span style={{ color:'#EF4444' }}>*</span> <span style={{ fontWeight:400,color:'#9CA3AF' }}>(mín. 15 caracteres)</span></label>
+                <textarea value={fq.note} onChange={e=>setFq(p=>({...p,note:e.target.value}))}
+                  rows={3} style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}
+                  placeholder="Ej: Llamé al cliente, dice que va a hablar con su pareja antes de decidir..."/>
+                <div style={{ textAlign:'right',fontSize:10,color:fq.note.length>=15?'#10B981':'#9CA3AF',marginTop:2 }}>{fq.note.length}/15</div>
+              </div>
+              {/* Próximo paso */}
+              <div>
+                <label style={{ ...S.lbl,marginBottom:5 }}>Próximo paso <span style={{ color:'#EF4444' }}>*</span></label>
+                <input value={fq.nextStep} onChange={e=>setFq(p=>({...p,nextStep:e.target.value}))}
+                  style={{ ...S.inp,width:'100%',fontSize:12 }} placeholder="Ej: Volver a llamar el jueves a las 15:00"/>
+              </div>
+              {/* Fecha próxima gestión */}
+              <div>
+                <label style={{ ...S.lbl,marginBottom:5 }}>Fecha próxima gestión <span style={{ color:'#EF4444' }}>*</span></label>
+                <input type="date" value={fq.nextAt} onChange={e=>setFq(p=>({...p,nextAt:e.target.value}))}
+                  min={new Date().toISOString().split('T')[0]}
+                  style={{ ...S.inp,width:'100%',fontSize:12 }}/>
+              </div>
+              {fqErr&&<div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>⚠ {fqErr}</div>}
+              <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
+                {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>}
+                <button onClick={submitFollowup} disabled={fqSaving}
+                  style={{ ...S.btn,padding:'9px 20px',fontSize:12,fontWeight:700,background:'#DC2626',borderColor:'#B91C1C',opacity:fqSaving?0.6:1 }}>
+                  {fqSaving?'Guardando...':'Confirmar seguimiento'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ MODAL MARCAR COMO PERDIDO ════════════════════════════ */}
       {perdidoModal&&(

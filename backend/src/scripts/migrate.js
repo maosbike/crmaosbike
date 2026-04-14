@@ -95,6 +95,7 @@ async function migrate() {
     await runMigration('043', 'supplier paid amount',           m('043_supplier_paid_amount.sql'));
     await runMigration('044', 'supplier payments model_id',    m('044_supplier_payments_model_id.sql'));
     await runMigration('045', 'sales notes table',             m('045_sales_notes.sql'));
+    await runMigration('046', 'lead followup + needs_attention',m('046_lead_followup.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');

@@ -18,12 +18,13 @@ router.use(auth);
 
 // List tickets
 router.get('/', asyncHandler(async (req, res) => {
-  const { status, branch_id, search, page = 1, limit = 50 } = req.query;
+  const { status, branch_id, search, needs_attention, page = 1, limit = 50 } = req.query;
   let where = ['1=1'], params = [], idx = 1;
 
   if (req.user.role === 'vendedor') { where.push(`(t.seller_id = $${idx} OR t.assigned_to = $${idx})`); params.push(req.user.id); idx++; }
   if (status) { where.push(`t.status = $${idx++}`); params.push(status); }
   if (branch_id) { where.push(`t.branch_id = $${idx++}`); params.push(branch_id); }
+  if (needs_attention === '1' || needs_attention === 'true') { where.push(`t.needs_attention = TRUE`); }
   if (search) { where.push(`(t.first_name ILIKE $${idx} OR t.last_name ILIKE $${idx} OR t.phone ILIKE $${idx} OR t.rut ILIKE $${idx} OR t.ticket_num ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
 
   const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -72,7 +73,25 @@ router.get('/:id', asyncHandler(async (req, res) => {
      WHERE tl.ticket_id = $1 ORDER BY tl.created_at DESC`, [req.params.id]
   );
 
-  res.json({ ...rows[0], timeline: tl.rows });
+  // Último contacto real (contact_registered o contact_evidence)
+  const lastContactRow = tl.rows.find(t => t.type === 'contact_registered' || t.type === 'contact_evidence') || null;
+
+  // Resumen de reasignaciones: cuántas y cuándo fue la última
+  const reassign = await db.query(
+    `SELECT COUNT(*) AS n, MAX(created_at) AS last_at
+     FROM reassignment_log
+     WHERE ticket_id = $1 AND reason <> 'initial_assignment'`, [req.params.id]
+  );
+
+  res.json({
+    ...rows[0],
+    timeline: tl.rows,
+    last_contact_entry: lastContactRow,
+    reassignment_summary: {
+      count: parseInt(reassign.rows[0]?.n || 0),
+      last_at: reassign.rows[0]?.last_at || null,
+    },
+  });
 }));
 
 // Create ticket
@@ -240,6 +259,85 @@ router.put('/:id', asyncHandler(async (req, res) => {
   }
 
   res.json(rows[0]);
+}));
+
+// Registrar seguimiento obligatorio (cuestionario cuando needs_attention)
+// Limpia el flag, deja registro en timeline y actualiza columnas de followup.
+const FOLLOWUP_STATUSES = [
+  'cliente_interesado',
+  'quedo_responder',
+  'contactar_mas_adelante',
+  'revisando_cotizacion',
+  'reuniendo_pie_docs',
+  'evaluacion_financiera',
+  'agendar_visita',
+  'requiere_nueva_llamada',
+  'otro_avance',
+];
+const FOLLOWUP_LABELS = {
+  cliente_interesado:      'Cliente sigue interesado',
+  quedo_responder:         'Quedó de responder',
+  contactar_mas_adelante:  'Pidió contactar más adelante',
+  revisando_cotizacion:    'Está revisando cotización',
+  reuniendo_pie_docs:      'Está reuniendo pie / documentos',
+  evaluacion_financiera:   'Está en evaluación financiera',
+  agendar_visita:          'Agendar visita o test ride',
+  requiere_nueva_llamada:  'Requiere nueva llamada',
+  otro_avance:             'Otro avance',
+};
+
+router.post('/:id/followup', asyncHandler(async (req, res) => {
+  if (req.user.role === 'vendedor') {
+    const check = await db.query(
+      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
+      [req.params.id, req.user.id]
+    );
+    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para este ticket' });
+  }
+
+  const { followup_status, followup_note, followup_next_step, next_followup_at } = req.body;
+
+  if (!followup_status || !FOLLOWUP_STATUSES.includes(followup_status)) {
+    return res.status(400).json({ error: 'Estado de seguimiento inválido' });
+  }
+  if (!followup_note || followup_note.trim().length < 15) {
+    return res.status(400).json({ error: 'El comentario debe tener al menos 15 caracteres' });
+  }
+  if (!followup_next_step || followup_next_step.trim().length < 5) {
+    return res.status(400).json({ error: 'Indicá el próximo paso concreto' });
+  }
+  if (!next_followup_at) {
+    return res.status(400).json({ error: 'Fecha de próxima gestión requerida' });
+  }
+
+  const label = FOLLOWUP_LABELS[followup_status];
+  const now = new Date().toISOString();
+
+  await db.query(
+    `UPDATE tickets SET
+       needs_attention = FALSE,
+       needs_attention_since = NULL,
+       followup_status = $1,
+       followup_note = $2,
+       followup_next_step = $3,
+       next_followup_at = $4,
+       followup_updated_at = $5,
+       last_real_action_at = $5,
+       first_action_at = COALESCE(first_action_at, $5)
+     WHERE id = $6`,
+    [followup_status, followup_note.trim(), followup_next_step.trim(),
+     new Date(next_followup_at).toISOString(), now, req.params.id]
+  );
+
+  const { rows } = await db.query(
+    `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+     VALUES ($1, $2, 'note_added', $3, $4) RETURNING *`,
+    [req.params.id, req.user.id,
+     `Seguimiento: ${label}`,
+     `${followup_note.trim()}\nPróximo paso: ${followup_next_step.trim()}\nPróxima gestión: ${new Date(next_followup_at).toLocaleDateString('es-CL')}`]
+  );
+
+  res.status(201).json({ ok: true, timeline: rows[0] });
 }));
 
 // Add timeline entry
