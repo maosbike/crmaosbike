@@ -143,15 +143,17 @@ function extractInvoice(text) {
   const chassis = t.match(/N\s+DE\s+CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() ||
                   t.match(/CHASIS\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i)?.[1]?.trim() || null;
 
-  // COD.MODELO — capturar código y limpiar basura "0-A1" de pdf-parse
-  // Ej: "YZF-R3A 0 -A1" → captura "YZF-R3A", o si pegado "YZF-R3A0-A1" → limpia a "YZF-R3A"
-  // Capture model code — stops at space so pdf-parse space-artifacts are naturally excluded
-  const modelMatch = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i) ||
-                     t.match(/MODELO\s*:\s*([A-Z0-9][A-Z0-9\-]*)/i);
-  const rawModel = modelMatch?.[1]?.trim() || null;
-  // Strip trailing pdf-parse garbage like "0-A1", "0A1", "0 -A1" that get concatenated in some PDFs
-  const model = rawModel
-    ? (rawModel.replace(/\s*\d+\s*[-\s]?\s*[A-Z]\d*\s*$/i, '').trim() || rawModel)
+  // COD.MODELO — captura amplia (lazy hasta próximo campo) para no perder código cuando
+  // pdf-parse inserta espacios dentro ("FZN- 155", "YZF-R 3A", "R 3A", etc.)
+  const modelCapRaw = (
+    t.match(/COD\.?\s*MODELO\s*:\s*(.+?)(?=\s+COLOR\s*:|\s+MARCA\s*:|\s+ANO\s+COMERCIAL|\s+N\s+DE\s+CHASIS|\s+N\s+MOTOR)/i) ||
+    t.match(/MODELO\s*:\s*(.+?)(?=\s+COLOR\s*:|\s+MARCA\s*:|\s+ANO\s+COMERCIAL)/i)
+  )?.[1]?.trim() || null;
+  // 1. Colapsa espacios internos ("FZN- 155" → "FZN-155", "R 3A" → "R3A")
+  // 2. Elimina artefacto trailing "0-A1" / "0A1" que pdf-parse pega del PDF
+  // 3. Quita guión final sobrante
+  const model = modelCapRaw
+    ? (modelCapRaw.replace(/\s+/g, '').replace(/0-?[A-Z]\d+$/i, '').replace(/-$/, '') || modelCapRaw.replace(/\s+/g, ''))
     : null;
 
   const colorMatch = t.match(/\bCOLOR\s*:\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i);
@@ -162,7 +164,7 @@ function extractInvoice(text) {
   const year  = parseInt(t.match(/ANO\s+COMERCIAL\s*:\s*(\d{4})/i)?.[1] ||
                           t.match(/A[ÑN]O\s+COMERCIAL\s*:\s*(\d{4})/i)?.[1]) || null;
 
-  const internalCode = t.match(/COD\.?\s*MODELO\s*:\s*([A-Z0-9\-]+)/i)?.[1]?.trim() || null;
+  const internalCode = model;
 
   // Proveedor = marca (YAMAHA), no el nombre del importador
   const resolvedProvider = brand || provider;

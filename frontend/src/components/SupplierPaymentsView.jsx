@@ -422,8 +422,8 @@ function Card({ p, onClick }) {
         <div><span style={lbl9}>Ano</span> <span style={{color:'#374151'}}>{p.commercial_year||'-'}</span></div>
         <div><span style={{...lbl9,color:ov?'#EF4444':undefined}}>Venc.</span> <span style={{fontWeight:ov?700:400,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</span></div>
         {p.paid_amount&&<div><span style={lbl9}>Pagado</span> <strong style={{color:'#15803D'}}>{$(p.paid_amount)}</strong></div>}
-        {p.chassis&&<div style={{gridColumn:'1/-1'}}><span style={lbl9}>Chasis</span> <span style={{fontSize:11,color:'#0F172A'}}>{p.chassis}</span></div>}
-        {p.motor_num&&<div style={{gridColumn:'1/-1'}}><span style={lbl9}>Motor</span> <span style={{fontSize:11,color:'#0F172A'}}>{p.motor_num}</span></div>}
+        {p.chassis&&<div><span style={lbl9}>Chasis</span> <span style={{fontSize:11,color:'#0F172A'}}>{p.chassis}</span></div>}
+        {p.motor_num&&<div><span style={lbl9}>Motor</span> <span style={{fontSize:11,color:'#0F172A'}}>{p.motor_num}</span></div>}
       </div>
       {(ov||p.paid_amount)&&(
         <div style={{display:'flex',gap:6,marginTop:10}}>
@@ -545,10 +545,10 @@ export function SupplierPaymentsView({ user }) {
                     <ColorChip color={p.color}/>
                     {p.commercial_year&&<span style={{fontSize:11,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'3px 9px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
                   </div>
-                  <div style={{display:'flex',flexDirection:'column',gap:3,marginTop:2}}>
-                    {p.chassis&&<div style={{fontSize:11,color:'#6B7280'}}><span style={{fontWeight:600,color:'#9CA3AF',marginRight:4}}>Chasis</span>{p.chassis}</div>}
-                    {p.motor_num&&<div style={{fontSize:11,color:'#6B7280'}}><span style={{fontWeight:600,color:'#9CA3AF',marginRight:4}}>Motor</span>{p.motor_num}</div>}
-                  </div>
+                  {(p.chassis||p.motor_num)&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',marginTop:4}}>
+                    {p.chassis&&<div><span style={{fontWeight:700,color:'#9CA3AF',fontSize:9,textTransform:'uppercase',letterSpacing:'0.1em',display:'block',marginBottom:2}}>Chasis</span><span style={{fontSize:11,color:'#0F172A'}}>{p.chassis}</span></div>}
+                    {p.motor_num&&<div><span style={{fontWeight:700,color:'#9CA3AF',fontSize:9,textTransform:'uppercase',letterSpacing:'0.1em',display:'block',marginBottom:2}}>Motor</span><span style={{fontSize:11,color:'#0F172A'}}>{p.motor_num}</span></div>}
+                  </div>}
                 </div>
 
                 {/* Zona montos */}
