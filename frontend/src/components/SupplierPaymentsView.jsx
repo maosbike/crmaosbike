@@ -495,7 +495,9 @@ export function SupplierPaymentsView({ user }) {
   const [payFromF,setPayFromF]=useState('');  // fecha_pago desde
   const [payToF,setPayToF]=useState('');      // fecha_pago hasta
   const [brF,setBrF]=useState('');
-  const [sortBy,setSortBy]=useState('invoice_date');   // invoice_date | due_date | total_amount | paid_amount
+  // Por defecto ordenamos por Fecha de pago desc — es el criterio más útil
+  // cuando la vista se usa para auditar pagos ya realizados.
+  const [sortBy,setSortBy]=useState('payment_date');   // payment_date | invoice_date | due_date | total_amount | paid_amount
   const [sortDir,setSortDir]=useState('desc');
 
   const load = useCallback(async()=>{
@@ -543,11 +545,34 @@ export function SupplierPaymentsView({ user }) {
     }
     return true;
   });
+  // Ordena comparando por el tipo de dato real — fechas como timestamp,
+  // montos como número. Registros con valor faltante quedan al final
+  // en cualquier dirección (no contaminan el orden con un 0 o un '').
+  const isDateSort   = ['payment_date','invoice_date','due_date'].includes(sortBy);
+  const isNumberSort = ['total_amount','paid_amount'].includes(sortBy);
+  const rawVal = (p) => {
+    if (sortBy === 'due_date') return due(p);
+    return p[sortBy];
+  };
+  const toCmp = (v) => {
+    if (v == null || v === '') return null;
+    if (isDateSort) {
+      const d = new Date(String(v).slice(0,10) + 'T12:00:00').getTime();
+      return isNaN(d) ? null : d;
+    }
+    if (isNumberSort) {
+      const n = parseInt(v);
+      return isNaN(n) ? null : n;
+    }
+    return String(v).toLowerCase();
+  };
   const sorted = [...filtered].sort((a,b)=>{
-    const va = sortBy==='due_date' ? (due(a)||'') : (a[sortBy]||'');
-    const vb = sortBy==='due_date' ? (due(b)||'') : (b[sortBy]||'');
-    const na = sortBy==='total_amount'||sortBy==='paid_amount' ? (parseInt(va)||0) : String(va);
-    const nb = sortBy==='total_amount'||sortBy==='paid_amount' ? (parseInt(vb)||0) : String(vb);
+    const na = toCmp(rawVal(a));
+    const nb = toCmp(rawVal(b));
+    // Nulos siempre al final, independientemente de asc/desc
+    if (na == null && nb == null) return 0;
+    if (na == null) return 1;
+    if (nb == null) return -1;
     if (na < nb) return sortDir==='asc' ? -1 : 1;
     if (na > nb) return sortDir==='asc' ?  1 : -1;
     return 0;
@@ -657,10 +682,11 @@ export function SupplierPaymentsView({ user }) {
           <label style={flt}>Ordenar por</label>
           <div style={{ display:'flex', gap:6 }}>
             <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={ctrl}>
-              <option value="invoice_date">Fecha emisión</option>
+              <option value="payment_date">Fecha de pago</option>
               <option value="due_date">Vencimiento</option>
-              <option value="total_amount">Total factura</option>
+              <option value="invoice_date">Fecha emisión</option>
               <option value="paid_amount">Monto pagado</option>
+              <option value="total_amount">Total factura</option>
             </select>
             <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
               title={sortDir==='asc'?'Ascendente':'Descendente'}
@@ -699,20 +725,20 @@ export function SupplierPaymentsView({ user }) {
                 onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.09)';}}
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow=S.card.boxShadow;}}>
 
-                {/* ── IZQUIERDO: foto + factura + fecha ── */}
-                <div style={{...col,flex:'0 0 160px',alignItems:'center',gap:8,padding:'14px 16px',background:'#F9FAFB',borderRight:'1px solid #F1F5F9'}}>
+                {/* ── IZQUIERDO: foto grande + factura + fecha ── */}
+                <div style={{...col,flex:'1 1 230px',maxWidth:280,alignItems:'center',gap:10,padding:'14px 14px',background:'#F9FAFB',borderRight:'1px solid #F1F5F9'}}>
                   {img
-                    ? <img src={img} alt="" style={{width:'100%',maxWidth:140,height:100,objectFit:'contain',borderRadius:8,border:'1px solid #E5E7EB',background:'#fff'}}/>
-                    : <div style={{width:'100%',maxWidth:140,height:100,borderRadius:8,border:'1px dashed #D1D5DB',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={38} color="#D1D5DB"/></div>
+                    ? <img src={img} alt="" style={{width:'100%',height:160,objectFit:'contain',borderRadius:10,border:'1px solid #E5E7EB',background:'#fff'}}/>
+                    : <div style={{width:'100%',height:160,borderRadius:10,border:'1px dashed #D1D5DB',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={54} color="#D1D5DB"/></div>
                   }
                   <div style={{textAlign:'center',marginTop:2}}>
-                    <div style={{fontWeight:900,fontSize:13,color:'#F28100',letterSpacing:'-0.2px'}}>#{p.invoice_number||'—'}</div>
-                    <div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{fd(p.invoice_date)}</div>
+                    <div style={{fontWeight:900,fontSize:14,color:'#F28100',letterSpacing:'-0.2px'}}>#{p.invoice_number||'—'}</div>
+                    <div style={{fontSize:11,color:'#9CA3AF',marginTop:2}}>{fd(p.invoice_date)}</div>
                   </div>
                 </div>
 
                 {/* ── CENTRAL: modelo + chips + chasis/motor ── */}
-                <div style={{...col,flex:'2 1 280px',minWidth:0,padding:'14px 20px',gap:6,borderRight:'1px solid #F1F5F9'}}>
+                <div style={{...col,flex:'2 1 260px',minWidth:0,padding:'16px 22px',gap:8,borderRight:'1px solid #F1F5F9'}}>
                   <div style={{display:'flex',alignItems:'center',gap:8}}>
                     <div style={{fontWeight:800,fontSize:17,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:1.2,flex:1,minWidth:0}}>
                       {p.catalog_name||p.model||'—'}
@@ -740,7 +766,7 @@ export function SupplierPaymentsView({ user }) {
                 </div>
 
                 {/* ── DERECHO: grilla horizontal equilibrada, elástica ── */}
-                <div style={{...col,flex:'3 1 360px',minWidth:260,padding:'14px 18px',gap:10}}>
+                <div style={{...col,flex:'3 1 340px',minWidth:260,padding:'16px 20px',gap:12}}>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(90px, 1fr))',gap:'10px 14px',alignItems:'start'}}>
                     <div style={{minWidth:0}}>
                       <div style={lbl}>Total factura</div>
