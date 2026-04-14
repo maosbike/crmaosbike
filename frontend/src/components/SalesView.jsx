@@ -136,8 +136,8 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
   async function handleSave() {
     setSaving(true); setErr('');
     try {
-      if (isRes) {
-        // Reservas: actualizar via inventory PUT
+      if (isRes && !sale.is_note_only) {
+        // Reserva real de inventario → actualizar via inventory PUT
         await api.updateInventory(sale.id, {
           sale_price:     form.sale_price     ? parseInt(form.sale_price)     : null,
           invoice_amount: form.invoice_amount ? parseInt(form.invoice_amount) : null,
@@ -148,7 +148,8 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
           sold_by:        form.sold_by        || null,
         });
       } else {
-        await api.updateSale(sale.id, form);
+        // Nota comercial (reserva o venta) → PATCH /sales/:id
+        await api.updateSale(sale.id, { ...form, is_note_only: !!sale.is_note_only });
       }
       onUpdated();
       setEditing(false);
@@ -160,16 +161,33 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
     if (!window.confirm('¿Confirmar conversión a nota de venta? Esta acción no se puede deshacer.')) return;
     setConverting(true); setErr('');
     try {
-      await api.sellInventory(sale.id, {
-        sold_by:        form.sold_by        || sale.seller_id,
-        sale_price:     form.sale_price     ? parseInt(form.sale_price)     : (sale.sale_price     || null),
-        invoice_amount: form.invoice_amount ? parseInt(form.invoice_amount) : (sale.invoice_amount || null),
-        client_name:    form.client_name    || sale.client_name    || null,
-        client_rut:     form.client_rut     || sale.client_rut     || null,
-        payment_method: form.payment_method || sale.payment_method || null,
-        sale_notes:     form.sale_notes     || sale.sale_notes     || null,
-        sold_at:        new Date().toISOString(),
-      });
+      if (sale.is_note_only) {
+        // Nota comercial: actualizar status a vendida en sales_notes
+        await api.updateSale(sale.id, {
+          is_note_only:   true,
+          status:         'vendida',
+          sold_at:        new Date().toISOString(),
+          sold_by:        form.sold_by        || sale.seller_id,
+          sale_price:     form.sale_price     ? parseInt(form.sale_price)     : (sale.sale_price     || null),
+          invoice_amount: form.invoice_amount ? parseInt(form.invoice_amount) : (sale.invoice_amount || null),
+          client_name:    form.client_name    || sale.client_name    || null,
+          client_rut:     form.client_rut     || sale.client_rut     || null,
+          payment_method: form.payment_method || sale.payment_method || null,
+          sale_notes:     form.sale_notes     || sale.sale_notes     || null,
+        });
+      } else {
+        // Unidad real de inventario: usar flujo estándar de venta
+        await api.sellInventory(sale.id, {
+          sold_by:        form.sold_by        || sale.seller_id,
+          sale_price:     form.sale_price     ? parseInt(form.sale_price)     : (sale.sale_price     || null),
+          invoice_amount: form.invoice_amount ? parseInt(form.invoice_amount) : (sale.invoice_amount || null),
+          client_name:    form.client_name    || sale.client_name    || null,
+          client_rut:     form.client_rut     || sale.client_rut     || null,
+          payment_method: form.payment_method || sale.payment_method || null,
+          sale_notes:     form.sale_notes     || sale.sale_notes     || null,
+          sold_at:        new Date().toISOString(),
+        });
+      }
       onUpdated();
     } catch (e) { setErr(e.message || 'Error al convertir'); }
     finally { setConverting(false); }
@@ -1445,11 +1463,11 @@ export function SalesView({ user, realBranches }) {
     }
   };
 
-  const handleDeleteRow = async (saleId) => {
+  const handleDeleteRow = async (sale) => {
     setDeleting(true);
     try {
-      const res = await api.deleteSale(saleId);
-      handleDeleted(saleId, res.ticket_id_was);
+      const res = await api.deleteSale(sale.id, sale.is_note_only);
+      handleDeleted(sale.id, res.ticket_id_was);
     } catch (e) { alert(e.message || 'Error al eliminar'); }
     finally { setDeleting(false); setConfirmDeleteId(null); }
   };
@@ -1747,7 +1765,7 @@ export function SalesView({ user, realBranches }) {
                       {/* Eliminar (super_admin) */}
                       {isSuperAdmin && confirmDeleteId === s.id ? (
                         <>
-                          <button onClick={() => handleDeleteRow(s.id)} disabled={deleting}
+                          <button onClick={() => handleDeleteRow(s)} disabled={deleting}
                             style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#EF4444',
                                      color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                             {deleting ? '…' : 'Confirmar'}

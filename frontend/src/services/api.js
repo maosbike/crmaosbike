@@ -254,7 +254,7 @@ export const api = {
     fd.append('field', field);
     return request('POST', `/sales/${id}/doc`, fd);
   },
-  deleteSale: (id) => request('DELETE', `/sales/${id}`),
+  deleteSale: (id, isNote) => request('DELETE', `/sales/${id}${isNote ? '?note=1' : ''}`),
 
   // Pagos a proveedor
   extractSupplierPayment: (invoiceFile, receiptFile) => {

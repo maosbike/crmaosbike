@@ -12,6 +12,12 @@
  *
  * Costos internos (cost_price, invoice_amount):
  *   Nunca se devuelven a vendedores — eliminados en sanitizeSale() antes de cada respuesta.
+ *
+ * Arquitectura de datos:
+ *   - Unidad real del inventario marcada como vendida/reservada → tabla inventory
+ *   - Nota comercial sin stock (added_as_sold legacy / nueva) → tabla sales_notes
+ *   - POST /sales crea SIEMPRE en sales_notes, nunca toca inventory
+ *   - PATCH/DELETE ruteados por is_note_only (body) o ?note=1 (query)
  */
 
 const router = require('express').Router();
@@ -48,8 +54,9 @@ function sanitizeSale(sale, userRole) {
   return sale;
 }
 
-// ─── Query base — join enriquecido de ventas ──────────────────────────────────
-const BASE_SELECT = `
+// ─── Vista combinada: inventory (vendida/reservada) + sales_notes ─────────────
+// is_note_only discrimina el origen. Se usa en GET, stats y GET/:id.
+const COMBINED_FROM = `(
   SELECT
     i.id,
     i.status,
@@ -60,15 +67,14 @@ const BASE_SELECT = `
     i.delivered, i.distributor_paid,
     i.doc_factura_dist, i.doc_factura_cli, i.doc_homologacion, i.doc_inscripcion,
     i.ticket_id,
-    -- Vendedor
+    i.added_as_sold,
+    FALSE AS is_note_only,
     sv.id          AS seller_id,
     sv.first_name  AS seller_fn,
     sv.last_name   AS seller_ln,
-    -- Sucursal
     b.id           AS branch_id,
     b.name         AS branch_name,
     b.code         AS branch_code,
-    -- Cliente: manual > ticket
     t.ticket_num,
     COALESCE(
       NULLIF(TRIM(i.client_name), ''),
@@ -83,7 +89,41 @@ const BASE_SELECT = `
   LEFT JOIN branches b  ON i.branch_id = b.id
   LEFT JOIN tickets  t  ON i.ticket_id = t.id
   WHERE i.status IN ('vendida', 'reservada')
-`;
+
+  UNION ALL
+
+  SELECT
+    n.id,
+    n.status,
+    n.brand, n.model, n.year, n.chassis, n.color, n.motor_num,
+    n.price,
+    n.sale_price, n.cost_price, n.invoice_amount,
+    n.sold_at, n.payment_method, n.sale_type, n.sale_notes,
+    n.delivered, n.distributor_paid,
+    n.doc_factura_dist, n.doc_factura_cli, n.doc_homologacion, n.doc_inscripcion,
+    n.ticket_id,
+    TRUE  AS added_as_sold,
+    TRUE  AS is_note_only,
+    sv.id          AS seller_id,
+    sv.first_name  AS seller_fn,
+    sv.last_name   AS seller_ln,
+    b.id           AS branch_id,
+    b.name         AS branch_name,
+    b.code         AS branch_code,
+    t.ticket_num,
+    COALESCE(
+      NULLIF(TRIM(n.client_name), ''),
+      TRIM(CONCAT_WS(' ', t.first_name, t.last_name))
+    ) AS client_name,
+    COALESCE(
+      NULLIF(TRIM(n.client_rut), ''),
+      t.rut
+    ) AS client_rut
+  FROM sales_notes n
+  LEFT JOIN users    sv ON n.sold_by   = sv.id
+  LEFT JOIN branches b  ON n.branch_id = b.id
+  LEFT JOIN tickets  t  ON n.ticket_id = t.id
+) c`;
 
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
@@ -92,38 +132,36 @@ router.get('/', async (req, res) => {
     const where = [], params = [];
     let idx = 1;
 
-    // Filtro de tipo: reserva o venta
-    if (status === 'vendida')   { where.push(`i.status = $${idx++}`); params.push('vendida'); }
-    else if (status === 'reservada') { where.push(`i.status = $${idx++}`); params.push('reservada'); }
+    if (status === 'vendida')        { where.push(`c.status = $${idx++}`); params.push('vendida'); }
+    else if (status === 'reservada') { where.push(`c.status = $${idx++}`); params.push('reservada'); }
 
     if (req.user.role === 'vendedor') {
-      where.push(`sv.id = $${idx++}`);
+      where.push(`c.seller_id = $${idx++}`);
       params.push(req.user.id);
     } else if (seller_id) {
-      where.push(`sv.id = $${idx++}`);
+      where.push(`c.seller_id = $${idx++}`);
       params.push(seller_id);
     }
 
-    if (from)      { where.push(`i.sold_at >= $${idx++}`);  params.push(from); }
-    if (to)        { where.push(`i.sold_at <= $${idx++}`);  params.push(to + ' 23:59:59'); }
-    if (branch_id) { where.push(`i.branch_id = $${idx++}`); params.push(branch_id); }
+    if (from)      { where.push(`c.sold_at >= $${idx++}`);  params.push(from); }
+    if (to)        { where.push(`c.sold_at <= $${idx++}`);  params.push(to + ' 23:59:59'); }
+    if (branch_id) { where.push(`c.branch_id = $${idx++}`); params.push(branch_id); }
 
     if (q) {
       where.push(`(
-        i.chassis    ILIKE $${idx}
-        OR i.brand   ILIKE $${idx}
-        OR i.model   ILIKE $${idx}
-        OR t.ticket_num ILIKE $${idx}
-        OR TRIM(CONCAT_WS(' ', t.first_name, t.last_name)) ILIKE $${idx}
-        OR i.client_name ILIKE $${idx}
+        c.chassis      ILIKE $${idx}
+        OR c.brand     ILIKE $${idx}
+        OR c.model     ILIKE $${idx}
+        OR c.ticket_num  ILIKE $${idx}
+        OR c.client_name ILIKE $${idx}
       )`);
       params.push(`%${q}%`);
       idx++;
     }
 
-    const clause = where.length ? 'AND ' + where.join(' AND ') : '';
+    const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const { rows } = await db.query(
-      `${BASE_SELECT} ${clause} ORDER BY i.sold_at DESC NULLS LAST`,
+      `SELECT * FROM ${COMBINED_FROM} ${clause} ORDER BY c.sold_at DESC NULLS LAST`,
       params
     );
 
@@ -142,36 +180,36 @@ router.get('/stats', async (req, res) => {
     let idx = 1;
 
     if (req.user.role === 'vendedor') {
-      where.push(`i.sold_by = $${idx++}`);
+      where.push(`c.seller_id = $${idx++}`);
       params.push(req.user.id);
     }
 
     const monthStart = from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     const monthEnd   = to   ? to + ' 23:59:59' : new Date().toISOString();
-    where.push(`i.sold_at >= $${idx++}`); params.push(monthStart);
-    where.push(`i.sold_at <= $${idx++}`); params.push(monthEnd);
+    where.push(`c.sold_at >= $${idx++}`); params.push(monthStart);
+    where.push(`c.sold_at <= $${idx++}`); params.push(monthEnd);
 
-    if (branch_id) { where.push(`i.branch_id = $${idx++}`); params.push(branch_id); }
+    if (branch_id) { where.push(`c.branch_id = $${idx++}`); params.push(branch_id); }
 
-    const whereClause = `WHERE i.status = 'vendida' AND ${where.join(' AND ')}`;
+    const whereClause = `WHERE c.status = 'vendida' AND ${where.join(' AND ')}`;
 
     const { rows } = await db.query(`
       SELECT
-        COUNT(*)                                                           AS total,
-        COUNT(*) FILTER (WHERE i.doc_factura_cli  IS NULL
-                            OR  i.doc_factura_cli  = '')                   AS sin_factura_cli,
-        COUNT(*) FILTER (WHERE i.doc_homologacion IS NULL
-                            OR  i.doc_homologacion = '')                   AS sin_homologacion,
-        COUNT(*) FILTER (WHERE i.doc_inscripcion  IS NULL
-                            OR  i.doc_inscripcion  = '')                   AS sin_inscripcion,
-        COUNT(*) FILTER (WHERE i.delivered = false
-                            OR  i.delivered IS NULL)                       AS pendiente_entrega,
-        COUNT(*) FILTER (WHERE i.distributor_paid = false
-                            OR  i.distributor_paid IS NULL)                AS pendiente_distribuidor,
-        SUM(i.sale_price)                                                  AS total_venta,
-        SUM(i.cost_price)                                                  AS total_costo,
-        SUM(i.invoice_amount)                                              AS total_facturado
-      FROM inventory i
+        COUNT(*)                                                                   AS total,
+        COUNT(*) FILTER (WHERE c.doc_factura_cli  IS NULL
+                           OR  c.doc_factura_cli  = '')                            AS sin_factura_cli,
+        COUNT(*) FILTER (WHERE c.doc_homologacion IS NULL
+                           OR  c.doc_homologacion = '')                            AS sin_homologacion,
+        COUNT(*) FILTER (WHERE c.doc_inscripcion  IS NULL
+                           OR  c.doc_inscripcion  = '')                            AS sin_inscripcion,
+        COUNT(*) FILTER (WHERE c.delivered = false
+                           OR  c.delivered IS NULL)                                AS pendiente_entrega,
+        COUNT(*) FILTER (WHERE c.distributor_paid = false
+                           OR  c.distributor_paid IS NULL)                         AS pendiente_distribuidor,
+        SUM(c.sale_price)                                                          AS total_venta,
+        SUM(c.cost_price)                                                          AS total_costo,
+        SUM(c.invoice_amount)                                                      AS total_facturado
+      FROM ${COMBINED_FROM}
       ${whereClause}
     `, params);
 
@@ -201,7 +239,10 @@ router.get('/stats', async (req, res) => {
 // ─── GET /api/sales/:id ───────────────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {
-    const { rows } = await db.query(`${BASE_SELECT} AND i.id = $1`, [req.params.id]);
+    const { rows } = await db.query(
+      `SELECT * FROM ${COMBINED_FROM} WHERE c.id = $1`,
+      [req.params.id]
+    );
     if (!rows[0]) return res.status(404).json({ error: 'Venta no encontrada' });
 
     const sale = rows[0];
@@ -217,6 +258,8 @@ router.get('/:id', async (req, res) => {
 });
 
 // ─── POST /api/sales ──────────────────────────────────────────────────────────
+// Siempre inserta en sales_notes — nunca crea filas en inventory.
+// Para vincular una unidad real usá POST /inventory/:id/sell.
 router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
   try {
     const {
@@ -231,97 +274,74 @@ router.post('/', roleCheck('super_admin', 'backoffice'), async (req, res) => {
     if (!sold_by)
       return res.status(400).json({ error: 'Vendedor obligatorio' });
 
-    const finalStatus  = reqStatus === 'reservada' ? 'reservada' : 'vendida';
-    const isReserva    = finalStatus === 'reservada';
-    const finalSoldAt  = sold_at ? new Date(sold_at).toISOString() : new Date().toISOString();
+    const finalStatus = reqStatus === 'reservada' ? 'reservada' : 'vendida';
+    const finalSoldAt = sold_at ? new Date(sold_at).toISOString() : new Date().toISOString();
 
     const { rows } = await db.query(
-      `INSERT INTO inventory (
-         status, added_as_sold,
-         branch_id, year, brand, model, color, chassis, motor_num, price,
+      `INSERT INTO sales_notes (
+         status, branch_id, year, brand, model, color, chassis, motor_num, price,
          sold_at, sold_by, ticket_id,
          payment_method, sale_type, sale_notes,
          sale_price, cost_price, invoice_amount, delivered,
          client_name, client_rut, created_by
        ) VALUES (
-         $1, $2,
-         $3, $4, $5, $6, $7, $8, $9, $10,
-         $11, $12, $13,
-         $14, $15, $16,
-         $17, $18, $19, $20,
-         $21, $22, $23
+         $1, $2, $3, $4, $5, $6, $7, $8, $9,
+         $10, $11, $12,
+         $13, $14, $15,
+         $16, $17, $18, $19,
+         $20, $21, $22
        ) RETURNING *`,
       [
-        finalStatus,                                        // $1  status
-        true,                                               // $2  added_as_sold: siempre true — no es stock real
-        branch_id || null,                                  // $3
-        year      ? parseInt(year)   : null,                // $4
-        brand.trim().toUpperCase(),                         // $5
-        model.trim().toUpperCase(),                         // $6
-        color  || null,                                     // $7
-        chassis ? chassis.trim().toUpperCase() : null,      // $8
-        motor_num || null,                                  // $9
-        price     ? parseInt(price)  : 0,                  // $10
-        finalSoldAt,                                        // $11
-        sold_by,                                            // $12
-        ticket_id  || null,                                 // $13
-        payment_method || null,                             // $14
-        sale_type      || null,                             // $15
-        sale_notes     || null,                             // $16
-        sale_price     ? parseInt(sale_price)     : null,   // $17
-        cost_price     ? parseInt(cost_price)     : null,   // $18
-        invoice_amount ? parseInt(invoice_amount) : null,   // $19
-        delivered      ? true : false,                      // $20
-        client_name    || null,                             // $21
-        client_rut     || null,                             // $22
-        req.user.id,                                        // $23
-      ]
-    );
-
-    const unit = rows[0];
-
-    await db.query(
-      `INSERT INTO inventory_history (inventory_id, event_type, to_status, user_id, note, metadata)
-       VALUES ($1, $5, $6, $2, $3, $4)`,
-      [
-        unit.id, req.user.id,
-        `${isReserva ? 'Reserva' : 'Venta'} registrada desde módulo de ventas${sale_notes ? '. ' + sale_notes : ''}`,
-        JSON.stringify({ sold_by, payment_method, sale_type, ticket_id }),
-        isReserva ? 'status_changed' : 'sold',
         finalStatus,
+        branch_id  || null,
+        year       ? parseInt(year)  : null,
+        brand.trim().toUpperCase(),
+        model.trim().toUpperCase(),
+        color      || null,
+        chassis    ? chassis.trim().toUpperCase() : null,
+        motor_num  || null,
+        price      ? parseInt(price) : 0,
+        finalSoldAt,
+        sold_by,
+        ticket_id  || null,
+        payment_method || null,
+        sale_type      || null,
+        sale_notes     || null,
+        sale_price     ? parseInt(sale_price)     : null,
+        cost_price     ? parseInt(cost_price)     : null,
+        invoice_amount ? parseInt(invoice_amount) : null,
+        delivered ? true : false,
+        client_name || null,
+        client_rut  || null,
+        req.user.id,
       ]
     );
 
-    if (ticket_id) {
-      await db.query(
-        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
-         VALUES ($1, $2, 'system', $3, $4)`,
-        [
-          ticket_id, req.user.id,
-          `Moto vendida: ${unit.brand} ${unit.model} · Chasis ${unit.chassis}`,
-          `Registrada por ${req.user.first_name}. ${payment_method ? 'Pago: ' + payment_method + '. ' : ''}${sale_notes || ''}`,
-        ]
-      );
-    }
-
-    res.status(201).json(unit);
+    res.status(201).json({ ...rows[0], is_note_only: true });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ error: 'Chasis ya existe en el inventario' });
     console.error('[Sales] POST /', e);
     res.status(500).json({ error: 'Error al registrar venta' });
   }
 });
 
 // ─── PATCH /api/sales/:id ─────────────────────────────────────────────────────
+// is_note_only en el body → UPDATE sales_notes
+// sin is_note_only (o false) → UPDATE inventory
 router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
-    const UPDATABLE = [
+    const isNoteOnly = req.body.is_note_only === true || req.body.is_note_only === 'true';
+
+    const UPDATABLE_BASE = [
       'sale_price', 'cost_price', 'invoice_amount',
       'sale_type', 'payment_method', 'sale_notes',
       'delivered', 'distributor_paid',
       'doc_factura_dist', 'doc_factura_cli', 'doc_homologacion', 'doc_inscripcion',
-      'client_name', 'client_rut',
+      'client_name', 'client_rut', 'sold_by',
     ];
+    // sales_notes admite además cambio de estado y fecha (para conversión reserva→venta)
+    const UPDATABLE = isNoteOnly
+      ? [...UPDATABLE_BASE, 'status', 'sold_at']
+      : UPDATABLE_BASE;
 
     const sets = [], params = [];
     let idx = 1;
@@ -336,15 +356,18 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
     if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
     params.push(req.params.id);
 
+    const table       = isNoteOnly ? 'sales_notes' : 'inventory';
+    const statusCheck = isNoteOnly ? '' : `AND status IN ('vendida', 'reservada')`;
+
     const { rows } = await db.query(
-      `UPDATE inventory SET ${sets.join(', ')}, updated_at = NOW()
-       WHERE id = $${idx} AND status IN ('vendida', 'reservada')
+      `UPDATE ${table} SET ${sets.join(', ')}, updated_at = NOW()
+       WHERE id = $${idx} ${statusCheck}
        RETURNING *`,
       params
     );
     if (!rows[0]) return res.status(404).json({ error: 'Venta no encontrada' });
 
-    res.json(rows[0]);
+    res.json({ ...rows[0], is_note_only: isNoteOnly });
   } catch (e) {
     console.error('[Sales] PATCH /:id', e);
     res.status(500).json({ error: 'Error al actualizar venta' });
@@ -352,48 +375,61 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
 });
 
 // ─── DELETE /api/sales/:id — solo super_admin ─────────────────────────────────
-// No borra la fila: revierte la unidad a 'disponible' y limpia todos los campos
-// de venta. Registra el evento en inventory_history para trazabilidad completa.
-// El ticket vinculado NO se toca — su estado lo gestiona el admin manualmente.
+// ?note=1  → DELETE de sales_notes (fila eliminada definitivamente)
+// sin flag → revierte unidad de inventory a 'disponible'
 router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
   try {
-    // Verificar que existe y está vendida o reservada
+    const isNoteOnly = req.query.note === '1';
+
+    if (isNoteOnly) {
+      const { rows } = await db.query(
+        `DELETE FROM sales_notes WHERE id = $1 RETURNING *`,
+        [req.params.id]
+      );
+      if (!rows[0]) return res.status(404).json({ error: 'Registro no encontrado' });
+      return res.json({
+        ok: true,
+        message: 'Nota comercial eliminada',
+        ticket_id_was: rows[0].ticket_id || null,
+      });
+    }
+
+    // Unidad real de inventario: verificar y revertir
     const { rows: cur } = await db.query(
-      `SELECT id, brand, model, chassis, ticket_id, sold_by, status FROM inventory WHERE id = $1 AND status IN ('vendida', 'reservada')`,
+      `SELECT id, brand, model, chassis, ticket_id, sold_by, status
+       FROM inventory WHERE id = $1 AND status IN ('vendida', 'reservada')`,
       [req.params.id]
     );
     if (!cur[0]) return res.status(404).json({ error: 'Registro no encontrado' });
 
     const unit = cur[0];
 
-    // Revertir a disponible, limpiar todos los campos de venta
     await db.query(
       `UPDATE inventory SET
-         status          = 'disponible',
-         sold_at         = NULL,
-         sold_by         = NULL,
-         ticket_id       = NULL,
-         sale_notes      = NULL,
-         payment_method  = NULL,
-         sale_type       = NULL,
-         added_as_sold   = false,
-         sale_price      = NULL,
-         cost_price      = NULL,
-         invoice_amount  = NULL,
-         delivered       = false,
-         distributor_paid= false,
-         doc_factura_dist= NULL,
-         doc_factura_cli = NULL,
-         doc_homologacion= NULL,
-         doc_inscripcion = NULL,
-         client_name     = NULL,
-         client_rut      = NULL,
-         updated_at      = NOW()
+         status           = 'disponible',
+         sold_at          = NULL,
+         sold_by          = NULL,
+         ticket_id        = NULL,
+         sale_notes       = NULL,
+         payment_method   = NULL,
+         sale_type        = NULL,
+         added_as_sold    = false,
+         sale_price       = NULL,
+         cost_price       = NULL,
+         invoice_amount   = NULL,
+         delivered        = false,
+         distributor_paid = false,
+         doc_factura_dist = NULL,
+         doc_factura_cli  = NULL,
+         doc_homologacion = NULL,
+         doc_inscripcion  = NULL,
+         client_name      = NULL,
+         client_rut       = NULL,
+         updated_at       = NOW()
        WHERE id = $1`,
       [req.params.id]
     );
 
-    // Registrar en historial para trazabilidad
     await db.query(
       `INSERT INTO inventory_history (inventory_id, event_type, from_status, to_status, user_id, note, metadata)
        VALUES ($1, 'status_changed', $5, 'disponible', $2, $3, $4)`,
@@ -418,17 +454,22 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
 });
 
 // ─── POST /api/sales/:id/doc ──────────────────────────────────────────────────
+// ?note=1 → sube doc a sales_notes; sin flag → a inventory
 router.post('/:id/doc', roleCheck('super_admin', 'backoffice'), uploadDoc.single('file'), async (req, res) => {
   try {
     const { field } = req.body;
+    const isNoteOnly = req.query.note === '1';
 
     if (!DOC_FIELDS.includes(field)) {
       return res.status(400).json({ error: `Campo inválido. Válidos: ${DOC_FIELDS.join(', ')}` });
     }
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
+    const table       = isNoteOnly ? 'sales_notes' : 'inventory';
+    const statusCheck = isNoteOnly ? '' : `AND status = 'vendida'`;
+
     const { rows: check } = await db.query(
-      `SELECT id FROM inventory WHERE id = $1 AND status = 'vendida'`,
+      `SELECT id FROM ${table} WHERE id = $1 ${statusCheck}`,
       [req.params.id]
     );
     if (!check[0]) return res.status(404).json({ error: 'Venta no encontrada' });
@@ -441,7 +482,7 @@ router.post('/:id/doc', roleCheck('super_admin', 'backoffice'), uploadDoc.single
     });
 
     await db.query(
-      `UPDATE inventory SET ${field} = $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE ${table} SET ${field} = $1, updated_at = NOW() WHERE id = $2`,
       [result.secure_url, req.params.id]
     );
 
