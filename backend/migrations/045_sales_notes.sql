@@ -3,7 +3,7 @@
 -- No toca la tabla inventory — cero filas falsas de stock.
 
 CREATE TABLE IF NOT EXISTS sales_notes (
-  id               SERIAL PRIMARY KEY,
+  id               UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
   status           TEXT        NOT NULL DEFAULT 'reservada' CHECK (status IN ('reservada','vendida')),
   brand            TEXT        NOT NULL,
   model            TEXT        NOT NULL,
@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS sales_notes (
   cost_price       INTEGER,
   invoice_amount   INTEGER,
   sold_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  sold_by          INTEGER     REFERENCES users(id),
-  branch_id        INTEGER     REFERENCES branches(id),
-  ticket_id        INTEGER     REFERENCES tickets(id),
+  sold_by          UUID        REFERENCES users(id),
+  branch_id        UUID        REFERENCES branches(id),
+  ticket_id        UUID        REFERENCES tickets(id),
   payment_method   TEXT,
   sale_type        TEXT,
   sale_notes       TEXT,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS sales_notes (
   doc_factura_cli  TEXT,
   doc_homologacion TEXT,
   doc_inscripcion  TEXT,
-  created_by       INTEGER     REFERENCES users(id),
+  created_by       UUID        REFERENCES users(id),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
