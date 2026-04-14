@@ -519,70 +519,81 @@ export function SupplierPaymentsView({ user }) {
             const dv=due(p);
             const ov=dv&&new Date(dv.slice(0,10)+'T12:00:00')<new Date();
             const img=motoImg(p);
-            const zone = { padding:'14px 18px', borderRight:'1px solid #F1F5F9', display:'flex', flexDirection:'column', justifyContent:'center' };
+            const col = { display:'flex',flexDirection:'column',justifyContent:'center' };
+            const lbl = { fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:3 };
             return (
               <div key={p.id} onClick={()=>setSel(p)}
-                style={{...S.card,padding:0,display:'flex',alignItems:'stretch',cursor:'pointer',overflow:'hidden'}}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.10)';}}
+                style={{...S.card,padding:0,display:'flex',alignItems:'stretch',cursor:'pointer',overflow:'hidden',minHeight:0}}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.09)';}}
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow=S.card.boxShadow;}}>
 
-                {/* Zona foto */}
-                <div style={{...zone, flexShrink:0, width:190, alignItems:'center', gap:10, background:'#F9FAFB'}}>
+                {/* ── IZQUIERDO: foto + factura + fecha ── */}
+                <div style={{...col,flexShrink:0,width:162,alignItems:'center',gap:8,padding:'14px 16px',background:'#F9FAFB',borderRight:'1px solid #F1F5F9'}}>
                   {img
-                    ? <img src={img} alt="" style={{width:130,height:95,objectFit:'contain',borderRadius:10,border:'1px solid #E5E7EB',background:'#fff'}}/>
-                    : <div style={{width:130,height:95,borderRadius:10,border:'1px dashed #D1D5DB',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={36} color="#D1D5DB"/></div>
+                    ? <img src={img} alt="" style={{width:130,height:100,objectFit:'contain',borderRadius:8,border:'1px solid #E5E7EB',background:'#fff'}}/>
+                    : <div style={{width:130,height:100,borderRadius:8,border:'1px dashed #D1D5DB',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={38} color="#D1D5DB"/></div>
                   }
-                  <div style={{textAlign:'center'}}>
-                    <div style={{fontWeight:900,fontSize:15,color:'#F28100',letterSpacing:'-0.3px'}}>#{p.invoice_number||'—'}</div>
+                  <div style={{textAlign:'center',marginTop:2}}>
+                    <div style={{fontWeight:900,fontSize:13,color:'#F28100',letterSpacing:'-0.2px'}}>#{p.invoice_number||'—'}</div>
                     <div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{fd(p.invoice_date)}</div>
                   </div>
                 </div>
 
-                {/* Zona vehículo — aprovecha el espacio */}
-                <div style={{...zone, flex:'1 1 0', minWidth:0, gap:8}}>
-                  <div style={{fontWeight:800,fontSize:16,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.catalog_name||p.model||'—'}</div>
-                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                {/* ── CENTRAL: modelo + chips + chasis/motor ── */}
+                <div style={{...col,flex:'1 1 0',minWidth:0,padding:'14px 20px',gap:6,borderRight:'1px solid #F1F5F9'}}>
+                  <div style={{fontWeight:800,fontSize:17,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:1.2}}>
+                    {p.catalog_name||p.model||'—'}
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginTop:2}}>
                     <ColorChip color={p.color}/>
-                    {p.commercial_year&&<span style={{fontSize:11,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'3px 9px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
+                    {p.commercial_year&&<span style={{fontSize:11,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'2px 9px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
                   </div>
-                  {(p.chassis||p.motor_num)&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',marginTop:4}}>
-                    {p.chassis&&<div><span style={{fontWeight:700,color:'#9CA3AF',fontSize:9,textTransform:'uppercase',letterSpacing:'0.1em',display:'block',marginBottom:2}}>Chasis</span><span style={{fontSize:11,color:'#0F172A'}}>{p.chassis}</span></div>}
-                    {p.motor_num&&<div><span style={{fontWeight:700,color:'#9CA3AF',fontSize:9,textTransform:'uppercase',letterSpacing:'0.1em',display:'block',marginBottom:2}}>Motor</span><span style={{fontSize:11,color:'#0F172A'}}>{p.motor_num}</span></div>}
-                  </div>}
+                  {(p.chassis||p.motor_num)&&(
+                    <div style={{display:'flex',gap:28,paddingTop:8,borderTop:'1px solid #F1F5F9',marginTop:4,flexWrap:'wrap'}}>
+                      {p.chassis&&<div style={{minWidth:0}}>
+                        <div style={lbl}>Chasis</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1E293B',letterSpacing:'0.01em'}}>{p.chassis}</div>
+                      </div>}
+                      {p.motor_num&&<div style={{minWidth:0}}>
+                        <div style={lbl}>Motor</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1E293B',letterSpacing:'0.01em'}}>{p.motor_num}</div>
+                      </div>}
+                    </div>
+                  )}
                 </div>
 
-                {/* Zona montos */}
-                <div style={{...zone, flexShrink:0, width:170, alignItems:'flex-end', gap:10}}>
-                  <div style={{textAlign:'right'}}>
-                    <div style={lbl9}>Total factura</div>
-                    <div style={{fontSize:18,fontWeight:900,color:'#0F172A'}}>{$(p.total_amount)}</div>
+                {/* ── DERECHO: montos + fechas + docs ── */}
+                <div style={{...col,flexShrink:0,width:210,padding:'14px 18px',gap:0}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px 14px',marginBottom:10}}>
+                    <div>
+                      <div style={lbl}>Total factura</div>
+                      <div style={{fontSize:15,fontWeight:900,color:'#0F172A',letterSpacing:'-0.3px'}}>{$(p.total_amount)}</div>
+                    </div>
+                    <div>
+                      <div style={lbl}>Monto pagado</div>
+                      <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#CBD5E1'}}>{$(p.paid_amount)}</div>
+                    </div>
+                    <div>
+                      <div style={{...lbl,color:ov?'#EF4444':'#9CA3AF'}}>Vencimiento</div>
+                      <div style={{fontSize:12,fontWeight:ov?700:500,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</div>
+                    </div>
+                    {p.payment_date&&<div>
+                      <div style={lbl}>Fecha pago</div>
+                      <div style={{fontSize:12,color:'#374151'}}>{fd(p.payment_date)}</div>
+                    </div>}
                   </div>
-                  <div style={{textAlign:'right'}}>
-                    <div style={lbl9}>Monto pagado</div>
-                    <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#D1D5DB'}}>{$(p.paid_amount)}</div>
-                  </div>
-                </div>
-
-                {/* Zona fechas + docs */}
-                <div style={{...zone, flexShrink:0, width:160, borderRight:'none', gap:8}}>
-                  <div>
-                    <div style={lbl9}>Vencimiento</div>
-                    <div style={{fontSize:12,fontWeight:ov?700:500,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</div>
-                  </div>
-                  {p.payment_date&&<div>
-                    <div style={lbl9}>Fecha pago</div>
-                    <div style={{fontSize:12,color:'#374151'}}>{fd(p.payment_date)}</div>
-                  </div>}
-                  <div style={{display:'flex',flexDirection:'column',gap:5,marginTop:4}}>
-                    {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                      style={{display:'flex',alignItems:'center',gap:5,fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:20,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit'}}>
-                      <Ic.file size={12}/> Factura
-                    </a>}
-                    {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                      style={{display:'flex',alignItems:'center',gap:5,fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:20,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit'}}>
-                      <Ic.file size={12}/> Comprobante
-                    </a>}
-                  </div>
+                  {(p.invoice_url||p.receipt_url)&&(
+                    <div style={{display:'flex',gap:6}}>
+                      {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                        style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 6px',borderRadius:6,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                        <Ic.file size={11}/> Factura
+                      </a>}
+                      {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                        style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 6px',borderRadius:6,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                        <Ic.file size={11}/> Comprobante
+                      </a>}
+                    </div>
+                  )}
                 </div>
               </div>
             );
