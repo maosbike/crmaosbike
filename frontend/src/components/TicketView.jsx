@@ -488,10 +488,26 @@ export function TicketView({lead,user,nav,updLead}){
             <div style={{ marginBottom:8 }}>
               <label style={S.lbl}>Vendedor asignado</label>
               <select value={lead.seller_id||lead.seller||""}
-                onChange={e=>{
-                  const sl=sellers.find(s=>s.id===e.target.value);
-                  const slName=sl?(sl.first_name||sl.fn||'')+" "+(sl.last_name||sl.ln||''):"";
-                  updLead(lead.id,{seller:e.target.value,seller_id:e.target.value,timeline:[{id:`tl-${Date.now()}`,type:"system",title:`Reasignado a ${slName.trim()}`,date:new Date().toISOString(),user:`${user.fn} ${user.ln}`},...lead.timeline]});
+                onChange={async e=>{
+                  const newId=e.target.value;
+                  if(!newId||newId===lead.seller_id)return;
+                  const prevId=lead.seller_id;
+                  const sl=sellers.find(s=>s.id===newId);
+                  const slFn=sl?.first_name||sl?.fn||'';
+                  const slLn=sl?.last_name||sl?.ln||'';
+                  // Optimista: actualizamos UI; si falla, revertimos.
+                  updLead(lead.id,{seller:newId,seller_id:newId,seller_fn:slFn,seller_ln:slLn});
+                  try{
+                    await api.manualReassign({ticket_id:lead.id,to_user_id:newId});
+                    // Recargamos entrada real del timeline desde backend.
+                    try{
+                      const full=await api.getTicket(lead.id);
+                      if(full?.timeline)updLead(lead.id,{timeline:full.timeline});
+                    }catch{}
+                  }catch(ex){
+                    updLead(lead.id,{seller:prevId,seller_id:prevId});
+                    alert('No se pudo reasignar: '+(ex.message||'Error'));
+                  }
                 }}
                 style={{ ...S.inp, width:'100%', fontSize:11 }}>
                 <option value="">Seleccionar...</option>

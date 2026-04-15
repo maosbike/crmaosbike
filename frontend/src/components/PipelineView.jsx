@@ -8,7 +8,25 @@ export function PipelineView({leads,user,nav,updLead}){
   const[sellLead,setSellLead]=useState(null);
   const stages=PIPELINE_STAGES;
   const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(user.role==="vendedor"&&l.seller_id!==user.id)return false;return true;});
-  const drop=stage=>{if(dragId){const ld=leads.find(l=>l.id===dragId);if(ld)updLead(dragId,{status:stage,timeline:[{id:`tl-${Date.now()}`,type:"status",title:`Estado → ${TICKET_STATUS[stage]?.l}`,date:new Date().toISOString(),user:user.fn},...ld.timeline]});setDragId(null);}};
+  // Persiste el cambio de estado en backend. Si falla, revierte UI.
+  const drop=async stage=>{
+    if(!dragId)return;
+    const ld=leads.find(l=>l.id===dragId);
+    setDragId(null);
+    if(!ld||ld.status===stage)return;
+    const prev=ld.status;
+    updLead(ld.id,{status:stage});
+    try{
+      await api.updateTicket(ld.id,{status:stage});
+      try{
+        const full=await api.getTicket(ld.id);
+        if(full?.timeline)updLead(ld.id,{timeline:full.timeline});
+      }catch{}
+    }catch(ex){
+      updLead(ld.id,{status:prev});
+      alert('No se pudo cambiar el estado: '+(ex.message||'Error'));
+    }
+  };
   const getSlaInfo=(l)=>{
     if(l.sla_status==="vencido")return{horas:0,breach:true,warning:false};
     if(l.sla_status==="en_riesgo")return{horas:0,breach:false,warning:true};

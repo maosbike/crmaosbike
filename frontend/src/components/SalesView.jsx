@@ -1438,7 +1438,8 @@ export function SalesView({ user, realBranches }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      // limit explícito para no depender del default del backend (que ahora pagina).
+      const params = { limit: 500 };
       if (q)        params.q         = q;
       if (fromDate) params.from      = fromDate;
       if (toDate)   params.to        = toDate;

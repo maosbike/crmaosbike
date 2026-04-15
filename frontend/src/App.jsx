@@ -55,9 +55,25 @@ export default function App(){
     setUser(null);
   };
 
+  // Carga paginada: trae todas las páginas en chunks de 200 — escala sin tope artificial.
+  // Una sola falla silenciosa aquí es aceptable (loader de fondo; errores puntuales
+  // se ven cuando el usuario interactúa con un ticket concreto).
+  const fetchAllTickets=async()=>{
+    const PAGE_SIZE=200, MAX_PAGES=50; // 10.000 tickets tope de seguridad
+    const acc=[];
+    for(let page=1; page<=MAX_PAGES; page++){
+      const r=await api.getTickets({page,limit:PAGE_SIZE});
+      const batch=r?.data||[];
+      acc.push(...batch);
+      const total=typeof r?.total==='number'?r.total:acc.length;
+      if(acc.length>=total||batch.length<PAGE_SIZE)break;
+    }
+    return acc;
+  };
+
   useEffect(()=>{
     if(!user)return;
-    api.getTickets({limit:500}).then(d=>setLeads((d.data||[]).map(mapTicket))).catch(()=>{});
+    fetchAllTickets().then(all=>setLeads(all.map(mapTicket))).catch(()=>{});
     api.getBranches().then(bs=>setRealBranches(bs||[])).catch(()=>{});
     api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
   },[user?.id]);
@@ -66,7 +82,7 @@ export default function App(){
   if(!user)return<Login onLogin={setUser}/>;
   if(user.forceChange)return<ForceChangeView user={user} onChanged={u=>{setUser(u);}}/>;
 
-  const reloadLeads=()=>api.getTickets({limit:500}).then(d=>setLeads((d.data||[]).map(mapTicket))).catch(()=>{});
+  const reloadLeads=()=>fetchAllTickets().then(all=>setLeads(all.map(mapTicket))).catch(()=>{});
 
   const nav=(pg,lid)=>{
     if(pg==="ticket"&&lid){

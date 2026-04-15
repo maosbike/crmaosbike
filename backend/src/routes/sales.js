@@ -126,9 +126,15 @@ const COMBINED_FROM = `(
 ) c`;
 
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
+// Acepta ?page&limit (default 100, max 500). Devuelve data + total + page + limit.
+// Compatibilidad: consumidores viejos siguen recibiendo `data` y `total`.
 router.get('/', async (req, res) => {
   try {
     const { from, to, branch_id, seller_id, q, status } = req.query;
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 100));
+    const offset = (page - 1) * limit;
+
     const where = [], params = [];
     let idx = 1;
 
@@ -160,12 +166,26 @@ router.get('/', async (req, res) => {
     }
 
     const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    const { rows } = await db.query(
-      `SELECT * FROM ${COMBINED_FROM} ${clause} ORDER BY c.sold_at DESC NULLS LAST`,
+
+    const countR = await db.query(
+      `SELECT COUNT(*)::int AS n FROM ${COMBINED_FROM} ${clause}`,
       params
     );
+    const total = countR.rows[0]?.n || 0;
 
-    res.json({ data: rows.map(s => sanitizeSale(s, req.user.role)), total: rows.length });
+    const { rows } = await db.query(
+      `SELECT * FROM ${COMBINED_FROM} ${clause}
+       ORDER BY c.sold_at DESC NULLS LAST
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, limit, offset]
+    );
+
+    res.json({
+      data: rows.map(s => sanitizeSale(s, req.user.role)),
+      total,
+      page,
+      limit,
+    });
   } catch (e) {
     console.error('[Sales] GET /', e);
     res.status(500).json({ error: 'Error al obtener ventas' });
