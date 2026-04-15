@@ -35,8 +35,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .crm-mobile-hdr { display: flex !important; }
   .crm-desktop-hdr { display: none !important; }
 
-  /* ── Main scroll area padding ── */
-  .crm-scroll-area { padding: 12px 12px 80px !important; }
+  /* ── Main scroll area padding + no horizontal scroll en mobile ── */
+  .crm-scroll-area { padding: 12px 12px 80px !important; overflow-x: hidden !important; }
+  /* Defensa global: evitar que elementos con min-width/width empujen el viewport.
+     No afecta desktop. */
+  .crm-scroll-area > * { max-width: 100% !important; }
 
   /* ── Prevent iOS input zoom (needs 16px) ── */
   input, select, textarea { font-size: 16px !important; }

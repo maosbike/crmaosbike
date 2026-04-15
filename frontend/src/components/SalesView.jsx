@@ -1504,19 +1504,19 @@ export function SalesView({ user, realBranches }) {
           </h1>
         </div>
         {canCreate && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', flex:'1 1 auto', minWidth:0, justifyContent:'flex-end' }}>
             <button onClick={() => setShowNew('reserva')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFFFFF',
+              style={{ display: 'flex', alignItems: 'center', justifyContent:'center', gap: 6, background: '#FFFFFF',
                        border: '1.5px solid #0F172A', color: '#0F172A', borderRadius: 9,
                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                       padding: '9px 18px', fontFamily: 'inherit' }}>
+                       padding: '9px 14px', fontFamily: 'inherit', flex:'1 1 auto' }}>
               <Ic.plus size={14} color="#0F172A" /> Nota de reserva
             </button>
             <button onClick={() => setShowNew('venta')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F28100',
+              style={{ display: 'flex', alignItems: 'center', justifyContent:'center', gap: 6, background: '#F28100',
                        border: 'none', color: '#FFFFFF', borderRadius: 9, fontSize: 12,
-                       fontWeight: 700, cursor: 'pointer', padding: '9px 18px',
-                       fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(242,129,0,0.35)' }}>
+                       fontWeight: 700, cursor: 'pointer', padding: '9px 14px',
+                       fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(242,129,0,0.35)', flex:'1 1 auto' }}>
               <Ic.plus size={14} color="#fff" /> Nota de venta
             </button>
           </div>

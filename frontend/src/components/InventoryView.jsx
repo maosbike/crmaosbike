@@ -443,28 +443,29 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {/* ══════════════════════════════════════════════════════════
           ENCABEZADO
       ══════════════════════════════════════════════════════════ */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap', marginBottom: isMobile ? 16 : 28 }}>
         <div>
           <p style={{ margin:'0 0 2px', fontSize:11, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.12em', textTransform:'uppercase' }}>
             Operaciones · Stock
           </p>
-          <h1 style={{ margin:0, fontSize:26, fontWeight:900, color:'#0F172A', letterSpacing:'-0.8px', lineHeight:1 }}>
+          <h1 style={{ margin:0, fontSize: isMobile ? 20 : 26, fontWeight:900, color:'#0F172A', letterSpacing:'-0.8px', lineHeight:1 }}>
             Inventario
           </h1>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', width: isMobile ? '100%' : 'auto' }}>
           {isAdmin && (
             <>
-              <button onClick={handleExport} disabled={exporting} style={btnGhost}>
-                <Ic.dl size={13} color="#6B7280"/> {exporting ? 'Exportando…' : 'Exportar Excel'}
+              <button onClick={handleExport} disabled={exporting} style={{...btnGhost, flex: isMobile ? '1 1 0' : '0 0 auto', justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
+                <Ic.dl size={13} color="#6B7280"/> {exporting ? 'Exportando…' : (isMobile ? 'Exportar' : 'Exportar Excel')}
               </button>
               <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
-                style={btnGhost}>
-                <Ic.upload size={13} color="#6B7280"/> Importar Excel
+                style={{...btnGhost, flex: isMobile ? '1 1 0' : '0 0 auto', justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
+                <Ic.upload size={13} color="#6B7280"/> {isMobile ? 'Importar' : 'Importar Excel'}
               </button>
             </>
           )}
-          <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }} style={btnOrange}>
+          <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }}
+            style={{...btnOrange, flex: isMobile ? '1 1 100%' : '0 0 auto', justifyContent:'center', padding: isMobile ? '10px 14px' : '9px 18px'}}>
             <Ic.plus size={14} color="#fff"/> Nueva Unidad
           </button>
         </div>
@@ -473,15 +474,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {/* ══════════════════════════════════════════════════════════
           KPI — 4 tarjetas de estado
       ══════════════════════════════════════════════════════════ */}
-      <div className="grid-4col" style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap:12, marginBottom:24 }}>
+      <div className="grid-4col" style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: isMobile ? 8 : 12, marginBottom: isMobile ? 14 : 24 }}>
         {Object.entries(ST_CFG).map(([k,v]) => {
           const active = stF === k;
           const cnt = counts[k] || 0;
           return (
             <button key={k} onClick={()=>setStF(stF===k?'':k)}
               style={{
-                position:'relative', overflow:'hidden',
-                padding:'20px 22px', borderRadius:14, border:'none',
+                position:'relative', overflow:'hidden', minWidth:0,
+                padding: isMobile ? '14px 12px' : '20px 22px', borderRadius:14, border:'none',
                 background: active ? v.bg : '#FFFFFF',
                 cursor:'pointer', textAlign:'left', fontFamily:'inherit',
                 outline: active ? `2px solid ${v.color}` : '1px solid #E5E7EB',
@@ -491,11 +492,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               }}>
               {/* Barra de color arriba */}
               <div style={{ position:'absolute', top:0, left:0, right:0, height:4, background:v.color, borderRadius:'14px 14px 0 0' }}/>
-              <div style={{ fontSize:38, fontWeight:900, color: active ? v.color : '#0F172A', letterSpacing:'-2px', lineHeight:1, marginBottom:6 }}>
+              <div style={{ fontSize: isMobile ? 26 : 38, fontWeight:900, color: active ? v.color : '#0F172A', letterSpacing:'-1.5px', lineHeight:1, marginBottom:4 }}>
                 {cnt}
               </div>
-              <div style={{ fontSize:13, fontWeight:700, color: active ? v.color : '#374151' }}>{v.label}</div>
-              {active && (
+              <div style={{ fontSize: isMobile ? 11 : 13, fontWeight:700, color: active ? v.color : '#374151', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{v.label}</div>
+              {active && !isMobile && (
                 <div style={{ position:'absolute', bottom:10, right:14, fontSize:18, opacity:0.2 }}>{v.icon}</div>
               )}
             </button>
