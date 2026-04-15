@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE } from '../ui.jsx';
 
 // ─── Datos de configuración ────────────────────────────────────────────────────
 
@@ -29,12 +29,18 @@ const branchCfg = (code, brs) => {
   return { ...paint, label: db?.name || code || '—' };
 };
 
-const ST_CFG = {
-  disponible:  { color:'#15803D', bg:'#F0FDF4', border:'#86EFAC', label:'Disponible',  icon:'●' },
-  reservada:   { color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', label:'Reservada',   icon:'◐' },
-  vendida:     { color:'#6D28D9', bg:'#F5F3FF', border:'#C4B5FD', label:'Vendida',     icon:'✓' },
-  preinscrita: { color:'#0E7490', bg:'#ECFEFF', border:'#67E8F9', label:'Preinscrita', icon:'◌' },
+// Paleta visual extendida para la card completa (colores más oscuros + bg/border/icon).
+// Los labels los tomamos de INV_ST (fuente única en ui.jsx) vía `label: INV_ST[k].l`
+// para no duplicar texto entre módulos.
+const ST_PALETTE = {
+  disponible:  { color:'#15803D', bg:'#F0FDF4', border:'#86EFAC', icon:'●' },
+  reservada:   { color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', icon:'◐' },
+  vendida:     { color:'#6D28D9', bg:'#F5F3FF', border:'#C4B5FD', icon:'✓' },
+  preinscrita: { color:'#0E7490', bg:'#ECFEFF', border:'#67E8F9', icon:'◌' },
 };
+const ST_CFG = Object.fromEntries(
+  Object.entries(ST_PALETTE).map(([k, v]) => [k, { ...v, label: INV_ST[k]?.l || k }])
+);
 
 const COLOR_CSS = {
   // Básicos
@@ -96,8 +102,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const galleryInputRef= useRef(null);
   const photoTargetRef = useRef(null);
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
-  const isAdmin      = ['super_admin','admin_comercial','backoffice'].includes(user?.role);
-  const isSuperAdmin = user?.role === 'super_admin';
+  const isAdmin      = hasRole(user, ...ROLE_ADMIN_WRITE);
+  const isSuperAdmin = hasRole(user, ROLES.SUPER);
 
   // Mobile detection — 768px alineado con responsive.css (≤767px es mobile).
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);

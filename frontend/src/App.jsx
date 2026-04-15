@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, setToken, clearToken } from "./services/api";
-import { Ic, S, mapTicket } from "./ui";
+import { Ic, S, mapTicket, ROLES, hasRole, ROLE_ADMIN_WRITE, ROLE_ADMIN_READ } from "./ui";
 
 import { Login } from "./components/Login";
 import { ForceChangeView } from "./components/ForceChangeView";
@@ -107,10 +107,10 @@ export default function App(){
     {id:"calendar",icon:Ic.cal,label:"Calendario"},
     {id:"inventory",icon:Ic.box,label:"Inventario"},
     {id:"sales",icon:Ic.sale,label:"Ventas"},
-    ...(["super_admin","admin_comercial","backoffice"].includes(r)?[{id:"supplier-payments",icon:Ic.invoice,label:"Pagos proveedor"}]:[]),
+    ...(hasRole(user, ...ROLE_ADMIN_WRITE)?[{id:"supplier-payments",icon:Ic.invoice,label:"Pagos proveedor"}]:[]),
     {id:"catalog",icon:Ic.bike,label:"Catálogo"},
-    ...(["super_admin","admin_comercial"].includes(r)?[{id:"reports",icon:Ic.chart,label:"Reportes"}]:[]),
-    ...(r==="super_admin"?[{id:"admin",icon:Ic.gear,label:"Admin"},{id:"import",icon:Ic.dl,label:"Importar"},{id:"priceimport",icon:Ic.tag,label:"Importar Precios"}]:[]),
+    ...(hasRole(user, ...ROLE_ADMIN_READ)?[{id:"reports",icon:Ic.chart,label:"Reportes"}]:[]),
+    ...(hasRole(user, ROLES.SUPER)?[{id:"admin",icon:Ic.gear,label:"Admin"},{id:"import",icon:Ic.dl,label:"Importar"},{id:"priceimport",icon:Ic.tag,label:"Importar Precios"}]:[]),
   ];
 
   return(
@@ -139,8 +139,8 @@ export default function App(){
           {page==="catalog"&&<CatalogView user={user}/>}
           {page==="reports"&&<ReportsView branches={realBranches}/>}
           {page==="admin"&&<AdminView/>}
-          {page==="import"&&r==="super_admin"&&<ImportView/>}
-          {page==="priceimport"&&r==="super_admin"&&<StagingImportView/>}
+          {page==="import"&&hasRole(user, ROLES.SUPER)&&<ImportView/>}
+          {page==="priceimport"&&hasRole(user, ROLES.SUPER)&&<StagingImportView/>}
           {page==="calendar"&&<CalendarView user={user} nav={nav}/>}
         </main>
       </div>

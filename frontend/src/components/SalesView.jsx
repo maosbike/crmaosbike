@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES } from '../ui.jsx';
+import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -24,8 +24,9 @@ const DOC_LABELS = {
   doc_inscripcion:  'Inscripción',
 };
 
-const CAN_CREATE = ['super_admin', 'admin_comercial', 'backoffice', 'vendedor'];
-const CAN_ADMIN  = ['super_admin', 'admin_comercial', 'backoffice'];
+// Alias locales apuntando a los grupos centralizados en ui.jsx
+const CAN_CREATE = ROLE_SALES_WRITE;
+const CAN_ADMIN  = ROLE_ADMIN_WRITE;
 
 const EMPTY_FORM = {
   brand: '', model: '', year: new Date().getFullYear(), chassis: '', motor_num: '',

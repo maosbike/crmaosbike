@@ -12,7 +12,47 @@ router.use(auth);
 router.get('/', async (req, res) => {
   try {
     const { ticket_id, status, my, date_from, date_to } = req.query;
-    let query = `
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 200));
+    const offset = (page - 1) * limit;
+
+    // Construimos el WHERE una sola vez para reusar en COUNT y SELECT
+    const whereParts = ['1=1'];
+    const params = [];
+
+    if (req.user.role === 'vendedor') {
+      params.push(req.user.id);
+      whereParts.push(`r.assigned_to = $${params.length}`);
+    } else if (my === 'true') {
+      params.push(req.user.id);
+      whereParts.push(`r.assigned_to = $${params.length}`);
+    }
+    if (ticket_id) {
+      params.push(ticket_id);
+      whereParts.push(`r.ticket_id = $${params.length}`);
+    }
+    if (status) {
+      params.push(status);
+      whereParts.push(`r.status = $${params.length}`);
+    }
+    if (date_from) {
+      params.push(date_from);
+      whereParts.push(`r.due_date >= $${params.length}`);
+    }
+    if (date_to) {
+      params.push(date_to);
+      whereParts.push(`r.due_date <= $${params.length}`);
+    }
+
+    const whereClause = whereParts.join(' AND ');
+
+    const countR = await db.query(
+      `SELECT COUNT(*)::int AS n FROM reminders r WHERE ${whereClause}`,
+      params
+    );
+    const total = countR.rows[0]?.n || 0;
+
+    const query = `
       SELECT r.*,
              u_creator.first_name as creator_first_name,
              u_creator.last_name as creator_last_name,
@@ -23,43 +63,16 @@ router.get('/', async (req, res) => {
       LEFT JOIN users u_creator ON r.created_by = u_creator.id
       LEFT JOIN users u_assigned ON r.assigned_to = u_assigned.id
       LEFT JOIN tickets t ON r.ticket_id = t.id
-      WHERE 1=1
+      WHERE ${whereClause}
+      ORDER BY r.due_date ASC, r.due_time ASC NULLS LAST
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
-    const params = [];
+    const { rows } = await db.query(query, [...params, limit, offset]);
 
-    // Vendedores solo ven los suyos
-    if (req.user.role === 'vendedor') {
-      params.push(req.user.id);
-      query += ` AND r.assigned_to = $${params.length}`;
-    } else if (my === 'true') {
-      params.push(req.user.id);
-      query += ` AND r.assigned_to = $${params.length}`;
-    }
-
-    if (ticket_id) {
-      params.push(ticket_id);
-      query += ` AND r.ticket_id = $${params.length}`;
-    }
-
-    if (status) {
-      params.push(status);
-      query += ` AND r.status = $${params.length}`;
-    }
-
-    if (date_from) {
-      params.push(date_from);
-      query += ` AND r.due_date >= $${params.length}`;
-    }
-
-    if (date_to) {
-      params.push(date_to);
-      query += ` AND r.due_date <= $${params.length}`;
-    }
-
-    query += ` ORDER BY r.due_date ASC, r.due_time ASC NULLS LAST`;
-
-    const { rows } = await db.query(query, params);
-    res.json(rows);
+    // Devolvemos data+total+page+limit. El consumer actual (RemindersTab) lee
+    // `d.reminders` (que nunca existió → siempre caía a []) así que exponemos
+    // también `reminders` como alias para no romper nada.
+    res.json({ data: rows, reminders: rows, total, page, limit });
   } catch (e) {
     console.error('Error listar reminders:', e);
     res.status(500).json({ error: 'Error del servidor' });

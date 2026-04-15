@@ -25,12 +25,20 @@ export class ErrorBoundary extends Component {
           <p style={{margin:0,color:'#6B6B6B',fontSize:13,textAlign:'center',maxWidth:320}}>
             {this.state.error?.message || 'Error inesperado en la aplicación.'}
           </p>
-          <button
-            onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
-            style={{background:'#F28100',color:'#fff',border:'none',borderRadius:8,padding:'9px 20px',fontWeight:600,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}
-          >
-            Recargar página
-          </button>
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',justifyContent:'center'}}>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              style={{background:'#F28100',color:'#fff',border:'none',borderRadius:8,padding:'9px 20px',fontWeight:600,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => { this.setState({ hasError: false, error: null }); if (typeof window !== 'undefined' && window.history) window.history.replaceState(null, '', '/'); }}
+              style={{background:'#F9FAFB',color:'#374151',border:'1px solid #D1D5DB',borderRadius:8,padding:'9px 20px',fontWeight:500,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}
+            >
+              Volver al inicio
+            </button>
+          </div>
         </div>
       );
     }

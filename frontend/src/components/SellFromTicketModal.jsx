@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { S, Modal, PAYMENT_TYPES, fmt, normalizeText as normalize } from '../ui.jsx';
+import { S, Modal, PAYMENT_TYPES, fmt, normalizeText as normalize, hasRole, ROLE_ADMIN_WRITE } from '../ui.jsx';
 
 export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }) {
   const [inv, setInv]         = useState([]);
@@ -43,7 +43,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
     client_rut:     lead?.rut || '',
   });
 
-  const isAdmin = ['super_admin', 'admin_comercial', 'backoffice'].includes(user.role);
+  const isAdmin = hasRole(user, ...ROLE_ADMIN_WRITE);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   useEffect(() => {

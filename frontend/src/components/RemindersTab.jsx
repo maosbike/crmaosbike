@@ -12,7 +12,7 @@ export function RemindersTab({ticketId,user}){
   const ST_L={pending:"Pendiente",completed:"Completado",overdue:"Vencido"};
 
   useEffect(()=>{
-    api.getReminders({ticket_id:ticketId}).then(d=>setReminders(d.reminders||[])).catch(()=>{}).finally(()=>setLoading(false));
+    api.getReminders({ticket_id:ticketId}).then(d=>setReminders(d.data||d.reminders||(Array.isArray(d)?d:[]))).catch(()=>{}).finally(()=>setLoading(false));
   },[ticketId]);
 
   const create=async(e)=>{

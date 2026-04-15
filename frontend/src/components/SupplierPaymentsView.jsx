@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Bdg } from '../ui.jsx';
+import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE } from '../ui.jsx';
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 const EMPTY = () => ({
@@ -555,8 +555,8 @@ function SumCard({ label, value, sub, color='#0F172A', bg='#FFFFFF' }) {
 
 /* ── Main view ─────────────────────────────────────────────────────────── */
 export function SupplierPaymentsView({ user }) {
-  const canDel  = user.role==='super_admin';
-  const canCreate = ['super_admin','admin_comercial','backoffice'].includes(user.role);
+  const canDel  = hasRole(user, ROLES.SUPER);
+  const canCreate = hasRole(user, ...ROLE_ADMIN_WRITE);
   const canEdit   = canCreate;
   const bp = useBP();
 

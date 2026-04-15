@@ -29,6 +29,21 @@ export const FOLLOWUP_OPTS = [
   {v:'requiere_nueva_llamada',l:'Requiere nueva llamada'},
   {v:'otro_avance',           l:'Otro avance'},
 ];
+// Roles — fuente única de verdad. `hasRole(user, ...roles)` centraliza los
+// checks repetidos en vistas. No altera la semántica: es solo un alias de
+// `roles.includes(user?.role)`.
+export const ROLES = {
+  SUPER: 'super_admin',
+  ADMIN: 'admin_comercial',
+  BACK:  'backoffice',
+  VEND:  'vendedor',
+};
+export const hasRole = (user, ...roles) => !!user && roles.includes(user.role);
+// Grupos frecuentes — reemplazan los arrays literales repetidos.
+export const ROLE_ADMIN_WRITE   = [ROLES.SUPER, ROLES.ADMIN, ROLES.BACK];          // edita inventario/ventas
+export const ROLE_ADMIN_READ    = [ROLES.SUPER, ROLES.ADMIN];                        // ve costos/márgenes
+export const ROLE_SALES_WRITE   = [ROLES.SUPER, ROLES.ADMIN, ROLES.BACK, ROLES.VEND]; // crea ventas (vendedor con ownership)
+
 export const PRIORITY={alta:{l:"Alta",c:"#EF4444"},media:{l:"Media",c:"#F59E0B"},baja:{l:"Baja",c:"#6B7280"}};
 export const SRC={web:"Web",redes_sociales:"RRSS",whatsapp:"WhatsApp",presencial:"Presencial",referido:"Referido",evento:"Evento",llamada:"Llamada"};
 export const COMUNAS=["Huechuraba","Providencia","Las Condes","La Florida","Maipú","Santiago Centro","Ñuñoa","Vitacura","Puente Alto","San Bernardo","Cerrillos","Recoleta","Independencia","Quilicura","Lo Barnechea","Peñalolén","La Reina","Macul","San Miguel","Otra"];
