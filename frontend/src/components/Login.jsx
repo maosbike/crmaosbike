@@ -19,9 +19,9 @@ export function Login({onLogin}){
     }finally{setLoading(false);}
   };
   return(
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F5F5F7",fontFamily:"'Inter',system-ui,sans-serif"}}>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F9FAFB",fontFamily:"'Inter',system-ui,sans-serif"}}>
       <div style={{width:"100%",maxWidth:380,padding:"0 20px"}}>
-        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="MaosBike" style={{height:80,marginBottom:14}}/><p style={{color:"#6B6B6B",fontSize:12,marginTop:4}}>Sistema de gestión comercial</p></div>
+        <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="MaosBike" style={{height:80,marginBottom:14}}/><p style={{color:"#6B7280",fontSize:12,marginTop:4}}>Sistema de gestión comercial</p></div>
         <form onSubmit={go} style={{background:"#FFFFFF",border:"1px solid #D1D5DB",borderRadius:14,padding:22}}>
           <div style={{marginBottom:14}}><label style={S.lbl}>Usuario o Email</label><input value={identifier} onChange={e=>setIdentifier(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go(e)} placeholder="nombre de usuario" autoComplete="username" style={{...S.inp,width:"100%"}}/></div>
           <div style={{marginBottom:18}}><label style={S.lbl}>Contraseña</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go(e)} autoComplete="current-password" style={{...S.inp,width:"100%"}}/></div>

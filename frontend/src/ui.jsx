@@ -1,5 +1,6 @@
 // ─── Shared UI: constants, styles, icons, utils ───────────────────────────────
 import { useState, useEffect } from 'react';
+import { T } from './tokens';
 
 // Breakpoints + hook — fuente única para ramas isMobile en JS.
 export const BP = { MOBILE: 768 };
@@ -164,25 +165,29 @@ export const Ic={
 // Styles
 export const S={
   card:{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,padding:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"},
-  inp:{background:"#F9FAFB",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 12px",color:"#1a1a1a",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"},
-  btn:{background:"#F28100",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
+  inp:{background:"#F9FAFB",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 12px",color:"#111827",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"},
+  btn:{background:"#F28100",color:"#ffffff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   btn2:{background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
-  btnSec:{background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   gh:{background:"transparent",border:"none",cursor:"pointer",borderRadius:8,fontFamily:"inherit"},
   lbl:{display:"block",fontSize:11,color:"#6B7280",marginBottom:4,fontWeight:500},
+  secCard:{background:"#FFFFFF",borderRadius:12,border:"1px solid #E5E7EB",boxShadow:"0 1px 4px rgba(0,0,0,0.04)",overflow:"hidden",marginBottom:12},
 };
+S.btnSec = S.btn2;
 
 // Shared components
-export const Bdg=({l,c,bg})=><span style={{display:"inline-flex",padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,color:c,background:bg||`${c}18`,whiteSpace:"nowrap"}}>{l}</span>;
-export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}/>:<Bdg l={s} c="#6B6B6B"/>;};
+export const Bdg=({l,c,bg,size})=>{
+  const z=size==='sm'?{padding:"2px 7px",fontSize:9,borderRadius:8}:{padding:"3px 10px",fontSize:11,borderRadius:20};
+  return <span style={{display:"inline-flex",...z,fontWeight:600,color:c,background:bg||`${c}18`,whiteSpace:"nowrap"}}>{l}</span>;
+};
+export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}/>:<Bdg l={s} c="#6B7280"/>;};
 export const PBdg=({p})=>{const x=PRIORITY[p];return x?<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,color:x.c}}><span style={{width:7,height:7,borderRadius:"50%",background:x.c}}/>{x.l}</span>:null;};
 // SlaBdg: muestra estado SLA en lenguaje comercial. fa = first_action_at (si existe, está atendido a tiempo → sin badge)
 export const SlaBdg=({s,fa})=>{if(!s||s==='normal'&&fa)return null;const x=SLA_STATUS[s];if(!x)return null;return<Bdg l={x.l} c={x.c} bg={x.bg}/>;};
 export const Stat=({icon:Ico,ic,ib,label,val,sub,sc,al})=>(
   <div style={{...S.card,display:"flex",flexDirection:"column",gap:4}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div><span style={{fontSize:10,color:"#6B6B6B",textTransform:"uppercase",letterSpacing:"0.04em",fontWeight:600}}>{label}</span></div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div><span style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.04em",fontWeight:600}}>{label}</span></div>
     <span style={{fontSize:22,fontWeight:800,color:al?"#EF4444":undefined}}>{val}</span>
-    {sub&&<span style={{fontSize:11,color:sc||"#6B6B6B"}}>{sub}</span>}
+    {sub&&<span style={{fontSize:11,color:sc||"#6B7280"}}>{sub}</span>}
   </div>
 );
 export const Modal=({onClose,title,children,wide})=>(
@@ -200,3 +205,146 @@ export const Field=({label,value,onChange,type="text",ph,req,opts,rows,disabled}
 };
 
 export const CAT_COLOR={"Commuter":"#3B82F6","Naked":"#8B5CF6","Sport":"#EF4444","Scooter":"#06B6D4","Adventure":"#10B981","Off-Road":"#F59E0B","Touring":"#6366F1","Eléctrica":"#22C55E","Big Bike":"#EC4899","ATV":"#F97316","Cruiser":"#A78BFA"};
+
+// ViewHeader — encabezado único para vistas de módulo.
+// size="md" → Inventory/Sales/Leads/Supplier/Catalog (vistas comerciales con CTA).
+// size="sm" → Admin/Reports/Calendar/Pipeline/Dashboard (utilidad/consulta).
+// Props: preheader, title, subtitle, count+itemLabel+filtered (auto-subtitle), actions.
+export function ViewHeader({ preheader, title, subtitle, count, itemLabel='registro', filtered=false, actions, size='md' }) {
+  const isMobile = useIsMobile();
+  const autoSub = count != null
+    ? <>{count} {itemLabel}{count === 1 ? '' : 's'}{filtered && <span style={{ color: T.color.brand, fontWeight: T.fw.bold, marginLeft: 4 }}>· filtrado</span>}</>
+    : null;
+  const sub = subtitle ?? autoSub;
+  const titleSize = size === 'md'
+    ? (isMobile ? T.fs.lg : T.fs['2xl'])
+    : T.fs.xl;
+  const titleWeight = size === 'md' ? T.fw.xbold : T.fw.bold;
+  const titleLetter = size === 'md' ? '-0.6px' : '-0.3px';
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: T.space[3], flexWrap: 'wrap', marginBottom: isMobile ? T.space[4] : T.space[6] }}>
+      <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+        {preheader && (
+          <p style={{ margin: `0 0 ${T.space[0.5]}px`, fontSize: T.fs.xs, fontWeight: T.fw.bold, color: T.color.textDisabled, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            {preheader}
+          </p>
+        )}
+        <h1 style={{ margin: 0, color: T.color.text, lineHeight: T.lh.tight, fontSize: titleSize, fontWeight: titleWeight, letterSpacing: titleLetter }}>
+          {title}
+        </h1>
+        {sub && (
+          <p style={{ margin: `${T.space[0.5]}px 0 0`, fontSize: T.fs.sm, fontWeight: T.fw.medium, color: T.color.textSubtle }}>
+            {sub}
+          </p>
+        )}
+      </div>
+      {actions && <div className="crm-vh-actions" style={{ display: 'flex', gap: T.space[2], flexWrap: 'wrap', justifyContent: 'flex-end' }}>{actions}</div>}
+    </div>
+  );
+}
+
+// ─── Primitivas Tier 2 ────────────────────────────────────────────────────────
+// Btn — variant × size. Aditivo: S.btn/S.btn2/S.gh siguen funcionales.
+// Variants consumen tokens (T.color.brand/danger/surfaceMuted) — sin hex inline.
+const _BTN_VARIANTS = {
+  primary:   { bg: T.color.brand,        fg: T.color.textOnBrand, border: 'none' },
+  secondary: { bg: T.color.surfaceMuted, fg: T.color.textBody,    border: `1px solid ${T.color.borderStrong}` },
+  danger:    { bg: T.color.dangerStrong, fg: T.color.textOnBrand, border: 'none' },
+  ghost:     { bg: 'transparent',        fg: T.color.textBody,    border: 'none' },
+};
+const _BTN_SIZES = {
+  sm: { padding: `${T.space[1]}px ${T.space[3]}px`,  fs: T.fs.sm,   fw: T.fw.semi },
+  md: { padding: `${T.space[2]}px ${T.space[4]}px`,  fs: T.fs.base, fw: T.fw.semi },
+  lg: { padding: `${T.space[3]}px ${T.space[5]}px`,  fs: T.fs.md,   fw: T.fw.semi },
+};
+export function Btn({ variant='primary', size='md', disabled, loading, children, style, ...rest }) {
+  const v = _BTN_VARIANTS[variant] || _BTN_VARIANTS.primary;
+  const z = _BTN_SIZES[size] || _BTN_SIZES.md;
+  const isOff = disabled || loading;
+  return (
+    <button
+      disabled={isOff}
+      {...rest}
+      style={{
+        background: v.bg, color: v.fg, border: v.border,
+        borderRadius: T.radius.md, padding: z.padding,
+        fontSize: z.fs, fontWeight: z.fw, fontFamily: 'inherit',
+        cursor: isOff ? 'default' : 'pointer',
+        opacity: isOff ? 0.65 : 1,
+        transition: T.transition.fast,
+        ...style,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+// Empty — estado vacío unificado. Copy canon en docs/copy-tier2-draft.md §1.
+export function Empty({ icon: Icon, title, hint, action }) {
+  return (
+    <div style={{
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      textAlign:'center', padding:`${T.space[10]}px ${T.space[5]}px`, gap: T.space[2],
+    }}>
+      {Icon && (
+        <div style={{
+          width:48, height:48, borderRadius: T.radius.full,
+          background: T.color.surfaceSunken, display:'flex', alignItems:'center', justifyContent:'center',
+          marginBottom: T.space[1],
+        }}>
+          <Icon size={22} color={T.color.textDisabled}/>
+        </div>
+      )}
+      {title && <div style={{ fontSize: T.fs.base, fontWeight: T.fw.bold, color: T.color.textBody }}>{title}</div>}
+      {hint && <div style={{ fontSize: T.fs.sm, color: T.color.textSubtle, maxWidth: 320, lineHeight: T.lh.normal }}>{hint}</div>}
+      {action && <div style={{ marginTop: T.space[2] }}>{action}</div>}
+    </div>
+  );
+}
+
+// Loader — estado de carga unificado.
+export function Loader({ label='Cargando…' }) {
+  return (
+    <div style={{
+      display:'flex', alignItems:'center', justifyContent:'center', gap: T.space[2],
+      padding: `${T.space[8]}px ${T.space[4]}px`,
+      color: T.color.textDisabled, fontSize: T.fs.sm, fontFamily: 'inherit',
+    }}>
+      <span aria-hidden="true" style={{
+        width:14, height:14, borderRadius: T.radius.full,
+        border:`2px solid ${T.color.border}`, borderTopColor: T.color.brand,
+        animation: 'crm-spin 700ms linear infinite', display:'inline-block',
+      }}/>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+// ChoiceChip — botón-como-radio. Reemplaza el patrón en TicketView followup/perdido + LeadsList reassign.
+const _CHIP_TONES = {
+  default: { selBg: T.color.brandSoft,  selFg: T.color.brand,      selBd: T.color.brandMuted,  dotOn: T.color.brand,   dotOff: T.color.borderStrong },
+  danger:  { selBg: T.color.dangerSoft, selFg: T.color.dangerDark, selBd: T.color.dangerMuted, dotOn: T.color.danger,  dotOff: T.color.borderStrong },
+  brand:   { selBg: T.color.brandSoft,  selFg: T.color.brandHover, selBd: T.color.brandMuted,  dotOn: T.color.brand,   dotOff: T.color.borderStrong },
+};
+export function ChoiceChip({ selected, tone='default', onClick, children, disabled, style, ...rest }) {
+  const t = _CHIP_TONES[tone] || _CHIP_TONES.default;
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} {...rest}
+      style={{
+        textAlign:'left', display:'flex', alignItems:'center', gap: T.space[2],
+        padding: `${T.space[2]}px ${T.space[3]}px`,
+        borderRadius: T.radius.md, cursor: disabled?'default':'pointer', fontFamily:'inherit',
+        fontSize: T.fs.sm, fontWeight: selected ? T.fw.bold : T.fw.regular,
+        background: selected ? t.selBg : T.color.surfaceMuted,
+        color:      selected ? t.selFg : T.color.textBody,
+        border: `1.5px solid ${selected ? t.selBd : T.color.border}`,
+        opacity: disabled ? 0.6 : 1, transition: T.transition.fast, ...style,
+      }}>
+      <span style={{
+        width:9, height:9, borderRadius: T.radius.full, flexShrink:0,
+        background: selected ? t.dotOn : t.dotOff,
+      }}/>
+      {children}
+    </button>
+  );
+}

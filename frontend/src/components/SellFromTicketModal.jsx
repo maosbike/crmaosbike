@@ -69,9 +69,9 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
   // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!noStock && !form.inventory_id) { alert('Seleccioná una unidad de inventario o activá "Sin unidad en stock"'); return; }
-    if (noStock && (!form.brand.trim() || !form.model.trim())) { alert('Indicá la marca y modelo'); return; }
-    if (!form.sold_by) { alert('Seleccioná el vendedor'); return; }
+    if (!noStock && !form.inventory_id) { alert('Selecciona una unidad de inventario o activa "Sin unidad en stock"'); return; }
+    if (noStock && (!form.brand.trim() || !form.model.trim())) { alert('Indica la marca y modelo'); return; }
+    if (!form.sold_by) { alert('Selecciona el vendedor'); return; }
     setSaving(true);
     try {
       if (noStock) {
@@ -180,13 +180,13 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <button type="button" onClick={() => setNoStock(false)}
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
-                background: !noStock ? '#1E40AF' : '#F3F4F6', color: !noStock ? '#fff' : '#6B7280',
+                background: !noStock ? '#1E40AF' : '#F3F4F6', color: !noStock ? '#ffffff' : '#6B7280',
                 border: !noStock ? 'none' : '1px solid #E5E7EB' }}>
               🏍️ Del inventario real
             </button>
             <button type="button" onClick={() => setNoStock(true)}
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
-                background: noStock ? '#D97706' : '#F3F4F6', color: noStock ? '#fff' : '#6B7280',
+                background: noStock ? '#D97706' : '#F3F4F6', color: noStock ? '#ffffff' : '#6B7280',
                 border: noStock ? 'none' : '1px solid #E5E7EB' }}>
               📋 Nota sin stock
             </button>
@@ -224,7 +224,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
                 <div style={{ fontSize: 12, color: '#6B7280', padding: '8px 0' }}>Cargando unidades disponibles...</div>
               ) : inv.length === 0 ? (
                 <div style={{ padding: '10px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
-                  No hay unidades disponibles en stock. Registrá la unidad primero en Inventario, o usá "Nota sin stock".
+                  No hay unidades disponibles en stock. Registra la unidad primero en Inventario, o usa "Nota sin stock".
                 </div>
               ) : (
                 <select value={form.inventory_id} onChange={e => set('inventory_id', e.target.value)} style={{ ...S.inp, width: '100%' }}>

@@ -169,7 +169,7 @@ export function CalendarView({user,nav}){
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:10}}>
         <div>
           <h1 style={{fontSize:18,fontWeight:700,margin:0}}>Calendario</h1>
-          <p style={{color:'#6B6B6B',fontSize:12,margin:'2px 0 0'}}>{events.length} eventos este mes</p>
+          <p style={{color:'#6B7280',fontSize:12,margin:'2px 0 0'}}>{events.length} eventos este mes</p>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
           <button onClick={()=>setDate(new Date(yr,mo-1,1))} style={{...S.btn2,padding:'6px 14px'}}>←</button>
@@ -191,7 +191,7 @@ export function CalendarView({user,nav}){
           {c:'#EF4444',l:'Vencido'},
           {c:'#8B5CF6',l:'Reasignado'},
         ].map(({c,l})=>(
-          <div key={l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#888'}}>
+          <div key={l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#9CA3AF'}}>
             <div style={{width:10,height:10,borderRadius:2,background:c}}/>{l}
           </div>
         ))}
@@ -214,7 +214,7 @@ export function CalendarView({user,nav}){
                   style={{minHeight:88,padding:5,borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',background:isToday?'rgba(242,129,0,0.04)':'transparent',cursor:day?'pointer':'default'}}
                 >
                   {day&&(
-                    <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'#F28100':'#888',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'rgba(242,129,0,0.15)':'transparent',marginBottom:3}}>
+                    <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'#F28100':'#9CA3AF',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'rgba(242,129,0,0.15)':'transparent',marginBottom:3}}>
                       {day}
                     </div>
                   )}

@@ -79,7 +79,7 @@ export default function App(){
     api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
   },[user?.id]);
 
-  if(sessionLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F5F5F7"}}><img src="/logo.png" alt="MaosBike" style={{height:48,opacity:0.5}}/></div>;
+  if(sessionLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F9FAFB"}}><img src="/logo.png" alt="MaosBike" style={{height:48,opacity:0.5}}/></div>;
   if(!user)return<Login onLogin={setUser}/>;
   if(user.forceChange)return<ForceChangeView user={user} onChanged={u=>{setUser(u);}}/>;
 
@@ -115,12 +115,12 @@ export default function App(){
   ];
 
   return(
-    <div style={{display:"flex",height:"100vh",background:"#F5F5F7",color:"#1a1a1a",fontFamily:"'Inter',system-ui,sans-serif",fontSize:14,overflow:"hidden"}}>
+    <div style={{display:"flex",height:"100vh",background:"#F9FAFB",color:"#111827",fontFamily:"'Inter',system-ui,sans-serif",fontSize:14,overflow:"hidden"}}>
       <MobileDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)} items={items} page={page} nav={(pg,lid)=>{setDrawerOpen(false);nav(pg,lid);}} user={user} onChangePw={()=>{setDrawerOpen(false);setShowChangePw(true);}} onLogout={handleLogout}/>
       <aside className="crm-sidebar" style={{width:210,background:"#FFFFFF",borderRight:"1px solid #E5E7EB",display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 14px",height:52,borderBottom:"1px solid #E5E7EB"}}><img src="/logo.png" alt="MaosBike" style={{height:28}}/><span style={{fontSize:12,fontWeight:600,color:"#6B7280"}}>CRM</span></div>
         <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column",gap:1}}>{items.map(it=>{const act=page===it.id||(it.id==="leads"&&page==="ticket");return<button key={it.id} onClick={()=>nav(it.id)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:500,fontFamily:"inherit",background:act?"rgba(242,129,0,0.1)":"transparent",color:act?"#F28100":"#6B7280"}}><it.icon size={16}/>{it.label}</button>;})}</nav>
-        <div style={{borderTop:"1px solid #E5E7EB",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+(user.ln&&user.ln!=='-'?user.ln[0]:'')).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#555"}}>{user.branchName||user.role}</div></div><button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#555"/></button><button onClick={handleLogout} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#555"/></button></div></div>
+        <div style={{borderTop:"1px solid #E5E7EB",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+(user.ln&&user.ln!=='-'?user.ln[0]:'')).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#4B5563"}}>{user.branchName||user.role}</div></div><button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#4B5563"/></button><button onClick={handleLogout} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#4B5563"/></button></div></div>
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
         <header className="crm-mobile-hdr" style={{display:"none",height:52,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid #E5E7EB",background:"#FFFFFF",flexShrink:0,gap:10}}>

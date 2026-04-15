@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
-import { S, TICKET_STATUS, FIN_STATUS, fmt } from '../ui.jsx';
+import { S, TICKET_STATUS, FIN_STATUS, fmt, ViewHeader } from '../ui.jsx';
 
 const TABS = ['General','Marca','Modelo','Sucursal','Vendedor','Financiamiento','Color','Estado','Tiempo'];
 
@@ -10,7 +10,7 @@ const kpiVal = { fontSize:26, fontWeight:800, lineHeight:1.1 };
 const kpiLbl = { fontSize:10, color:'#6B7280', marginTop:4, textTransform:'uppercase' };
 const thS = { textAlign:'left', padding:'6px 8px', color:'#6B7280', fontSize:10, textTransform:'uppercase', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' };
 const tdS = { padding:'6px 8px', fontSize:12, borderBottom:'1px solid #F3F4F6' };
-const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'#F28100':'#D1D5DB'), background:active?'#F28100':'#FFFFFF', color:active?'#FFF':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' });
+const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'#F28100':'#D1D5DB'), background:active?'#F28100':'#FFFFFF', color:active?'#FFFFFF':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' });
 const selectS = { background:'#F9FAFB', border:'1px solid #D1D5DB', borderRadius:8, color:'#374151', padding:'6px 10px', fontSize:11 };
 const inputS = { ...selectS };
 
@@ -52,7 +52,7 @@ function RankTable({ rows, columns }) {
     <table style={{ width:'100%', borderCollapse:'collapse' }}>
       <thead><tr>{columns.map(c => <th key={c.key} style={thS}>{c.label}</th>)}</tr></thead>
       <tbody>{rows.map((r, i) => <tr key={i}>
-        {columns.map(c => <td key={c.key} style={{ ...tdS, fontWeight:c.bold?700:400, color:c.color||'#ddd' }}>
+        {columns.map(c => <td key={c.key} style={{ ...tdS, fontWeight:c.bold?700:400, color:c.color||'#E5E7EB' }}>
           {c.medal && i < 3 ? ['🥇','🥈','🥉'][i]+' ' : ''}{c.render ? c.render(r) : r[c.key]}
         </td>)}
       </tr>)}</tbody>
@@ -107,7 +107,7 @@ export function ReportsView({ branches = [] }) {
   const k = data.kpi;
 
   return <div>
-    <h1 style={{ fontSize:18, fontWeight:700, margin:'0 0 12px' }}>Reportes</h1>
+    <ViewHeader size="sm" title="Reportes" />
 
     {/* ── Filtros ── */}
     <div style={{ ...card, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:12 }}>
@@ -325,7 +325,7 @@ function StatusTab({ data }) {
     <div style={card}>
       <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Detalle</h3>
       <RankTable rows={data.by_status} columns={[
-        { key:'name', label:'Estado', bold:true, render: r => <span style={{ color:TICKET_STATUS[r.name]?.c||'#ccc' }}>{TICKET_STATUS[r.name]?.l||r.name}</span> },
+        { key:'name', label:'Estado', bold:true, render: r => <span style={{ color:TICKET_STATUS[r.name]?.c||'#D1D5DB' }}>{TICKET_STATUS[r.name]?.l||r.name}</span> },
         { key:'total', label:'Cantidad' },
         { key:'pct', label:'% del Total', color:'#F28100', render: r => pct(n(r.total), total) },
       ]}/>

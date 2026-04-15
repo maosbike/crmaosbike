@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, ROLES as ROLE_KEYS } from '../ui.jsx';
+import { Ic, S, Modal, Field, ROLES as ROLE_KEYS, ViewHeader } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ const blankEdit = u => ({
 });
 
 const sectionLbl = {
-  fontSize:9, fontWeight:700, color:'#94A3B8',
+  fontSize:9, fontWeight:700, color:'#9CA3AF',
   textTransform:'uppercase', letterSpacing:'0.1em',
 };
 
@@ -266,15 +266,18 @@ export function AdminView() {
   return (
     <div>
       {/* ── HEADER ── */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-        <h1 style={{ fontSize:18, fontWeight:700, margin:0 }}>Administración</h1>
-        <button
-          onClick={() => { setCForm(BLANK_CREATE()); setCErr(''); setShowCreate(true); }}
-          style={{ ...S.btn, display:'flex', alignItems:'center', gap:6 }}
-        >
-          <Ic.plus size={14}/> Nuevo usuario
-        </button>
-      </div>
+      <ViewHeader
+        size="sm"
+        title="Administración"
+        actions={
+          <button
+            onClick={() => { setCForm(BLANK_CREATE()); setCErr(''); setShowCreate(true); }}
+            style={{ ...S.btn, display:'flex', alignItems:'center', gap:6 }}
+          >
+            <Ic.plus size={14}/> Nuevo usuario
+          </button>
+        }
+      />
 
       {/* ── TABLA USUARIOS ── */}
       <div style={{ ...S.card, marginBottom:14 }}>
@@ -292,7 +295,7 @@ export function AdminView() {
                 <thead>
                   <tr>
                     {['Usuario','Email','Rol','Sucursal','Estado','Acciones'].map(h => (
-                      <th key={h} style={{ ...sectionLbl, textAlign:'left', padding:'6px 10px', borderBottom:'2px solid #F1F3F5' }}>{h}</th>
+                      <th key={h} style={{ ...sectionLbl, textAlign:'left', padding:'6px 10px', borderBottom:'2px solid #F3F4F6' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -300,7 +303,7 @@ export function AdminView() {
                   {users.map(u => (
                     <tr key={u.id}
                       style={{ borderBottom:'1px solid #F9FAFB', transition:'background 0.1s' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#FAFBFC'}
+                      onMouseEnter={e => e.currentTarget.style.background='#F9FAFB'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}
                     >
                       {/* Nombre */}
@@ -315,7 +318,7 @@ export function AdminView() {
                           }}>
                             {((u.first_name||'?')[0]+(u.last_name||'?')[0]).toUpperCase()}
                           </div>
-                          <span style={{ fontSize:12, fontWeight:600, color: u.active ? '#0F172A' : '#9CA3AF' }}>
+                          <span style={{ fontSize:12, fontWeight:600, color: u.active ? '#111827' : '#9CA3AF' }}>
                             {u.first_name} {u.last_name}
                           </span>
                         </div>
@@ -347,11 +350,11 @@ export function AdminView() {
                       <td style={{ padding:'11px 10px' }}>
                         <div style={{ display:'flex', gap:5 }}>
                           <button onClick={() => openEdit(u)} title="Editar usuario"
-                            style={{ ...S.gh, padding:'4px 9px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E2E8F0', color:'#374151' }}>
+                            style={{ ...S.gh, padding:'4px 9px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E5E7EB', color:'#374151' }}>
                             Editar
                           </button>
-                          <button onClick={() => handleReset(u)} title="Reset contraseña"
-                            style={{ ...S.gh, padding:'4px 8px', fontSize:11, borderRadius:6, border:'1px solid #E2E8F0', color:'#6B7280' }}>
+                          <button onClick={() => handleReset(u)} title="Restablecer contraseña"
+                            style={{ ...S.gh, padding:'4px 8px', fontSize:11, borderRadius:6, border:'1px solid #E5E7EB', color:'#6B7280' }}>
                             <Ic.lock size={13}/>
                           </button>
                           {u.active
@@ -394,7 +397,7 @@ export function AdminView() {
       {/* ── DANGER ZONE ── */}
       <div style={{ ...S.card, marginBottom:14, borderColor:'rgba(239,68,68,0.25)' }}>
         <h3 style={{ fontSize:12, fontWeight:600, margin:'0 0 6px', color:'#EF4444' }}>Zona de peligro</h3>
-        <p style={{ fontSize:11, color:'#6B6B6B', marginBottom:12 }}>Elimina todos los tickets, leads, importaciones e inventario de prueba. Los usuarios, sucursales y catálogo de motos se conservan.</p>
+        <p style={{ fontSize:11, color:'#6B7280', marginBottom:12 }}>Elimina todos los tickets, leads, importaciones e inventario de prueba. Los usuarios, sucursales y catálogo de motos se conservan.</p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {cleanCatalogDone!==null
             ? <div style={{ display:'flex',alignItems:'center',gap:8,color:'#10B981',fontSize:12,fontWeight:600 }}><Ic.check size={16} color="#10B981"/>{cleanCatalogDone} modelos eliminados. Recarga para ver cambios.</div>
@@ -611,7 +614,7 @@ export function AdminView() {
               <Ic.check size={24} color="#10B981"/>
             </div>
             <p style={{ fontWeight:600,marginBottom:4 }}>{resetInfo.name}</p>
-            <p style={{ color:'#6B6B6B',fontSize:12,marginBottom:12 }}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
+            <p style={{ color:'#6B7280',fontSize:12,marginBottom:12 }}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
             <div style={{ background:'#F9FAFB',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'monospace',fontSize:18,fontWeight:700,letterSpacing:2,color:'#F28100' }}>
               {resetInfo.temp}
             </div>

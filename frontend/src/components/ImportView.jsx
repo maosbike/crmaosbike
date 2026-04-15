@@ -84,7 +84,7 @@ export function ImportView() {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
         <div>
           <h2 style={{fontSize:18,fontWeight:700,margin:0}}>Importar prospectos</h2>
-          <p style={{fontSize:12,color:'#6B6B6B',margin:'4px 0 0'}}>Carga masiva — acceso exclusivo super_admin</p>
+          <p style={{fontSize:12,color:'#6B7280',margin:'4px 0 0'}}>Carga masiva — acceso exclusivo super_admin</p>
         </div>
         <div style={{display:'flex',gap:8}}>
           {[{k:'import',l:'Importación'},{k:'logs',l:'Historial'}].map(t=>(
@@ -108,18 +108,18 @@ export function ImportView() {
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                 <thead><tr>{['Fecha','Archivo','Importado por','Total','Importados','Errores','Dups.','Sin vendedor'].map(h=>(
-                  <th key={h} style={{textAlign:'left',padding:'6px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                  <th key={h} style={{textAlign:'left',padding:'6px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                 ))}</tr></thead>
                 <tbody>{logs.map(l=>(
                   <tr key={l.id} style={{borderBottom:'1px solid #FFFFFF'}}>
-                    <td style={{padding:'7px 10px',color:'#888'}}>{fDT(l.created_at)}</td>
+                    <td style={{padding:'7px 10px',color:'#9CA3AF'}}>{fDT(l.created_at)}</td>
                     <td style={{padding:'7px 10px'}}>{l.filename}</td>
                     <td style={{padding:'7px 10px'}}>{l.first_name} {l.last_name}</td>
                     <td style={{padding:'7px 10px',textAlign:'center'}}>{l.total_rows}</td>
                     <td style={{padding:'7px 10px',textAlign:'center',color:'#10B981',fontWeight:600}}>{l.imported}</td>
-                    <td style={{padding:'7px 10px',textAlign:'center',color:l.errors>0?'#EF4444':'#555'}}>{l.errors}</td>
-                    <td style={{padding:'7px 10px',textAlign:'center',color:l.duplicates>0?'#F59E0B':'#555'}}>{l.duplicates}</td>
-                    <td style={{padding:'7px 10px',textAlign:'center',color:l.no_seller>0?'#6B7280':'#555'}}>{l.no_seller}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',color:l.errors>0?'#EF4444':'#4B5563'}}>{l.errors}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',color:l.duplicates>0?'#F59E0B':'#4B5563'}}>{l.duplicates}</td>
+                    <td style={{padding:'7px 10px',textAlign:'center',color:l.no_seller>0?'#6B7280':'#4B5563'}}>{l.no_seller}</td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -140,7 +140,7 @@ export function ImportView() {
                   background:dragOver?'rgba(242,129,0,0.04)':'#FFFFFF'}}
                 onClick={()=>document.getElementById('imp-file-input').click()}
               >
-                <Ic.dl size={36} color={dragOver?'#F28100':'#333'}/>
+                <Ic.dl size={36} color={dragOver?'#F28100':'#1F2937'}/>
                 <div style={{fontSize:15,fontWeight:600,marginTop:12,marginBottom:6}}>
                   {loading?'Procesando archivo..':'Arrastra tu archivo aquí o haz clic para seleccionar'}
                 </div>
@@ -166,7 +166,7 @@ export function ImportView() {
                 <div style={{overflowX:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                     <thead><tr>{['Columna','Obligatoria','Descripción'].map(h=>(
-                      <th key={h} style={{textAlign:'left',padding:'5px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B6B6B',fontWeight:600}}>{h}</th>
+                      <th key={h} style={{textAlign:'left',padding:'5px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600}}>{h}</th>
                     ))}</tr></thead>
                     <tbody>{[
                       ['nombre',    'Sí',  'Nombre del prospecto'],
@@ -182,8 +182,8 @@ export function ImportView() {
                     ].map(([col,req,desc])=>(
                       <tr key={col} style={{borderBottom:'1px solid #FFFFFF'}}>
                         <td style={{padding:'5px 10px',fontFamily:'monospace',color:'#F28100'}}>{col}</td>
-                        <td style={{padding:'5px 10px',color:req.includes('Sí')?'#10B981':'#555',fontWeight:req.includes('Sí')?600:400}}>{req}</td>
-                        <td style={{padding:'5px 10px',color:'#777'}}>{desc}</td>
+                        <td style={{padding:'5px 10px',color:req.includes('Sí')?'#10B981':'#4B5563',fontWeight:req.includes('Sí')?600:400}}>{req}</td>
+                        <td style={{padding:'5px 10px',color:'#6B7280'}}>{desc}</td>
                       </tr>
                     ))}</tbody>
                   </table>
@@ -196,7 +196,7 @@ export function ImportView() {
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:10}}>
                 {[
-                  {l:'Total',        v:preview.summary.total,    c:'#1a1a1a'},
+                  {l:'Total',        v:preview.summary.total,    c:'#111827'},
                   {l:'Válidos',      v:preview.summary.valid,    c:'#10B981'},
                   {l:'Errores',      v:preview.summary.errors,   c:'#EF4444'},
                   {l:'Dup. archivo', v:preview.summary.dup_file, c:'#F59E0B'},
@@ -210,12 +210,12 @@ export function ImportView() {
               </div>
 
               <div style={{...S.card,display:'flex',gap:16,flexWrap:'wrap',alignItems:'center'}}>
-                <span style={{fontSize:12,fontWeight:600,color:'#888'}}>Opciones:</span>
+                <span style={{fontSize:12,fontWeight:600,color:'#9CA3AF'}}>Opciones:</span>
                 <label style={{display:'flex',alignItems:'center',gap:7,cursor:'pointer',fontSize:12}}>
                   <input type="checkbox" checked={skipDups} onChange={e=>setSkipDups(e.target.checked)} style={{accentColor:'#F28100'}}/>
                   Omitir duplicados del CRM
                 </label>
-                <div style={{marginLeft:'auto',fontSize:12,color:'#888'}}>
+                <div style={{marginLeft:'auto',fontSize:12,color:'#9CA3AF'}}>
                   Importando <span style={{color:'#10B981',fontWeight:700}}>{willImport}</span> de {preview.summary.total}
                 </div>
               </div>
@@ -230,7 +230,7 @@ export function ImportView() {
                   <button key={t.k} onClick={()=>setFilter(t.k)}
                     style={{...S.btn2,padding:'5px 12px',fontSize:11,
                       background:filter===t.k?'rgba(242,129,0,0.1)':'transparent',
-                      color:filter===t.k?'#F28100':'#888',
+                      color:filter===t.k?'#F28100':'#9CA3AF',
                       border:filter===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
                     {t.l}
                   </button>
@@ -242,7 +242,7 @@ export function ImportView() {
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,minWidth:720}}>
                     <thead style={{position:'sticky',top:0,background:'#FFFFFF',zIndex:1}}>
                       <tr>{['Fila','Estado','Nombre','Teléfono','Email','Sucursal','Moto','Observaciones'].map(h=>(
-                        <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B6B6B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                        <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                       ))}</tr>
                     </thead>
                     <tbody>
@@ -256,8 +256,8 @@ export function ImportView() {
                               <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:12,fontSize:10,fontWeight:600,color:sc.c,background:sc.bg,whiteSpace:'nowrap'}}>{sc.l}</span>
                             </td>
                             <td style={{padding:'6px 10px',fontWeight:500}}>{r.nombre}{r.apellido?` ${r.apellido}`:''}</td>
-                            <td style={{padding:'6px 10px',color:'#888'}}>{r.telefono||'—'}</td>
-                            <td style={{padding:'6px 10px',color:'#888'}}>{r.email||'—'}</td>
+                            <td style={{padding:'6px 10px',color:'#9CA3AF'}}>{r.telefono||'—'}</td>
+                            <td style={{padding:'6px 10px',color:'#9CA3AF'}}>{r.email||'—'}</td>
                             <td style={{padding:'6px 10px'}}>{r.branch_name||r.sucursal_raw||'—'}</td>
                             <td style={{padding:'4px 8px',fontSize:11,minWidth:180}}>
                               {r.model_resolved_name&&<div style={{color:'#10B981',fontWeight:600,marginBottom:2}}>{r.model_resolved_name}</div>}
@@ -274,7 +274,7 @@ export function ImportView() {
                                 {catalogModels.map(m=><option key={m.id} value={m.id}>{m.brand} {m.model}</option>)}
                               </select>
                             </td>
-                            <td style={{padding:'6px 10px',color:r.errors?.length?'#EF4444':'#555',fontSize:11}}>{obs||'—'}</td>
+                            <td style={{padding:'6px 10px',color:r.errors?.length?'#EF4444':'#4B5563',fontSize:11}}>{obs||'—'}</td>
                           </tr>
                         );
                       })}
@@ -301,7 +301,7 @@ export function ImportView() {
               <div style={{...S.card,textAlign:'center',padding:'32px 24px'}}>
                 <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(16,185,129,0.12)",border:"1.5px solid rgba(16,185,129,0.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px",fontSize:18,color:"#10B981",fontWeight:700}}>OK</div>
                 <h3 style={{fontSize:18,fontWeight:700,margin:'0 0 6px',color:'#10B981'}}>Importación completada</h3>
-                <div style={{fontSize:13,color:'#888'}}>{preview?.filename}</div>
+                <div style={{fontSize:13,color:'#9CA3AF'}}>{preview?.filename}</div>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
                 {[
@@ -316,7 +316,7 @@ export function ImportView() {
               </div>
               {result.tickets?.length>0&&(
                 <div style={S.card}>
-                  <h3 style={{fontSize:12,fontWeight:600,margin:'0 0 10px',color:'#888'}}>Tickets creados</h3>
+                  <h3 style={{fontSize:12,fontWeight:600,margin:'0 0 10px',color:'#9CA3AF'}}>Tickets creados</h3>
                   <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
                     {result.tickets.map(n=>(
                       <span key={n} style={{padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600,color:'#F28100',background:'rgba(242,129,0,0.1)'}}>{n}</span>

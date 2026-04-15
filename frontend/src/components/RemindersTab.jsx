@@ -37,10 +37,10 @@ export function RemindersTab({ticketId,user}){
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                  <span style={{fontWeight:600,fontSize:13,textDecoration:r.status==="completed"?"line-through":"none",color:r.status==="completed"?"#555":"#1a1a1a"}}>{r.title}</span>
+                  <span style={{fontWeight:600,fontSize:13,textDecoration:r.status==="completed"?"line-through":"none",color:r.status==="completed"?"#4B5563":"#111827"}}>{r.title}</span>
                   <Bdg l={ST_L[r.status]||r.status} c={ST_C[r.status]||"#6B7280"}/>
                 </div>
-                <div style={{fontSize:11,color:"#888",display:"flex",gap:12,flexWrap:"wrap"}}>
+                <div style={{fontSize:11,color:"#9CA3AF",display:"flex",gap:12,flexWrap:"wrap"}}>
                   <span>{TYPE_L[r.type]||r.type}</span>
                   <span>{fD(r.reminder_date)}{r.reminder_time&&" · "+r.reminder_time}</span>
                   {r.priority==="alta"&&<span style={{color:"#EF4444",fontWeight:600}}>Alta prioridad</span>}

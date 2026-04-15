@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader } from '../ui.jsx';
 
 // ─── Datos de configuración ────────────────────────────────────────────────────
 
@@ -45,17 +45,17 @@ const ST_CFG = Object.fromEntries(
 const COLOR_CSS = {
   // Básicos
   negro:'#111827', 'negro mate':'#1F2937', 'negro metalico':'#374151', 'negro brillante':'#111827',
-  blanco:'#FFFFFF', 'blanco perla':'#F0EDE8', 'blanco nieve':'#F8FAFC', 'blanco polar':'#F1F5F9',
+  blanco:'#FFFFFF', 'blanco perla':'#F0EDE8', 'blanco nieve':'#F9FAFB', 'blanco polar':'#F3F4F6',
   rojo:'#EF4444', 'rojo oscuro':'#991B1B', 'rojo metalico':'#DC2626', 'rojo brillante':'#EF4444',
   azul:'#2563EB', 'azul marino':'#1E3A8A', 'azul metalico':'#1D4ED8', 'azul oscuro':'#1E3A8A',
   'azul cielo':'#0EA5E9', 'azul claro':'#38BDF8', 'azul royal':'#2563EB',
   verde:'#15803D', 'verde oscuro':'#14532D', 'verde militar':'#4D7C0F', 'verde oliva':'#65A30D',
   'verde bosque':'#166534', 'verde metalico':'#16A34A', 'verde lima':'#84CC16',
   gris:'#9CA3AF', 'gris oscuro':'#374151', 'gris claro':'#D1D5DB', 'gris metalico':'#6B7280',
-  'gris perla':'#E2E8F0', 'gris plata':'#94A3B8', 'gris titanio':'#4B5563',
+  'gris perla':'#E5E7EB', 'gris plata':'#9CA3AF', 'gris titanio':'#4B5563',
   naranja:'#EA580C', 'naranja metalico':'#C2410C', 'naranja fluor':'#F97316',
   amarillo:'#D97706', 'amarillo metalico':'#B45309', 'amarillo fluor':'#EAB308',
-  plateado:'#94A3B8', plata:'#94A3B8', 'plata metalico':'#CBD5E1', 'plata mate':'#94A3B8',
+  plateado:'#9CA3AF', plata:'#9CA3AF', 'plata metalico':'#D1D5DB', 'plata mate':'#9CA3AF',
   perla:'#E8E0D0', bordo:'#9F1239', vino:'#9F1239', guinda:'#881337',
   celeste:'#0EA5E9', fucsia:'#DB2777', violeta:'#7C3AED', morado:'#7C3AED', lila:'#A78BFA',
   dorado:'#D97706', 'oro':'#CA8A04', bronce:'#92400E', cafe:'#78350F',
@@ -436,40 +436,39 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {reloadErr && (
         <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', color:'#B91C1C', padding:'10px 14px', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span>{reloadErr}</span>
-          <button onClick={()=>reload()} style={{ background:'#DC2626', color:'#fff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Reintentar</button>
+          <button onClick={()=>reload()} style={{ background:'#DC2626', color:'#ffffff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Reintentar</button>
         </div>
       )}
 
       {/* ══════════════════════════════════════════════════════════
           ENCABEZADO
       ══════════════════════════════════════════════════════════ */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap', marginBottom: isMobile ? 16 : 28 }}>
-        <div>
-          <p style={{ margin:'0 0 2px', fontSize:11, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.12em', textTransform:'uppercase' }}>
-            Operaciones · Stock
-          </p>
-          <h1 style={{ margin:0, fontSize: isMobile ? 20 : 26, fontWeight:900, color:'#0F172A', letterSpacing:'-0.8px', lineHeight:1 }}>
-            Inventario
-          </h1>
-        </div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', width: isMobile ? '100%' : 'auto' }}>
-          {isAdmin && (
-            <>
-              <button onClick={handleExport} disabled={exporting} style={{...btnGhost, flex: isMobile ? '1 1 0' : '0 0 auto', justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
-                <Ic.dl size={13} color="#6B7280"/> {exporting ? 'Exportando…' : (isMobile ? 'Exportar' : 'Exportar Excel')}
-              </button>
-              <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
-                style={{...btnGhost, flex: isMobile ? '1 1 0' : '0 0 auto', justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
-                <Ic.upload size={13} color="#6B7280"/> {isMobile ? 'Importar' : 'Importar Excel'}
-              </button>
-            </>
-          )}
-          <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }}
-            style={{...btnOrange, flex: isMobile ? '1 1 100%' : '0 0 auto', justifyContent:'center', padding: isMobile ? '10px 14px' : '9px 18px'}}>
-            <Ic.plus size={14} color="#fff"/> Nueva Unidad
-          </button>
-        </div>
-      </div>
+      <ViewHeader
+        preheader="Operaciones · Stock"
+        title="Inventario"
+        count={f.length}
+        itemLabel="unidad"
+        filtered={hasFilters}
+        actions={
+          <>
+            {isAdmin && (
+              <>
+                <button onClick={handleExport} disabled={exporting} style={{...btnGhost, justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
+                  <Ic.dl size={13} color="#6B7280"/> {exporting ? 'Exportando…' : (isMobile ? 'Exportar' : 'Exportar Excel')}
+                </button>
+                <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
+                  style={{...btnGhost, justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
+                  <Ic.upload size={13} color="#6B7280"/> {isMobile ? 'Importar' : 'Importar Excel'}
+                </button>
+              </>
+            )}
+            <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }}
+              style={{...btnOrange, justifyContent:'center', padding: isMobile ? '10px 14px' : '9px 18px'}}>
+              <Ic.plus size={14} color="#ffffff"/> Nueva unidad
+            </button>
+          </>
+        }
+      />
 
       {/* ══════════════════════════════════════════════════════════
           KPI — 4 tarjetas de estado
@@ -492,7 +491,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               }}>
               {/* Barra de color arriba */}
               <div style={{ position:'absolute', top:0, left:0, right:0, height:4, background:v.color, borderRadius:'14px 14px 0 0' }}/>
-              <div style={{ fontSize: isMobile ? 26 : 38, fontWeight:900, color: active ? v.color : '#0F172A', letterSpacing:'-1.5px', lineHeight:1, marginBottom:4 }}>
+              <div style={{ fontSize: isMobile ? 26 : 38, fontWeight:900, color: active ? v.color : '#111827', letterSpacing:'-1.5px', lineHeight:1, marginBottom:4 }}>
                 {cnt}
               </div>
               <div style={{ fontSize: isMobile ? 11 : 13, fontWeight:700, color: active ? v.color : '#374151', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{v.label}</div>
@@ -517,17 +516,17 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           </div>
           <div style={{ display:'flex', gap:6 }}>
             <select value={brF} onChange={e=>setBrF(e.target.value)}
-              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
+              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
               <option value="">Todas las sucs.</option>
               {brs.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
             <select value={brandF} onChange={e=>setBrandF(e.target.value)}
-              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
+              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
               <option value="">Todas las marcas</option>
               {brands.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
             <select value={stF} onChange={e=>setStF(e.target.value)}
-              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
+              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
               <option value="">Todos</option>
               {Object.entries(ST_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
@@ -653,12 +652,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   }
                   {brPhoto && isAdmin && (
                     <button onClick={()=>id && handleBranchPhoto(id)} title="Cambiar foto"
-                      style={{ position:'absolute', bottom:5, right:5, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'#fff', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
+                      style={{ position:'absolute', bottom:5, right:5, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'#ffffff', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
                       ✎ Cambiar
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize:16, fontWeight:900, color:'#0F172A', marginBottom:4 }}>{cfg.label}</div>
+                <div style={{ fontSize:16, fontWeight:900, color:'#111827', marginBottom:4 }}>{cfg.label}</div>
                 <div style={{ fontSize:12, color:'#6B7280' }}>
                   <span style={{ fontWeight:700, color:cfg.color }}>{cnt}</span> disponibles · <span style={{ color:'#6D28D9', fontWeight:600 }}>{vend}</span> vendidas
                 </div>
@@ -672,7 +671,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           {/* Botón volver (solo cuando brF está activo) */}
           {brF && (
             <button onClick={clearFilters}
-              style={{ marginBottom:12, display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:'#475569', fontFamily:'inherit', padding:0 }}>
+              style={{ marginBottom:12, display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:'#4B5563', fontFamily:'inherit', padding:0 }}>
               ← Volver a sucursales
             </button>
           )}
@@ -686,7 +685,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               <div style={{ fontSize:12, color:'#9CA3AF' }}>
                 {hasFilters
                   ? <button onClick={clearFilters} style={{ background:'none', border:'none', color:'#F28100', fontSize:12, cursor:'pointer', textDecoration:'underline', padding:0, fontFamily:'inherit' }}>Limpiar filtros</button>
-                  : 'Agregá unidades manualmente o importá desde Excel.'}
+                  : 'Agrega unidades manualmente o impórtalas desde Excel.'}
               </div>
             </div>
           ) : (
@@ -697,8 +696,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   {f.length} unidad{f.length!==1?'es':''}{hasFilters&&` (filtradas de ${inv.length})`}
                 </div>
                 {canDrag && (
-                  <div style={{ fontSize:10, color:'#94A3B8', display:'flex', alignItems:'center', gap:4 }}>
-                    <span style={{ fontSize:13 }}>⠿</span> Arrastrá para reordenar
+                  <div style={{ fontSize:10, color:'#9CA3AF', display:'flex', alignItems:'center', gap:4 }}>
+                    <span style={{ fontSize:13 }}>⠿</span> Arrastra para reordenar
                   </div>
                 )}
               </div>
@@ -735,15 +734,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                               <img
                                 src={x.unit_photo}
                                 onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
-                                style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
+                                style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E5E7EB', display:'block' }}
                               />
                               <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'unit_photo');}} title="Cambiar foto"
-                                style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, padding:0 }}>✎</button>
+                                style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:12, padding:0 }}>✎</button>
                             </>
                           : <button
                               onClick={()=>handlePhoto(x.id,'unit_photo')}
                               title="Agregar foto"
-                              style={{ width:96, height:96, borderRadius:10, border:'1.5px dashed #D1D5DB', background:'#F8FAFC', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5, padding:0 }}>
+                              style={{ width:96, height:96, borderRadius:10, border:'1.5px dashed #D1D5DB', background:'#F9FAFB', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5, padding:0 }}>
                               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                 <circle cx="12" cy="13" r="4"/>
@@ -754,8 +753,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       </div>
                       {/* Info */}
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:17, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.brand}</div>
-                        <div style={{ fontSize:12, fontWeight:600, color:'#475569', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.model}</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:'#111827', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.brand}</div>
+                        <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.model}</div>
                         <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', marginBottom:5 }}>
                           {x.year && <span style={{ fontSize:11, fontWeight:800, color:'#4F46E5', background:'#EEF2FF', padding:'2px 8px', borderRadius:5, border:'1px solid #C7D2FE' }}>{x.year}</span>}
                           {x.color && <div style={{ display:'flex', alignItems:'center', gap:4 }}>
@@ -770,49 +769,49 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       </div>
                     </div>
                     {/* Bottom action bar */}
-                    <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', borderTop:'1px solid #F1F3F5', gap:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', borderTop:'1px solid #F3F4F6', gap:8 }}>
                       <div style={{ flex:1 }}></div>
                       <button onClick={()=>toggleExpand(x.id)}
-                        style={{ padding:'5px 10px', borderRadius:7, border:`1px solid ${isExpanded?'#A5B4FC':'#E2E8F0'}`, background:isExpanded?'#EEF2FF':'#F8FAFC', color:isExpanded?'#4F46E5':'#64748B', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                        style={{ padding:'5px 10px', borderRadius:7, border:`1px solid ${isExpanded?'#A5B4FC':'#E5E7EB'}`, background:isExpanded?'#EEF2FF':'#F9FAFB', color:isExpanded?'#4F46E5':'#6B7280', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                         {isExpanded ? '▲' : '▼ Detalles'}
                       </button>
                     </div>
                     {/* Expanded details */}
                     {isExpanded && (
-                      <div style={{ borderTop:'1px solid #F1F3F5', padding:'12px 14px', background:'#F8FAFC' }}>
+                      <div style={{ borderTop:'1px solid #F3F4F6', padding:'12px 14px', background:'#F9FAFB' }}>
                         <div style={{ display:'flex', gap:16, marginBottom:10, flexWrap:'wrap' }}>
                           <div>
-                            <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Chasis</div>
+                            <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Chasis</div>
                             <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                              <span style={{ fontSize:11, fontWeight:700, color:'#1E293B', background:'#F1F5F9', padding:'3px 9px', borderRadius:6, border:'1px solid #E2E8F0', letterSpacing:'0.03em' }}>{x.chassis}</span>
+                              <span style={{ fontSize:11, fontWeight:700, color:'#1F2937', background:'#F3F4F6', padding:'3px 9px', borderRadius:6, border:'1px solid #E5E7EB', letterSpacing:'0.03em' }}>{x.chassis}</span>
                               {x.chassis_photo
-                                ? <img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0' }}/>
-                                : <button onClick={()=>handlePhoto(x.id,'chassis_photo')} title="Foto chasis" style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
+                                ? <img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
+                                : <button onClick={()=>handlePhoto(x.id,'chassis_photo')} title="Foto chasis" style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                               }
                             </div>
                           </div>
                           {x.motor_num && (
                             <div>
-                              <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Motor</div>
+                              <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Motor</div>
                               <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                                <span style={{ fontSize:11, fontWeight:600, color:'#475569', background:'#F8FAFC', padding:'3px 9px', borderRadius:6, border:'1px solid #E9EAEC' }}>{x.motor_num}</span>
+                                <span style={{ fontSize:11, fontWeight:600, color:'#4B5563', background:'#F9FAFB', padding:'3px 9px', borderRadius:6, border:'1px solid #E5E7EB' }}>{x.motor_num}</span>
                                 {x.motor_photo
-                                  ? <img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0' }}/>
-                                  : <button onClick={()=>handlePhoto(x.id,'motor_photo')} title="Foto motor" style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
+                                  ? <img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
+                                  : <button onClick={()=>handlePhoto(x.id,'motor_photo')} title="Foto motor" style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                                 }
                               </div>
                             </div>
                           )}
                           {isSold && x.sold_at && (
                             <div>
-                              <div style={{ fontSize:9, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Vendida</div>
+                              <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Vendida</div>
                               <div style={{ fontSize:11, color:'#6B7280' }}>{fD(x.sold_at)}</div>
                             </div>
                           )}
                         </div>
                         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                           {!isSold && isAdmin && (
-                            <button onClick={()=>openEdit(x)} style={{ ...miniBtn, background:'#F8FAFC', color:'#64748B', border:'1px solid #E2E8F0' }}>Editar</button>
+                            <button onClick={()=>openEdit(x)} style={{ ...miniBtn, background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB' }}>Editar</button>
                           )}
                           {!isSold && (
                             <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
@@ -823,12 +822,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             </select>
                           )}
                           <button onClick={()=>toggleHist(x.id)}
-                            style={{ ...miniBtn, background: isHistOpen ? '#EEF2FF' : '#F8FAFC', color: isHistOpen ? '#4F46E5' : '#64748B', border:`1px solid ${isHistOpen?'#A5B4FC':'#E2E8F0'}` }}>
+                            style={{ ...miniBtn, background: isHistOpen ? '#EEF2FF' : '#F9FAFB', color: isHistOpen ? '#4F46E5' : '#6B7280', border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}` }}>
                             {histLoading[x.id]?'…':'Historial'}
                           </button>
                           {!isSold && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
                             <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
-                              style={{ ...miniBtn, appearance:'auto', background:'#F8FAFC', color:'#64748B', border:'1px solid #E2E8F0', cursor:'pointer', fontFamily:'inherit' }}>
+                              style={{ ...miniBtn, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer', fontFamily:'inherit' }}>
                               <option value="" disabled>Mover a...</option>
                               {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
@@ -842,7 +841,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     <div style={{ background:'#F8F7FF', border:'1px solid #E2E0F5', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'14px 16px 18px' }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
                         <div style={{ fontSize:11, fontWeight:700, color:'#4F46E5' }}>Historial · {x.brand} {x.model}</div>
-                        <button onClick={()=>toggleHist(x.id)} style={{ ...miniBtn, border:'1px solid #E2E8F0' }}>Cerrar</button>
+                        <button onClick={()=>toggleHist(x.id)} style={{ ...miniBtn, border:'1px solid #E5E7EB' }}>Cerrar</button>
                       </div>
                       {histLoading[x.id] && <div style={{ color:'#9CA3AF', fontSize:11 }}>Cargando...</div>}
                       {!histLoading[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
@@ -892,7 +891,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   display:'flex', alignItems:'stretch',
                   background:'#FFFFFF',
                   borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
-                  border:`1px solid ${isSold ? '#E5E7EB' : '#E2E5EA'}`,
+                  border:`1px solid ${isSold ? '#E5E7EB' : '#E5E7EB'}`,
                   overflow:'hidden',
                   boxShadow: isSold ? 'none' : '0 1px 6px rgba(0,0,0,0.06)',
                   opacity: isSold ? 0.75 : 1,
@@ -919,7 +918,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   {/* ── UNIDAD — foto · marca · modelo · año · color ── */}
                   <div className="crm-inv-unit" style={{
                     flex:'0 0 290px', minWidth:0, padding:'10px 16px',
-                    borderRight:'1px solid #F1F3F5',
+                    borderRight:'1px solid #F3F4F6',
                     display:'flex', alignItems:'center', gap:14,
                     overflow:'hidden',
                   }}>
@@ -931,10 +930,10 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                               src={x.unit_photo}
                               onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
                               className="crm-inv-photo"
-                              style={{ width:92, height:92, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E2E8F0', display:'block' }}
+                              style={{ width:92, height:92, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E5E7EB', display:'block' }}
                             />
                             <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
-                              style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, padding:0 }}>✎</button>
+                              style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:12, padding:0 }}>✎</button>
                           </>
                         : <button
                             onClick={()=>handlePhoto(x.id,'unit_photo')}
@@ -942,7 +941,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             className="crm-inv-photo"
                             style={{
                               width:92, height:92, borderRadius:10,
-                              border:'1.5px dashed #D1D5DB', background:'#F8FAFC',
+                              border:'1.5px dashed #D1D5DB', background:'#F9FAFB',
                               cursor:'pointer', display:'flex', flexDirection:'column',
                               alignItems:'center', justifyContent:'center', gap:5, padding:0,
                             }}>
@@ -957,11 +956,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     {/* Info */}
                     <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center' }}>
                       {/* Marca */}
-                      <div style={{ fontSize:18, fontWeight:900, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      <div style={{ fontSize:18, fontWeight:900, color:'#111827', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                         {x.brand}
                       </div>
                       {/* Modelo */}
-                      <div style={{ fontSize:12, fontWeight:600, color:'#475569', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                         {x.model}
                       </div>
                       {/* Año */}
@@ -994,49 +993,49 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   {/* ── IDENTIFICADORES — chasis · motor ── */}
                   <div className="crm-inv-id" style={{
                     flex:1, minWidth:0, padding:'14px 20px',
-                    borderRight:'1px solid #F1F3F5',
+                    borderRight:'1px solid #F3F4F6',
                     display:'flex', flexDirection:'column', justifyContent:'center', gap:12,
                     overflow:'hidden',
                   }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>
                       Identificación
                     </div>
                     {/* Chasis */}
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Chasis</span>
+                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Chasis</span>
                       <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
                         <span style={{
-                          fontSize:12, fontWeight:700, color:'#1E293B',
-                          background:'#F1F5F9', padding:'4px 11px', borderRadius:7,
-                          border:'1px solid #E2E8F0', letterSpacing:'0.03em',
+                          fontSize:12, fontWeight:700, color:'#1F2937',
+                          background:'#F3F4F6', padding:'4px 11px', borderRadius:7,
+                          border:'1px solid #E5E7EB', letterSpacing:'0.03em',
                           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0,
                         }}>
                           {x.chassis}
                         </span>
                         {x.chassis_photo
                           ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
-                              style={{ width:26,height:26,borderRadius:6,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0',flexShrink:0 }}/>
+                              style={{ width:26,height:26,borderRadius:6,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB',flexShrink:0 }}/>
                           : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'chassis_photo');}} title="Agregar foto de chasis"
-                              style={{ width:24,height:24,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,padding:0 }}>+</button>
+                              style={{ width:24,height:24,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,padding:0 }}>+</button>
                         }
                       </div>
                     </div>
                     {/* Motor */}
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#94A3B8', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Motor</span>
+                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Motor</span>
                       <div style={{ display:'flex', alignItems:'center', gap:7 }}>
                         {x.motor_num
                           ? <>
                               <span style={{
-                                fontSize:12, fontWeight:600, color:'#475569',
-                                background:'#F8FAFC', padding:'3px 10px', borderRadius:6,
-                                border:'1px solid #E9EAEC', letterSpacing:'0.02em',
+                                fontSize:12, fontWeight:600, color:'#4B5563',
+                                background:'#F9FAFB', padding:'3px 10px', borderRadius:6,
+                                border:'1px solid #E5E7EB', letterSpacing:'0.02em',
                               }}>{x.motor_num}</span>
                               {x.motor_photo
                                 ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
-                                    style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E2E8F0' }}/>
+                                    style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
                                 : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'motor_photo');}} title="Agregar foto de motor"
-                                    style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#CBD5E1',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
+                                    style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                               }
                             </>
                           : <span style={{ fontSize:12, color:'#D1D5DB', fontWeight:400 }}>—</span>
@@ -1048,7 +1047,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   {/* ── ESTADO ── */}
                   <div className="crm-inv-status" style={{
                     flex:'0 0 148px', padding:'16px 18px',
-                    borderRight:'1px solid #F1F3F5',
+                    borderRight:'1px solid #F3F4F6',
                     display:'flex', flexDirection:'column', justifyContent:'center', gap:8,
                   }}>
                     <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>
@@ -1104,15 +1103,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             style={{
                               ...miniBtn,
                               flex:1,
-                              background: isHistOpen ? '#EEF2FF' : '#F8FAFC',
-                              color: isHistOpen ? '#4F46E5' : '#64748B',
-                              border:`1px solid ${isHistOpen?'#A5B4FC':'#E2E8F0'}`,
+                              background: isHistOpen ? '#EEF2FF' : '#F9FAFB',
+                              color: isHistOpen ? '#4F46E5' : '#6B7280',
+                              border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}`,
                             }}>
                             {histLoading[x.id]?'…':'Historial'}
                           </button>
                           {brs.filter(b=>b.id!==x.branch_id).length > 0 && (
                             <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
-                              style={{ ...miniBtn, flex:1, appearance:'auto', background:'#F8FAFC', color:'#64748B', border:'1px solid #E2E8F0', cursor:'pointer' }}>
+                              style={{ ...miniBtn, flex:1, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer' }}>
                               <option value="" disabled>Mover</option>
                               {brs.filter(b=>b.id!==x.branch_id).map(b=>(
                                 <option key={b.id} value={b.id}>{b.name}</option>
@@ -1125,9 +1124,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       <button onClick={()=>toggleHist(x.id)}
                         style={{
                           ...miniBtn, width:'100%',
-                          background: isHistOpen ? '#EEF2FF' : '#F8FAFC',
-                          color: isHistOpen ? '#4F46E5' : '#64748B',
-                          border:`1px solid ${isHistOpen?'#A5B4FC':'#E2E8F0'}`,
+                          background: isHistOpen ? '#EEF2FF' : '#F9FAFB',
+                          color: isHistOpen ? '#4F46E5' : '#6B7280',
+                          border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}`,
                         }}>
                         {histLoading[x.id]?'Cargando…':'Ver historial'}
                       </button>
@@ -1151,7 +1150,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         </div>
                       </div>
                       <button onClick={()=>toggleHist(x.id)}
-                        style={{ ...miniBtn, border:'1px solid #E2E8F0' }}>Cerrar</button>
+                        style={{ ...miniBtn, border:'1px solid #E5E7EB' }}>Cerrar</button>
                     </div>
                     {histLoading[x.id] && <div style={{ color:'#9CA3AF', fontSize:11 }}>Cargando historial...</div>}
                     {!histLoading[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
@@ -1251,7 +1250,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         onClick={() => setEForm(f => ({...f, color: cp.color}))}
                         title={cp.color}
                         style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 7px 3px 4px',
-                          borderRadius:20, border: isSelected ? '2px solid #F28100' : '1.5px solid #E2E8F0',
+                          borderRadius:20, border: isSelected ? '2px solid #F28100' : '1.5px solid #E5E7EB',
                           background: isSelected ? '#FFFBF0' : '#F9FAFB', cursor:'pointer' }}>
                         <span style={{ width:14, height:14, borderRadius:7, background: cp.hex || getColorCss(cp.color) || '#E5E7EB',
                           border:'1px solid rgba(0,0,0,0.1)', display:'inline-block', flexShrink:0 }}/>
@@ -1289,11 +1288,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
                   <div>
                     <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>Cliente</div>
-                    <div style={{ fontSize:13, color:'#1C1917' }}>{editTarget.client_name || <span style={{color:'#9CA3AF'}}>—</span>}</div>
+                    <div style={{ fontSize:13, color:'#111827' }}>{editTarget.client_name || <span style={{color:'#9CA3AF'}}>—</span>}</div>
                   </div>
                   <div>
                     <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>RUT</div>
-                    <div style={{ fontSize:13, color:'#1C1917' }}>{editTarget.client_rut || <span style={{color:'#9CA3AF'}}>—</span>}</div>
+                    <div style={{ fontSize:13, color:'#111827' }}>{editTarget.client_rut || <span style={{color:'#9CA3AF'}}>—</span>}</div>
                   </div>
                 </div>
 
@@ -1302,7 +1301,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:12 }}>
                     <div style={{ background:'#FEF3C7', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
                       <div style={{ fontSize:10, color:'#92400E', fontWeight:700, marginBottom:2 }}>PRECIO</div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>{fmt(editTarget.sale_price)}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{fmt(editTarget.sale_price)}</div>
                     </div>
                     <div style={{ background:'#ECFDF5', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
                       <div style={{ fontSize:10, color:'#065F46', fontWeight:700, marginBottom:2 }}>ABONADO</div>
@@ -1338,7 +1337,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     <select
                       value={eForm.sold_by}
                       onChange={e=>setEForm({...eForm,sold_by:e.target.value})}
-                      style={{ width:'100%', height:38, borderRadius:8, border:'1px solid #E5E7EB', background:'#fff', fontSize:13, color:'#374151', padding:'0 8px', fontFamily:'inherit' }}>
+                      style={{ width:'100%', height:38, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:13, color:'#374151', padding:'0 8px', fontFamily:'inherit' }}>
                       <option value="">Seleccionar…</option>
                       {sellers.map(s=><option key={s.id} value={s.id}>{`${s.first_name||''} ${s.last_name||''}`.trim()}</option>)}
                     </select>
@@ -1346,7 +1345,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 </div>
 
                 <div style={{ fontSize:11, color:'#92400E', marginTop:4 }}>
-                  Guardá los cambios para actualizar el abono, o convertí a nota de venta cuando el cliente complete el pago.
+                  Guarda los cambios para actualizar el abono, o conviértela en nota de venta cuando el cliente complete el pago.
                 </div>
               </div>
             )}
@@ -1360,7 +1359,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   ? <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       <span style={{ fontSize:12, color:'#DC2626', fontWeight:600 }}>¿Eliminar definitivamente?</span>
                       <button type="button" disabled={deletingUnit} onClick={handleDelete}
-                        style={{ background:'#DC2626', color:'#fff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                        style={{ background:'#DC2626', color:'#ffffff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                         {deletingUnit ? 'Eliminando…' : 'Sí, eliminar'}
                       </button>
                       <button type="button" onClick={()=>setDeleteConfirm(false)}
@@ -1382,7 +1381,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </button>
                 )}
                 <button type="submit" disabled={eSaving}
-                  style={{ background:'#0F172A', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                  style={{ background:'#111827', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                   {eSaving ? 'Guardando…' : 'Guardar cambios'}
                 </button>
               </div>
@@ -1412,7 +1411,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             </div>
             <div onClick={()=>setNw({...nw,added_as_sold:!nw.added_as_sold})}
               style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:8,marginBottom:nw.added_as_sold?10:16,cursor:'pointer',background:nw.added_as_sold?'rgba(239,68,68,0.06)':'#F9FAFB',border:`1px solid ${nw.added_as_sold?'rgba(239,68,68,0.3)':'#E5E7EB'}`,transition:'all 0.15s' }}>
-              <div style={{ width:18,height:18,borderRadius:4,border:nw.added_as_sold?'none':'2px solid #333',background:nw.added_as_sold?'#EF4444':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+              <div style={{ width:18,height:18,borderRadius:4,border:nw.added_as_sold?'none':'2px solid #1F2937',background:nw.added_as_sold?'#EF4444':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
                 {nw.added_as_sold&&<Ic.check size={11} color="white"/>}
               </div>
               <div>
@@ -1462,7 +1461,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           {!importPreview && !importDone && (
             <div style={{ textAlign:'center',padding:'32px 16px' }}>
               <div style={{ width:52,height:52,borderRadius:12,background:'#F3F4F6',border:'1px solid #E5E7EB',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',fontSize:13,fontWeight:800,color:'#6B7280' }}>XLS</div>
-              <p style={{ fontSize:13,color:'#374151',marginBottom:6 }}>Seleccioná tu plantilla Excel (.xlsx)</p>
+              <p style={{ fontSize:13,color:'#374151',marginBottom:6 }}>Selecciona tu plantilla Excel (.xlsx)</p>
               <p style={{ fontSize:11,color:'#6B7280',marginBottom:20 }}>Columnas: <strong>Sucursal · Año · Marca · Modelo · Color · N° Chasis · N° Motor · Estado</strong></p>
               <button onClick={()=>importFileRef.current?.click()} disabled={importLoading} style={{ ...S.btn,fontSize:13,padding:'10px 24px' }}>
                 {importLoading?'Procesando...':'Seleccionar archivo'}
@@ -1545,15 +1544,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         <div onClick={()=>setShowPhotoPicker(false)}
           style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:9999,display:'flex',flexDirection:'column',justifyContent:'flex-end' }}>
           <div onClick={e=>e.stopPropagation()}
-            style={{ background:'#fff',borderRadius:'18px 18px 0 0',padding:'12px 16px 32px' }}>
+            style={{ background:'#ffffff',borderRadius:'18px 18px 0 0',padding:'12px 16px 32px' }}>
             <div style={{ width:36,height:4,borderRadius:2,background:'#D1D5DB',margin:'0 auto 18px' }}/>
             <div style={{ fontSize:13,fontWeight:700,color:'#374151',marginBottom:14,textAlign:'center' }}>Agregar foto</div>
             <button onClick={()=>{ setShowPhotoPicker(false); setTimeout(()=>{ cameraInputRef.current.value=''; cameraInputRef.current.click(); },50); }}
-              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#0F172A' }}>
+              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#111827' }}>
               Tomar foto con la cámara
             </button>
             <button onClick={()=>{ setShowPhotoPicker(false); setTimeout(()=>{ galleryInputRef.current.value=''; galleryInputRef.current.click(); },50); }}
-              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#0F172A' }}>
+              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#111827' }}>
               Elegir desde la galería
             </button>
             <button onClick={()=>{ setShowPhotoPicker(false); photoTargetRef.current=null; }}
@@ -1590,5 +1589,5 @@ const selectCtrl = {
 const miniBtn = {
   padding:'5px 10px', borderRadius:7, fontSize:10, fontWeight:600,
   cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap',
-  background:'#F8FAFC', color:'#64748B', border:'1px solid #E2E8F0',
+  background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB',
 };

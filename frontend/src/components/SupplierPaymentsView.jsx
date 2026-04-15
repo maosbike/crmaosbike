@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE } from '../ui.jsx';
+import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader } from '../ui.jsx';
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 const EMPTY = () => ({
@@ -47,7 +47,7 @@ function motoImg(p) {
 }
 
 /* ── Color chip helper ──────────────────────────────────────────────────── */
-const COLOR_HEX = {negro:'#18181B',blanco:'#F9FAFB',rojo:'#EF4444',azul:'#3B82F6',gris:'#6B7280',plata:'#9CA3AF',plateado:'#9CA3AF',verde:'#10B981',amarillo:'#F59E0B',naranja:'#F97316',celeste:'#38BDF8',violeta:'#8B5CF6',morado:'#8B5CF6',rosa:'#EC4899',marron:'#92400E',cafe:'#92400E'};
+const COLOR_HEX = {negro:'#111827',blanco:'#F9FAFB',rojo:'#EF4444',azul:'#3B82F6',gris:'#6B7280',plata:'#9CA3AF',plateado:'#9CA3AF',verde:'#10B981',amarillo:'#F59E0B',naranja:'#F97316',celeste:'#38BDF8',violeta:'#8B5CF6',morado:'#8B5CF6',rosa:'#EC4899',marron:'#92400E',cafe:'#92400E'};
 function colorHex(name) { const k=(name||'').toLowerCase().split(/[\s\/]/)[0]; return COLOR_HEX[k]||'#9CA3AF'; }
 function ColorChip({color}) {
   if(!color) return null;
@@ -124,7 +124,7 @@ function CatalogColorPicker({ modelRow, value, onChange }) {
       </select>
       {cur && !match && (
         <div style={{fontSize:10,color:'#B45309',marginTop:4,fontFamily:'inherit'}}>
-          Color actual "{cur}" no está en el catálogo — elegí uno válido.
+          Color actual "{cur}" no está en el catálogo — elige uno válido.
         </div>
       )}
     </div>
@@ -134,7 +134,7 @@ function CatalogColorPicker({ modelRow, value, onChange }) {
 /* ── Shared inline style tokens (matching CRM palette) ─────────────────── */
 const lbl9 = { display:'block', fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:5 };
 const secTitle = (color='#374151') => ({ fontSize:9, fontWeight:800, color, textTransform:'uppercase', letterSpacing:'0.14em', paddingBottom:7, marginBottom:10, borderBottom:`2px solid ${color}22` });
-const secCard = { background:'#FFFFFF', borderRadius:12, border:'1px solid #E5E7EB', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', overflow:'hidden', marginBottom:12 };
+const secCard = S.secCard;
 
 /* ── Form field (uses S.inp / S.lbl from ui.jsx) ──────────────────────── */
 function F({ label, value, onChange, type='text', half, hl }) {
@@ -159,7 +159,7 @@ function FileZone({ label, file, onFile, url, onUrl, accent='#F28100' }) {
       <div style={{ display:'flex',gap:6,marginBottom:10 }}>
         {[['upload','Subir PDF'],['url','URL Drive']].map(([m,l])=>(
           <button key={m} type="button" onClick={()=>setMode(m)}
-            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:20,cursor:'pointer',border:`1.5px solid ${mode===m?accent:'#D1D5DB'}`,background:mode===m?accent:'#fff',color:mode===m?'#fff':'#6B7280' }}>{l}</button>
+            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:20,cursor:'pointer',border:`1.5px solid ${mode===m?accent:'#D1D5DB'}`,background:mode===m?accent:'#ffffff',color:mode===m?'#ffffff':'#6B7280' }}>{l}</button>
         ))}
       </div>
       {mode==='upload' ? (
@@ -167,7 +167,7 @@ function FileZone({ label, file, onFile, url, onUrl, accent='#F28100' }) {
           onDrop={e=>{e.preventDefault();setDrag(false);if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0])}}
           style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'16px 12px',border:`2px dashed ${drag?accent:'#D1D5DB'}`,borderRadius:8,cursor:'pointer' }}>
           <Ic.file size={16} color={drag?accent:'#9CA3AF'}/>
-          <span style={{ fontFamily:'inherit',fontSize:12,color:'#6B7280' }}>{file?<strong style={{color:'#0F172A'}}>{file.name}</strong>:'Arrastra o haz click'}</span>
+          <span style={{ fontFamily:'inherit',fontSize:12,color:'#6B7280' }}>{file?<strong style={{color:'#111827'}}>{file.name}</strong>:'Arrastra o haz click'}</span>
           <input type="file" accept=".pdf" style={{display:'none'}} onChange={e=>{if(e.target.files[0])onFile(e.target.files[0])}}/>
         </label>
       ) : (
@@ -194,7 +194,7 @@ function DR({ label, value, bold, span }) {
   return (
     <div style={{ gridColumn:span?'1/-1':'auto', padding:'6px 0', borderBottom:'1px solid #F3F4F6' }}>
       <div style={lbl9}>{label}</div>
-      <div style={{ fontFamily:'inherit', fontSize:13, fontWeight:bold?700:400, color:'#0F172A' }}>{value}</div>
+      <div style={{ fontFamily:'inherit', fontSize:13, fontWeight:bold?700:400, color:'#111827' }}>{value}</div>
     </div>
   );
 }
@@ -243,7 +243,7 @@ function NewModal({ onClose, onCreated }) {
     <Modal onClose={onClose} title="Registro creado">
       <div style={{textAlign:'center',padding:'30px 0'}}>
         <div style={{width:44,height:44,borderRadius:'50%',background:'#DCFCE7',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}><Ic.check size={22} color="#15803D"/></div>
-        <div style={{fontFamily:'inherit',fontSize:15,fontWeight:700,color:'#0F172A',marginBottom:12}}>Pago registrado</div>
+        <div style={{fontFamily:'inherit',fontSize:15,fontWeight:700,color:'#111827',marginBottom:12}}>Pago registrado</div>
         <button onClick={onClose} style={{...S.btn,padding:'8px 28px'}}>Cerrar</button>
       </div>
     </Modal>
@@ -288,7 +288,7 @@ function NewModal({ onClose, onCreated }) {
               <F label="Pagador" value={form.payer_name} onChange={s('payer_name')} half hl={!!hl.payer_name}/>
             </div>
           </Sec>
-          <Sec title="Vehiculo" color="#374151">
+          <Sec title="Vehículo" color="#374151">
             <div style={{marginBottom:10}}>
               <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={pickModel}/>
             </div>
@@ -421,7 +421,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
               <F label="Medio pago" value={form.payment_method} onChange={st('payment_method')} half/>
               <F label="Pagador" value={form.payer_name} onChange={st('payer_name')} half/>
             </div></Sec>
-            <Sec title="Vehiculo" color="#374151">
+            <Sec title="Vehículo" color="#374151">
               <div style={{marginBottom:10}}>
                 <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={pickModel}/>
               </div>
@@ -475,12 +475,12 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
             </div>
             <div style={secCard}>
               <div style={{padding:'14px 16px'}}>
-                <div style={secTitle('#374151')}>Vehiculo</div>
+                <div style={secTitle('#374151')}>Vehículo</div>
                 {motoImg(p)&&(
                   <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12,padding:'10px 14px',background:'#F9FAFB',borderRadius:10,border:'1px solid #E5E7EB'}}>
-                    <img src={motoImg(p)} alt="" style={{width:80,height:60,objectFit:'contain',borderRadius:8,border:'1px solid #E5E7EB',background:'#fff'}}/>
+                    <img src={motoImg(p)} alt="" style={{width:80,height:60,objectFit:'contain',borderRadius:8,border:'1px solid #E5E7EB',background:'#ffffff'}}/>
                     <div>
-                      <div style={{fontSize:14,fontWeight:800,color:'#0F172A'}}>{p.catalog_name||p.model}</div>
+                      <div style={{fontSize:14,fontWeight:800,color:'#111827'}}>{p.catalog_name||p.model}</div>
                       {p.color&&<div style={{fontSize:11,color:'#6B7280'}}>{p.color} {p.commercial_year?`- ${p.commercial_year}`:''}</div>}
                     </div>
                   </div>
@@ -519,18 +519,18 @@ function Card({ p, onClick }) {
       <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
         {img&&<img src={img} alt="" style={{width:48,height:36,objectFit:'contain',borderRadius:6,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:'inherit',fontWeight:800,fontSize:13,color:'#0F172A'}}>{p.invoice_number||'-'}</div>
+          <div style={{fontFamily:'inherit',fontWeight:800,fontSize:13,color:'#111827'}}>{p.invoice_number||'-'}</div>
           {p.model&&<div style={{fontSize:11,fontWeight:600,color:'#374151'}}>{p.catalog_name||p.model}</div>}
         </div>
-        <span style={{ fontWeight:800,fontSize:14,color:'#0F172A' }}>{$(p.total_amount)}</span>
+        <span style={{ fontWeight:800,fontSize:14,color:'#111827' }}>{$(p.total_amount)}</span>
       </div>
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 12px',fontSize:12,fontFamily:'inherit' }}>
         <div><span style={lbl9}>Color</span> <span style={{color:'#374151'}}>{p.color||'-'}</span></div>
         <div><span style={lbl9}>Ano</span> <span style={{color:'#374151'}}>{p.commercial_year||'-'}</span></div>
         <div><span style={{...lbl9,color:ov?'#EF4444':undefined}}>Venc.</span> <span style={{fontWeight:ov?700:400,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</span></div>
         {p.paid_amount&&<div><span style={lbl9}>Pagado</span> <strong style={{color:'#15803D'}}>{$(p.paid_amount)}</strong></div>}
-        {p.chassis&&<div><span style={lbl9}>Chasis</span> <span style={{fontSize:11,color:'#0F172A'}}>{p.chassis}</span></div>}
-        {p.motor_num&&<div><span style={lbl9}>Motor</span> <span style={{fontSize:11,color:'#0F172A'}}>{p.motor_num}</span></div>}
+        {p.chassis&&<div><span style={lbl9}>Chasis</span> <span style={{fontSize:11,color:'#111827'}}>{p.chassis}</span></div>}
+        {p.motor_num&&<div><span style={lbl9}>Motor</span> <span style={{fontSize:11,color:'#111827'}}>{p.motor_num}</span></div>}
       </div>
       {(ov||p.paid_amount)&&(
         <div style={{display:'flex',gap:6,marginTop:10}}>
@@ -543,12 +543,12 @@ function Card({ p, onClick }) {
 }
 
 /* ── Summary card ─────────────────────────────────────────────────────── */
-function SumCard({ label, value, sub, color='#0F172A', bg='#FFFFFF' }) {
+function SumCard({ label, value, sub, color='#111827', bg='#FFFFFF' }) {
   return (
     <div style={{ ...S.card, padding:'12px 14px', background:bg, display:'flex', flexDirection:'column', gap:3 }}>
       <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>{label}</div>
       <div style={{ fontSize:17, fontWeight:900, color, letterSpacing:'-0.3px' }}>{value}</div>
-      {sub && <div style={{ fontSize:10, color:'#94A3B8', fontWeight:500 }}>{sub}</div>}
+      {sub && <div style={{ fontSize:10, color:'#9CA3AF', fontWeight:500 }}>{sub}</div>}
     </div>
   );
 }
@@ -695,24 +695,22 @@ export function SupplierPaymentsView({ user }) {
   return (
     <div style={{ fontFamily:'Inter,system-ui,sans-serif',flex:1,display:'flex',flexDirection:'column',minHeight:0 }}>
 
-      {/* Header — matches Leads/Tickets h1 style */}
-      <div style={{ display:'flex',alignItems:'flex-start',gap:12,marginBottom:16,flexWrap:'wrap' }}>
-        <div>
-          <h1 style={{ margin:0,fontSize:bp==='sm'?16:20,fontWeight:800,color:'#0F172A',letterSpacing:'-0.4px' }}>Pagos a proveedor</h1>
-          {pending>0&&<p style={{ color:'#94A3B8',fontSize:12,margin:'3px 0 0',fontWeight:500 }}>{pending} sin monto pagado registrado</p>}
-        </div>
-        <div style={{flex:1}}/>
-        {canCreate&&(
-          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+      {/* Header */}
+      <ViewHeader
+        preheader="Operaciones · Tesorería"
+        title="Pagos a proveedor"
+        subtitle={pending > 0 ? `${pending} sin monto pagado registrado` : null}
+        actions={canCreate && (
+          <>
             <button onClick={sync} disabled={syncing} style={{...S.btn2,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600}}>
               <Ic.refresh size={14} color={syncing?'#9CA3AF':'#374151'}/>{syncing?'Sincronizando...':'Sync Drive'}
             </button>
             <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700}}>
               <Ic.plus size={14}/> Nuevo pago
             </button>
-          </div>
+          </>
         )}
-      </div>
+      />
 
       {/* Sync banner */}
       {syncRes&&(
@@ -729,7 +727,7 @@ export function SupplierPaymentsView({ user }) {
         <SumCard label="Facturado" value={$(sum.total)}/>
         <SumCard label="Pagado"    value={$(sum.paid)} color="#15803D"/>
         <SumCard label="Saldo"     value={$(saldo)} color={saldo>0?'#C2410C':'#15803D'}/>
-        <SumCard label="Vencidas"  value={sum.overdue} color={sum.overdue>0?'#EF4444':'#0F172A'}/>
+        <SumCard label="Vencidas"  value={sum.overdue} color={sum.overdue>0?'#EF4444':'#111827'}/>
       </div>
 
       {/* ── Filtros ── */}
@@ -819,10 +817,10 @@ export function SupplierPaymentsView({ user }) {
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow=S.card.boxShadow;}}>
 
                 {/* ── IZQUIERDO: foto grande + factura + fecha ── */}
-                <div style={{...col,flex:'1 1 230px',maxWidth:280,alignItems:'center',gap:10,padding:'14px 14px',background:'#F9FAFB',borderRight:'1px solid #F1F5F9'}}>
+                <div style={{...col,flex:'1 1 230px',maxWidth:280,alignItems:'center',gap:10,padding:'14px 14px',background:'#F9FAFB',borderRight:'1px solid #F3F4F6'}}>
                   {img
-                    ? <img src={img} alt="" style={{width:'100%',height:160,objectFit:'contain',borderRadius:10,border:'1px solid #E5E7EB',background:'#fff'}}/>
-                    : <div style={{width:'100%',height:160,borderRadius:10,border:'1px dashed #D1D5DB',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={54} color="#D1D5DB"/></div>
+                    ? <img src={img} alt="" style={{width:'100%',height:160,objectFit:'contain',borderRadius:10,border:'1px solid #E5E7EB',background:'#ffffff'}}/>
+                    : <div style={{width:'100%',height:160,borderRadius:10,border:'1px dashed #D1D5DB',background:'#ffffff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={54} color="#D1D5DB"/></div>
                   }
                   <div style={{textAlign:'center',marginTop:2}}>
                     <div style={{fontWeight:900,fontSize:14,color:'#F28100',letterSpacing:'-0.2px'}}>#{p.invoice_number||'—'}</div>
@@ -831,9 +829,9 @@ export function SupplierPaymentsView({ user }) {
                 </div>
 
                 {/* ── CENTRAL: modelo + chips + chasis/motor ── */}
-                <div style={{...col,flex:'2 1 260px',minWidth:0,padding:'16px 22px',gap:8,borderRight:'1px solid #F1F5F9'}}>
+                <div style={{...col,flex:'2 1 260px',minWidth:0,padding:'16px 22px',gap:8,borderRight:'1px solid #F3F4F6'}}>
                   <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <div style={{fontWeight:800,fontSize:17,color:'#0F172A',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:1.2,flex:1,minWidth:0}}>
+                    <div style={{fontWeight:800,fontSize:17,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:1.2,flex:1,minWidth:0}}>
                       {p.catalog_name||p.model||'—'}
                     </div>
                     {!p.model_id && (p.brand||p.model) && (
@@ -845,14 +843,14 @@ export function SupplierPaymentsView({ user }) {
                     {p.commercial_year&&<span style={{fontSize:11,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'2px 9px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
                   </div>
                   {(p.chassis||p.motor_num)&&(
-                    <div style={{display:'flex',gap:28,paddingTop:8,borderTop:'1px solid #F1F5F9',marginTop:4,flexWrap:'wrap'}}>
+                    <div style={{display:'flex',gap:28,paddingTop:8,borderTop:'1px solid #F3F4F6',marginTop:4,flexWrap:'wrap'}}>
                       {p.chassis&&<div style={{minWidth:0}}>
                         <div style={lbl}>Chasis</div>
-                        <div style={{fontSize:12,fontWeight:600,color:'#1E293B',letterSpacing:'0.01em',wordBreak:'break-all'}}>{p.chassis}</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1F2937',letterSpacing:'0.01em',wordBreak:'break-all'}}>{p.chassis}</div>
                       </div>}
                       {p.motor_num&&<div style={{minWidth:0}}>
                         <div style={lbl}>Motor</div>
-                        <div style={{fontSize:12,fontWeight:600,color:'#1E293B',letterSpacing:'0.01em',wordBreak:'break-all'}}>{p.motor_num}</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'#1F2937',letterSpacing:'0.01em',wordBreak:'break-all'}}>{p.motor_num}</div>
                       </div>}
                     </div>
                   )}
@@ -863,11 +861,11 @@ export function SupplierPaymentsView({ user }) {
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(90px, 1fr))',gap:'10px 14px',alignItems:'start'}}>
                     <div style={{minWidth:0}}>
                       <div style={lbl}>Total factura</div>
-                      <div style={{fontSize:15,fontWeight:900,color:'#0F172A',letterSpacing:'-0.3px',overflow:'hidden',textOverflow:'ellipsis'}}>{$(p.total_amount)}</div>
+                      <div style={{fontSize:15,fontWeight:900,color:'#111827',letterSpacing:'-0.3px',overflow:'hidden',textOverflow:'ellipsis'}}>{$(p.total_amount)}</div>
                     </div>
                     <div style={{minWidth:0}}>
                       <div style={lbl}>Monto pagado</div>
-                      <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#CBD5E1',overflow:'hidden',textOverflow:'ellipsis'}}>{$(p.paid_amount)}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#D1D5DB',overflow:'hidden',textOverflow:'ellipsis'}}>{$(p.paid_amount)}</div>
                     </div>
                     <div style={{minWidth:0}}>
                       <div style={{...lbl,color:ov?'#EF4444':'#9CA3AF'}}>Vencimiento</div>
@@ -875,7 +873,7 @@ export function SupplierPaymentsView({ user }) {
                     </div>
                     <div style={{minWidth:0}}>
                       <div style={lbl}>Fecha pago</div>
-                      <div style={{fontSize:12,color:p.payment_date?'#374151':'#CBD5E1'}}>{p.payment_date?fd(p.payment_date):'—'}</div>
+                      <div style={{fontSize:12,color:p.payment_date?'#374151':'#D1D5DB'}}>{p.payment_date?fd(p.payment_date):'—'}</div>
                     </div>
                   </div>
                   {/* Documentos — siempre abajo a la derecha del bloque de acciones.
@@ -902,7 +900,7 @@ export function SupplierPaymentsView({ user }) {
       {!loading&&sorted.length>0&&(
         <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:'#9CA3AF',fontFamily:'inherit'}}>
           <span>{sorted.length} de {data.length} registro{data.length!==1?'s':''}</span>
-          <span>Facturado: <strong style={{color:'#0F172A'}}>{$(sum.total)}</strong> · Pagado: <strong style={{color:'#15803D'}}>{$(sum.paid)}</strong> · Saldo: <strong style={{color:saldo>0?'#C2410C':'#0F172A'}}>{$(saldo)}</strong></span>
+          <span>Facturado: <strong style={{color:'#111827'}}>{$(sum.total)}</strong> · Pagado: <strong style={{color:'#15803D'}}>{$(sum.paid)}</strong> · Saldo: <strong style={{color:saldo>0?'#C2410C':'#111827'}}>{$(saldo)}</strong></span>
         </div>
       )}
 

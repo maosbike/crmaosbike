@@ -14,7 +14,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
   const tareasHoy=stats?.recordatorios_hoy||stats?.tareas_hoy||stats?.reminders_today||[];
   return(
     <div>
-      <div style={{marginBottom:18}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>{/a$/i.test((user.fn||'').trim())?'Bienvenida':'Bienvenido'}, {user.fn}</h1><p style={{color:"#6B6B6B",fontSize:12,margin:"2px 0 0"}}>{user.branchName||"Todas las sucursales"}</p></div>
+      <div style={{marginBottom:18}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>{/a$/i.test((user.fn||'').trim())?'Bienvenida':'Bienvenido'}, {user.fn}</h1><p style={{color:"#6B7280",fontSize:12,margin:"2px 0 0"}}>{user.branchName||"Todas las sucursales"}</p></div>
 
       {stats&&<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:14}}>

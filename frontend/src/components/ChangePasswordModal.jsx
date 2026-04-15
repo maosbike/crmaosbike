@@ -24,7 +24,7 @@ export function ChangePasswordModal({onClose}){
         ?<div style={{textAlign:"center",padding:"16px 0"}}>
           <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(16,185,129,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><Ic.check size={24} color="#10B981"/></div>
           <p style={{color:"#10B981",fontWeight:600,marginBottom:4}}>Contraseña actualizada</p>
-          <p style={{color:"#6B6B6B",fontSize:12,marginBottom:16}}>Tu contraseña fue cambiada correctamente.</p>
+          <p style={{color:"#6B7280",fontSize:12,marginBottom:16}}>Tu contraseña fue cambiada correctamente.</p>
           <button onClick={onClose} style={S.btn}>Cerrar</button>
         </div>
         :<form onSubmit={submit}>

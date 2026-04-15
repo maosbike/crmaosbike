@@ -18,12 +18,12 @@ export function ForceChangeView({user,onChanged}){
     finally{setLoading(false);}
   };
   return(
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F5F5F7",fontFamily:"'Inter',system-ui,sans-serif"}}>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F9FAFB",fontFamily:"'Inter',system-ui,sans-serif"}}>
       <div style={{width:"100%",maxWidth:400,padding:"0 20px"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <div style={{width:52,height:52,borderRadius:14,background:"rgba(242,129,0,0.15)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:12}}><Ic.lock size={24} color="#F28100"/></div>
-          <h1 style={{fontSize:20,fontWeight:800,color:"#1a1a1a",margin:0}}>Cambio de contraseña requerido</h1>
-          <p style={{color:"#6B6B6B",fontSize:12,marginTop:6}}>Hola {user.fn}, debes cambiar tu contraseña antes de continuar.</p>
+          <h1 style={{fontSize:20,fontWeight:800,color:"#111827",margin:0}}>Cambio de contraseña requerido</h1>
+          <p style={{color:"#6B7280",fontSize:12,marginTop:6}}>Hola {user.fn}, debes cambiar tu contraseña antes de continuar.</p>
         </div>
         <form onSubmit={submit} style={{background:"#FFFFFF",border:"1px solid #D1D5DB",borderRadius:14,padding:22}}>
           <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>

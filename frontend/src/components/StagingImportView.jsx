@@ -104,7 +104,7 @@ export function StagingImportView() {
         <div style={{ display: 'flex', gap: 8 }}>
           {['upload','history'].map(t => (
             <button key={t} onClick={() => { setStep(t); if (t === 'history') loadBatches(); }}
-              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: step === t ? '#F28100' : 'transparent', color: step === t ? '#fff' : '#6B7280', fontSize: 12, cursor: 'pointer', fontWeight: step === t ? 700 : 400 }}>
+              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: step === t ? '#F28100' : 'transparent', color: step === t ? '#ffffff' : '#6B7280', fontSize: 12, cursor: 'pointer', fontWeight: step === t ? 700 : 400 }}>
               {t === 'upload' ? 'Nueva importación' : 'Historial'}
             </button>
           ))}
@@ -112,7 +112,7 @@ export function StagingImportView() {
       </div>
 
       <div style={{ background: 'rgba(242,129,0,0.08)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, border: '1px solid rgba(242,129,0,0.3)', fontSize: 12, color: '#F28100' }}>
-        <b>Nuevo flujo seguro:</b> los datos no se publican al catálogo hasta que vos los revisés y aprobés explícitamente.
+        <b>Nuevo flujo seguro:</b> los datos no se publican al catálogo hasta que los revises y apruebes explícitamente.
       </div>
 
       {/* ── UPLOAD ── */}
@@ -125,7 +125,7 @@ export function StagingImportView() {
                 {result.published} modelos actualizados · {result.created} modelos nuevos creados
                 {result.errors && result.errors.length > 0 && <span style={{ color: '#EF4444' }}> · {result.errors.length} errores</span>}
               </div>
-              <button onClick={reset} style={{ marginTop: 12, padding: '7px 16px', borderRadius: 8, border: 'none', background: '#F28100', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Nueva importación</button>
+              <button onClick={reset} style={{ marginTop: 12, padding: '7px 16px', borderRadius: 8, border: 'none', background: '#F28100', color: '#ffffff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Nueva importación</button>
             </div>
           )}
 
@@ -133,12 +133,12 @@ export function StagingImportView() {
             onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#1F2937' }}>
-              {uploading ? 'Procesando PDF...' : 'Arrastrá el PDF de lista de precios aquí'}
+              {uploading ? 'Procesando PDF...' : 'Arrastra el PDF de lista de precios aquí'}
             </div>
             <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 16 }}>
               Formatos soportados: Honda · Yamaha (Yamaimport) · MMB (Keeway/Benelli/Benda/QJ) · Promobility
             </div>
-            <label style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#F28100', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
+            <label style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#F28100', color: '#ffffff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
               {uploading ? 'Procesando...' : 'Seleccionar PDF'}
               <input type="file" accept=".pdf" style={{ display: 'none' }} disabled={uploading}
                 onChange={e => e.target.files[0] && handleUpload(e.target.files[0])} />
@@ -146,7 +146,7 @@ export function StagingImportView() {
           </div>
 
           <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 14, fontSize: 12, color: '#6B7280' }}>
-            El parser extrae automáticamente: <span style={{ color: '#1F2937', fontWeight: 500 }}>marca · modelo · categoría · precio lista · bono todo medio de pago</span>. Después podés revisar y corregir cada fila antes de publicar.
+            El parser extrae automáticamente: <span style={{ color: '#1F2937', fontWeight: 500 }}>marca · modelo · categoría · precio lista · bono todo medio de pago</span>. Después puedes revisar y corregir cada fila antes de publicar.
           </div>
         </div>
       )}
@@ -175,7 +175,7 @@ export function StagingImportView() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                 <button onClick={reset} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
                 <button onClick={handlePublish} disabled={publishing || validRows.length === 0}
-                  style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: validRows.length === 0 ? '#D1D5DB' : '#10B981', color: '#fff', fontSize: 13, cursor: validRows.length === 0 ? 'default' : 'pointer', fontWeight: 700 }}>
+                  style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: validRows.length === 0 ? '#D1D5DB' : '#10B981', color: '#ffffff', fontSize: 13, cursor: validRows.length === 0 ? 'default' : 'pointer', fontWeight: 700 }}>
                   {publishing ? 'Publicando...' : `Publicar ${validRows.length} modelos al catálogo`}
                 </button>
               </div>
@@ -220,7 +220,7 @@ export function StagingImportView() {
                             <td style={{ padding: '4px 6px' }}><input type="number" value={editForm.bonus} onChange={e=>setEditForm(f=>({...f,bonus:e.target.value}))} style={{...S.inp,fontSize:11,padding:'4px 6px',width:80}}/></td>
                             <td/>
                             <td style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>
-                              <button onClick={saveEdit} disabled={savingEdit} style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#10B981', color: '#fff', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>{savingEdit?'…':'OK'}</button>
+                              <button onClick={saveEdit} disabled={savingEdit} style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#10B981', color: '#ffffff', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>{savingEdit?'…':'OK'}</button>
                               <button onClick={()=>setEditingRow(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 11, cursor: 'pointer' }}>✕</button>
                             </td>
                           </>

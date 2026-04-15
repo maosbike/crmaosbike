@@ -1,0 +1,164 @@
+/* ====================================================================
+   CRMaosBike — Design Tokens
+   --------------------------------------------------------------------
+   Fuente única de verdad para colores, tipografía, espaciado, radios
+   y elevaciones. Espejo JS en ./tokens.js.
+
+   Decisiones aplicadas:
+   · Paleta neutra → Tailwind `gray` (descartadas `slate` y legacy).
+   · SLA warning → `--warning` (#F59E0B) para separar del brand (#F28100).
+   · Coexistencia con CSS-in-JS actual vía CSS custom properties + mirror JS.
+
+   Este archivo es ADITIVO: ningún componente lo consume todavía.
+   ==================================================================== */
+
+:root {
+  /* ─── Color · Surface ─────────────────────────────────────────── */
+  --surface:         #FFFFFF;   /* cards, modales, inputs */
+  --surface-muted:   #F9FAFB;   /* fondo app, hover discreto (gray-50) */
+  --surface-sunken:  #F3F4F6;   /* tracks, chips inactivos (gray-100) */
+
+  /* ─── Color · Text (Tailwind gray) ────────────────────────────── */
+  --text:          #111827;  /* gray-900 — títulos */
+  --text-strong:   #1F2937;  /* gray-800 */
+  --text-body:     #374151;  /* gray-700 — body default */
+  --text-muted:    #4B5563;  /* gray-600 */
+  --text-subtle:   #6B7280;  /* gray-500 — meta, labels */
+  --text-disabled: #9CA3AF;  /* gray-400 */
+  --text-placeholder: #D1D5DB; /* gray-300 */
+  --text-on-brand: #FFFFFF;
+  --text-on-dark:  #FFFFFF;
+
+  /* ─── Color · Border (Tailwind gray) ──────────────────────────── */
+  --border:         #E5E7EB;  /* gray-200 — default */
+  --border-strong:  #D1D5DB;  /* gray-300 — inputs */
+  --border-subtle:  #F3F4F6;  /* gray-100 — divisores suaves */
+
+  /* ─── Color · Brand ───────────────────────────────────────────── */
+  --brand:          #F28100;
+  --brand-hover:    #C2410C;
+  --brand-soft:     rgba(242, 129, 0, 0.10);
+  --brand-muted:    rgba(242, 129, 0, 0.15);
+  --brand-strong:   rgba(242, 129, 0, 0.30);
+
+  /* ─── Color · Feedback ────────────────────────────────────────── */
+  --success:        #10B981;
+  --success-strong: #059669;
+  --success-dark:   #15803D;
+  --success-soft:   #F0FDF4;
+  --success-muted:  #ECFDF5;
+
+  /* SLA warning unificado con warning (decisión aplicada). */
+  --warning:        #F59E0B;
+  --warning-strong: #B45309;
+  --warning-dark:   #92400E;
+  --warning-soft:   #FFFBEB;
+  --warning-muted:  #FEF3C7;
+
+  --danger:         #EF4444;
+  --danger-strong:  #DC2626;
+  --danger-dark:    #B91C1C;
+  --danger-soft:    #FEF2F2;
+  --danger-muted:   #FEE2E2;
+
+  --info:           #3B82F6;
+  --info-strong:    #2563EB;
+  --info-soft:      #EFF6FF;
+
+  --cyan:           #06B6D4;
+  --cyan-soft:      #ECFEFF;
+
+  --purple:         #8B5CF6;
+  --purple-strong:  #7C3AED;
+  --purple-soft:    #F5F3FF;
+
+  /* ─── Color · Overlays (black/white con alpha estándar) ───────── */
+  --overlay-0:   rgba(0, 0, 0, 0.04);
+  --overlay-1:   rgba(0, 0, 0, 0.06);
+  --overlay-2:   rgba(0, 0, 0, 0.10);
+  --overlay-3:   rgba(0, 0, 0, 0.18);
+  --overlay-4:   rgba(0, 0, 0, 0.30);
+  --overlay-5:   rgba(0, 0, 0, 0.55);
+  --scrim:       rgba(0, 0, 0, 0.45);   /* modal backdrop default */
+
+  --white-soft:   rgba(255, 255, 255, 0.10);
+  --white-muted:  rgba(255, 255, 255, 0.40);
+  --white-strong: rgba(255, 255, 255, 0.90);
+
+  /* ─── Spacing (base-4) ────────────────────────────────────────── */
+  --space-0:      0;
+  --space-0_5:   2px;
+  --space-1:     4px;
+  --space-1_5:   6px;
+  --space-2:     8px;
+  --space-3:    12px;
+  --space-4:    16px;
+  --space-5:    20px;
+  --space-6:    24px;
+  --space-8:    32px;
+  --space-10:   40px;
+  --space-12:   48px;
+
+  /* ─── Typography · Family ─────────────────────────────────────── */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, 'Courier New', monospace;
+
+  /* ─── Typography · Size (escala reducida a 8 tamaños) ─────────── */
+  --fs-xxs:  10px;  /* eyebrow, status pill */
+  --fs-xs:   11px;  /* meta, badges, hint */
+  --fs-sm:   12px;  /* secondary body */
+  --fs-base: 13px;  /* body default (S.inp, S.btn) */
+  --fs-md:   14px;  /* emphasized body */
+  --fs-lg:   16px;  /* section title, input mobile (iOS-safe) */
+  --fs-xl:   18px;  /* subtitle */
+  --fs-2xl:  22px;  /* page / KPI */
+  --fs-3xl:  28px;  /* display */
+
+  /* ─── Typography · Weight ─────────────────────────────────────── */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+  --fw-xbold:   800;
+
+  /* ─── Typography · Line height ────────────────────────────────── */
+  --lh-tight:   1.2;
+  --lh-normal:  1.45;
+  --lh-relaxed: 1.6;
+
+  /* ─── Radius ──────────────────────────────────────────────────── */
+  --radius-xs:    4px;
+  --radius-sm:    6px;
+  --radius-md:    8px;   /* default: inputs, botones */
+  --radius-lg:   12px;   /* cards */
+  --radius-xl:   16px;   /* modales (desktop) */
+  --radius-2xl:  18px;   /* modal sheet mobile top */
+  --radius-pill: 999px;  /* badges, chips, pills */
+  --radius-full:  50%;   /* avatars, dots */
+
+  /* ─── Shadow / Elevation (4 niveles + brand + focus) ──────────── */
+  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg:    0 20px 60px rgba(0, 0, 0, 0.18);
+  --shadow-xl:    0 32px 80px rgba(0, 0, 0, 0.35);
+  --shadow-brand: 0 2px 8px rgba(242, 129, 0, 0.35);
+  --ring-focus:   0 0 0 3px rgba(242, 129, 0, 0.25);
+
+  /* ─── Breakpoints (read-only / doc) ───────────────────────────── */
+  --bp-mobile: 768px;
+  --bp-tablet: 1024px;
+
+  /* ─── Z-index ─────────────────────────────────────────────────── */
+  --z-base:        1;
+  --z-sticky:     10;
+  --z-modal:      60;
+  --z-bottom-nav: 70;
+  --z-drawer:     89;
+  --z-header:     90;
+  --z-toast:     100;
+
+  /* ─── Transitions ─────────────────────────────────────────────── */
+  --transition-fast:   120ms ease;
+  --transition-base:   200ms ease;
+  --transition-slow:   300ms ease;
+}

@@ -60,7 +60,7 @@ export function PipelineView({leads,user,nav,updLead}){
         <h1 style={{fontSize:17,fontWeight:700,margin:"0 0 10px"}}>Pipeline</h1>
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
           <select value={mobStage} onChange={e=>setMobStage(e.target.value)}
-            style={{flex:1,height:40,borderRadius:8,border:"1px solid #D1D5DB",padding:"0 10px",fontSize:14,background:"#F9FAFB",color:"#0F172A",fontFamily:"inherit"}}>
+            style={{flex:1,height:40,borderRadius:8,border:"1px solid #D1D5DB",padding:"0 10px",fontSize:14,background:"#F9FAFB",color:"#111827",fontFamily:"inherit"}}>
             {stages.map(s=>{const x=TICKET_STATUS[s]; return <option key={s} value={s}>{x?.l||s} ({pLeads.filter(l=>l.status===s).length})</option>;})}
           </select>
         </div>
@@ -77,13 +77,13 @@ export function PipelineView({leads,user,nav,updLead}){
               <div key={l.id} style={{background:"#FFFFFF",border:`1px solid ${sla.breach?"rgba(239,68,68,0.35)":"#E5E7EB"}`,borderRadius:10,padding:10,display:"flex",flexDirection:"column",gap:6}}>
                 <div onClick={()=>nav("ticket",l.id)} style={{cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",gap:8}}>
-                    <div style={{fontWeight:700,fontSize:13,color:"#0F172A",minWidth:0,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.fn} {l.ln}</div>
+                    <div style={{fontWeight:700,fontSize:13,color:"#111827",minWidth:0,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.fn} {l.ln}</div>
                     <PBdg p={l.priority}/>
                   </div>
-                  <div style={{fontSize:11,color:"#475569",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                    {l.model_brand?`${l.model_brand} ${l.model_name||""}`:<span style={{color:"#CBD5E1",fontStyle:"italic"}}>Sin moto</span>}
+                  <div style={{fontSize:11,color:"#4B5563",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {l.model_brand?`${l.model_brand} ${l.model_name||""}`:<span style={{color:"#D1D5DB",fontStyle:"italic"}}>Sin moto</span>}
                   </div>
-                  <div style={{fontSize:10,color:"#94A3B8",marginTop:3}}>{l.seller_fn||"Sin asignar"} · {ago(l.createdAt)}</div>
+                  <div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>{l.seller_fn||"Sin asignar"} · {ago(l.createdAt)}</div>
                 </div>
                 <div style={{display:"flex",gap:6}}>
                   <button onClick={()=>setMoveLead(l)} style={{flex:1,padding:"7px 0",fontSize:11,fontWeight:700,background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>Mover →</button>
@@ -102,7 +102,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   <button key={s} disabled={moving} onClick={()=>changeStage(moveLead,s)}
                     style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",border:`1.5px solid ${x?.c}40`,background:`${x?.c}10`,borderRadius:10,cursor:moving?"default":"pointer",fontFamily:"inherit",textAlign:"left",opacity:moving?0.6:1}}>
                     <span style={{width:10,height:10,borderRadius:"50%",background:x?.c}}/>
-                    <span style={{fontSize:14,fontWeight:700,color:"#0F172A"}}>{x?.l||s}</span>
+                    <span style={{fontSize:14,fontWeight:700,color:"#111827"}}>{x?.l||s}</span>
                   </button>
                 );
               })}
@@ -135,7 +135,7 @@ export function PipelineView({leads,user,nav,updLead}){
                       {sla.breach&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"3px 8px",borderRadius:6,background:"rgba(239,68,68,0.1)",fontSize:10,color:"#EF4444",fontWeight:600}}><Ic.alert size={11} color="#EF4444"/>SLA vencido · {sla.horas}h sin contacto</div>}
                       {sla.warning&&!sla.breach&&<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6,padding:"3px 8px",borderRadius:6,background:"rgba(245,158,11,0.1)",fontSize:10,color:"#F59E0B",fontWeight:600}}><Ic.clock size={11} color="#F59E0B"/>{3-sla.horas}h para SLA</div>}
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:4}}><div style={{fontWeight:600,fontSize:12}}>{l.fn} {l.ln}</div><PBdg p={l.priority}/></div>
-                      {m&&<div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#555",marginBottom:4}}>{l.model_image&&<img src={l.model_image} alt="" style={{width:28,height:20,padding:2,boxSizing:"border-box",objectFit:"contain",objectPosition:"center",borderRadius:3,background:"#F3F4F6"}}/>}{m.brand} {m.model}</div>}
+                      {m&&<div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#4B5563",marginBottom:4}}>{l.model_image&&<img src={l.model_image} alt="" style={{width:28,height:20,padding:2,boxSizing:"border-box",objectFit:"contain",objectPosition:"center",borderRadius:3,background:"#F3F4F6"}}/>}{m.brand} {m.model}</div>}
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#6B7280"}}><span>{l.phone}</span>{m&&m.price>0&&<span style={{fontWeight:600,color:"#F28100"}}>{fmt(m.price-m.bonus)}</span>}</div>
                       <div style={{fontSize:9,color:"#6B7280",marginTop:4}}>{l.seller_fn||''} · {l.branch_code||l.branch_name||''} · {ago(l.createdAt)}</div>
                       {/* Botón Registrar venta — detenemos propagación para no navegar al ticket */}
