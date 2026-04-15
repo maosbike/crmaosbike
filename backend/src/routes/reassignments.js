@@ -33,7 +33,7 @@ router.get('/ticket/:ticketId', async (req, res) => {
     // 1. Datos base del ticket (vendedor actual)
     const { rows: tRows } = await db.query(
       `SELECT t.created_at, t.assigned_to, t.seller_id, t.sla_status,
-              t.first_action_at, t.reassignment_count, t.sla_deadline,
+              t.first_action_at, t.reassignment_count, t.sla_deadline, t.branch_id,
               u.first_name as cur_fn, u.last_name as cur_ln
        FROM tickets t
        LEFT JOIN users u ON t.assigned_to = u.id

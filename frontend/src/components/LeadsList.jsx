@@ -35,7 +35,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
   const brs=realBranches||[];
   const isMobile = useIsMobile();
   // Filtros persistidos en App.jsx para mantener contexto al volver de una ficha
-  const {search='',stF='',brF='',prF='',srcF='',selF='',attF=false}=filter||{};
+  const {search='',stF='',brF='',prF='',srcF='',selF='',attF=false,orpF=false}=filter||{};
   const setFilter=(key,val)=>onFilterChange(f=>({...f,[key]:val}));
   const setSearch=v=>setFilter('search',v);
   const setStF=v=>setFilter('stF',v);
@@ -44,7 +44,8 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
   const setSrcF=v=>setFilter('srcF',v);
   const setSelF=v=>setFilter('selF',v);
   const setAttF=v=>setFilter('attF',v);
-  const clearFilters=()=>onFilterChange({search:'',stF:'',brF:'',prF:'',srcF:'',selF:'',attF:false});
+  const setOrpF=v=>setFilter('orpF',v);
+  const clearFilters=()=>onFilterChange({search:'',stF:'',brF:'',prF:'',srcF:'',selF:'',attF:false,orpF:false});
   const[showNew,setShowNew]=useState(false);
   const[catalogModels,setCatalogModels]=useState([]);
   const[allSellers,setAllSellers]=useState([]);
@@ -88,10 +89,11 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
     if(srcF&&l.source!==srcF)return false;
     if(selF&&String(l.seller_id)!==String(selF))return false;
     if(attF&&!l.needs_attention)return false;
+    if(orpF&&l.seller_id)return false;
     if(hasRole(user, ROLES.VEND)&&l.seller_id!==user.id)return false;
     return true;
   });
-  const hasFilters=!!(search||stF||brF||prF||srcF||selF||attF);
+  const hasFilters=!!(search||stF||brF||prF||srcF||selF||attF||orpF);
   const[adding,setAdding]=useState(false);
   const handleAdd=async e=>{
     e.preventDefault();setAdding(true);
@@ -138,6 +140,28 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 <div style={{fontSize:11,fontWeight:700,color:'#B91C1C',marginTop:2}}>Necesita atención · 48h sin gestión</div>
               </div>
               {attF&&<span style={{marginLeft:12,fontSize:10,fontWeight:700,color:'#EF4444',background:'#FEE2E2',padding:'3px 8px',borderRadius:6}}>FILTRADO</span>}
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* ── Banner leads sin asignar (solo admin) ── */}
+      {!hasRole(user, ROLES.VEND)&&(()=>{
+        const orpCount=effectiveLeads.filter(l=>!l.seller_id).length;
+        if(orpCount===0&&!orpF)return null;
+        return(
+          <div style={{marginBottom:12}}>
+            <button onClick={()=>setOrpF(!orpF)} style={{
+              display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:12,
+              border:orpF?'2px solid #F59E0B':'1.5px solid #FCD34D',
+              background:orpF?'#FFFBEB':'#FFFFFF',cursor:'pointer',fontFamily:'inherit',
+              boxShadow:orpF?'0 3px 14px rgba(245,158,11,0.18)':'0 1px 3px rgba(0,0,0,0.04)'}}>
+              <span style={{fontSize:22}}>👤</span>
+              <div style={{textAlign:'left'}}>
+                <div style={{fontSize:22,fontWeight:900,color:'#B45309',lineHeight:1}}>{orpCount}</div>
+                <div style={{fontSize:11,fontWeight:700,color:'#92400E',marginTop:2}}>Sin asignar · sin vendedor</div>
+              </div>
+              {orpF&&<span style={{marginLeft:12,fontSize:10,fontWeight:700,color:'#F59E0B',background:'#FEF3C7',padding:'3px 8px',borderRadius:6}}>FILTRADO</span>}
             </button>
           </div>
         );
@@ -296,7 +320,14 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       {brName ? ` · ${brName}` : ''}
                     </span>
                     {x.num && <span style={{ fontSize:10, color:'#9CA3AF' }}>#{x.num}</span>}
-                    <span style={{ fontSize:10, color:'#9CA3AF' }}>{ago(x.createdAt)}</span>
+                    {(()=>{
+                      const hasC=!!x.lastContact;
+                      const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
+                      const urgente=refH>=24;
+                      return<span style={{ fontSize:10, color:urgente?'#EF4444':'#9CA3AF', fontWeight:urgente?700:400 }}>
+                        {hasC?ago(x.lastContact):`sin contacto · ${ago(x.createdAt)}`}
+                      </span>;
+                    })()}
                   </div>
                 </div>
               );
@@ -426,11 +457,23 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
                 {/* Zona Fecha */}
                 <div className="crm-lead-date" style={{flex:'0 0 108px',padding:'12px 14px',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
-                  <div style={{...sectionLbl,marginBottom:7}}>Creación</div>
-                  <div style={{fontSize:13,fontWeight:700,color:'#1F2937',lineHeight:1.2}}>{fD(x.createdAt)}</div>
-                  <div style={{display:'inline-flex',alignItems:'center',marginTop:6}}>
-                    <span style={{fontSize:10,fontWeight:700,color:'#6B7280',background:'#F3F4F6',padding:'2px 8px',borderRadius:5,border:'1px solid #E5E7EB'}}>{ago(x.createdAt)}</span>
-                  </div>
+                  {(()=>{
+                    const hasC=!!x.lastContact;
+                    const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
+                    const urgente=refH>=24;
+                    const bc=urgente?'#EF4444':'#6B7280';
+                    const bb=urgente?'#FEF2F2':'#F3F4F6';
+                    const bbd=urgente?'#FECACA':'#E5E7EB';
+                    return(<>
+                      <div style={{...sectionLbl,marginBottom:7}}>{hasC?'Último contacto':'Sin contacto'}</div>
+                      <div style={{fontSize:13,fontWeight:700,color:'#1F2937',lineHeight:1.2}}>{fD(hasC?x.lastContact:x.createdAt)}</div>
+                      <div style={{display:'inline-flex',alignItems:'center',marginTop:6}}>
+                        <span style={{fontSize:10,fontWeight:700,color:bc,background:bb,padding:'2px 8px',borderRadius:5,border:`1px solid ${bbd}`,whiteSpace:'nowrap'}}>
+                          {hasC?ago(x.lastContact):`sin contacto · ${ago(x.createdAt)}`}
+                        </span>
+                      </div>
+                    </>);
+                  })()}
                 </div>
               </div>
             );

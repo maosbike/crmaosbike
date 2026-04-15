@@ -33,8 +33,8 @@ export function PipelineView({leads,user,nav,updLead}){
     }
   };
   const getSlaInfo=(l)=>{
-    if(l.sla_status==="vencido")return{horas:0,breach:true,warning:false};
-    if(l.sla_status==="en_riesgo")return{horas:0,breach:false,warning:true};
+    if(l.sla_status==="breached")return{horas:0,breach:true,warning:false};
+    if(l.sla_status==="warning")return{horas:0,breach:false,warning:true};
     const created=new Date(l.createdAt).getTime();const now=Date.now();const diff=now-created;const horas=diff/(1e3*60*60);const lastC=l.lastContact?new Date(l.lastContact).getTime():0;const sinContacto=lastC?((now-lastC)/(1e3*60*60)):horas;return{horas:Math.floor(sinContacto),breach:sinContacto>=3&&!l.lastContact,warning:sinContacto>=2&&sinContacto<3};
   };
   const changeStage=async(l,to)=>{

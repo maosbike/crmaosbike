@@ -316,7 +316,8 @@ router.post('/:id/followup', asyncHandler(async (req, res) => {
        next_followup_at = $4,
        followup_updated_at = $5,
        last_real_action_at = $5,
-       first_action_at = COALESCE(first_action_at, $5)
+       first_action_at = COALESCE(first_action_at, $5),
+       sla_status = CASE WHEN sla_status = 'reassigned' THEN 'reassigned' ELSE 'normal' END
      WHERE id = $6`,
     [followup_status, followup_note.trim(), followup_next_step.trim(),
      new Date(next_followup_at).toISOString(), now, req.params.id]

@@ -54,10 +54,11 @@ export function TicketView({lead,user,nav,updLead}){
   const[realSellers,setRealSellers]=useState([]);
   const[realModels,setRealModels]=useState([]);
   const[assignHistory,setAssignHistory]=useState([]);
+  const[assignHistoryErr,setAssignHistoryErr]=useState(null);
   useEffect(()=>{
     if(isAdmin){
       api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});
-      api.getReassignments(lead.id).then(d=>setAssignHistory(Array.isArray(d)?d:[])).catch(()=>{});
+      api.getReassignments(lead.id).then(d=>setAssignHistory(Array.isArray(d)?d:[])).catch(ex=>setAssignHistoryErr(ex?.message||'Error al cargar el historial'));
     }
     api.getModels().then(d=>setRealModels(Array.isArray(d)?d:[])).catch(()=>{});
     // Auto-transición: abrir un lead 'nuevo' lo mueve a 'abierto' (persiste en DB).
@@ -299,6 +300,21 @@ export function TicketView({lead,user,nav,updLead}){
           </button>
         </div>
       )}
+
+      {/* ── CARD: Próximo paso acordado ── */}
+      {lead.followup_next_step&&!isPerdido&&!isGanado&&(()=>{
+        const vencida=lead.next_followup_at&&new Date(lead.next_followup_at)<new Date();
+        return(
+          <div style={{ background:vencida?'rgba(239,68,68,0.05)':'#F0FDF4',border:`1px solid ${vencida?'rgba(239,68,68,0.25)':'#BBF7D0'}`,borderRadius:10,padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
+            <span style={{ fontSize:18,flexShrink:0,marginTop:1 }}>🎯</span>
+            <div style={{ flex:1,minWidth:0 }}>
+              <div style={{ fontSize:10,fontWeight:700,color:vencida?'#B91C1C':'#15803D',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3 }}>Próximo paso acordado{vencida?' · VENCIDO':''}</div>
+              <div style={{ fontSize:12,fontWeight:600,color:'#111827' }}>{lead.followup_next_step}</div>
+              {lead.next_followup_at&&<div style={{ fontSize:11,color:vencida?'#EF4444':'#6B7280',marginTop:3,fontWeight:vencida?700:400 }}>{fD(lead.next_followup_at)}</div>}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── CARD: Último contacto real (Historial claro) ── */}
       {lead.last_contact_entry&&(
@@ -587,50 +603,49 @@ export function TicketView({lead,user,nav,updLead}){
                 </div>
               )}
 
-              {/* ¿Financiamiento? + Guardar */}
-              <div style={{ display:'flex', alignItems:'center', gap:16, padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB' }}>
-                <div>
-                  <label style={{ ...S.lbl, marginBottom:5 }}>¿Solicita financiamiento?</label>
-                  <div style={{ display:'flex', gap:6 }}>
-                    {[true,false].map(v=>(
-                      <button key={String(v)} type="button" onClick={()=>upd("wantsFin",v)}
-                        style={{ ...S.btn2, padding:'4px 14px', fontSize:12,
-                          background:lead.wantsFin===v?(v?"#F28100":"#374151"):"transparent",
-                          color:lead.wantsFin===v?"#ffffff":"#9CA3AF",
-                          border:lead.wantsFin===v?"none":"1px solid #D1D5DB" }}>
-                        {v?"Sí":"No"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ marginLeft:'auto' }}>
-                  <button onClick={async()=>{
-                    const orig=savedRef.current||{};
-                    const LABELS={fn:'Nombre',ln:'Apellido',rut:'RUT',bday:'F. Nacimiento',email:'Email',phone:'Teléfono',comuna:'Comuna',source:'Origen',sitLab:'Sit. Laboral',continuidad:'Continuidad',renta:'Renta',pie:'Pie',wantsFin:'Solicita Fin.',finStatus:'Estado Fin.',rechazoMotivo:'Mot. Rechazo',motoId:'Modelo'};
-                    const changed=Object.keys(LABELS).filter(k=>String(lead[k]??'')!==String(orig[k]??''));
-                    const payload={first_name:lead.fn,last_name:lead.ln,rut:lead.rut,birthdate:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sit_laboral:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta||null,pie:lead.pie||null,wants_financing:lead.wantsFin,fin_status:lead.finStatus,rechazo_motivo:lead.rechazoMotivo,model_id:lead.motoId||null};
-                    try{
-                      await api.updateTicket(lead.id,payload);
-                      if(changed.length>0){
-                        const fmtVal=(k,v)=>{
-                          if(v===''||v===null||v===undefined)return '(vacío)';
-                          if(k==='renta'||k==='pie')return '$'+Number(v).toLocaleString('es-CL');
-                          if(k==='wantsFin')return v?'Sí':'No';
-                          return String(v);
-                        };
-                        const details=changed.map(k=>`${LABELS[k]}: ${fmtVal(k,orig[k])} → ${fmtVal(k,lead[k])}`).join('\n');
-                        const e=await api.addTimeline(lead.id,{type:'system',title:`Datos actualizados (${changed.length} campo${changed.length!==1?'s':''})`,note:details});
-                        addTimelineLocal(e);
-                      }
-                      savedRef.current={...orig,...lead};
-                    }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
-                  }} style={{ ...S.btn, fontSize:12 }}>
-                    Guardar cambios
-                  </button>
+              {/* ¿Solicita financiamiento? */}
+              <div style={{ padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB' }}>
+                <label style={{ ...S.lbl, marginBottom:5 }}>¿Solicita financiamiento?</label>
+                <div style={{ display:'flex', gap:6 }}>
+                  {[true,false].map(v=>(
+                    <button key={String(v)} type="button" onClick={()=>upd("wantsFin",v)}
+                      style={{ ...S.btn2, padding:'4px 14px', fontSize:12,
+                        background:lead.wantsFin===v?(v?"#F28100":"#374151"):"transparent",
+                        color:lead.wantsFin===v?"#ffffff":"#9CA3AF",
+                        border:lead.wantsFin===v?"none":"1px solid #D1D5DB" }}>
+                      {v?"Sí":"No"}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
 
+          </div>
+          {/* Barra Guardar datos del cliente */}
+          <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'flex-end' }}>
+            <button onClick={async()=>{
+              const orig=savedRef.current||{};
+              const LABELS={fn:'Nombre',ln:'Apellido',rut:'RUT',bday:'F. Nacimiento',email:'Email',phone:'Teléfono',comuna:'Comuna',source:'Origen',sitLab:'Sit. Laboral',continuidad:'Continuidad',renta:'Renta',pie:'Pie',wantsFin:'Solicita Fin.',finStatus:'Estado Fin.',rechazoMotivo:'Mot. Rechazo',motoId:'Modelo'};
+              const changed=Object.keys(LABELS).filter(k=>String(lead[k]??'')!==String(orig[k]??''));
+              const payload={first_name:lead.fn,last_name:lead.ln,rut:lead.rut,birthdate:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sit_laboral:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta||null,pie:lead.pie||null,wants_financing:lead.wantsFin,fin_status:lead.finStatus,rechazo_motivo:lead.rechazoMotivo,model_id:lead.motoId||null};
+              try{
+                await api.updateTicket(lead.id,payload);
+                if(changed.length>0){
+                  const fmtVal=(k,v)=>{
+                    if(v===''||v===null||v===undefined)return '(vacío)';
+                    if(k==='renta'||k==='pie')return '$'+Number(v).toLocaleString('es-CL');
+                    if(k==='wantsFin')return v?'Sí':'No';
+                    return String(v);
+                  };
+                  const details=changed.map(k=>`${LABELS[k]}: ${fmtVal(k,orig[k])} → ${fmtVal(k,lead[k])}`).join('\n');
+                  const e=await api.addTimeline(lead.id,{type:'system',title:`Datos actualizados (${changed.length} campo${changed.length!==1?'s':''})`,note:details});
+                  addTimelineLocal(e);
+                }
+                savedRef.current={...orig,...lead};
+              }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
+            }} style={{ ...S.btn, fontSize:12 }}>
+              Guardar datos del cliente
+            </button>
           </div>
         </div>
       </div>
@@ -719,9 +734,9 @@ export function TicketView({lead,user,nav,updLead}){
       })()}
 
       {/* ══════════════════════════════════════════════════════════
-          TIMELINE — sección inferior (oculto para vendedores)
+          TIMELINE — sección inferior
       ══════════════════════════════════════════════════════════ */}
-      {!hasRole(user, ROLES.VEND)&&<div style={secCard}>
+      <div style={secCard}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid #F3F4F6' }}>
           <span style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Timeline de Gestión</span>
         </div>
@@ -776,7 +791,7 @@ export function TicketView({lead,user,nav,updLead}){
             )}
           </div>
         </div>
-      </div>}
+      </div>
 
       {/* ══════════════════════════════════════════════════════════
           RECORDATORIOS — sección inferior
@@ -806,7 +821,9 @@ export function TicketView({lead,user,nav,updLead}){
           </button>
           {histOpen&&(
             <div style={{ padding:'0 20px 18px' }}>
-              {assignHistory.length===0
+              {assignHistoryErr
+                ?<div style={{ background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'12px 16px', fontSize:12, color:'#B91C1C' }}>No se pudo cargar el historial. Verifica permisos o intenta de nuevo.</div>
+                :assignHistory.length===0
                 ?<div style={{ textAlign:'center', padding:'24px 0', color:'#9CA3AF', fontSize:12 }}>Cargando historial...</div>
                 :<div style={{ position:'relative', paddingLeft:24 }}>
                   <div style={{ position:'absolute', left:9, top:14, bottom:14, width:2, background:'#E5E7EB', borderRadius:2 }}/>

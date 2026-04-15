@@ -305,15 +305,22 @@ export function ImportView() {
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
                 {[
-                  {l:'Leads importados', v:result.imported, c:'#10B981'},
-                  {l:'Errores en fila',  v:result.errors,   c:'#EF4444'},
+                  {l:'Leads importados', v:result.imported,  c:'#10B981'},
+                  {l:'Errores en fila',  v:result.errors,    c:'#EF4444'},
+                  {l:'Sin vendedor',     v:result.no_seller, c:'#F59E0B'},
                 ].map(x=>(
                   <div key={x.l} style={{...S.card,padding:'14px',textAlign:'center'}}>
-                    <div style={{fontSize:26,fontWeight:800,color:x.c}}>{x.v}</div>
+                    <div style={{fontSize:26,fontWeight:800,color:x.c}}>{x.v??0}</div>
                     <div style={{fontSize:10,color:'#6B7280',marginTop:4}}>{x.l}</div>
                   </div>
                 ))}
               </div>
+              {result.no_seller>0&&(
+                <div style={{background:'rgba(245,158,11,0.07)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:10,padding:'12px 16px',display:'flex',alignItems:'flex-start',gap:10,fontSize:12,color:'#92400E'}}>
+                  <span style={{fontSize:16,flexShrink:0}}>⚠️</span>
+                  <span><strong>{result.no_seller} lead{result.no_seller!==1?'s':''} quedaron sin vendedor asignado.</strong> Revisalos en el panel de admin para reasignar manualmente.</span>
+                </div>
+              )}
               {result.tickets?.length>0&&(
                 <div style={S.card}>
                   <h3 style={{fontSize:12,fontWeight:600,margin:'0 0 10px',color:'#9CA3AF'}}>Tickets creados</h3>
