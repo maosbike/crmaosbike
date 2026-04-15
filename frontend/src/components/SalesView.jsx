@@ -732,11 +732,9 @@ async function openNote(data, type) {
     const fd = data.finData;
     const pieAmt = Number(fd.pieAmt) || 0;
     const piePct = fd.piePct != null ? Number(fd.piePct) : null;
-    const cuotas = Number(fd.cuotas) || 0;
     const saldoFin = Math.max(0, t.grandTotal - pieAmt);
-    const cuotaVal = cuotas > 0 ? Math.round(saldoFin / cuotas) : 0;
 
-    const boxH = cuotas > 0 ? 26 : 20;
+    const boxH = 14;
     doc.setFillColor(255, 247, 237);
     doc.setDrawColor(253, 186, 116); doc.setLineWidth(0.3);
     doc.roundedRect(M, y, cw, boxH, 1.5, 1.5, 'FD');
@@ -749,15 +747,6 @@ async function openNote(data, type) {
     doc.text(`Pie inicial: ${pieLabel}`, M + 4, y + 10.5);
     doc.text(`Saldo a financiar: ${fmtCLP(saldoFin)}`, W - M - 4, y + 10.5, { align: 'right' });
 
-    if (cuotas > 0) {
-      doc.text(`N° de cuotas: ${cuotas}`, M + 4, y + 16);
-      doc.text(`Valor cuota referencial: ${fmtCLP(cuotaVal)}`, W - M - 4, y + 16, { align: 'right' });
-      doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...gray);
-      doc.text('Monto referencial — la cuota final la determina Autofin según la evaluación crediticia.', M + 4, y + 21);
-    } else {
-      doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...gray);
-      doc.text('Cuotas y valor final a definir por Autofin.', M + 4, y + 15.5);
-    }
     y += boxH + 4;
   }
 
@@ -857,10 +846,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [payMode,  setPayMode] = useState('');
   const [payLines, setPayLines]= useState([{ method: '', amount: '' }]);
 
-  // Autofin (crédito) — pie inicial + cuotas
+  // Autofin (crédito) — pie inicial
   const [finPct,     setFinPct]     = useState('');   // % del pie sobre el total
   const [finAmt,     setFinAmt]     = useState('');   // monto $ del pie
-  const [finCuotas,  setFinCuotas]  = useState('');   // número de cuotas
 
   // Extras
   const [accs,       setAccs]      = useState([]);
@@ -879,7 +867,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     setSelUnit(null); setSelMod(null);
     setForm({ ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' });
     setPayMode(''); setPayLines([{ method: '', amount: '' }]);
-    setFinPct(''); setFinAmt(''); setFinCuotas('');
+    setFinPct(''); setFinAmt('');
     setAccs([]); setDiscount(''); setAbono(''); setCatMods([]);
     setChargeType('inscripcion');
     setTitularSame(true); setTitular({ name: '', rut: '', phone: '', email: '', address: '', commune: '' });
@@ -955,11 +943,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     try {
       // Línea autofin para anexar a las notas — sólo si el medio es Crédito Autofin
       let autofinLine = null;
-      if (payMode === 'Crédito Autofin' && (finAmt || finPct || finCuotas)) {
+      if (payMode === 'Crédito Autofin' && (finAmt || finPct)) {
         const pieAmt = Number(finAmt) || 0;
         const parts = [`Autofin: pie ${fmtCLP(pieAmt)}`];
         if (finPct) parts.push(`(${finPct}%)`);
-        if (finCuotas) parts.push(`· ${finCuotas} cuotas`);
         autofinLine = parts.join(' ');
       }
 
@@ -1037,7 +1024,6 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         finData: payMode === 'Crédito Autofin' ? {
           pieAmt:    Number(finAmt)    || 0,
           piePct:    finPct ? Number(finPct) : null,
-          cuotas:    Number(finCuotas) || 0,
         } : null,
         modelPhotoUrl: colorPhotoUrl,
         titularSame,
@@ -1312,7 +1298,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     onChange={v => {
                       setPayMode(v);
                       setPayLines([{ method: '', amount: '' }]);
-                      setFinPct(''); setFinAmt(''); setFinCuotas('');
+                      setFinPct(''); setFinAmt('');
                     }} />
                 </div>
 
@@ -1351,24 +1337,13 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                         }} />
                     </div>
 
-                    <Field label="Número de cuotas" value={finCuotas} type="number"
-                      onChange={setFinCuotas} />
-
                     {totals.grandTotal > 0 && Number(finAmt) >= 0 && (() => {
                       const pieAmt = Number(finAmt) || 0;
                       const saldoFin = Math.max(0, totals.grandTotal - pieAmt);
-                      const n = Number(finCuotas) || 0;
-                      const cuotaVal = n > 0 ? Math.round(saldoFin / n) : 0;
                       return (
                         <div style={{ background: '#FFFFFF', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <div>Pie inicial: <strong>{fmtCLP(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
                           <div>Saldo a financiar: <strong>{fmtCLP(saldoFin)}</strong></div>
-                          {n > 0 && (
-                            <div>Valor cuota referencial: <strong>{fmtCLP(cuotaVal)}</strong> × {n} cuotas</div>
-                          )}
-                          <div style={{ fontSize: 10, color: '#9A3412', marginTop: 2, fontStyle: 'italic' }}>
-                            Referencial — el monto final lo define Autofin según la evaluación.
-                          </div>
                         </div>
                       );
                     })()}
@@ -1494,16 +1469,14 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   );
 }
 
-// Parser de la línea "Autofin: pie $X (Y%) · Z cuotas" dentro de sale_notes
+// Parser de la línea "Autofin: pie $X (Y%)" dentro de sale_notes
 function parseAutofinFromNotes(notes) {
   if (!notes) return null;
-  // Busca "Autofin: pie $123.456 (30%) · 36 cuotas" o variantes
-  const m = /Autofin:\s*pie\s*\$?([\d\.\,]+)(?:\s*\(([\d\.]+)%\))?(?:[^\d]+(\d+)\s*cuotas)?/i.exec(notes);
+  const m = /Autofin:\s*pie\s*\$?([\d\.\,]+)(?:\s*\(([\d\.]+)%\))?/i.exec(notes);
   if (!m) return null;
   const pieAmt = Number(String(m[1]).replace(/[\.\,]/g, '')) || 0;
   const piePct = m[2] ? Number(m[2]) : null;
-  const cuotas = m[3] ? Number(m[3]) : 0;
-  return { pieAmt, piePct, cuotas };
+  return { pieAmt, piePct };
 }
 
 // Helper: abre nota de venta/reserva desde un registro del listado (busca foto en catálogo)
