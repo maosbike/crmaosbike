@@ -470,7 +470,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
     }
 
     // ── Cargar sucursales activas y catálogo de motos ─────────
-    const { rows: branches } = await db.query('SELECT id, name, code FROM branches WHERE active = true');
+    const { rows: branches } = await db.query('SELECT id, name, code FROM branches WHERE active = true ORDER BY id');
     const { rows: models }   = await db.query('SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true');
 
     // ── Aplicar flags ──────────────────────────────────────────
