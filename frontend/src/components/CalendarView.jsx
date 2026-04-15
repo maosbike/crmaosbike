@@ -47,7 +47,21 @@ export function CalendarView({user,nav}){
   useEffect(()=>{
     if(!showForm)return;
     api.getSellers().then(d=>setSellers(Array.isArray(d)?d:[])).catch(()=>{});
-    api.getTickets({limit:100}).then(d=>setTickets((d.data||[]).slice(0,100))).catch(()=>{});
+    // Paginado: trae todas las páginas (chunks de 200) con tope de seguridad.
+    (async()=>{
+      const PAGE_SIZE=200, MAX_PAGES=50;
+      const acc=[];
+      try{
+        for(let page=1; page<=MAX_PAGES; page++){
+          const r=await api.getTickets({page,limit:PAGE_SIZE});
+          const batch=r?.data||[];
+          acc.push(...batch);
+          const total=typeof r?.total==='number'?r.total:acc.length;
+          if(acc.length>=total||batch.length<PAGE_SIZE)break;
+        }
+        setTickets(acc);
+      }catch{}
+    })();
   },[showForm]);
 
   const openNew=(day=null)=>{

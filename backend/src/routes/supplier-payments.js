@@ -21,10 +21,18 @@ const parseAmt = parseChileanInt;
 router.use(auth);
 
 // ─── Auto-match model to catalog ─────────────────────────────────────────────
+// Niveles:
+//   1. exact match (LOWER brand + LOWER model|code|normalized_model)
+//   2. model_aliases
+//   3. fuzzy (brand + prefix LIKE) — con requisitos de seguridad:
+//      a) LENGTH(model) >= FUZZY_MIN para no matchear siglas cortas ("FZ", "R1")
+//      b) si el fuzzy devuelve MÁS DE UN resultado distinto → ambigüedad → null
+//         (evita asociar mal cuando "FZ-1" matchea "FZ-150" y "FZ-16")
 async function resolveModelId(brand, model) {
   if (!model) return null;
   const m = model.trim();
   const b = (brand || '').trim();
+  const FUZZY_MIN = 4;
 
   // 1. Exact match on code or model name (same brand)
   let q = await db.query(
@@ -46,16 +54,17 @@ async function resolveModelId(brand, model) {
   );
   if (q.rows[0]) return q.rows[0].model_id;
 
-  // 3. Fuzzy: model contains or starts-with (same brand)
-  if (b) {
-    q = await db.query(
+  // 3. Fuzzy: solo si el modelo tiene longitud suficiente para no ser ambiguo.
+  if (b && m.length >= FUZZY_MIN) {
+    const fz = await db.query(
       `SELECT id FROM moto_models
        WHERE active=true AND LOWER(brand)=LOWER($1)
          AND (LOWER(model) LIKE LOWER($2)||'%' OR LOWER($2) LIKE LOWER(model)||'%')
-       LIMIT 1`,
+       LIMIT 2`,
       [b, m]
     );
-    if (q.rows[0]) return q.rows[0].id;
+    // Si hay más de 1 candidato distinto, es ambiguo — no asociamos.
+    if (fz.rows.length === 1) return fz.rows[0].id;
   }
 
   return null;
@@ -398,9 +407,16 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
 );
 
 // ─── GET / ────────────────────────────────────────────────────────────────────
+// Acepta ?page&limit (default 500, max 1000) para compatibilidad con la vista
+// actual, que carga todo el listado y aplica filtros/orden en cliente.
+// Devuelve {data, total, page, limit}. Mantiene filtros (q/status/from/to).
 router.get('/', async (req, res) => {
   try {
     const { q, status, from, to } = req.query;
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 500));
+    const offset = (page - 1) * limit;
+
     const where = [], params = [];
     let idx = 1;
     if (status) { where.push(`status = $${idx++}`); params.push(status); }
@@ -411,6 +427,13 @@ router.get('/', async (req, res) => {
       params.push(`%${q}%`); idx++;
     }
     const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+
+    const countR = await db.query(
+      `SELECT COUNT(*)::int AS n FROM supplier_payments sp ${clause}`,
+      params
+    );
+    const total = countR.rows[0]?.n || 0;
+
     const { rows } = await db.query(
       `SELECT sp.*,
         mm.image_url AS catalog_image,
@@ -418,9 +441,11 @@ router.get('/', async (req, res) => {
         mm.color_photos AS catalog_color_photos, mm.colors AS catalog_colors
        FROM supplier_payments sp
        LEFT JOIN moto_models mm ON mm.id = sp.model_id
-       ${clause} ORDER BY sp.created_at DESC`, params
+       ${clause} ORDER BY sp.created_at DESC
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, limit, offset]
     );
-    res.json({ data: rows, total: rows.length });
+    res.json({ data: rows, total, page, limit });
   } catch (e) { console.error('[SupPay] GET', e); res.status(500).json({ error: 'Error' }); }
 });
 

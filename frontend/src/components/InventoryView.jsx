@@ -162,10 +162,21 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
   useEffect(() => {
     if (!showAdd) return;
-    api.getTickets({ limit:300 }).then(d => {
-      const all = d.data || [];
-      setOpenTickets(all.filter(t => !['perdido'].includes(t.status)));
-    }).catch(() => {});
+    // Paginado: trae todas las páginas (chunks de 200) con tope de seguridad.
+    (async () => {
+      const PAGE_SIZE=200, MAX_PAGES=50;
+      const acc=[];
+      try {
+        for (let page=1; page<=MAX_PAGES; page++) {
+          const r=await api.getTickets({page,limit:PAGE_SIZE});
+          const batch=r?.data||[];
+          acc.push(...batch);
+          const total=typeof r?.total==='number'?r.total:acc.length;
+          if (acc.length>=total||batch.length<PAGE_SIZE) break;
+        }
+        setOpenTickets(acc.filter(t => !['perdido'].includes(t.status)));
+      } catch {}
+    })();
   }, [showAdd]);
 
   // ── Handlers (sin cambios de lógica) ────────────────────────────────────────

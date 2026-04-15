@@ -20,8 +20,8 @@ export function RemindersTab({ticketId,user}){
     try{const d=await api.createReminder({...form,ticket_id:ticketId});setReminders(p=>[d.reminder,...p]);setShowNew(false);setForm({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});}
     catch(err){alert(err.message);}
   };
-  const complete=async(id)=>{try{await api.completeReminder(id);setReminders(p=>p.map(r=>r.id===id?{...r,status:"completed"}:r));}catch{}};
-  const del=async(id)=>{if(!confirm("¿Eliminar recordatorio?"))return;try{await api.deleteReminder(id);setReminders(p=>p.filter(r=>r.id!==id));}catch{}};
+  const complete=async(id)=>{try{await api.completeReminder(id);setReminders(p=>p.map(r=>r.id===id?{...r,status:"completed"}:r));}catch(ex){alert('No se pudo marcar como completado: '+(ex.message||'Error'));}};
+  const del=async(id)=>{if(!confirm("¿Eliminar recordatorio?"))return;try{await api.deleteReminder(id);setReminders(p=>p.filter(r=>r.id!==id));}catch(ex){alert('No se pudo eliminar el recordatorio: '+(ex.message||'Error'));}};
 
   if(loading)return<div style={{padding:20,textAlign:"center",color:"#6B7280",fontSize:12}}>Cargando...</div>;
   return(

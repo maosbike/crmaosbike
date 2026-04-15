@@ -476,7 +476,7 @@ export function TicketView({lead,user,nav,updLead}){
             <label style={S.lbl}>Test Ride</label>
             <div style={{ display:'flex', gap:5 }}>
               {[true,false].map(v=>(
-                <button key={String(v)} onClick={()=>{updLead(lead.id,{testRide:v});api.updateTicket(lead.id,{test_ride:v}).catch(()=>{});}}
+                <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});alert('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
                   style={{ flex:1, padding:'5px', fontSize:11, fontWeight:600, fontFamily:'inherit', borderRadius:6, cursor:'pointer', border:'none',
                     background: lead.testRide===v?(v?'#10B981':'#374151'):'#EFEFEF', color: lead.testRide===v?'#fff':'#9CA3AF' }}>
                   {v?"✓ Sí":"✗ No"}

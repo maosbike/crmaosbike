@@ -581,10 +581,21 @@ export function SupplierPaymentsView({ user }) {
   const [sortBy,setSortBy]=useState('payment_date');   // payment_date | invoice_date | due_date | total_amount | paid_amount
   const [sortDir,setSortDir]=useState('desc');
 
+  // Paginado: trae todas las páginas (chunks de 500) — la vista filtra en cliente.
   const load = useCallback(async()=>{
     setLoading(true);
-    try{ const r=await api.getSupplierPayments(); setData(r.data||[]); }
-    catch(e){ console.error(e); }
+    const PAGE_SIZE=500, MAX_PAGES=40;
+    const acc=[];
+    try{
+      for(let page=1; page<=MAX_PAGES; page++){
+        const r=await api.getSupplierPayments({page,limit:PAGE_SIZE});
+        const batch=r?.data||[];
+        acc.push(...batch);
+        const total=typeof r?.total==='number'?r.total:acc.length;
+        if(acc.length>=total||batch.length<PAGE_SIZE)break;
+      }
+      setData(acc);
+    }catch(e){ console.error(e); }
     finally{ setLoading(false); }
   },[]);
   useEffect(()=>{load();},[load]);
