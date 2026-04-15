@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
@@ -50,7 +50,7 @@ export function TicketView({lead,user,nav,updLead}){
   const m=lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:lead.model_price||0,bonus:lead.model_bonus||0,year:lead.model_year||2025,cc:lead.model_cc||0,cat:lead.model_category||'',colors:[],image:lead.model_image||null}:null;
   const s={fn:lead.seller_fn||'',ln:lead.seller_ln||''};
   const br={name:lead.branch_name||'',code:lead.branch_code||'',addr:lead.branch_addr||''};
-  const isAdmin=["super_admin","admin_comercial"].includes(user.role);
+  const isAdmin=hasRole(user, ...ROLE_ADMIN_READ);
   const[realSellers,setRealSellers]=useState([]);
   const[realModels,setRealModels]=useState([]);
   const[assignHistory,setAssignHistory]=useState([]);
@@ -721,7 +721,7 @@ export function TicketView({lead,user,nav,updLead}){
       {/* ══════════════════════════════════════════════════════════
           TIMELINE — sección inferior (oculto para vendedores)
       ══════════════════════════════════════════════════════════ */}
-      {user.role!=='vendedor'&&<div style={secCard}>
+      {!hasRole(user, ROLES.VEND)&&<div style={secCard}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F3F5' }}>
           <span style={{ fontSize:13, fontWeight:700, color:'#0F172A' }}>Timeline de Gestión</span>
         </div>

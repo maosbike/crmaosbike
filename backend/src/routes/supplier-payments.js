@@ -4,6 +4,7 @@
  */
 const router  = require('express').Router();
 const db      = require('../config/db');
+const logger  = require('../config/logger');
 const { auth, roleCheck } = require('../middleware/auth');
 const multer  = require('multer');
 const cloudinary = require('../config/cloudinary');
@@ -316,7 +317,7 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
 
       res.json({ invoice: invoiceData, receipt: receiptData, merged });
     } catch (e) {
-      console.error('[SupPay/extract]', e);
+      logger.error({err:e},'[SupPay/extract]');
       res.status(500).json({ error: 'Error al procesar PDFs: ' + e.message });
     }
   }
@@ -400,7 +401,7 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
       );
       res.status(201).json(full[0] || rows[0]);
     } catch (e) {
-      console.error('[SupPay] POST', e);
+      logger.error({err:e},'[SupPay] POST');
       res.status(500).json({ error: 'Error al crear registro: ' + e.message });
     }
   }
@@ -446,7 +447,7 @@ router.get('/', async (req, res) => {
       [...params, limit, offset]
     );
     res.json({ data: rows, total, page, limit });
-  } catch (e) { console.error('[SupPay] GET', e); res.status(500).json({ error: 'Error' }); }
+  } catch (e) { logger.error({err:e},'[SupPay] GET'); res.status(500).json({ error: 'Error' }); }
 });
 
 // ─── GET /:id ─────────────────────────────────────────────────────────────────
@@ -513,7 +514,7 @@ router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), as
     );
     if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
     res.json(rows[0]);
-  } catch (e) { console.error('[SupPay] PATCH', e); res.status(500).json({ error: 'Error' }); }
+  } catch (e) { logger.error({err:e},'[SupPay] PATCH'); res.status(500).json({ error: 'Error' }); }
 });
 
 // ─── DELETE /:id ──────────────────────────────────────────────────────────────
@@ -726,7 +727,7 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
       ...results,
     });
   } catch (e) {
-    console.error('[SupPay/sync-drive]', e);
+    logger.error({err:e},'[SupPay/sync-drive]');
     if (e.code === 403 || (e.message || '').includes('permission')) {
       return res.status(403).json({
         error: `Sin acceso a las carpetas de Drive. Compartí ambas carpetas con: ${creds.client_email}`,

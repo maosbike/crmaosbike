@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field } from '../ui.jsx';
+import { Ic, S, Modal, Field, ROLES as ROLE_KEYS } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -384,7 +384,7 @@ export function AdminView() {
               <div style={{ fontWeight:700, marginBottom:4 }}>{b.name}</div>
               <div style={{ fontSize:11, color:'#6B7280' }}>{b.address||b.addr}</div>
               <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>
-                Código: {b.code} · Vendedores: {users.filter(u => u.branch_id===b.id && u.role==='vendedor').length}
+                Código: {b.code} · Vendedores: {users.filter(u => u.branch_id===b.id && u.role===ROLE_KEYS.VEND).length}
               </div>
             </div>
           ))}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole } from '../ui.jsx';
 
 // ── Helpers y constantes visuales (mismo lenguaje que InventoryView) ─────────
 const SRC_SHORT={web:"Web",redes_sociales:"RRSS",whatsapp:"WA",presencial:"Pres.",referido:"Ref.",evento:"Ev.",llamada:"Tel."};
@@ -49,7 +49,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
   const[allSellers,setAllSellers]=useState([]);
   useEffect(()=>{
     api.getModels().then(d=>setCatalogModels(Array.isArray(d)?d:[])).catch(()=>{});
-    if(user.role!=='vendedor') api.getSellers().then(d=>setAllSellers(Array.isArray(d)?d:[])).catch(()=>{});
+    if(!hasRole(user, ROLES.VEND)) api.getSellers().then(d=>setAllSellers(Array.isArray(d)?d:[])).catch(()=>{});
   },[]);
   const[nw,setNw]=useState({fn:"",ln:"",phone:"",email:"",rut:"",comuna:"",source:"presencial",motoId:"",branch_id:user.branch||"",priority:"media",seller_id:""});
   const[reassigningId,setReassigningId]=useState(null);
@@ -78,7 +78,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
     }
     finally{setReassigningBusy(false);}
   };
-  const sellers=user.role!=="vendedor"?[...new Map(effectiveLeads.filter(l=>l.seller_id).map(l=>[l.seller_id,{id:l.seller_id,fn:l.seller_fn,ln:l.seller_ln}])).values()]:[];
+  const sellers=!hasRole(user, ROLES.VEND)?[...new Map(effectiveLeads.filter(l=>l.seller_id).map(l=>[l.seller_id,{id:l.seller_id,fn:l.seller_fn,ln:l.seller_ln}])).values()]:[];
   const f=effectiveLeads.filter(l=>{
     if(search&&!`${l.fn} ${l.ln} ${l.phone} ${l.email} ${l.rut} ${l.num}`.toLowerCase().includes(search.toLowerCase()))return false;
     if(stF&&l.status!==stF)return false;
@@ -87,7 +87,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
     if(srcF&&l.source!==srcF)return false;
     if(selF&&String(l.seller_id)!==String(selF))return false;
     if(attF&&!l.needs_attention)return false;
-    if(user.role==="vendedor"&&l.seller_id!==user.id)return false;
+    if(hasRole(user, ROLES.VEND)&&l.seller_id!==user.id)return false;
     return true;
   });
   const hasFilters=!!(search||stF||brF||prF||srcF||selF||attF);
@@ -122,7 +122,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
       {/* ── KPI "Necesita atención" ── */}
       {(()=>{
-        const attCount=effectiveLeads.filter(l=>l.needs_attention&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
+        const attCount=effectiveLeads.filter(l=>l.needs_attention&&(!hasRole(user, ROLES.VEND)||l.seller_id===user.id)).length;
         if(attCount===0&&!attF)return null;
         return(
           <div style={{marginBottom:12}}>
@@ -145,7 +145,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       {/* ── KPI rápidos por estado ── */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:18}}>
         {Object.entries(TICKET_STATUS).map(([k,v])=>{
-          const cnt=effectiveLeads.filter(l=>l.status===k&&(user.role!=="vendedor"||l.seller_id===user.id)).length;
+          const cnt=effectiveLeads.filter(l=>l.status===k&&(!hasRole(user, ROLES.VEND)||l.seller_id===user.id)).length;
           const strip=stripFor(k);
           const active=stF===k;
           return(
@@ -167,7 +167,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       </div>
 
       {/* ── Cartera por vendedor (solo admins) ── */}
-      {user.role!=='vendedor'&&allSellers.length>0&&(
+      {!hasRole(user, ROLES.VEND)&&allSellers.length>0&&(
         <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
           {allSellers.map(s=>{
             const active=effectiveLeads.filter(l=>l.seller_id===s.id&&!['ganado','perdido'].includes(l.status)).length;
@@ -244,7 +244,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
       {/* ── Contador ── */}
       {f.length>0&&<div style={{fontSize:11,color:'#94A3B8',fontWeight:500,paddingLeft:2,marginBottom:6}}>
-        {f.length} ticket{f.length!==1?'s':''}{hasFilters?` (de ${effectiveLeads.filter(l=>user.role!=="vendedor"||l.seller_id===user.id).length} total)`:''}
+        {f.length} ticket{f.length!==1?'s':''}{hasFilters?` (de ${effectiveLeads.filter(l=>!hasRole(user, ROLES.VEND)||l.seller_id===user.id).length} total)`:''}
       </div>}
 
       {/* ── Lista de registros — mismo patrón visual que Inventario ── */}
@@ -354,7 +354,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       {brName&&<div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>{brName}</div>}
                     </>
                   )}
-                  {user.role!=='vendedor'&&allSellers.length>0&&(
+                  {!hasRole(user, ROLES.VEND)&&allSellers.length>0&&(
                     <div style={{marginTop:8}} onClick={e=>e.stopPropagation()}>
                       {reassigningId===x.id?(
                         <div style={{display:'flex',flexDirection:'column',gap:4}}>
@@ -400,7 +400,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         </div>
       )}
 
-      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.filter(b=>b.code!=='MPSY'&&b.code!=='MOV').map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{display:"grid",gridTemplateColumns:user.role!=='vendedor'&&allSellers.length>0?"1fr 1fr":"1fr",gap:10,marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/>{user.role!=='vendedor'&&allSellers.length>0&&<Field label="Asignar vendedor" value={nw.seller_id} onChange={v=>setNw({...nw,seller_id:v})} opts={[{v:"",l:"Auto-asignar"},...allSellers.map(s=>({v:s.id,l:`${s.first_name} ${s.last_name}`}))]}/>}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
+      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.filter(b=>b.code!=='MPSY'&&b.code!=='MOV').map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{display:"grid",gridTemplateColumns:!hasRole(user, ROLES.VEND)&&allSellers.length>0?"1fr 1fr":"1fr",gap:10,marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/>{!hasRole(user, ROLES.VEND)&&allSellers.length>0&&<Field label="Asignar vendedor" value={nw.seller_id} onChange={v=>setNw({...nw,seller_id:v})} opts={[{v:"",l:"Auto-asignar"},...allSellers.map(s=>({v:s.id,l:`${s.first_name} ${s.last_name}`}))]}/>}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
     </div>
   );
 }

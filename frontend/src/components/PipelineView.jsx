@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole } from '../ui.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 export function PipelineView({leads,user,nav,updLead}){
   const[dragId,setDragId]=useState(null);
   const[sellLead,setSellLead]=useState(null);
   const stages=PIPELINE_STAGES;
-  const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(user.role==="vendedor"&&l.seller_id!==user.id)return false;return true;});
+  const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(hasRole(user, ROLES.VEND)&&l.seller_id!==user.id)return false;return true;});
   // Persiste el cambio de estado en backend. Si falla, revierte UI.
   const drop=async stage=>{
     if(!dragId)return;
@@ -34,7 +34,7 @@ export function PipelineView({leads,user,nav,updLead}){
   };
   return(
     <div>
-      <h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {user.role==="vendedor"&&<span style={{fontSize:13,fontWeight:400,color:"#6B7280"}}>· Mis tickets</span>}</h1>
+      <h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {hasRole(user, ROLES.VEND)&&<span style={{fontSize:13,fontWeight:400,color:"#6B7280"}}>· Mis tickets</span>}</h1>
       <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:14}}>
         {stages.map(stage=>{
           const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);

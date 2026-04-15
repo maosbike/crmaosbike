@@ -22,6 +22,7 @@
 
 const router = require('express').Router();
 const db = require('../config/db');
+const logger = require('../config/logger');
 const { auth, roleCheck } = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
@@ -187,7 +188,7 @@ router.get('/', async (req, res) => {
       limit,
     });
   } catch (e) {
-    console.error('[Sales] GET /', e);
+    logger.error({err:e},'[Sales] GET /');
     res.status(500).json({ error: 'Error al obtener ventas' });
   }
 });
@@ -251,7 +252,7 @@ router.get('/stats', async (req, res) => {
 
     res.json(base);
   } catch (e) {
-    console.error('[Sales] GET /stats', e);
+    logger.error({err:e},'[Sales] GET /stats');
     res.status(500).json({ error: 'Error al obtener estadísticas' });
   }
 });
@@ -272,7 +273,7 @@ router.get('/:id', async (req, res) => {
 
     res.json(sanitizeSale(sale, req.user.role));
   } catch (e) {
-    console.error('[Sales] GET /:id', e);
+    logger.error({err:e},'[Sales] GET /:id');
     res.status(500).json({ error: 'Error' });
   }
 });
@@ -344,7 +345,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
 
     res.status(201).json({ ...rows[0], is_note_only: true });
   } catch (e) {
-    console.error('[Sales] POST /', e);
+    logger.error({err:e},'[Sales] POST /');
     res.status(500).json({ error: 'Error al registrar venta' });
   }
 });
@@ -407,7 +408,7 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
 
     res.json({ ...rows[0], is_note_only: isNoteOnly });
   } catch (e) {
-    console.error('[Sales] PATCH /:id', e);
+    logger.error({err:e},'[Sales] PATCH /:id');
     res.status(500).json({ error: 'Error al actualizar venta' });
   }
 });
@@ -486,7 +487,7 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
       ticket_id_was: unit.ticket_id || null,
     });
   } catch (e) {
-    console.error('[Sales] DELETE /:id', e);
+    logger.error({err:e},'[Sales] DELETE /:id');
     res.status(500).json({ error: 'Error al eliminar venta' });
   }
 });
@@ -534,7 +535,7 @@ router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice'
 
     res.json({ url: result.secure_url });
   } catch (e) {
-    console.error('[Sales] POST /:id/doc', e);
+    logger.error({err:e},'[Sales] POST /:id/doc');
     res.status(500).json({ error: 'Error al subir documento' });
   }
 });
