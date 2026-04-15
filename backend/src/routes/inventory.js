@@ -179,15 +179,27 @@ router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
   }
 });
 
-// Update inventory unit (edición completa para admin)
-router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
+// Update inventory unit (edición completa para admin; vendedor acotado a reserva)
+router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
-    const { branch_id, status, color, price, notes, brand, model, year, chassis, motor_num,
-            sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method } = req.body;
+    let { branch_id, status, color, price, notes, brand, model, year, chassis, motor_num,
+          sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method } = req.body;
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
     if (status === 'vendida') {
       return res.status(400).json({ error: 'Para marcar una unidad como vendida usá el flujo de venta (Registrar venta).' });
+    }
+
+    // Ownership vendedor: solo puede hacer reservas a su nombre; no puede tocar campos de stock/admin
+    if (req.user.role === 'vendedor') {
+      if (status && status !== 'reservada') {
+        return res.status(403).json({ error: 'Un vendedor solo puede marcar unidades como reservadas.' });
+      }
+      // Ignorar campos admin (no tira error, simplemente los descarta)
+      branch_id = undefined; color = undefined; price = undefined; notes = undefined;
+      brand = undefined; model = undefined; year = undefined; chassis = undefined; motor_num = undefined;
+      // Forzar ownership
+      sold_by = req.user.id;
     }
 
     // Verificar estado actual
@@ -284,13 +296,20 @@ router.get('/:id/history', roleCheck('super_admin', 'admin_comercial', 'backoffi
 });
 
 // POST /inventory/:id/sell — registrar venta de una unidad existente
-router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
+router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
-    const {
+    let {
       sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes,
       // Nuevos campos (migración 024)
       sale_price, cost_price, invoice_amount, client_name, client_rut,
     } = req.body;
+
+    // Ownership: un vendedor SOLO puede registrarse a sí mismo como sold_by
+    if (req.user.role === 'vendedor') {
+      sold_by    = req.user.id;
+      cost_price = null;       // vendedor no puede setear costo (dato sensible)
+    }
+
     if (!sold_by) return res.status(400).json({ error: 'Vendedor requerido' });
 
     // Verificar unidad existe y no está vendida
