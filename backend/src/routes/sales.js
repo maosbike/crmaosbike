@@ -510,11 +510,13 @@ router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice'
     const table       = isNoteOnly ? 'sales_notes' : 'inventory';
     const statusCheck = isNoteOnly ? '' : `AND status IN ('vendida','reservada')`;
 
-    // Ownership check para vendedor
-    const ownerClause = req.user.role === 'vendedor' ? `AND sold_by = '${req.user.id}'` : '';
+    // Ownership check para vendedor — parametrizado (nada de interpolación).
+    const isVendedor  = req.user.role === 'vendedor';
+    const ownerClause = isVendedor ? `AND sold_by = $2` : '';
+    const checkParams = isVendedor ? [req.params.id, req.user.id] : [req.params.id];
     const { rows: check } = await db.query(
       `SELECT id FROM ${table} WHERE id = $1 ${statusCheck} ${ownerClause}`,
-      [req.params.id]
+      checkParams
     );
     if (!check[0]) return res.status(404).json({ error: 'Venta no encontrada' });
 

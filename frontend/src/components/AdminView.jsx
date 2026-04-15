@@ -226,8 +226,13 @@ export function AdminView() {
   };
 
   const handleDeleteAlias = async id => {
-    await api.deleteAlias(id).catch(() => {});
-    setAliases(prev => prev.filter(a => a.id !== id));
+    if (!window.confirm('¿Eliminar este alias? No se puede deshacer.')) return;
+    try {
+      await api.deleteAlias(id);
+      setAliases(prev => prev.filter(a => a.id !== id));
+    } catch (ex) {
+      alert('No se pudo eliminar el alias: ' + (ex.message || 'Error'));
+    }
   };
 
   const handleCleanData = async () => {

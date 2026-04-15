@@ -21,6 +21,11 @@ const uploadEvidence = multer({ storage: multer.memoryStorage(), limits: { fileS
 // Alias para compatibilidad con referencias existentes — usa la constante compartida.
 const EVIDENCE_REQUIRED_STATES = EVIDENCE_REQUIRED;
 
+// Tope de caracteres para notas (coherente con frontend maxLength).
+// Evita payloads gigantes y mantiene la UI consistente.
+const NOTE_MAX      = 5000;
+const NEXT_STEP_MAX = 500;
+
 router.use(auth);
 
 // List tickets
@@ -285,8 +290,14 @@ router.post('/:id/followup', asyncHandler(async (req, res) => {
   if (!followup_note || followup_note.trim().length < 15) {
     return res.status(400).json({ error: 'El comentario debe tener al menos 15 caracteres' });
   }
+  if (followup_note.length > NOTE_MAX) {
+    return res.status(400).json({ error: `El comentario no puede superar los ${NOTE_MAX} caracteres` });
+  }
   if (!followup_next_step || followup_next_step.trim().length < 5) {
     return res.status(400).json({ error: 'Indicá el próximo paso concreto' });
+  }
+  if (followup_next_step.length > NEXT_STEP_MAX) {
+    return res.status(400).json({ error: `El próximo paso no puede superar los ${NEXT_STEP_MAX} caracteres` });
   }
   if (!next_followup_at) {
     return res.status(400).json({ error: 'Fecha de próxima gestión requerida' });
@@ -343,6 +354,9 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
   if (type === 'note_added') {
     if (!note || note.trim().length < 20) return res.status(400).json({ error: 'La nota debe tener al menos 20 caracteres para contar como gestión' });
   }
+  if (note && note.length > NOTE_MAX) {
+    return res.status(400).json({ error: `La nota no puede superar los ${NOTE_MAX} caracteres` });
+  }
 
   const { rows } = await db.query(
     `INSERT INTO timeline (ticket_id, user_id, type, title, note, method)
@@ -355,10 +369,21 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
     await SLAService.registerAction(req.params.id, 'contact_registered');
     // Auto-transición: pasa a En gestión solo si el ticket está en estados iniciales.
     // CONTACT_ADVANCES_FROM = ['nuevo', 'abierto'] — ver config/leadStatus.js
-    await db.query(
-      `UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status = ANY($2)`,
+    // RETURNING nos dice si hubo cambio real; si lo hubo, dejamos traza en timeline.
+    const autoTr = await db.query(
+      `UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status = ANY($2)
+       RETURNING id`,
       [req.params.id, CONTACT_ADVANCES_FROM]
     );
+    if (autoTr.rows[0]) {
+      await db.query(
+        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+         VALUES ($1, $2, 'system', $3, $4)`,
+        [req.params.id, req.user.id,
+         'Estado automático: En gestión',
+         'Transición automática al registrar contacto']
+      );
+    }
   } else if (type === 'note_added') {
     await SLAService.registerAction(req.params.id, 'note_added');
   }
@@ -407,11 +432,23 @@ router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (
   await db.query('UPDATE tickets SET last_contact_at = NOW() WHERE id = $1', [req.params.id]);
   // Registrar como acción real — fija first_action_at y protege contra reasignación SLA
   await SLAService.registerAction(req.params.id, 'contact_evidence');
-  // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal
-  await db.query(
-    "UPDATE tickets SET status = 'en_gestion' WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido')",
+  // Auto-transición: pasa a En gestión si no está ya en un estado más avanzado o terminal.
+  // RETURNING permite detectar cambio real y dejar traza en timeline.
+  const autoTr = await db.query(
+    `UPDATE tickets SET status = 'en_gestion'
+     WHERE id = $1 AND status NOT IN ('en_gestion','cotizado','financiamiento','ganado','perdido')
+     RETURNING id`,
     [req.params.id]
   );
+  if (autoTr.rows[0]) {
+    await db.query(
+      `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+       VALUES ($1, $2, 'system', $3, $4)`,
+      [req.params.id, req.user.id,
+       'Estado automático: En gestión',
+       'Transición automática al registrar evidencia de contacto']
+    );
+  }
 
   res.status(201).json(rows[0]);
 }));

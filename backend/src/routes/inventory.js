@@ -524,8 +524,8 @@ router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), asyn
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al importar: ' + e.message }); }
 });
 
-// Upload photo (chassis or motor)
-router.post('/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
+// Upload photo (chassis or motor) — mismo scope que el resto de edición de inventario
+router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffice'), uploadPhoto.single('photo'), async (req, res) => {
   try {
     const { field } = req.body; // 'chassis_photo', 'motor_photo', or 'unit_photo'
     if (!['chassis_photo', 'motor_photo', 'unit_photo'].includes(field))

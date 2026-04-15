@@ -673,6 +673,7 @@ export function TicketView({lead,user,nav,updLead}){
           {/* Input */}
           <div style={{ display:'flex', gap:8 }}>
             <input value={chatMsg} onChange={e=>setChatMsg(e.target.value)}
+              maxLength={5000}
               onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}}
               placeholder="Escribí un comentario para el equipo..." style={{ ...S.inp, flex:1, fontSize:12 }}/>
             <button onClick={sendChat} disabled={!chatMsg.trim()||chatSending}
@@ -729,6 +730,7 @@ export function TicketView({lead,user,nav,updLead}){
           <form onSubmit={submitNote} style={{ marginBottom:18, padding:12, background:'#F9FAFB', borderRadius:10, border:'1px solid #E5E7EB' }}>
             <label style={{ ...S.lbl, marginBottom:6 }}>Agregar nota <span style={{ color:'#9CA3AF', fontWeight:400 }}>(mín. 20 caracteres)</span></label>
             <textarea value={noteForm} onChange={e=>{setNoteForm(e.target.value);if(noteErr)setNoteErr("");}}
+              maxLength={5000}
               rows={3} style={{ ...S.inp, width:'100%', resize:'vertical', marginBottom:6 }}
               placeholder="Ej: Llamé al cliente, dice que está evaluando otras opciones, volver en 3 días..."/>
             {noteErr&&<div style={{ fontSize:11, color:'#EF4444', marginBottom:6 }}>{noteErr}</div>}
@@ -882,6 +884,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div>
                 <label style={{ ...S.lbl,marginBottom:5 }}>Comentario breve <span style={{ color:'#EF4444' }}>*</span> <span style={{ fontWeight:400,color:'#9CA3AF' }}>(mín. 15 caracteres)</span></label>
                 <textarea value={fq.note} onChange={e=>setFq(p=>({...p,note:e.target.value}))}
+                  maxLength={5000}
                   rows={3} style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}
                   placeholder="Ej: Llamé al cliente, dice que va a hablar con su pareja antes de decidir..."/>
                 <div style={{ textAlign:'right',fontSize:10,color:fq.note.length>=15?'#10B981':'#9CA3AF',marginTop:2 }}>{fq.note.length}/15</div>
@@ -890,6 +893,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div>
                 <label style={{ ...S.lbl,marginBottom:5 }}>Próximo paso <span style={{ color:'#EF4444' }}>*</span></label>
                 <input value={fq.nextStep} onChange={e=>setFq(p=>({...p,nextStep:e.target.value}))}
+                  maxLength={500}
                   style={{ ...S.inp,width:'100%',fontSize:12 }} placeholder="Ej: Volver a llamar el jueves a las 15:00"/>
               </div>
               {/* Fecha próxima gestión */}
@@ -946,6 +950,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div>
                 <label style={{ ...S.lbl,marginBottom:6 }}>Detalle adicional <span style={{ fontWeight:400,color:'#9CA3AF' }}>(opcional)</span></label>
                 <textarea value={perdidoDetalle} onChange={e=>setPerdidoDetalle(e.target.value)}
+                  maxLength={5000}
                   rows={3} placeholder="Ej: El cliente compró una Yamaha MT-03 en otro concesionario..."
                   style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}/>
               </div>
@@ -1078,7 +1083,7 @@ export function TicketView({lead,user,nav,updLead}){
                     ):(
                       <div>
                         <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Nota detallada <span style={{ color:'#EF4444' }}>*</span> (mín. 50 caracteres)</div>
-                        <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
+                        <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
                           rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
                           placeholder="Describe el contacto en detalle: qué se habló, qué se acordó, próximos pasos..."/>
                         <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=50?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/50</div>
@@ -1093,7 +1098,7 @@ export function TicketView({lead,user,nav,updLead}){
                     <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>
                       Nota obligatoria <span style={{ color:'#EF4444' }}>*</span> (mín. 40 caracteres)
                     </div>
-                    <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
+                    <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
                       rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
                       placeholder="Ej: Llamé a las 14:30, entró al buzón. Volver a intentar mañana a las 11:00..."/>
                     <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=40?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/40</div>
@@ -1104,7 +1109,7 @@ export function TicketView({lead,user,nav,updLead}){
                 {!needsEvidence&&!needsNote&&cf.result&&(
                   <div>
                     <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Nota adicional (opcional)</div>
-                    <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))}
+                    <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
                       rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
                       placeholder="Comentario adicional..."/>
                   </div>
