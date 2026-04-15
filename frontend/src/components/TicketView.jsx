@@ -36,9 +36,9 @@ const secTitle = (color='#374151') => ({
 });
 
 // Resultados que exigen evidencia (screenshot o nota ≥50 chars)
-const EVIDENCE_RESULTS=['Contactado','Interesado','Agendó visita','Cotización entregada','Envió documentos','No interesado'];
-// Resultados que solo exigen nota ≥40 chars (intento fallido)
-const NOTE_RESULTS=['No contesta','Buzón de voz'];
+const EVIDENCE_RESULTS=['Contactado','Interesado','Agendó visita','Cotización entregada','Envió documentos'];
+// Resultados que solo exigen nota ≥40 chars (intento fallido o sin interés)
+const NOTE_RESULTS=['No contesta','Buzón de voz','No interesado'];
 const EV_TYPES=[
   {v:'screenshot_whatsapp',l:'WhatsApp'},
   {v:'screenshot_llamada',  l:'Llamada'},
@@ -262,28 +262,35 @@ export function TicketView({lead,user,nav,updLead}){
         <span style={{ color:'#D1D5DB' }}>›</span>
         <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>{lead.fn} {lead.ln}</span>
         {/* Acciones principales — derecha */}
-        <div className="crm-ticket-actions" style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
-          {!isPerdido&&!isGanado&&(
-            <button onClick={()=>{resetContact();setShowContact(true);}}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
-                background:'#2563EB', color:'#ffffff', border:'none', borderRadius:8,
-                fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-                boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
-              <Ic.phone size={13} color="#ffffff"/>Registrar contacto
-            </button>
-          )}
-          {!isPerdido&&(
-            <button onClick={()=>setShowSell(true)}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
-                background: isGanado?'transparent':'#10B981', color: isGanado?'#10B981':'#ffffff',
-                border: isGanado?'1.5px solid #6EE7B7':'none', borderRadius:8,
-                fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-                boxShadow: isGanado?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
-              <Ic.sale size={13} color={isGanado?"#10B981":"#ffffff"}/>
-              {isGanado?'Registrar otra unidad':'Registrar venta'}
-            </button>
-          )}
-        </div>
+        {(()=>{
+          const isEarly=['nuevo','abierto','en_gestion'].includes(lead.status);
+          return(
+            <div className="crm-ticket-actions" style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
+              {!isPerdido&&!isGanado&&(
+                <button onClick={()=>{resetContact();setShowContact(true);}}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
+                    background:'#2563EB', color:'#ffffff', border:'none', borderRadius:8,
+                    fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                    boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
+                  <Ic.phone size={13} color="#ffffff"/>Registrar contacto
+                </button>
+              )}
+              {!isPerdido&&(
+                <button onClick={()=>setShowSell(true)}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
+                    background: isGanado||isEarly?'transparent':'#10B981',
+                    color: isGanado?'#10B981':isEarly?'#6B7280':'#ffffff',
+                    border: isGanado?'1.5px solid #6EE7B7':isEarly?'1px solid #D1D5DB':'none',
+                    borderRadius:8, fontSize:12, fontWeight:isEarly?500:700,
+                    cursor:'pointer', fontFamily:'inherit',
+                    boxShadow: isGanado||isEarly?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
+                  <Ic.sale size={13} color={isGanado?"#10B981":isEarly?"#6B7280":"#ffffff"}/>
+                  {isGanado?'Registrar otra unidad':'Registrar venta'}
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── BANNER: Necesita atención ── */}

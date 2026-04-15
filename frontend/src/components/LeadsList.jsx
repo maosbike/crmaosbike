@@ -169,7 +169,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
       {/* ── KPI rápidos por estado ── */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:18}}>
-        {Object.entries(TICKET_STATUS).map(([k,v])=>{
+        {Object.entries(TICKET_STATUS).filter(([k])=>hasRole(user,ROLES.VEND)?!['ganado','perdido'].includes(k):true).map(([k,v])=>{
           const cnt=effectiveLeads.filter(l=>l.status===k&&(!hasRole(user, ROLES.VEND)||l.seller_id===user.id)).length;
           const strip=stripFor(k);
           const active=stF===k;
@@ -217,17 +217,6 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           <Ic.search size={14} color="#9CA3AF" style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)'}}/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nombre, RUT, teléfono, ticket..." style={{...S.inp,paddingLeft:34,width:'100%',height:36,borderRadius:8,fontSize:12}}/>
         </div>
-        {divider}
-        <div style={{display:'flex',flexDirection:'column',gap:2}}>
-          <label style={filterLabel}>Estado</label>
-          <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-            {Object.entries(TICKET_STATUS).map(([k,v])=>{
-              const strip=stripFor(k);
-              return<button key={k} onClick={()=>setStF(stF===k?'':k)} style={{padding:'4px 10px',borderRadius:20,fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit',background:stF===k?strip.color:'transparent',color:stF===k?'#FFFFFF':'#6B7280',border:`1.5px solid ${stF===k?strip.color:'#E5E7EB'}`,transition:'all 0.12s'}}>{v.l}</button>;
-            })}
-          </div>
-        </div>
-        {divider}
         <div style={{display:'flex',flexDirection:'column',gap:2}}>
           <label style={filterLabel}>Prioridad</label>
           <select value={prF} onChange={e=>setPrF(e.target.value)} style={selectCtrl}>
@@ -329,6 +318,12 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       </span>;
                     })()}
                   </div>
+                  {/* L4: próximo paso (opcional) */}
+                  {x.followup_next_step&&(()=>{
+                    const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
+                    const txt=x.followup_next_step.length>40?x.followup_next_step.slice(0,40)+'…':x.followup_next_step;
+                    return<div style={{ paddingLeft:6, fontSize:10, color:venc?'#EF4444':'#6B7280', fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>🎯 {txt}</div>;
+                  })()}
                 </div>
               );
             }
@@ -376,11 +371,16 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 <div className="crm-lead-client" style={{flex:'0 0 210px',minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Cliente</div>
                   <div style={{fontSize:14,fontWeight:700,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
-                  {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:4}}>{x.phone}</div>}
+                  {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:4}}><a href={`tel:${x.phone}`} onClick={e=>e.stopPropagation()} style={{color:'inherit',textDecoration:'none'}}>{x.phone}</a></div>}
                   {x.rut&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{x.rut}</div>}
                   {x.source&&<div style={{marginTop:6}}>
                     <span style={{fontSize:9,fontWeight:700,color:'#6B7280',background:'#F3F4F6',padding:'2px 8px',borderRadius:5,border:'1px solid #E5E7EB',textTransform:'uppercase',letterSpacing:'0.06em'}}>{SRC_SHORT[x.source]||x.source}</span>
                   </div>}
+                  {x.followup_next_step&&(()=>{
+                    const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
+                    const txt=x.followup_next_step.length>40?x.followup_next_step.slice(0,40)+'…':x.followup_next_step;
+                    return<div style={{marginTop:5,fontSize:10,color:venc?'#EF4444':'#6B7280',fontStyle:'italic',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}} title={x.followup_next_step}>🎯 {txt}</div>;
+                  })()}
                 </div>
 
                 {/* Zona Estado / Prioridad */}

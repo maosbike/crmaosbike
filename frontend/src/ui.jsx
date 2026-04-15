@@ -33,17 +33,13 @@ export const STATUS_ORDER      = ['nuevo','abierto','en_gestion','cotizado','fin
 export const ACTIVE_STATUSES   = ['nuevo','abierto','en_gestion','cotizado','financiamiento'];
 export const TERMINAL_STATUSES = ['ganado','perdido'];
 export const PIPELINE_STAGES   = ACTIVE_STATUSES;
-// 9 opciones del seguimiento obligatorio — espejo de backend/src/config/leadStatus.js
+// 5 opciones del seguimiento obligatorio — espejo de backend/src/config/leadStatus.js
 export const FOLLOWUP_OPTS = [
   {v:'cliente_interesado',    l:'Cliente sigue interesado'},
-  {v:'quedo_responder',       l:'Quedó de responder'},
   {v:'contactar_mas_adelante',l:'Pidió contactar más adelante'},
   {v:'revisando_cotizacion',  l:'Está revisando cotización'},
-  {v:'reuniendo_pie_docs',    l:'Está reuniendo pie / documentos'},
-  {v:'evaluacion_financiera', l:'Está en evaluación financiera'},
   {v:'agendar_visita',        l:'Agendar visita o test ride'},
-  {v:'requiere_nueva_llamada',l:'Requiere nueva llamada'},
-  {v:'otro_avance',           l:'Otro avance'},
+  {v:'no_responde',           l:'No responde'},
 ];
 // Roles — fuente única de verdad. `hasRole(user, ...roles)` centraliza los
 // checks repetidos en vistas. No altera la semántica: es solo un alias de
