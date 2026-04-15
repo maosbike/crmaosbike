@@ -1,55 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Motorcycle glyph from Material Symbols (Apache 2.0 licensed, Google). -->
+  <!-- Centered and scaled on a 512 orange rounded square. -->
   <rect width="512" height="512" rx="104" fill="#F28100"/>
-
-  <!-- Cuadro/tanque/fairing en un solo trazo -->
-  <path fill="#0F0F0F" d="
-    M 120 380
-    C 118 350 130 322 160 318
-    L 230 312
-    C 258 310 278 302 290 288
-    L 320 252
-    C 340 230 378 224 400 244
-    C 420 262 426 296 418 336
-    L 412 378
-    L 380 378
-    C 378 362 366 350 350 350
-    C 334 350 322 362 320 378
-    L 200 378
-    C 198 362 186 350 170 350
-    C 154 350 142 362 140 378
-    Z
-  "/>
-
-  <!-- Piloto: torso + brazo (trazo continuo leaning-forward) -->
-  <path fill="#0F0F0F" d="
-    M 248 316
-    L 240 250
-    C 238 220 254 196 282 192
-    L 312 192
-    L 336 208
-    L 408 250
-    L 404 278
-    L 336 248
-    L 340 270
-    L 328 316
-    Z
-  "/>
-
-  <!-- Casco -->
-  <circle fill="#0F0F0F" cx="300" cy="152" r="48"/>
-  <!-- Barbilla -->
-  <path fill="#0F0F0F" d="M 340 140 L 358 140 L 358 184 L 340 192 Z"/>
-  <!-- Visera -->
-  <rect x="308" y="138" width="36" height="20" rx="3" fill="#F28100"/>
-
-  <!-- Rueda trasera -->
-  <path fill="#0F0F0F" fill-rule="evenodd" d="
-    M 58 410 a 80 80 0 1 0 160 0 a 80 80 0 1 0 -160 0 Z
-    M 98 410 a 40 40 0 1 1 80 0 a 40 40 0 1 1 -80 0 Z
-  "/>
-  <!-- Rueda delantera -->
-  <path fill="#0F0F0F" fill-rule="evenodd" d="
-    M 298 410 a 80 80 0 1 0 160 0 a 80 80 0 1 0 -160 0 Z
-    M 338 410 a 40 40 0 1 1 80 0 a 40 40 0 1 1 -80 0 Z
-  "/>
+  <g transform="translate(76 76) scale(15.0)" fill="#0F0F0F">
+    <path d="M19.44 9.03 15.41 5H11v2h3.59l2 2H5c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.46 0 4.45-1.69 4.9-4h1.65l2.77-2.77c-.21.54-.32 1.14-.32 1.77 0 2.8 2.2 5 5 5s5-2.2 5-5c0-2.65-1.97-4.77-4.56-4.97zM7.82 15C7.4 16.15 6.28 17 5 17c-1.63 0-3-1.37-3-3s1.37-3 3-3c1.28 0 2.4.85 2.82 2H5v2h2.82zM19 17c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
+  </g>
 </svg>
