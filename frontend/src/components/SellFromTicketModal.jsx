@@ -25,6 +25,11 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
   const [noStock, setNoStock] = useState(false); // toggle: nota sin unidad real
 
+  // Autofin: pie + cuotas (solo visible cuando payment_method === 'Crédito Autofin')
+  const [finPct,    setFinPct]    = useState('');
+  const [finAmt,    setFinAmt]    = useState('');
+  const [finCuotas, setFinCuotas] = useState('');
+
   const [form, setForm] = useState({
     inventory_id:   '',
     brand:          quoted?.brand || '',
@@ -74,6 +79,20 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
     if (!form.sold_by) { alert('Selecciona el vendedor'); return; }
     setSaving(true);
     try {
+      // Construye la línea Autofin que se anexa a sale_notes (solo si aplica)
+      let autofinLine = null;
+      if (form.payment_method === 'Crédito Autofin' && (finAmt || finPct || finCuotas)) {
+        const pieAmt = Number(finAmt) || 0;
+        const parts = [`Autofin: pie ${fmt(pieAmt)}`];
+        if (finPct) parts.push(`(${finPct}%)`);
+        if (finCuotas) parts.push(`· ${finCuotas} cuotas`);
+        autofinLine = parts.join(' ');
+      }
+      const baseNotes = form.sale_notes || '';
+      const notesWithAutofin = autofinLine
+        ? (baseNotes ? `${baseNotes} | ${autofinLine}` : autofinLine)
+        : baseNotes;
+
       if (noStock) {
         // Nota de venta sin unidad real → sales_notes
         await api.createSale({
@@ -86,7 +105,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           ticket_id:      ticketId            || null,
           payment_method: form.payment_method || null,
           sale_type:      form.sale_type      || null,
-          sale_notes:     form.sale_notes     || null,
+          sale_notes:     notesWithAutofin    || null,
           sale_price:     form.sale_price     ? Number(form.sale_price)     : null,
           cost_price:     form.cost_price     ? Number(form.cost_price)     : null,
           invoice_amount: form.invoice_amount ? Number(form.invoice_amount) : null,
@@ -96,7 +115,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
         });
       } else {
         // Unidad real de inventario
-        let notes = form.sale_notes || '';
+        let notes = notesWithAutofin;
         if (isMismatch) {
           const diff = `Cotizado: ${quoted.brand} ${quoted.model} → Vendido: ${selectedUnit.brand} ${selectedUnit.model} (${selectedUnit.color || ''})`;
           notes = notes ? `${notes} | ${diff}` : diff;
@@ -313,7 +332,14 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
               <label style={S.lbl}>Forma de Pago</label>
-              <select value={form.payment_method} onChange={e => set('payment_method', e.target.value)} style={{ ...S.inp, width: '100%' }}>
+              <select value={form.payment_method}
+                onChange={e => {
+                  set('payment_method', e.target.value);
+                  if (e.target.value !== 'Crédito Autofin') {
+                    setFinPct(''); setFinAmt(''); setFinCuotas('');
+                  }
+                }}
+                style={{ ...S.inp, width: '100%' }}>
                 <option value="">Seleccionar...</option>
                 {PAYMENT_TYPES.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -326,6 +352,72 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               </select>
             </div>
           </div>
+
+          {/* Autofin — condiciones de financiamiento */}
+          {form.payment_method === 'Crédito Autofin' && (() => {
+            const total    = Number(form.sale_price) || 0;
+            const pieAmt   = Number(finAmt) || 0;
+            const saldoFin = Math.max(0, total - pieAmt);
+            const n        = Number(finCuotas) || 0;
+            const cuotaVal = n > 0 ? Math.round(saldoFin / n) : 0;
+            return (
+              <div style={{ background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 8, padding: '10px 12px', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#9A3412', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Condiciones de financiamiento
+                </div>
+                <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={S.lbl}>Pie inicial (%)</label>
+                    <input type="number" value={finPct}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setFinPct(v);
+                        const pct = Number(v);
+                        if (total > 0 && !isNaN(pct) && v !== '') {
+                          setFinAmt(String(Math.round(total * pct / 100)));
+                        } else if (v === '') {
+                          setFinAmt('');
+                        }
+                      }}
+                      style={{ ...S.inp, width: '100%' }} placeholder="Ej. 30" />
+                  </div>
+                  <div>
+                    <label style={S.lbl}>Pie inicial ($)</label>
+                    <input type="number" value={finAmt}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setFinAmt(v);
+                        const amt = Number(v);
+                        if (total > 0 && !isNaN(amt) && v !== '') {
+                          setFinPct(String(Math.round(amt / total * 1000) / 10));
+                        } else if (v === '') {
+                          setFinPct('');
+                        }
+                      }}
+                      style={{ ...S.inp, width: '100%' }} placeholder="Monto en $" />
+                  </div>
+                </div>
+                <div>
+                  <label style={S.lbl}>Número de cuotas</label>
+                  <input type="number" value={finCuotas}
+                    onChange={e => setFinCuotas(e.target.value)}
+                    style={{ ...S.inp, width: '100%' }} placeholder="Ej. 36" />
+                </div>
+                {total > 0 && (
+                  <div style={{ background: '#FFFFFF', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12' }}>
+                    <div>Pie inicial: <strong>{fmt(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
+                    <div>Saldo a financiar: <strong>{fmt(saldoFin)}</strong></div>
+                    {n > 0 && (
+                      <div>Valor cuota referencial: <strong>{fmt(cuotaVal)}</strong> × {n} cuotas</div>
+                    )}
+                    <div style={{ fontSize: 10, color: '#9A3412', marginTop: 4, fontStyle: 'italic' }}>
+                      Referencial — el monto final lo define Autofin según la evaluación.
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Cliente */}
           <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>

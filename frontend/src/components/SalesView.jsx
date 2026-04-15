@@ -727,6 +727,40 @@ async function openNote(data, type) {
     y += 14;
   }
 
+  // ── BLOQUE AUTOFIN (condiciones de financiamiento) ──
+  if (data.payMode === 'Crédito Autofin' && data.finData) {
+    const fd = data.finData;
+    const pieAmt = Number(fd.pieAmt) || 0;
+    const piePct = fd.piePct != null ? Number(fd.piePct) : null;
+    const cuotas = Number(fd.cuotas) || 0;
+    const saldoFin = Math.max(0, t.grandTotal - pieAmt);
+    const cuotaVal = cuotas > 0 ? Math.round(saldoFin / cuotas) : 0;
+
+    const boxH = cuotas > 0 ? 26 : 20;
+    doc.setFillColor(255, 247, 237);
+    doc.setDrawColor(253, 186, 116); doc.setLineWidth(0.3);
+    doc.roundedRect(M, y, cw, boxH, 1.5, 1.5, 'FD');
+
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(154, 52, 18);
+    doc.text('Condiciones de financiamiento (Autofin)', M + 4, y + 5);
+
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...dark);
+    const pieLabel = piePct != null ? `${fmtCLP(pieAmt)} (${piePct}%)` : fmtCLP(pieAmt);
+    doc.text(`Pie inicial: ${pieLabel}`, M + 4, y + 10.5);
+    doc.text(`Saldo a financiar: ${fmtCLP(saldoFin)}`, W - M - 4, y + 10.5, { align: 'right' });
+
+    if (cuotas > 0) {
+      doc.text(`N° de cuotas: ${cuotas}`, M + 4, y + 16);
+      doc.text(`Valor cuota referencial: ${fmtCLP(cuotaVal)}`, W - M - 4, y + 16, { align: 'right' });
+      doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...gray);
+      doc.text('Monto referencial — la cuota final la determina Autofin según la evaluación crediticia.', M + 4, y + 21);
+    } else {
+      doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...gray);
+      doc.text('Cuotas y valor final a definir por Autofin.', M + 4, y + 15.5);
+    }
+    y += boxH + 4;
+  }
+
   // ── OBSERVACIONES ──
   if (data.sale_notes) {
     doc.setFontSize(8); doc.setTextColor(...gray); doc.setFont('helvetica', 'italic');
@@ -823,6 +857,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [payMode,  setPayMode] = useState('');
   const [payLines, setPayLines]= useState([{ method: '', amount: '' }]);
 
+  // Autofin (crédito) — pie inicial + cuotas
+  const [finPct,     setFinPct]     = useState('');   // % del pie sobre el total
+  const [finAmt,     setFinAmt]     = useState('');   // monto $ del pie
+  const [finCuotas,  setFinCuotas]  = useState('');   // número de cuotas
+
   // Extras
   const [accs,       setAccs]      = useState([]);
   const [discount,   setDiscount]  = useState('');
@@ -840,6 +879,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     setSelUnit(null); setSelMod(null);
     setForm({ ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' });
     setPayMode(''); setPayLines([{ method: '', amount: '' }]);
+    setFinPct(''); setFinAmt(''); setFinCuotas('');
     setAccs([]); setDiscount(''); setAbono(''); setCatMods([]);
     setChargeType('inscripcion');
     setTitularSame(true); setTitular({ name: '', rut: '', phone: '', email: '', address: '', commune: '' });
@@ -913,6 +953,16 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
     setSaving(true); setErr('');
     try {
+      // Línea autofin para anexar a las notas — sólo si el medio es Crédito Autofin
+      let autofinLine = null;
+      if (payMode === 'Crédito Autofin' && (finAmt || finPct || finCuotas)) {
+        const pieAmt = Number(finAmt) || 0;
+        const parts = [`Autofin: pie ${fmtCLP(pieAmt)}`];
+        if (finPct) parts.push(`(${finPct}%)`);
+        if (finCuotas) parts.push(`· ${finCuotas} cuotas`);
+        autofinLine = parts.join(' ');
+      }
+
       const clientExtra = [
         form.client_type === 'empresa'
           ? `Empresa: ${form.empresa_name||''} RUT: ${form.empresa_rut||''}`
@@ -920,6 +970,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         form.client_phone   ? `Tel: ${form.client_phone}` : null,
         form.client_email   ? `Email: ${form.client_email}` : null,
         form.client_address ? `Dir: ${form.client_address}${form.client_commune ? ', ' + form.client_commune : ''}` : null,
+        autofinLine,
         form.sale_notes     || null,
       ].filter(Boolean).join(' | ');
 
@@ -983,6 +1034,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         sale_price: form.sale_price,
         abono: abono ? parseInt(abono) : 0,
         accessories: accs, discount, payMode, payLines, chargeType,
+        finData: payMode === 'Crédito Autofin' ? {
+          pieAmt:    Number(finAmt)    || 0,
+          piePct:    finPct ? Number(finPct) : null,
+          cuotas:    Number(finCuotas) || 0,
+        } : null,
         modelPhotoUrl: colorPhotoUrl,
         titularSame,
         titular: titularSame ? null : { ...titular },
@@ -1253,12 +1309,69 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 6 }}>
                 <div style={{ gridColumn: '1/-1' }}>
                   <Field label="Medio de pago" value={payMode} opts={PAY_MODES}
-                    onChange={v => { setPayMode(v); setPayLines([{ method: '', amount: '' }]); setFinPct(''); }} />
+                    onChange={v => {
+                      setPayMode(v);
+                      setPayLines([{ method: '', amount: '' }]);
+                      setFinPct(''); setFinAmt(''); setFinCuotas('');
+                    }} />
                 </div>
 
                 {isTarjeta(payMode) && totals.netTotal > 0 && (
                   <div style={{ gridColumn: '1/-1', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
                     Recargo 2% tarjeta: <strong>+{fmtCLP(totals.cardSurcharge)}</strong> — Total con recargo: <strong>{fmtCLP(totals.grandTotal)}</strong>
+                  </div>
+                )}
+
+                {payMode === 'Crédito Autofin' && (
+                  <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8, background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#9A3412', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Condiciones de financiamiento
+                    </div>
+
+                    <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <Field label="Pie inicial (%)" value={finPct} type="number"
+                        onChange={v => {
+                          setFinPct(v);
+                          const pct = Number(v);
+                          if (totals.grandTotal > 0 && !isNaN(pct) && v !== '') {
+                            setFinAmt(String(Math.round(totals.grandTotal * pct / 100)));
+                          } else if (v === '') {
+                            setFinAmt('');
+                          }
+                        }} />
+                      <Field label="Pie inicial ($)" value={finAmt} type="number"
+                        onChange={v => {
+                          setFinAmt(v);
+                          const amt = Number(v);
+                          if (totals.grandTotal > 0 && !isNaN(amt) && v !== '') {
+                            setFinPct(String(Math.round(amt / totals.grandTotal * 1000) / 10));
+                          } else if (v === '') {
+                            setFinPct('');
+                          }
+                        }} />
+                    </div>
+
+                    <Field label="Número de cuotas" value={finCuotas} type="number"
+                      onChange={setFinCuotas} />
+
+                    {totals.grandTotal > 0 && Number(finAmt) >= 0 && (() => {
+                      const pieAmt = Number(finAmt) || 0;
+                      const saldoFin = Math.max(0, totals.grandTotal - pieAmt);
+                      const n = Number(finCuotas) || 0;
+                      const cuotaVal = n > 0 ? Math.round(saldoFin / n) : 0;
+                      return (
+                        <div style={{ background: '#FFFFFF', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div>Pie inicial: <strong>{fmtCLP(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
+                          <div>Saldo a financiar: <strong>{fmtCLP(saldoFin)}</strong></div>
+                          {n > 0 && (
+                            <div>Valor cuota referencial: <strong>{fmtCLP(cuotaVal)}</strong> × {n} cuotas</div>
+                          )}
+                          <div style={{ fontSize: 10, color: '#9A3412', marginTop: 2, fontStyle: 'italic' }}>
+                            Referencial — el monto final lo define Autofin según la evaluación.
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -1381,6 +1494,18 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   );
 }
 
+// Parser de la línea "Autofin: pie $X (Y%) · Z cuotas" dentro de sale_notes
+function parseAutofinFromNotes(notes) {
+  if (!notes) return null;
+  // Busca "Autofin: pie $123.456 (30%) · 36 cuotas" o variantes
+  const m = /Autofin:\s*pie\s*\$?([\d\.\,]+)(?:\s*\(([\d\.]+)%\))?(?:[^\d]+(\d+)\s*cuotas)?/i.exec(notes);
+  if (!m) return null;
+  const pieAmt = Number(String(m[1]).replace(/[\.\,]/g, '')) || 0;
+  const piePct = m[2] ? Number(m[2]) : null;
+  const cuotas = m[3] ? Number(m[3]) : 0;
+  return { pieAmt, piePct, cuotas };
+}
+
 // Helper: abre nota de venta/reserva desde un registro del listado (busca foto en catálogo)
 async function openNoteFromSale(s) {
   const isRes = s.status === 'reservada';
@@ -1398,6 +1523,9 @@ async function openNoteFromSale(s) {
       modelPhotoUrl = cp?.url || mod.image || mod.image_gallery?.[0] || null;
     }
   } catch(_) {}
+  const finData = s.payment_method === 'Crédito Autofin'
+    ? parseAutofinFromNotes(s.sale_notes)
+    : null;
   return openNote({
     brand: s.brand, model: s.model, year: s.year, color: s.color,
     chassis: s.chassis, motor_num: s.motor_num,
@@ -1409,7 +1537,7 @@ async function openNoteFromSale(s) {
     accessories:[], discount:'', payMode: s.payment_method||'', payLines:[],
     chargeType: s.sale_type === 'completa' ? 'completa' : 'inscripcion',
     sale_notes: s.sale_notes, titularSame:true, titular:null,
-    modelPhotoUrl,
+    modelPhotoUrl, finData,
   }, isRes ? 'reserva' : 'venta');
 }
 
