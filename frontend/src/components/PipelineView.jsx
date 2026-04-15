@@ -1,11 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile } from '../ui.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 export function PipelineView({leads,user,nav,updLead}){
+  const isMobile=useIsMobile();
   const[dragId,setDragId]=useState(null);
   const[sellLead,setSellLead]=useState(null);
+  // Mobile: estado actualmente visible (1 columna a la vez) + sheet de "Mover a"
+  const[mobStage,setMobStage]=useState(PIPELINE_STAGES[0]);
+  const[moveLead,setMoveLead]=useState(null);
+  const[moving,setMoving]=useState(false);
   const stages=PIPELINE_STAGES;
   const pLeads=leads.filter(l=>{if(!stages.includes(l.status))return false;if(hasRole(user, ROLES.VEND)&&l.seller_id!==user.id)return false;return true;});
   // Persiste el cambio de estado en backend. Si falla, revierte UI.
@@ -32,6 +37,83 @@ export function PipelineView({leads,user,nav,updLead}){
     if(l.sla_status==="en_riesgo")return{horas:0,breach:false,warning:true};
     const created=new Date(l.createdAt).getTime();const now=Date.now();const diff=now-created;const horas=diff/(1e3*60*60);const lastC=l.lastContact?new Date(l.lastContact).getTime():0;const sinContacto=lastC?((now-lastC)/(1e3*60*60)):horas;return{horas:Math.floor(sinContacto),breach:sinContacto>=3&&!l.lastContact,warning:sinContacto>=2&&sinContacto<3};
   };
+  const changeStage=async(l,to)=>{
+    if(!l||!to||l.status===to)return;
+    const prev=l.status;
+    setMoving(true);
+    updLead(l.id,{status:to});
+    try{
+      await api.updateTicket(l.id,{status:to});
+      try{ const full=await api.getTicket(l.id); if(full?.timeline)updLead(l.id,{timeline:full.timeline}); }catch{}
+    }catch(ex){
+      updLead(l.id,{status:prev});
+      alert('No se pudo cambiar el estado: '+(ex.message||'Error'));
+    }finally{ setMoving(false); setMoveLead(null); }
+  };
+
+  // ── Render MOBILE: selector + lista vertical + sheet "Mover a" ─────────────
+  if (isMobile) {
+    const sc=TICKET_STATUS[mobStage];
+    const sl=pLeads.filter(l=>l.status===mobStage);
+    return (
+      <div>
+        <h1 style={{fontSize:17,fontWeight:700,margin:"0 0 10px"}}>Pipeline</h1>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+          <select value={mobStage} onChange={e=>setMobStage(e.target.value)}
+            style={{flex:1,height:40,borderRadius:8,border:"1px solid #D1D5DB",padding:"0 10px",fontSize:14,background:"#F9FAFB",color:"#0F172A",fontFamily:"inherit"}}>
+            {stages.map(s=>{const x=TICKET_STATUS[s]; return <option key={s} value={s}>{x?.l||s} ({pLeads.filter(l=>l.status===s).length})</option>;})}
+          </select>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+          <span style={{width:8,height:8,borderRadius:"50%",background:sc?.c}}/>
+          <span style={{fontSize:12,fontWeight:700,color:sc?.c}}>{sc?.l}</span>
+          <span style={{fontSize:11,color:"#6B7280"}}>· {sl.length} ticket{sl.length!==1?"s":""}</span>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {sl.length===0 && <div style={{padding:30,textAlign:"center",color:"#9CA3AF",fontSize:12}}>Sin tickets en este estado</div>}
+          {sl.map(l=>{
+            const sla=getSlaInfo(l);
+            return (
+              <div key={l.id} style={{background:"#FFFFFF",border:`1px solid ${sla.breach?"rgba(239,68,68,0.35)":"#E5E7EB"}`,borderRadius:10,padding:10,display:"flex",flexDirection:"column",gap:6}}>
+                <div onClick={()=>nav("ticket",l.id)} style={{cursor:"pointer"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",gap:8}}>
+                    <div style={{fontWeight:700,fontSize:13,color:"#0F172A",minWidth:0,flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.fn} {l.ln}</div>
+                    <PBdg p={l.priority}/>
+                  </div>
+                  <div style={{fontSize:11,color:"#475569",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {l.model_brand?`${l.model_brand} ${l.model_name||""}`:<span style={{color:"#CBD5E1",fontStyle:"italic"}}>Sin moto</span>}
+                  </div>
+                  <div style={{fontSize:10,color:"#94A3B8",marginTop:3}}>{l.seller_fn||"Sin asignar"} · {ago(l.createdAt)}</div>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>setMoveLead(l)} style={{flex:1,padding:"7px 0",fontSize:11,fontWeight:700,background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>Mover →</button>
+                  <button onClick={()=>setSellLead(l)} style={{flex:1,padding:"7px 0",fontSize:11,fontWeight:700,background:"rgba(16,185,129,0.08)",color:"#059669",border:"1px solid rgba(16,185,129,0.25)",borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>Registrar venta</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {moveLead && (
+          <Modal onClose={()=>!moving&&setMoveLead(null)} title={`Mover "${moveLead.fn} ${moveLead.ln||""}" a...`}>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {stages.filter(s=>s!==moveLead.status).map(s=>{
+                const x=TICKET_STATUS[s];
+                return (
+                  <button key={s} disabled={moving} onClick={()=>changeStage(moveLead,s)}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",border:`1.5px solid ${x?.c}40`,background:`${x?.c}10`,borderRadius:10,cursor:moving?"default":"pointer",fontFamily:"inherit",textAlign:"left",opacity:moving?0.6:1}}>
+                    <span style={{width:10,height:10,borderRadius:"50%",background:x?.c}}/>
+                    <span style={{fontSize:14,fontWeight:700,color:"#0F172A"}}>{x?.l||s}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Modal>
+        )}
+        {sellLead&&<SellFromTicketModal ticketId={sellLead.id} lead={sellLead} user={user} onClose={()=>setSellLead(null)} onSuccess={()=>{updLead(sellLead.id,{status:"ganado"});setSellLead(null);}}/>}
+      </div>
+    );
+  }
+
   return(
     <div>
       <h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {hasRole(user, ROLES.VEND)&&<span style={{fontSize:13,fontWeight:400,color:"#6B7280"}}>· Mis tickets</span>}</h1>

@@ -175,7 +175,7 @@ export function ReportsView({ branches = [] }) {
 
 // ── GENERAL ──
 function GeneralTab({ data }) {
-  return <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+  return <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
     <div style={card}>
       <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Top Marcas</h3>
       <Bar items={data.by_brand.slice(0,10).map(b => ({ label:b.name, value:n(b.total) }))} colorKey="#3B82F6"/>
@@ -267,7 +267,7 @@ function FinTab({ data }) {
   const conFin = n(f.con_fin);
   const sinFin = n(f.sin_fin);
   const total = conFin + sinFin;
-  return <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+  return <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
     <div style={card}>
       <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Distribución</h3>
       <div style={{ display:'flex', gap:20 }}>
@@ -297,7 +297,7 @@ function FinTab({ data }) {
 
 // ── COLOR ──
 function ColorTab({ data }) {
-  return <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+  return <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
     <div style={card}>
       <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Colores más Cotizados</h3>
       <Bar items={data.by_color.map(c => ({ label:c.name, value:n(c.total) }))} colorKey="#8B5CF6"/>
@@ -317,7 +317,7 @@ function ColorTab({ data }) {
 // ── ESTADO ──
 function StatusTab({ data }) {
   const total = data.by_status.reduce((s,r) => s + n(r.total), 0);
-  return <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+  return <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
     <div style={card}>
       <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Distribución por Estado</h3>
       <Bar items={data.by_status.map(s => ({ label:TICKET_STATUS[s.name]?.l||s.name, value:n(s.total) }))} colorKey="#8B5CF6"/>

@@ -273,7 +273,7 @@ export function CalendarView({user,nav}){
       {showForm&&(
         <Modal onClose={closeForm} title={editEv?'Editar evento':'Nuevo evento'} wide>
           <form onSubmit={handleSave}>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+            <div className="mob-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
               <div style={{gridColumn:'1/-1'}}>
                 <Field label="Título *" value={form.title} onChange={v=>setForm({...form,title:v})} req ph="Ej: Reunión con cliente, Entrega moto..."/>
               </div>

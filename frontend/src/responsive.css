@@ -255,3 +255,66 @@ html, body { max-width: 100%; overflow-x: hidden; }
 @media (max-width: 767px) {
   .crm-cat-grid { grid-template-columns: 1fr !important; }
 }
+
+/* ═══════════════════════════════════════════════════
+   MOBILE RESTRUCTURE — utilidades + bottom nav + fixes
+   ═══════════════════════════════════════════════════ */
+
+/* Utilidades de visibilidad por breakpoint */
+@media (max-width: 767px) {
+  .mob-hide { display: none !important; }
+  /* Grids inline 1fr 1fr que se envuelven con esta clase colapsan a 1 col */
+  .mob-stack { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 768px) {
+  .mob-only { display: none !important; }
+}
+
+/* Bottom nav: visible solo en mobile */
+.crm-bottom-nav { display: none; }
+@media (max-width: 767px) {
+  .crm-bottom-nav {
+    display: flex !important;
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: 60px;
+    background: #FFFFFF;
+    border-top: 1px solid #E5E7EB;
+    z-index: 70;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* NotifBell dropdown: full-width en mobile */
+@media (max-width: 767px) {
+  .crm-notif-dropdown {
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    top: 52px !important;
+    max-width: none !important;
+  }
+}
+
+/* SupplierPayments row: apilado en mobile */
+@media (max-width: 767px) {
+  .crm-sp-row { flex-direction: column !important; flex-wrap: nowrap !important; }
+  .crm-sp-row > * {
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid #F1F5F9 !important;
+  }
+  .crm-sp-row > *:last-child { border-bottom: none !important; }
+}
+
+/* TicketView top grid: 1 col en mobile */
+@media (max-width: 767px) {
+  .crm-tv-top-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Mobile header más compacto (pierde la hamburguesa: el menú vive en bottom nav) */
+@media (max-width: 767px) {
+  .crm-mobile-hdr { height: 48px !important; padding: 0 12px !important; }
+}

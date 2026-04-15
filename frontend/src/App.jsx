@@ -19,6 +19,7 @@ import { ImportView } from "./components/ImportView";
 import { StagingImportView } from "./components/StagingImportView";
 import { CalendarView } from "./components/CalendarView";
 import { NotifBell } from "./components/NotifBell";
+import { BottomNav } from "./components/BottomNav";
 import { SupplierPaymentsView } from "./components/SupplierPaymentsView";
 
 export default function App(){
@@ -123,7 +124,6 @@ export default function App(){
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
         <header className="crm-mobile-hdr" style={{display:"none",height:52,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid #E5E7EB",background:"#FFFFFF",flexShrink:0,gap:10}}>
-          <button onClick={()=>setDrawerOpen(true)} style={{...S.gh,padding:6}}><Ic.menu size={22} color="#A3A3A3"/></button>
           <div style={{display:"flex",alignItems:"center",gap:6}}><img src="/logo.png" alt="MaosBike" style={{height:22}}/><span style={{fontSize:11,fontWeight:600,color:"#6B7280"}}>CRM</span></div>
           <NotifBell nav={nav}/>
         </header>
@@ -144,6 +144,7 @@ export default function App(){
           {page==="calendar"&&<CalendarView user={user} nav={nav}/>}
         </main>
       </div>
+      <BottomNav page={page} nav={nav} user={user} onMenuOpen={()=>setDrawerOpen(true)}/>
       {showChangePw&&<ChangePasswordModal onClose={()=>setShowChangePw(false)}/>}
     </div>
   );

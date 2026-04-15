@@ -198,7 +198,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               <div style={{ fontSize: 11, color: '#92400E', fontWeight: 600, marginBottom: 10 }}>
                 Se registrará en Ventas como nota comercial — no descuenta stock del inventario.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
                   <label style={S.lbl}>Marca *</label>
                   <input value={form.brand} onChange={e => set('brand', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Ej: YAMAHA" required={noStock} />
@@ -260,7 +260,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
               ⚠️ El producto vendido es distinto al cotizado
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ padding: '8px 10px', borderRadius: 6, background: '#FFF7ED', border: '1px solid #FED7AA' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Cotizado</div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{quoted.brand} {quoted.model}</div>
@@ -291,7 +291,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           <div style={{ ...sectionLabel, marginBottom: 10 }}>📝 Datos de la Venta</div>
 
           {/* Vendedor + Fecha */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
               <label style={S.lbl}>Vendedor *</label>
               <select value={form.sold_by} onChange={e => set('sold_by', e.target.value)} style={{ ...S.inp, width: '100%' }} required>
@@ -310,7 +310,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           </div>
 
           {/* Forma de pago + Tipo */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
               <label style={S.lbl}>Forma de Pago</label>
               <select value={form.payment_method} onChange={e => set('payment_method', e.target.value)} style={{ ...S.inp, width: '100%' }}>
@@ -328,7 +328,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           </div>
 
           {/* Cliente */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
               <label style={S.lbl}>Nombre Cliente</label>
               <input value={form.client_name} onChange={e => set('client_name', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Nombre completo" />
@@ -361,7 +361,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
           {/* Campos solo admin */}
           {isAdmin && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'rgba(242,129,0,0.04)', borderRadius: 8, border: '1px solid rgba(242,129,0,0.15)' }}>
+            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'rgba(242,129,0,0.04)', borderRadius: 8, border: '1px solid rgba(242,129,0,0.15)' }}>
               <div>
                 <label style={{ ...S.lbl, color: '#9CA3AF' }}>Costo Interno</label>
                 <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Solo visible para admin" min="0" />

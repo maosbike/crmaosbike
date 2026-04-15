@@ -813,6 +813,7 @@ export function SupplierPaymentsView({ user }) {
             // envolver según el ancho disponible.
             return (
               <div key={p.id} onClick={()=>{setEditFromList(false);setSel(p);}}
+                className="crm-sp-row"
                 style={{...S.card,padding:0,display:'flex',alignItems:'stretch',cursor:'pointer',overflow:'hidden',minHeight:0,flexWrap:'wrap'}}
                 onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.09)';}}
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow=S.card.boxShadow;}}>

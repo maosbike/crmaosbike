@@ -308,7 +308,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       )}
 
       {/* Info principal — grilla */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px', marginBottom: 16 }}>
+      <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px', marginBottom: 16 }}>
         {[
           ['Vendedor',    sellerName],
           ['Sucursal',    sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega directa' : (sale.branch_name || '—')],
@@ -1071,7 +1071,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 
             {/* MOTO */}
             {!selUnit && (
@@ -1151,7 +1151,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 ))}
               </div>
               {!titularSame && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
                   <Field label="Nombre completo titular *" value={titular.name}    onChange={setT('name')} />
                   <Field label="RUT titular *"             value={titular.rut}     onChange={setT('rut')}     ph="12.345.678-9" />
                   <Field label="Teléfono"                  value={titular.phone}   onChange={setT('phone')}   ph="+56 9 XXXX XXXX" />
@@ -1201,7 +1201,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <div style={{ fontSize:9, fontWeight:800, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:8 }}>
                 Documentación (obligatorio)
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+              <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                 {[
                   { v:'inscripcion', l:'Inscripción vehicular',   amt: INSCRIPCION_AMT },
                   { v:'completa',    l:'Documentación completa',  amt: docCompletaAmt(form.sale_price) },
@@ -1250,7 +1250,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             {/* FORMA DE PAGO */}
             <div style={{ gridColumn: '1/-1' }}>
               <SEC>Forma de pago</SEC>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 6 }}>
+              <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 6 }}>
                 <div style={{ gridColumn: '1/-1' }}>
                   <Field label="Medio de pago" value={payMode} opts={PAY_MODES}
                     onChange={v => { setPayMode(v); setPayLines([{ method: '', amount: '' }]); setFinPct(''); }} />

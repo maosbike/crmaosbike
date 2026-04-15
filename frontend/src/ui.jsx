@@ -1,4 +1,19 @@
 // ─── Shared UI: constants, styles, icons, utils ───────────────────────────────
+import { useState, useEffect } from 'react';
+
+// Breakpoints + hook — fuente única para ramas isMobile en JS.
+export const BP = { MOBILE: 768 };
+export function useIsMobile(bp = BP.MOBILE) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.innerWidth < bp
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < bp);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [bp]);
+  return isMobile;
+}
 
 // Constants
 // TICKET_STATUS: fuente única de verdad para colores y labels de estados de lead.

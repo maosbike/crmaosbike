@@ -29,7 +29,7 @@ export function NotifBell({nav}){
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,zIndex:50}} onClick={()=>setOpen(false)}>
-          <div onClick={e=>e.stopPropagation()} style={{position:"fixed",top:50,right:18,width:320,background:"#FFFFFF",border:"1px solid #D1D5DB",borderRadius:14,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.7)",zIndex:51}}>
+          <div onClick={e=>e.stopPropagation()} className="crm-notif-dropdown" style={{position:"fixed",top:50,right:18,width:320,background:"#FFFFFF",border:"1px solid #D1D5DB",borderRadius:14,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.7)",zIndex:51}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",borderBottom:"1px solid #E5E7EB"}}>
               <span style={{fontWeight:700,fontSize:13}}>Notificaciones{unread>0&&<span style={{color:"#F28100"}}> ({unread})</span>}</span>
               {unread>0&&<button onClick={markAll} style={{...S.gh,fontSize:11,color:"#F28100",padding:"2px 6px"}}>Marcar leídas</button>}

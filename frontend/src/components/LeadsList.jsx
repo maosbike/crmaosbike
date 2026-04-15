@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile } from '../ui.jsx';
 
 // ── Helpers y constantes visuales (mismo lenguaje que InventoryView) ─────────
 const SRC_SHORT={web:"Web",redes_sociales:"RRSS",whatsapp:"WA",presencial:"Pres.",referido:"Ref.",evento:"Ev.",llamada:"Tel."};
@@ -33,6 +33,7 @@ function Initials({fn,ln,size=30}){
 
 export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,onFilterChange}){
   const brs=realBranches||[];
+  const isMobile = useIsMobile();
   // Filtros persistidos en App.jsx para mantener contexto al volver de una ficha
   const {search='',stF='',brF='',prF='',srcF='',selF='',attF=false}=filter||{};
   const setFilter=(key,val)=>onFilterChange(f=>({...f,[key]:val}));
@@ -263,6 +264,43 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280'};
             const prCfg=PRIORITY[x.priority]||{l:'—',c:'#9CA3AF'};
             const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_code||null;
+            // ── Variante MOBILE: card apilada, simple, táctil ─────────────
+            if (isMobile) {
+              return (
+                <div key={x.id} onClick={()=>nav("ticket",x.id)}
+                  style={{ background:'#FFFFFF', borderRadius:12, border:'1px solid #E5E7EB', padding:'10px 12px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:6, cursor:'pointer', position:'relative' }}>
+                  {/* Barra superior de color de estado */}
+                  <div style={{ position:'absolute', left:0, top:0, bottom:0, width:4, background:stStrip.color, borderRadius:'12px 0 0 12px' }}/>
+                  {/* L1: nombre + priority + needs_attention */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, paddingLeft:6 }}>
+                    <div style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:'#0F172A', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {x.fn} {x.ln}
+                    </div>
+                    {x.needs_attention && <span title="Necesita atención" style={{ fontSize:10, fontWeight:800, color:'#fff', background:'#DC2626', padding:'2px 6px', borderRadius:6 }}>!</span>}
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:prCfg.c }}>
+                      <span style={{ width:6, height:6, borderRadius:'50%', background:prCfg.c }}/>{prCfg.l}
+                    </span>
+                  </div>
+                  {/* L2: modelo + estado badge */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, paddingLeft:6 }}>
+                    <div style={{ flex:1, minWidth:0, fontSize:12, color:'#475569', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {x.model_brand ? `${x.model_brand} ${x.model_name||''}` : <span style={{color:'#CBD5E1',fontStyle:'italic'}}>Sin moto</span>}
+                      {x.comuna ? ` · ${x.comuna}` : ''}
+                    </div>
+                    <Bdg l={stCfg.l} c={stCfg.c}/>
+                  </div>
+                  {/* L3: vendedor + ticket# + ago */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, paddingLeft:6, fontSize:11, color:'#64748B' }}>
+                    <span style={{ flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {x.seller_fn ? `${x.seller_fn} ${x.seller_ln||''}` : 'Sin asignar'}
+                      {brName ? ` · ${brName}` : ''}
+                    </span>
+                    {x.num && <span style={{ fontSize:10, color:'#94A3B8' }}>#{x.num}</span>}
+                    <span style={{ fontSize:10, color:'#94A3B8' }}>{ago(x.createdAt)}</span>
+                  </div>
+                </div>
+              );
+            }
             return(
               <div key={x.id}
                 onClick={()=>nav("ticket",x.id)}

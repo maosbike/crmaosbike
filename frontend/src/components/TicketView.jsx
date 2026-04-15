@@ -319,7 +319,7 @@ export function TicketView({lead,user,nav,updLead}){
       {/* ══════════════════════════════════════════════════════════
           TOP CARD — CLIENTE | PRODUCTO | CONTACTO | STATUS
       ══════════════════════════════════════════════════════════ */}
-      <div style={{
+      <div className="crm-tv-top-grid" style={{
         background:'#FFFFFF', borderRadius:14, border:'1px solid #E5E7EB',
         boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
         display:'grid', gridTemplateColumns:'minmax(180px,200px) minmax(0,1fr) minmax(200px,252px)',
