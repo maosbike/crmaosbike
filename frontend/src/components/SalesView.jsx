@@ -527,29 +527,40 @@ const PAY_MODES = [
   { v: 'Mixto',           l: 'Mixto / Varias transferencias' },
 ];
 
-function computeTotals({ sale_price, accessories = [], discount = '', payMode = '', payLines = [], chargeType = 'inscripcion' }) {
+function computeTotals({ sale_price, accessories = [], discount = '', payMode = '', payLines = [], chargeType = 'inscripcion', abono = 0, isReserva = false }) {
   const motoAmt   = Number(sale_price) || 0;
   const accAmt    = accessories.reduce((s, a) => s + (Number(a.amount) || 0), 0);
   const chargeAmt = chargeType === 'inscripcion' ? INSCRIPCION_AMT : (chargeType === 'completa' ? docCompletaAmt(motoAmt) : 0);
   const subtotal  = motoAmt + accAmt + chargeAmt;
   const discAmt  = discount ? Math.round(subtotal * Number(discount) / 100) : 0;
   const netTotal = subtotal - discAmt;
+  const abonoNum = Number(abono) || 0;
 
+  // En reservas con abono parcial el recargo de tarjeta se calcula solo sobre lo
+  // que el cliente paga hoy — el saldo restante puede liquidarse con otro medio.
   let cardSurcharge = 0;
   if (payMode === 'Mixto') {
     cardSurcharge = payLines.reduce((s, l) =>
       s + (isTarjeta(l.method) ? Math.round((Number(l.amount) || 0) * 0.02) : 0), 0);
   } else if (isTarjeta(payMode)) {
-    cardSurcharge = Math.round(netTotal * 0.02);
+    const base = (isReserva && abonoNum > 0) ? abonoNum : netTotal;
+    cardSurcharge = Math.round(base * 0.02);
   }
 
-  const grandTotal = netTotal + cardSurcharge;
+  // grandTotal = precio total real de la moto (sin recargo sobre el saldo no pagado)
+  const grandTotal = (isReserva && abonoNum > 0) ? netTotal : netTotal + cardSurcharge;
+
   let abonoAmt = grandTotal;
-  if (payMode === 'Mixto') {
+  if (isReserva && abonoNum > 0) {
+    abonoAmt = abonoNum + cardSurcharge; // lo que el cliente entrega hoy (abono + recargo)
+  } else if (payMode === 'Mixto') {
     abonoAmt = payLines.reduce((s, l) => s + (Number(l.amount) || 0), 0) + cardSurcharge;
   }
 
-  const saldo = Math.max(0, grandTotal - abonoAmt);
+  const saldo = (isReserva && abonoNum > 0)
+    ? Math.max(0, netTotal - abonoNum)
+    : Math.max(0, grandTotal - abonoAmt);
+
   return { motoAmt, accAmt, chargeAmt, chargeType, subtotal, discAmt, netTotal, cardSurcharge, grandTotal, abonoAmt, saldo };
 }
 
@@ -558,16 +569,10 @@ async function openNote(data, type) {
   const isRes = type === 'reserva';
   const safe = (s) => (s || '').replace(/[^a-zA-Z0-9áéíóúñ]/gi, '_').substring(0, 30);
   const fileName = `${isRes ? 'reserva' : 'nota_venta'}_${safe(data.brand)}_${safe(data.client_name)}.pdf`;
-  const t = computeTotals(data);
+  const t = computeTotals({ ...data, isReserva: isRes });
   const today = fmtDateDoc(data.sold_at || new Date().toISOString().slice(0, 10));
   const isEmpresa = data.client_type === 'empresa';
   const docLabel = isRes ? 'NOTA DE RESERVA' : 'NOTA DE VENTA';
-
-  // Para reserva con abono explícito, ajustar totales
-  if (isRes && data.abono != null && data.abono >= 0) {
-    t.abonoAmt = data.abono;
-    t.saldo = Math.max(0, t.grandTotal - t.abonoAmt);
-  }
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
@@ -686,7 +691,10 @@ async function openNote(data, type) {
   ];
   if (data.chargeType === 'inscripcion') tableBody.push(['Inscripción vehicular', fmtCLP(INSCRIPCION_AMT)]);
   else if (data.chargeType === 'completa') tableBody.push(['Documentación completa', fmtCLP(t.chargeAmt)]);
-  if (t.cardSurcharge > 0) tableBody.push(['Recargo tarjeta de crédito/débito (2%)', '+' + fmtCLP(t.cardSurcharge)]);
+  // Solo mostrar recargo en la tabla cuando aplica sobre el total (no sobre abono parcial)
+  if (t.cardSurcharge > 0 && !(isRes && (data.abono > 0))) {
+    tableBody.push(['Recargo tarjeta de crédito/débito (2%)', '+' + fmtCLP(t.cardSurcharge)]);
+  }
   tableBody.push(['TOTAL', fmtCLP(t.grandTotal)]);
 
   autoTable(doc, {
@@ -951,7 +959,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   });
 
   const colors = Array.isArray(selMod?.colors) ? selMod.colors : [];
-  const totals = computeTotals({ sale_price: form.sale_price, accessories: accs, discount, payMode, payLines, chargeType });
+  const totals = computeTotals({ sale_price: form.sale_price, accessories: accs, discount, payMode, payLines, chargeType, abono: Number(abono) || 0, isReserva });
 
   async function handleCreate() {
     if (!form.brand || !form.model) { setErr('Marca y modelo son obligatorios'); return; }
@@ -1039,6 +1047,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         sale_notes: form.sale_notes,
         sale_price: form.sale_price,
         abono: abono ? parseInt(abono) : 0,
+        isReserva,
         accessories: accs, discount, payMode, payLines, chargeType,
         finData: payMode === 'Crédito Autofin' ? {
           pieAmt:    Number(finAmt)    || 0,
@@ -1249,8 +1258,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 <Field label="Abono inicial ($)" value={abono} onChange={setAbono} type="number" ph="0" />
                 {form.sale_price > 0 && abono > 0 && (
                   <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'space-between', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 14px', fontSize: 12 }}>
-                    <span style={{ color: '#92400E' }}>Abono: <strong>{fmtCLP(Number(abono))}</strong></span>
-                    <span style={{ color: '#B45309', fontWeight: 700 }}>Saldo pendiente: {fmtCLP(Math.max(0, Number(form.sale_price) - Number(abono)))}</span>
+                    <span style={{ color: '#92400E' }}>
+                      Abono hoy: <strong>{fmtCLP(totals.abonoAmt)}</strong>
+                      {totals.cardSurcharge > 0 && <span style={{ fontSize: 10, color: '#B45309' }}> (incl. recargo 2%)</span>}
+                    </span>
+                    <span style={{ color: '#B45309', fontWeight: 700 }}>Saldo pendiente: {fmtCLP(totals.saldo)}</span>
                   </div>
                 )}
               </>
