@@ -83,6 +83,10 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../../frontend/dist')));
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
+      // index.html debe revalidar siempre — los assets (js/css) tienen hash en el nombre y pueden cachearse fuerte
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
       res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
     }
   });
