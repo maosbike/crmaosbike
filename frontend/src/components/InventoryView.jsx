@@ -93,6 +93,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [histOpen,  setHistOpen]   = useState(new Set());
   const [histData,  setHistData]   = useState({});
   const [histLoading,setHistLoading] = useState({});
+  const [histErr,   setHistErr]    = useState({});
   const [showImport,setShowImport] = useState(false);
   const [importPreview,setImportPreview] = useState(null);
   const [importLoading,setImportLoading] = useState(false);
@@ -422,7 +423,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       if (!histData[id]) {
         setHistLoading(p => ({...p,[id]:true}));
         try { const d = await api.getInventoryHistory(id); setHistData(p=>({...p,[id]:d})); }
-        catch(e) {}
+        catch(e) { setHistErr(p=>({...p,[id]:e?.message||'No se pudo cargar el historial. Verifica la conexión.'})); }
         finally { setHistLoading(p => ({...p,[id]:false})); }
       }
     }
@@ -846,7 +847,10 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         <button onClick={()=>toggleHist(x.id)} style={{ ...miniBtn, border:'1px solid #E5E7EB' }}>Cerrar</button>
                       </div>
                       {histLoading[x.id] && <div style={{ color:'#9CA3AF', fontSize:11 }}>Cargando...</div>}
-                      {!histLoading[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
+                      {!histLoading[x.id] && histErr[x.id] && (
+                        <div style={{ color:'#B91C1C', fontSize:11, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:7, padding:'6px 10px' }}>{histErr[x.id]}</div>
+                      )}
+                      {!histLoading[x.id] && !histErr[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
                         <div style={{ color:'#9CA3AF', fontSize:11 }}>Sin registros de historial.</div>
                       )}
                       {!histLoading[x.id] && histData[x.id]?.length > 0 && (
@@ -1088,11 +1092,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     )}
                   </div>
 
-                  {/* ── PRECIO ── */}
+                  {/* ── PRECIO catálogo ── */}
                   {x.catalog_price > 0 && (
-                    <div style={{ flex:'0 0 120px', padding:'14px 12px', display:'flex', flexDirection:'column', justifyContent:'center', gap:2, borderLeft:'1px solid #F3F4F6' }}>
-                      <div style={{ fontSize:10, color:'#9CA3AF', fontWeight:500 }}>Precio</div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#F28100' }}>{fmt(x.catalog_price)}</div>
+                    <div className="crm-inv-price" style={{
+                      flex:'0 0 120px', padding:'14px 14px',
+                      borderRight:'1px solid #F3F4F6',
+                      display:'flex', flexDirection:'column', justifyContent:'center', gap:4,
+                    }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>Precio</div>
+                      <div style={{ fontSize:14, fontWeight:800, color:'#F28100', letterSpacing:'-0.3px' }}>{fmt(x.catalog_price)}</div>
                     </div>
                   )}
 
@@ -1158,7 +1166,10 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         style={{ ...miniBtn, border:'1px solid #E5E7EB' }}>Cerrar</button>
                     </div>
                     {histLoading[x.id] && <div style={{ color:'#9CA3AF', fontSize:11 }}>Cargando historial...</div>}
-                    {!histLoading[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
+                    {!histLoading[x.id] && histErr[x.id] && (
+                      <div style={{ color:'#B91C1C', fontSize:11, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:7, padding:'7px 10px' }}>{histErr[x.id]}</div>
+                    )}
+                    {!histLoading[x.id] && !histErr[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
                       <div style={{ color:'#9CA3AF', fontSize:11 }}>Sin registros de historial para esta unidad.</div>
                     )}
                     {!histLoading[x.id] && histData[x.id]?.length > 0 && (
@@ -1517,10 +1528,17 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <button onClick={()=>{setImportPreview(null);importFileRef.current?.click();}} style={{ ...S.btn2,fontSize:12 }}>Cambiar archivo</button>
                 <div style={{ display:'flex',gap:8 }}>
                   <button onClick={()=>setShowImport(false)} style={S.btn2}>Cancelar</button>
-                  <button onClick={handleImportConfirm} disabled={importLoading||importPreview.ok===0}
-                    style={{ ...S.btn,opacity:(importLoading||importPreview.ok===0)?0.6:1 }}>
-                    {importLoading?'Importando...':`Importar ${importPreview.ok} unidades nuevas`}
-                  </button>
+                  {(()=>{
+                    const total=(importPreview.ok||0)+(importPreview.warnings||0);
+                    return(
+                      <button onClick={handleImportConfirm} disabled={importLoading||total===0}
+                        style={{ ...S.btn,opacity:(importLoading||total===0)?0.6:1 }}>
+                        {importLoading?'Importando...':(importPreview.warnings>0
+                          ?`Importar ${total} unidades (${importPreview.ok} completas + ${importPreview.warnings} incompletas)`
+                          :`Importar ${total} unidades nuevas`)}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </>

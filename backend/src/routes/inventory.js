@@ -460,8 +460,13 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
     const parsePrice  = v => { const s = String(v||'').replace(/[^0-9]/g,''); return s ? parseInt(s) : 0; };
     const parseStatus = v => ({ disponible:'disponible', reservada:'reservada', vendida:'vendida', preinscrita:'preinscrita' }[String(v||'').trim().toLowerCase()] || 'disponible');
 
-    const { rows: existing } = await db.query('SELECT lower(chassis) as ch FROM inventory');
+    const { rows: existing } = await db.query(
+      `SELECT lower(chassis) as ch FROM inventory WHERE chassis IS NOT NULL
+       UNION
+       SELECT lower(chassis) as ch FROM sales_notes WHERE chassis IS NOT NULL`
+    );
     const existingSet = new Set(existing.map(r => r.ch));
+    const fileSeenChassis = new Set(); // dedup intra-archivo
     const PLACEHOLDER = /^[\-–—\/nd]+$/i; // —, N/D, n/d, -, etc.
     const get = (row, idx) => {
       if (idx < 0 || row[idx] == null) return '';
@@ -486,11 +491,16 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
         // Advertencias: datos faltantes pero la unidad igual entra (admin completa después)
         const warnings  = [];
         if (!chassis)   warnings.push('Sin N° Chasis');
-        const duplicate = !!chassis && existingSet.has(chassis.toLowerCase());
-        const _status   = duplicate ? 'duplicate' : errors.length ? 'error' : warnings.length ? 'warning' : 'ok';
+        const chassisKey = chassis ? chassis.toLowerCase() : null;
+        const dupFile    = !!(chassisKey && fileSeenChassis.has(chassisKey));
+        if (chassisKey && !dupFile) fileSeenChassis.add(chassisKey);
+        const dupDB      = !!(chassisKey && existingSet.has(chassisKey));
+        const duplicate  = dupFile || dupDB;
+        const _status    = duplicate ? 'duplicate' : errors.length ? 'error' : warnings.length ? 'warning' : 'ok';
         return {
           _row: headerIdx + 2 + i, _status,
           _errors: errors, _warnings: warnings,
+          _dup_reason: dupFile ? 'Chasis repetido en este archivo' : (dupDB ? 'Chasis ya existe en el sistema' : null),
           branch_id, branch_raw: branchRaw,
           year:      parseInt(get(row, C.year)) || new Date().getFullYear(),
           brand, model,
@@ -516,30 +526,43 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
 // Confirm: insert ok rows
 router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
-    const { rows } = req.body;
+    const { rows, filename } = req.body;
     if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'Sin filas' });
     let inserted = 0, skipped = 0;
     for (const r of rows) {
       try {
         const chassis = r.chassis || null; // null si no viene — Postgres permite múltiples NULL en UNIQUE
+        let newId = null;
         if (chassis) {
-          // Con chasis: usar ON CONFLICT para evitar duplicados
-          await db.query(
+          // Con chasis: usar ON CONFLICT para evitar duplicados. RETURNING id detecta si se insertó.
+          const { rows: ins } = await db.query(
             `INSERT INTO inventory (branch_id,year,brand,model,color,chassis,motor_num,status,price,notes,created_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (chassis) DO NOTHING`,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (chassis) DO NOTHING RETURNING id`,
             [r.branch_id, r.year, r.brand, r.model, r.color, chassis,
              r.motor_num||null, r.status, r.price||0, r.notes||null, req.user.id]
           );
+          newId = ins[0]?.id || null;
+          if (!newId) { skipped++; continue; }
         } else {
           // Sin chasis: insertar directo (sin ON CONFLICT — NULL no genera conflicto en PG)
-          await db.query(
+          const { rows: ins } = await db.query(
             `INSERT INTO inventory (branch_id,year,brand,model,color,chassis,motor_num,status,price,notes,created_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
             [r.branch_id, r.year, r.brand, r.model, r.color, null,
              r.motor_num||null, r.status, r.price||0, r.notes||null, req.user.id]
           );
+          newId = ins[0]?.id || null;
         }
         inserted++;
+        // Trazabilidad de importación — event_type 'imported' (migración 020)
+        if (newId) {
+          db.query(
+            `INSERT INTO inventory_history (inventory_id, event_type, to_status, user_id, note, metadata)
+             VALUES ($1, 'imported', $2, $3, 'Importado desde Excel', $4)`,
+            [newId, r.status || 'disponible', req.user.id,
+             JSON.stringify({ source: 'excel', filename: filename || null })]
+          ).catch(e => console.warn('[import/confirm] history error:', e.message));
+        }
       } catch (e) { if (e.code==='23505') skipped++; else throw e; }
     }
     res.json({ inserted, skipped });
