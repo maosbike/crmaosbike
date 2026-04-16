@@ -306,9 +306,54 @@ const SLAService = {
       // 3. Leads estancados (48h sin acción real) → Necesita atención
       const stagnant = await this.checkStagnantLeads();
       logger.info(`[SLA] Leads marcados como "Necesita atención": ${stagnant}`);
+
+      // 4. Leads con fecha de seguimiento comprometida vencida → re-activa Necesita atención
+      const expired = await this.checkExpiredFollowups();
+      logger.info(`[SLA] Leads re-flagueados por followup vencido: ${expired}`);
     } finally {
       this._running = false;
     }
+  },
+
+  // Leads con next_followup_at vencido que aún no fueron re-flagueados → re-activa needs_attention
+  //
+  // Decisión de diseño — por qué NO se limpia next_followup_at:
+  //   Si se limpiara el campo, el vendedor perdería la referencia de la fecha que comprometió,
+  //   lo que dificulta el seguimiento y la rendición de cuentas. En cambio, la condición
+  //   `(needs_attention_since IS NULL OR needs_attention_since < next_followup_at)` garantiza
+  //   que el mismo vencimiento no re-flaguee el lead en cada ciclo del cron: una vez que
+  //   needs_attention_since >= next_followup_at, la condición falla y el lead queda quieto.
+  //   Cuando el vendedor registre una acción real, registerAction() limpia needs_attention = FALSE
+  //   y needs_attention_since = NULL, reiniciando el ciclo — si compromete una nueva fecha
+  //   y tampoco la cumple, el sistema volverá a activar el flag correctamente.
+  async checkExpiredFollowups() {
+    const { rows } = await db.query(
+      `UPDATE tickets SET
+         needs_attention = TRUE,
+         needs_attention_since = NOW()
+       WHERE status IN ('en_gestion','cotizado','financiamiento')
+         AND needs_attention = FALSE
+         AND next_followup_at IS NOT NULL
+         AND next_followup_at < NOW()
+         AND (needs_attention_since IS NULL OR needs_attention_since < next_followup_at)
+       RETURNING id, assigned_to, branch_id, ticket_num`
+    );
+
+    for (const t of rows) {
+      if (!t.assigned_to) continue;
+      try {
+        await NotificationService.notifyMany([t.assigned_to], {
+          type: 'followup_expired',
+          title: `Lead #${t.ticket_num} — seguimiento vencido`,
+          message: 'La fecha de próximo seguimiento pasó sin registrar gestión. Actualizá el estado del lead.',
+          link_type: 'ticket',
+          link_id: t.id,
+        });
+      } catch (e) {
+        logger.warn('[SLA] notify followup_expired error:', e.message);
+      }
+    }
+    return rows.length;
   },
 
   // Leads activos en estados de trabajo que llevan >48h sin acción real → flag needs_attention
