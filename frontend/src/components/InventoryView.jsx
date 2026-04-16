@@ -1092,17 +1092,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     )}
                   </div>
 
-                  {/* ── PRECIO catálogo ── */}
-                  {x.catalog_price > 0 && (
-                    <div className="crm-inv-price" style={{
-                      flex:'0 0 120px', padding:'14px 14px',
-                      borderRight:'1px solid #F3F4F6',
-                      display:'flex', flexDirection:'column', justifyContent:'center', gap:4,
-                    }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>Precio</div>
-                      <div style={{ fontSize:14, fontWeight:800, color:'#F28100', letterSpacing:'-0.3px' }}>{fmt(x.catalog_price)}</div>
-                    </div>
-                  )}
+                  {/* ── PRECIO oculto en el row (sigue disponible vía export a Excel) ── */}
 
                   {/* ── ACCIONES ── */}
                   <div className="crm-inv-actions" onClick={e=>e.stopPropagation()} style={{
