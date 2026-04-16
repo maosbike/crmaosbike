@@ -114,6 +114,7 @@ export const mapTicket=(t)=>{
     followup_updated_at:t.followup_updated_at||null,
     last_contact_entry:t.last_contact_entry||null,
     reassignment_summary:t.reassignment_summary||null,
+    lastRealActionAt:t.last_real_action_at||null,
   };
 };
 

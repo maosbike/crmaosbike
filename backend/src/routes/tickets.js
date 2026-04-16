@@ -210,7 +210,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   const fields = ['first_name','last_name','rut','birthdate','email','phone','comuna','source',
                    'model_id','color_pref','status','priority','wants_financing','sit_laboral',
                    'continuidad','renta','pie','test_ride','fin_status','fin_institution',
-                   'rechazo_motivo','obs_vendedor','obs_supervisor','seller_id','post_venta','last_contact_at'];
+                   'rechazo_motivo','obs_vendedor','obs_supervisor','seller_id','post_venta'];
   const sets = [], params = [];
   let idx = 1;
 

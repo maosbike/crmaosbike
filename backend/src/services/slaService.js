@@ -20,7 +20,6 @@ const SLAService = {
     'note_added',          // Nota sustantiva — mínimo 20 caracteres
     'reminder_created',    // Crear recordatorio asociado al ticket
     'financing_updated',   // Cambiar estado financiamiento a algo concreto
-    'test_ride_done',      // Marcar test ride realizado
   ],
 
   // Registrar una acción real en el ticket
@@ -320,8 +319,12 @@ const SLAService = {
          needs_attention_since = NOW()
        WHERE status IN ('en_gestion','cotizado','financiamiento')
          AND needs_attention = FALSE
-         AND (last_real_action_at IS NULL OR last_real_action_at < NOW() - INTERVAL '48 hours')
-         AND (last_contact_at IS NULL OR last_contact_at < NOW() - INTERVAL '48 hours')
+         AND (
+           GREATEST(
+             COALESCE(last_real_action_at, '1970-01-01'::timestamptz),
+             COALESCE(last_contact_at, '1970-01-01'::timestamptz)
+           ) < NOW() - INTERVAL '48 hours'
+         )
        RETURNING id, assigned_to, branch_id, ticket_num`
     );
 
