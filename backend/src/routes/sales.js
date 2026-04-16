@@ -10,8 +10,9 @@
  *   DELETE /api/sales/:id    → solo super_admin
  *   POST /api/sales/:id/doc  → solo super_admin y backoffice
  *
- * Costos internos (cost_price, invoice_amount):
+ * Costos internos (cost_price):
  *   Nunca se devuelven a vendedores — eliminados en sanitizeSale() antes de cada respuesta.
+ *   invoice_amount (abono del cliente) sí es visible para vendedores.
  *
  * Arquitectura de datos:
  *   - Unidad real del inventario marcada como vendida/reservada → tabla inventory
@@ -31,7 +32,7 @@ router.use(auth);
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const COST_FIELDS = ['cost_price', 'invoice_amount'];
+const COST_FIELDS = ['cost_price'];   // invoice_amount = abono del cliente, visible para vendedores
 
 const DOC_FIELDS = ['doc_factura_dist', 'doc_factura_cli', 'doc_homologacion', 'doc_inscripcion'];
 
