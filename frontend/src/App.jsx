@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api, setToken, clearToken } from "./services/api";
-import { Ic, S, mapTicket, ROLES, hasRole, ROLE_ADMIN_WRITE, ROLE_ADMIN_READ } from "./ui";
+import { Ic, S, mapTicket, ROLES, hasRole, ROLE_ADMIN_WRITE, ROLE_ADMIN_READ, TERMINAL_STATUSES } from "./ui";
+import { OverdueLeadsModal } from "./components/OverdueLeadsModal";
 
 import { Login } from "./components/Login";
 import { ForceChangeView } from "./components/ForceChangeView";
@@ -33,6 +34,8 @@ export default function App(){
   const[drawerOpen,setDrawerOpen]=useState(false);
   const[realBranches,setRealBranches]=useState([]);
   const[leadsFilter,setLeadsFilter]=useState({search:'',stF:'',brF:'',prF:'',srcF:'',selF:''});
+  const[showOverdueModal,setShowOverdueModal]=useState(false);
+  const[overdueResolved,setOverdueResolved]=useState(new Set());
 
   // Intento de restore silencioso al cargar — usa la cookie httpOnly si existe
   useEffect(()=>{
@@ -79,6 +82,20 @@ export default function App(){
     api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
   },[user?.id]);
 
+  // Fase 3 — modal bloqueante de seguimiento. Solo se dispara para vendedores
+  // que entran al módulo de leads y tienen leads con needs_attention pendientes.
+  useEffect(()=>{
+    if(page!=='leads')return;
+    if(!hasRole(user,ROLES.VEND))return;
+    const pending=leads.filter(l=>
+      l.needs_attention&&
+      !TERMINAL_STATUSES.includes(l.status)&&
+      !overdueResolved.has(l.id)&&
+      (l.seller_id==null||l.seller_id===user.id)
+    );
+    if(pending.length>0)setShowOverdueModal(true);
+  },[page,leads]);
+
   if(sessionLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F9FAFB"}}><img src="/logo.png" alt="MaosBike" style={{height:48,opacity:0.5}}/></div>;
   if(!user)return<Login onLogin={setUser}/>;
   if(user.forceChange)return<ForceChangeView user={user} onChanged={u=>{setUser(u);}}/>;
@@ -101,6 +118,25 @@ export default function App(){
   const updLead=(id,u)=>{setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));if(selLead?.id===id)setSelLead(p=>({...p,...u}));};
   const addLead=l=>setLeads(p=>[l,...p]);
   const r=user.role;
+
+  // Fase 3 — leads a mostrar en el modal bloqueante (filtra ya resueltos en esta sesión)
+  const overdueLeads=leads
+    .filter(l=>
+      l.needs_attention&&
+      !TERMINAL_STATUSES.includes(l.status)&&
+      !overdueResolved.has(l.id)&&
+      (l.seller_id==null||l.seller_id===user.id)
+    )
+    .sort((a,b)=>new Date(a.needs_attention_since)-new Date(b.needs_attention_since));
+
+  const handleOverdueResolved=(ticketId)=>{
+    setOverdueResolved(prev=>new Set([...prev,ticketId]));
+    updLead(ticketId,{needs_attention:false,needs_attention_since:null});
+  };
+  const handleOverdueDone=()=>{
+    setShowOverdueModal(false);
+    setOverdueResolved(new Set());
+  };
 
   const items=[
     {id:"dashboard",icon:Ic.home,label:"Dashboard"},
@@ -146,6 +182,13 @@ export default function App(){
       </div>
       <BottomNav page={page} nav={nav} user={user} onMenuOpen={()=>setDrawerOpen(true)}/>
       {showChangePw&&<ChangePasswordModal onClose={()=>setShowChangePw(false)}/>}
+      {showOverdueModal&&overdueLeads.length>0&&(
+        <OverdueLeadsModal
+          overdueLeads={overdueLeads}
+          onResolved={handleOverdueResolved}
+          onDone={handleOverdueDone}
+        />
+      )}
     </div>
   );
 }

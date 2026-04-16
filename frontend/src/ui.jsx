@@ -38,7 +38,7 @@ export const FOLLOWUP_OPTS = [
   {v:'cliente_interesado',    l:'Cliente sigue interesado'},
   {v:'contactar_mas_adelante',l:'Pidió contactar más adelante'},
   {v:'revisando_cotizacion',  l:'Está revisando cotización'},
-  {v:'agendar_visita',        l:'Agendar visita o test ride'},
+  {v:'agendar_visita',        l:'Agendar visita'},
   {v:'no_responde',           l:'No responde'},
 ];
 // Roles — fuente única de verdad. `hasRole(user, ...roles)` centraliza los
