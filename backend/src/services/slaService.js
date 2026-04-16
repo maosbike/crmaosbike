@@ -209,6 +209,56 @@ const SLAService = {
     return newSeller;
   },
 
+  // Umbral de escalación: después de N activaciones de needs_attention se notifica
+  // al supervisor de la sucursal. Configurable via env; default 3.
+  // La escalación ocurre en los múltiplos exactos (3, 6, 9...) para no repetir
+  // en cada ciclo del cron sin necesitar un campo extra de "ya notifiqué".
+  ESCALATION_THRESHOLD: parseInt(process.env.ESCALATION_THRESHOLD || '3', 10),
+
+  // Detecta leads que superaron el umbral de reincidencia y notifica a supervisores.
+  async checkEscalations() {
+    const threshold = this.ESCALATION_THRESHOLD;
+
+    // Leads activos con needs_attention = TRUE cuyo attention_count es múltiplo exacto
+    // del umbral (3, 6, 9...). JOIN con users para incluir nombre del vendedor en el mensaje.
+    const { rows } = await db.query(
+      `SELECT t.id, t.ticket_num, t.branch_id, t.assigned_to, t.attention_count,
+              u.first_name AS seller_first, u.last_name AS seller_last
+       FROM tickets t
+       LEFT JOIN users u ON u.id = t.assigned_to
+       WHERE t.status NOT IN ('ganado', 'perdido')
+         AND t.needs_attention = TRUE
+         AND t.attention_count >= $1
+         AND t.attention_count % $1 = 0`,
+      [threshold]
+    );
+
+    let escalated = 0;
+    for (const t of rows) {
+      const sellerName = [t.seller_first, t.seller_last].filter(Boolean).join(' ') || 'vendedor sin asignar';
+      try {
+        // getAdminIds ya incluye fallback: branch_id = t.branch_id OR branch_id IS NULL
+        // por lo que cubre tanto admins de sucursal como super_admins globales.
+        const adminIds = await this.getAdminIds(t.branch_id);
+        if (!adminIds.length) {
+          logger.warn(`[SLA] checkEscalations: sin admins para sucursal ${t.branch_id}, ticket #${t.ticket_num}`);
+          continue;
+        }
+        await NotificationService.notifyMany(adminIds, {
+          type: 'escalation_attention',
+          title: `Lead #${t.ticket_num} — reincidencia (${t.attention_count} veces sin seguimiento)`,
+          message: `El lead no recibe seguimiento real hace ${t.attention_count} ciclos. Vendedor asignado: ${sellerName}.`,
+          link_type: 'ticket',
+          link_id: t.id,
+        });
+        escalated++;
+      } catch (e) {
+        logger.warn(`[SLA] checkEscalations notify error ticket #${t.ticket_num}:`, e.message);
+      }
+    }
+    return escalated;
+  },
+
   _running: false,
 
   // Chequeo completo de SLA (llamado por el cron)
@@ -310,6 +360,10 @@ const SLAService = {
       // 4. Leads con fecha de seguimiento comprometida vencida → re-activa Necesita atención
       const expired = await this.checkExpiredFollowups();
       logger.info(`[SLA] Leads re-flagueados por followup vencido: ${expired}`);
+
+      // 5. Escalación al supervisor: leads con reincidencia >= umbral (múltiplos de ESCALATION_THRESHOLD)
+      const escalated = await this.checkEscalations();
+      logger.info(`[SLA] Leads escalados al supervisor: ${escalated}`);
     } finally {
       this._running = false;
     }
@@ -330,7 +384,8 @@ const SLAService = {
     const { rows } = await db.query(
       `UPDATE tickets SET
          needs_attention = TRUE,
-         needs_attention_since = NOW()
+         needs_attention_since = NOW(),
+         attention_count = attention_count + 1
        WHERE status IN ('en_gestion','cotizado','financiamiento')
          AND needs_attention = FALSE
          AND next_followup_at IS NOT NULL
@@ -361,7 +416,8 @@ const SLAService = {
     const { rows } = await db.query(
       `UPDATE tickets SET
          needs_attention = TRUE,
-         needs_attention_since = NOW()
+         needs_attention_since = NOW(),
+         attention_count = attention_count + 1
        WHERE status IN ('en_gestion','cotizado','financiamiento')
          AND needs_attention = FALSE
          AND (
