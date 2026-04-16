@@ -303,6 +303,8 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
     const finalStatus = reqStatus === 'reservada' ? 'reservada' : 'vendida';
     const finalSoldAt = sold_at ? new Date(sold_at).toISOString() : new Date().toISOString();
 
+    await db.query('BEGIN');
+
     const { rows } = await db.query(
       `INSERT INTO sales_notes (
          status, branch_id, year, brand, model, color, chassis, motor_num, price,
@@ -343,8 +345,20 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
       ]
     );
 
+    // Cierre atómico del ticket cuando es venta (no reserva) y viene vinculada a un ticket
+    if (ticket_id && finalStatus === 'vendida') {
+      await db.query(
+        `UPDATE tickets SET status = 'ganado', updated_at = NOW()
+         WHERE id = $1 AND status != 'ganado'`,
+        [ticket_id]
+      );
+    }
+
+    await db.query('COMMIT');
+
     res.status(201).json({ ...rows[0], is_note_only: true });
   } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
     logger.error({err:e},'[Sales] POST /');
     res.status(500).json({ error: 'Error al registrar venta' });
   }
@@ -367,7 +381,7 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
       );
       if (!own[0]) return res.status(403).json({ error: 'Sin permiso para editar esta venta' });
       // Bloquear campos internos
-      ['cost_price', 'distributor_paid', 'doc_factura_dist'].forEach(f => delete req.body[f]);
+      ['cost_price', 'invoice_amount', 'distributor_paid', 'doc_factura_dist'].forEach(f => delete req.body[f]);
     }
 
     const UPDATABLE_BASE = [
@@ -443,6 +457,8 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
 
     const unit = cur[0];
 
+    await db.query('BEGIN');
+
     await db.query(
       `UPDATE inventory SET
          status           = 'disponible',
@@ -481,12 +497,32 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
       ]
     );
 
+    // Si era venta (no reserva) con ticket vinculado y ticket estaba en 'ganado' → reabrir
+    if (unit.ticket_id && unit.status === 'vendida') {
+      const { rows: reopened } = await db.query(
+        `UPDATE tickets SET status = 'en_gestion', updated_at = NOW()
+         WHERE id = $1 AND status = 'ganado'
+         RETURNING id`,
+        [unit.ticket_id]
+      );
+      if (reopened[0]) {
+        await db.query(
+          `INSERT INTO timeline (ticket_id, user_id, type, title)
+           VALUES ($1, $2, 'system', 'Venta eliminada — ticket reabierto')`,
+          [unit.ticket_id, req.user.id]
+        );
+      }
+    }
+
+    await db.query('COMMIT');
+
     res.json({
       ok: true,
       message: `Unidad ${unit.brand} ${unit.model} (${unit.chassis}) revertida a disponible`,
       ticket_id_was: unit.ticket_id || null,
     });
   } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
     logger.error({err:e},'[Sales] DELETE /:id');
     res.status(500).json({ error: 'Error al eliminar venta' });
   }

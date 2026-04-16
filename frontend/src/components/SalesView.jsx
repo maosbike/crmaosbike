@@ -1170,7 +1170,6 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 <Field label="Teléfono"          value={form.client_phone}   onChange={set('client_phone')} ph="+56 9 XXXX XXXX" />
                 <Field label="Email"             value={form.client_email}   onChange={set('client_email')} />
                 <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
-                <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
                 <Field label="Comuna"            value={form.client_commune} onChange={set('client_commune')} />
               </>
             )}
