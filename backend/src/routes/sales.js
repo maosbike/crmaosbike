@@ -381,8 +381,8 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
         [req.params.id, req.user.id]
       );
       if (!own[0]) return res.status(403).json({ error: 'Sin permiso para editar esta venta' });
-      // Bloquear campos internos
-      ['cost_price', 'invoice_amount', 'distributor_paid', 'doc_factura_dist'].forEach(f => delete req.body[f]);
+      // Bloquear solo campos internos — invoice_amount (abono) sí es editable por vendedor
+      ['cost_price', 'distributor_paid', 'doc_factura_dist'].forEach(f => delete req.body[f]);
     }
 
     const UPDATABLE_BASE = [
@@ -392,9 +392,9 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
       'doc_factura_dist', 'doc_factura_cli', 'doc_homologacion', 'doc_inscripcion',
       'client_name', 'client_rut', 'sold_by',
     ];
-    // sales_notes admite además cambio de estado y fecha (para conversión reserva→venta)
+    // sales_notes admite además cambio de estado, fecha y datos del vehículo
     const UPDATABLE = isNoteOnly
-      ? [...UPDATABLE_BASE, 'status', 'sold_at']
+      ? [...UPDATABLE_BASE, 'status', 'sold_at', 'brand', 'model', 'year', 'color', 'chassis', 'motor_num']
       : UPDATABLE_BASE;
 
     const sets = [], params = [];

@@ -131,6 +131,11 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       client_name:      sale.client_name      || '',
       client_rut:       sale.client_rut       || '',
       sold_by:          sale.seller_id        || '',
+      brand:            sale.brand            || '',
+      model:            sale.model            || '',
+      year:             sale.year             || '',
+      color:            sale.color            || '',
+      chassis:          sale.chassis          || '',
     });
   }, [sale]);
 
@@ -466,6 +471,20 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
             <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
             <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
           </div>
+          {sale.is_note_only && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Vehículo
+              </div>
+              <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field label="Marca" value={form.brand} onChange={set('brand')} />
+                <Field label="Modelo" value={form.model} onChange={set('model')} />
+                <Field label="Año" value={form.year} onChange={set('year')} type="number" />
+                <Field label="Color" value={form.color} onChange={set('color')} />
+                <Field label="Chasis" value={form.chassis} onChange={set('chassis')} />
+              </div>
+            </>
+          )}
           <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
           {err && <div style={{ color: '#EF4444', fontSize: 12, padding: '6px 10px',
                                 background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
