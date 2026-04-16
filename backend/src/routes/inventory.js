@@ -78,7 +78,10 @@ router.get('/', async (req, res) => {
          i.sort_order ASC,
          i.created_at DESC`, params
     );
-    res.json(rows);
+    const isVendedor = req.user.role === 'vendedor';
+    res.json(isVendedor
+      ? rows.map(r => { const out = { ...r }; delete out.cost_price; delete out.invoice_amount; delete out.sale_price; return out; })
+      : rows);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
 
@@ -574,6 +577,14 @@ router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffic
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
   try {
+    const { rows: cur } = await db.query(
+      'SELECT id, status FROM inventory WHERE id = $1',
+      [req.params.id]
+    );
+    if (!cur[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
+    if (['vendida', 'reservada'].includes(cur[0].status)) {
+      return res.status(409).json({ error: 'No se puede eliminar una unidad vendida o reservada. Usa la opción de revertir venta.' });
+    }
     const { rows } = await db.query(
       'DELETE FROM inventory WHERE id=$1 RETURNING id, brand, model, chassis',
       [req.params.id]
@@ -584,7 +595,7 @@ router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), async (req, r
 });
 
 // ─── EXPORT — genera XLSX con todo el inventario ──────────────────────────────
-router.get('/export', async (req, res) => {
+router.get('/export', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
     const { branch_id, status } = req.query;
     let where = ['1=1'], params = [], idx = 1;

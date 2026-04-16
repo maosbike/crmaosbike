@@ -462,10 +462,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 </button>
               </>
             )}
-            <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }}
-              style={{...btnOrange, justifyContent:'center', padding: isMobile ? '10px 14px' : '9px 18px'}}>
-              <Ic.plus size={14} color="#ffffff"/> Nueva unidad
-            </button>
+            {isAdmin && (
+              <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }}
+                style={{...btnOrange, justifyContent:'center', padding: isMobile ? '10px 14px' : '9px 18px'}}>
+                <Ic.plus size={14} color="#ffffff"/> Nueva unidad
+              </button>
+            )}
           </>
         }
       />
@@ -1086,10 +1088,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     )}
                   </div>
 
-                  {/* ── PRECIO oculto ── */}
-                  {(() => {
-                    return null;
-                  })()}
+                  {/* ── PRECIO ── */}
+                  {x.catalog_price > 0 && (
+                    <div style={{ flex:'0 0 120px', padding:'14px 12px', display:'flex', flexDirection:'column', justifyContent:'center', gap:2, borderLeft:'1px solid #F3F4F6' }}>
+                      <div style={{ fontSize:10, color:'#9CA3AF', fontWeight:500 }}>Precio</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#F28100' }}>{fmt(x.catalog_price)}</div>
+                    </div>
+                  )}
 
                   {/* ── ACCIONES ── */}
                   <div className="crm-inv-actions" onClick={e=>e.stopPropagation()} style={{
