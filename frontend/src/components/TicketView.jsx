@@ -97,7 +97,7 @@ export function TicketView({lead,user,nav,updLead}){
   const[chatSending,setChatSending]=useState(false);
   const savedRef=useRef(null);
   // Modal "Marcar como perdido"
-  const PERDIDO_MOTIVOS=['Compró en otra marca','No aplica para financiamiento','Solo cotizando / sin intención real','No responde','Compró moto usada','Otro motivo'];
+  const PERDIDO_MOTIVOS=['Compró en otra marca','No califica para financiamiento','Solo cotizando / sin intención real','No responde','Compró moto usada','Otro motivo'];
   const[perdidoModal,setPerdidoModal]=useState(false);
   const[perdidoMotivo,setPerdidoMotivo]=useState('');
   const[perdidoDetalle,setPerdidoDetalle]=useState('');
@@ -298,8 +298,8 @@ export function TicketView({lead,user,nav,updLead}){
         <div style={{ background:'rgba(239,68,68,0.07)',border:'2px solid rgba(239,68,68,0.3)',borderRadius:12,padding:'14px 18px',marginBottom:12,display:'flex',alignItems:'center',gap:14 }}>
           <span style={{ fontSize:26 }}>⚠️</span>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead necesita seguimiento obligatorio</div>
-            <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Han pasado más de 48h sin gestión. Completá el cuestionario para continuar.</div>
+            <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead lleva más de 48h sin contacto</div>
+            <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Registra el seguimiento para continuar gestionando este lead.</div>
           </div>
           <button onClick={()=>{resetFq();setShowFollowup(true);}}
             style={{ padding:'10px 20px',background:'#DC2626',color:'#ffffff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
@@ -581,38 +581,11 @@ export function TicketView({lead,user,nav,updLead}){
                 <Field label="Pie" value={lead.pie} onChange={v=>upd("pie",Number(v))} type="number"/>
               </div>
 
-              {/* Financiamiento integrado */}
+              {/* Financiamiento */}
               <div style={secTitle('#8B5CF6')}>Financiamiento</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:12 }}>
-                <div>
-                  <label style={S.lbl}>Estado</label>
-                  <select value={lead.finStatus} onChange={e=>upd("finStatus",e.target.value)} style={{ ...S.inp, width:'100%' }}>
-                    {Object.entries(FIN_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={S.lbl}>Motivo Rechazo</label>
-                  <select value={lead.rechazoMotivo||""} onChange={e=>upd("rechazoMotivo",e.target.value)}
-                    style={{ ...S.inp, width:'100%' }} disabled={lead.finStatus!=="rechazado"}>
-                    <option value="">Seleccionar...</option>
-                    {RECHAZO_MOTIVOS.map(mo=><option key={mo} value={mo}>{mo}</option>)}
-                  </select>
-                </div>
-              </div>
-              {lead.finStatus==="rechazado"&&lead.rechazoMotivo&&(
-                <div style={{ background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#EF4444' }}>
-                  Rechazado: {lead.rechazoMotivo}
-                </div>
-              )}
-              {lead.finStatus==="aprobado"&&(
-                <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#10B981' }}>
-                  Financiamiento aprobado
-                </div>
-              )}
-
-              {/* ¿Solicita financiamiento? */}
-              <div style={{ padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB' }}>
-                <label style={{ ...S.lbl, marginBottom:5 }}>¿Solicita financiamiento?</label>
+              {/* 1. Toggle — siempre visible primero */}
+              <div style={{ padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB', marginBottom:12 }}>
+                <label style={{ ...S.lbl, marginBottom:5 }}>Solicita financiamiento</label>
                 <div style={{ display:'flex', gap:6 }}>
                   {[true,false].map(v=>(
                     <button key={String(v)} type="button" onClick={()=>upd("wantsFin",v)}
@@ -625,35 +598,77 @@ export function TicketView({lead,user,nav,updLead}){
                   ))}
                 </div>
               </div>
+              {/* 2. Estado y detalle — solo si solicita financiamiento */}
+              {lead.wantsFin&&(<>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:12 }}>
+                  <div>
+                    <label style={S.lbl}>Estado</label>
+                    <select value={lead.finStatus} onChange={e=>upd("finStatus",e.target.value)} style={{ ...S.inp, width:'100%' }}>
+                      {Object.entries(FIN_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={S.lbl}>Motivo de rechazo</label>
+                    <select value={lead.rechazoMotivo||""} onChange={e=>upd("rechazoMotivo",e.target.value)}
+                      style={{ ...S.inp, width:'100%' }} disabled={lead.finStatus!=="rechazado"}>
+                      <option value="">Seleccionar...</option>
+                      {RECHAZO_MOTIVOS.map(mo=><option key={mo} value={mo}>{mo}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {lead.finStatus==="rechazado"&&lead.rechazoMotivo&&(
+                  <div style={{ background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#EF4444' }}>
+                    Rechazado: {lead.rechazoMotivo}
+                  </div>
+                )}
+                {lead.finStatus==="aprobado"&&(
+                  <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#10B981' }}>
+                    Financiamiento aprobado
+                  </div>
+                )}
+              </>)}
+              {/* 3. Sin financiamiento — mensaje neutro */}
+              {lead.wantsFin===false&&(
+                <div style={{ fontSize:12, color:'#9CA3AF', paddingLeft:2 }}>No solicita financiamiento</div>
+              )}
             </div>
 
           </div>
           {/* Barra Guardar datos del cliente */}
-          <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'flex-end' }}>
-            <button onClick={async()=>{
-              const orig=savedRef.current||{};
-              const LABELS={fn:'Nombre',ln:'Apellido',rut:'RUT',bday:'F. Nacimiento',email:'Email',phone:'Teléfono',comuna:'Comuna',source:'Origen',sitLab:'Sit. Laboral',continuidad:'Continuidad',renta:'Renta',pie:'Pie',wantsFin:'Solicita Fin.',finStatus:'Estado Fin.',rechazoMotivo:'Mot. Rechazo',motoId:'Modelo'};
-              const changed=Object.keys(LABELS).filter(k=>String(lead[k]??'')!==String(orig[k]??''));
-              const payload={first_name:lead.fn,last_name:lead.ln,rut:lead.rut,birthdate:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sit_laboral:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta||null,pie:lead.pie||null,wants_financing:lead.wantsFin,fin_status:lead.finStatus,rechazo_motivo:lead.rechazoMotivo,model_id:lead.motoId||null};
-              try{
-                await api.updateTicket(lead.id,payload);
-                if(changed.length>0){
-                  const fmtVal=(k,v)=>{
-                    if(v===''||v===null||v===undefined)return '(vacío)';
-                    if(k==='renta'||k==='pie')return '$'+Number(v).toLocaleString('es-CL');
-                    if(k==='wantsFin')return v?'Sí':'No';
-                    return String(v);
-                  };
-                  const details=changed.map(k=>`${LABELS[k]}: ${fmtVal(k,orig[k])} → ${fmtVal(k,lead[k])}`).join('\n');
-                  const e=await api.addTimeline(lead.id,{type:'system',title:`Datos actualizados (${changed.length} campo${changed.length!==1?'s':''})`,note:details});
-                  addTimelineLocal(e);
-                }
-                savedRef.current={...orig,...lead};
-              }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
-            }} style={{ ...S.btn, fontSize:12 }}>
-              Guardar datos del cliente
-            </button>
-          </div>
+          {(()=>{
+            const DIRTY_KEYS=['fn','ln','rut','bday','email','phone','comuna','source','sitLab','continuidad','renta','pie','wantsFin','finStatus','rechazoMotivo','motoId'];
+            const isDirty=!!savedRef.current&&DIRTY_KEYS.some(k=>String(lead[k]??'')!==String(savedRef.current[k]??''));
+            return(
+              <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                {isDirty?(
+                  <span style={{ fontSize:11, fontWeight:700, color:'#F28100', background:'#FFF7ED', padding:'3px 10px', borderRadius:6, border:'1px solid #FDBA74' }}>Cambios sin guardar</span>
+                ):<span/>}
+                <button onClick={async()=>{
+                  const orig=savedRef.current||{};
+                  const LABELS={fn:'Nombre',ln:'Apellido',rut:'RUT',bday:'F. Nacimiento',email:'Email',phone:'Teléfono',comuna:'Comuna',source:'Origen',sitLab:'Sit. Laboral',continuidad:'Continuidad',renta:'Renta',pie:'Pie',wantsFin:'Solicita Fin.',finStatus:'Estado Fin.',rechazoMotivo:'Mot. Rechazo',motoId:'Modelo'};
+                  const changed=Object.keys(LABELS).filter(k=>String(lead[k]??'')!==String(orig[k]??''));
+                  const payload={first_name:lead.fn,last_name:lead.ln,rut:lead.rut,birthdate:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sit_laboral:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta||null,pie:lead.pie||null,wants_financing:lead.wantsFin,fin_status:lead.finStatus,rechazo_motivo:lead.rechazoMotivo,model_id:lead.motoId||null};
+                  try{
+                    await api.updateTicket(lead.id,payload);
+                    if(changed.length>0){
+                      const fmtVal=(k,v)=>{
+                        if(v===''||v===null||v===undefined)return '(vacío)';
+                        if(k==='renta'||k==='pie')return '$'+Number(v).toLocaleString('es-CL');
+                        if(k==='wantsFin')return v?'Sí':'No';
+                        return String(v);
+                      };
+                      const details=changed.map(k=>`${LABELS[k]}: ${fmtVal(k,orig[k])} → ${fmtVal(k,lead[k])}`).join('\n');
+                      const e=await api.addTimeline(lead.id,{type:'system',title:`Datos actualizados (${changed.length} campo${changed.length!==1?'s':''})`,note:details});
+                      addTimelineLocal(e);
+                    }
+                    savedRef.current={...orig,...lead};
+                  }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
+                }} style={{ ...S.btn, fontSize:12, ...(isDirty?{background:'#F28100',boxShadow:'0 2px 8px rgba(242,129,0,0.28)'}:{}) }}>
+                  Guardar datos
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

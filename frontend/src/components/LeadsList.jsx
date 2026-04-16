@@ -112,13 +112,13 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       {/* ── Header ── */}
       <ViewHeader
         preheader="Comercial · Leads"
-        title="Leads / Tickets"
+        title="Leads"
         count={f.length}
-        itemLabel="registro"
+        itemLabel="ficha"
         filtered={hasFilters}
         actions={
           <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
-            <Ic.plus size={14}/>Nuevo Ticket
+            <Ic.plus size={14}/>Nueva ficha
           </button>
         }
       />
@@ -256,16 +256,12 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         </>}
       </div>
 
-      {/* ── Contador ── */}
-      {f.length>0&&<div style={{fontSize:11,color:'#9CA3AF',fontWeight:500,paddingLeft:2,marginBottom:6}}>
-        {f.length} ticket{f.length!==1?'s':''}{hasFilters?` (de ${effectiveLeads.filter(l=>!hasRole(user, ROLES.VEND)||l.seller_id===user.id).length} total)`:''}
-      </div>}
 
       {/* ── Lista de registros — mismo patrón visual que Inventario ── */}
       {f.length>0&&!stF&&<div style={{fontSize:10,fontWeight:600,color:'#9CA3AF',paddingLeft:2,marginBottom:6,letterSpacing:'0.04em'}}>Ordenado por estado</div>}
       {f.length===0?(
         <div style={{background:'#FFFFFF',borderRadius:14,border:'1px dashed #E5E7EB',padding:'60px 0',textAlign:'center'}}>
-          <div style={{fontSize:14,fontWeight:700,color:'#374151',marginBottom:4}}>{hasFilters?'Sin resultados con estos filtros':'Sin tickets registrados'}</div>
+          <div style={{fontSize:14,fontWeight:700,color:'#374151',marginBottom:4}}>{hasFilters?'Ningún lead coincide con estos filtros':'No hay leads todavía'}</div>
           <div style={{fontSize:12,color:'#9CA3AF'}}>
             {hasFilters&&<button onClick={()=>{clearFilters();}} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button>}
           </div>
@@ -343,18 +339,18 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 </div>
 
                 {/* Zona Moto */}
-                <div className="crm-lead-moto" style={{flex:'0 0 310px',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:14}}>
+                <div className="crm-lead-moto" style={{flex:'0 0 220px',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10}}>
                   {x.model_image
-                    ?<img src={x.model_image} alt="" className="crm-lead-img" style={{width:120,height:84,padding:6,boxSizing:'border-box',objectFit:'contain',objectPosition:'center',borderRadius:10,border:'1.5px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>
-                    :<div className="crm-lead-img" style={{width:120,height:84,borderRadius:10,border:'1.5px dashed #D1D5DB',background:'#F9FAFB',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
+                    ?<img src={x.model_image} alt="" className="crm-lead-img" style={{width:80,height:56,padding:4,boxSizing:'border-box',objectFit:'contain',objectPosition:'center',borderRadius:8,border:'1.5px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>
+                    :<div className="crm-lead-img" style={{width:80,height:56,borderRadius:8,border:'1.5px dashed #D1D5DB',background:'#F9FAFB',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
                     </div>
                   }
                   <div style={{flex:1,minWidth:0}}>
                     {x.model_brand?(
                       <>
-                        <div style={{fontSize:17,fontWeight:900,color:'#111827',letterSpacing:'-0.4px',lineHeight:1.1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_brand}</div>
-                        <div style={{fontSize:12,fontWeight:600,color:'#4B5563',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_name}</div>
+                        <div style={{fontSize:14,fontWeight:900,color:'#111827',letterSpacing:'-0.3px',lineHeight:1.1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_brand}</div>
+                        <div style={{fontSize:11,fontWeight:600,color:'#4B5563',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_name}</div>
                         <div style={{display:'flex',gap:6,marginTop:5,alignItems:'center',flexWrap:'wrap'}}>
                           {x.model_year&&<span style={{fontSize:12,fontWeight:800,color:'#4F46E5',background:'#EEF2FF',padding:'2px 8px',borderRadius:6,border:'1px solid #C7D2FE'}}>{x.model_year}</span>}
                           {x.model_cc&&<span style={{fontSize:10,color:'#9CA3AF'}}>{x.model_cc}cc</span>}
@@ -371,16 +367,16 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 <div className="crm-lead-client" style={{flex:'0 0 210px',minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
                   <div style={{...sectionLbl,marginBottom:7}}>Cliente</div>
                   <div style={{fontSize:14,fontWeight:700,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
+                  {x.followup_next_step&&(()=>{
+                    const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
+                    const txt=x.followup_next_step.length>38?x.followup_next_step.slice(0,38)+'…':x.followup_next_step;
+                    return<div style={{marginTop:4,fontSize:11,fontWeight:600,color:venc?'#EF4444':'#15803D',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',background:venc?'rgba(239,68,68,0.07)':'rgba(21,128,61,0.07)',borderRadius:5,padding:'2px 6px'}} title={x.followup_next_step}>🎯 {txt}</div>;
+                  })()}
                   {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:4}}><a href={`tel:${x.phone}`} onClick={e=>e.stopPropagation()} style={{color:'inherit',textDecoration:'none'}}>{x.phone}</a></div>}
                   {x.rut&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{x.rut}</div>}
                   {x.source&&<div style={{marginTop:6}}>
                     <span style={{fontSize:9,fontWeight:700,color:'#6B7280',background:'#F3F4F6',padding:'2px 8px',borderRadius:5,border:'1px solid #E5E7EB',textTransform:'uppercase',letterSpacing:'0.06em'}}>{SRC_SHORT[x.source]||x.source}</span>
                   </div>}
-                  {x.followup_next_step&&(()=>{
-                    const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
-                    const txt=x.followup_next_step.length>40?x.followup_next_step.slice(0,40)+'…':x.followup_next_step;
-                    return<div style={{marginTop:5,fontSize:10,color:venc?'#EF4444':'#6B7280',fontStyle:'italic',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}} title={x.followup_next_step}>🎯 {txt}</div>;
-                  })()}
                 </div>
 
                 {/* Zona Estado / Prioridad */}
@@ -481,7 +477,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         </div>
       )}
 
-      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nuevo Ticket / Cotización" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.filter(b=>b.code!=='MPSY'&&b.code!=='MOV').map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{display:"grid",gridTemplateColumns:!hasRole(user, ROLES.VEND)&&allSellers.length>0?"1fr 1fr":"1fr",gap:10,marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/>{!hasRole(user, ROLES.VEND)&&allSellers.length>0&&<Field label="Asignar vendedor" value={nw.seller_id} onChange={v=>setNw({...nw,seller_id:v})} opts={[{v:"",l:"Auto-asignar"},...allSellers.map(s=>({v:s.id,l:`${s.first_name} ${s.last_name}`}))]}/>}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear Ticket"}</button></div></form></Modal>}
+      {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nueva ficha de lead" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.filter(b=>b.code!=='MPSY'&&b.code!=='MOV').map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{display:"grid",gridTemplateColumns:!hasRole(user, ROLES.VEND)&&allSellers.length>0?"1fr 1fr":"1fr",gap:10,marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/>{!hasRole(user, ROLES.VEND)&&allSellers.length>0&&<Field label="Asignar vendedor" value={nw.seller_id} onChange={v=>setNw({...nw,seller_id:v})} opts={[{v:"",l:"Auto-asignar"},...allSellers.map(s=>({v:s.id,l:`${s.first_name} ${s.last_name}`}))]}/>}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear ficha"}</button></div></form></Modal>}
     </div>
   );
 }
