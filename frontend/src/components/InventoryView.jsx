@@ -112,7 +112,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   // Mobile detection — usa hook centralizado de ui.jsx (alineado con responsive.css ≤767px).
   const isMobile = useIsMobile();
   const isTablet = useIsMobile(1024);
-  const gridCols = isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(440px, 1fr))';
+  const gridCols = isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(480px, 1fr))';
   const [showFilters, setShowFilters] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
   // Banner de error de recarga — cuando la sincronización con el backend falla.
@@ -435,7 +435,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
   // ── RENDER ──────────────────────────────────────────────────────────────────
   return (
-    <div style={{ maxWidth:1400 }}>
+    <div>
 
       {reloadErr && (
         <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', color:'#B91C1C', padding:'10px 14px', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -956,20 +956,20 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   <div style={{ width:4, flexShrink:0, background: stCfg.color }}/>
 
                   {/* ── FOTO ── */}
-                  <div style={{ flexShrink:0, position:'relative', width:84, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', background:'#F9FAFB', borderRight:'1px solid #F3F4F6' }} onClick={e=>e.stopPropagation()}>
+                  <div style={{ flexShrink:0, position:'relative', width:120, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', background:'#F9FAFB', borderRight:'1px solid #F3F4F6', overflow:'hidden', minHeight:96 }} onClick={e=>e.stopPropagation()}>
                     {x.unit_photo
                       ? <>
                           <img
                             src={x.unit_photo}
                             onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
-                            style={{ width:84, height:80, objectFit:'cover', cursor:'pointer', display:'block' }}
+                            style={{ width:'100%', height:'100%', objectFit:'cover', cursor:'pointer', display:'block', position:'absolute', inset:0 }}
                           />
                           <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
-                            style={{ position:'absolute', bottom:4, right:4, width:20, height:20, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:11, padding:0 }}>✎</button>
+                            style={{ position:'absolute', bottom:4, right:4, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:11, padding:0, zIndex:1 }}>✎</button>
                         </>
                       : <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Agregar foto"
-                          style={{ width:84, height:80, border:'none', background:'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, padding:0 }}>
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          style={{ width:'100%', height:'100%', minHeight:96, border:'none', background:'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, padding:0 }}>
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                             <circle cx="12" cy="13" r="4"/>
                           </svg>
@@ -979,23 +979,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </div>
 
                   {/* ── INFO PRINCIPAL ── */}
-                  <div style={{ flex:1, minWidth:0, padding:'10px 14px', display:'flex', flexDirection:'column', justifyContent:'center', borderRight:'1px solid #F3F4F6', overflow:'hidden' }}>
-                    {/* Fila 1: Marca + Modelo + Año */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-                      <span style={{ fontSize:14, fontWeight:700, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                        {x.brand} {x.model}
-                      </span>
-                      {x.year && (
-                        <span style={{ fontSize:11, color:'#4F46E5', background:'#EEF2FF', padding:'1px 7px', borderRadius:99, fontWeight:700, flexShrink:0, border:'1px solid #C7D2FE' }}>
-                          {x.year}
-                        </span>
-                      )}
+                  <div style={{ flex:1, minWidth:0, padding:'12px 16px', display:'flex', flexDirection:'column', justifyContent:'center', borderRight:'1px solid #F3F4F6', overflow:'hidden', gap:4 }}>
+                    {/* Fila 1: Marca + Modelo prominentes */}
+                    <div style={{ fontSize:14, fontWeight:700, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {x.brand} {x.model}
                     </div>
-                    {/* Fila 2: Chasis + Color */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6, flexWrap:'wrap' }}>
-                      {x.chassis && (
-                        <span style={{ fontSize:11, color:'#6B7280', fontFamily:"'SF Mono',Consolas,monospace", background:'#F3F4F6', padding:'1px 6px', borderRadius:5, border:'1px solid #E5E7EB' }}>
-                          #{x.chassis}
+                    {/* Fila 2: Año + Color */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                      {x.year && (
+                        <span style={{ fontSize:10, fontWeight:700, color:'#4F46E5', background:'#EEF2FF', padding:'1px 6px', borderRadius:99, border:'1px solid #C7D2FE', flexShrink:0 }}>
+                          {x.year}
                         </span>
                       )}
                       {x.color && (
@@ -1005,26 +998,18 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         </div>
                       )}
                     </div>
-                    {/* Fila 3: Badge estado + sucursal + precio */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                      <span style={{
-                        fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99,
-                        background: stCfg.bg, color: stCfg.color, border:`1px solid ${stCfg.border}`,
-                      }}>
-                        {stCfg.icon} {stCfg.label}
-                        {isSold && x.sold_at ? ` · ${fD(x.sold_at)}` : ''}
-                      </span>
-                      {bCode && (
-                        <span style={{ fontSize:10, fontWeight:600, color:bCfg.color, background:bCfg.light, padding:'2px 7px', borderRadius:99, border:`1px solid ${bCfg.color}30` }}>
-                          {bCfg.label}
-                        </span>
-                      )}
-                      {x.sale_price > 0 && (
-                        <span style={{ fontSize:12, fontWeight:700, color:'#374151', marginLeft:'auto' }}>
-                          ${Number(x.sale_price).toLocaleString('es-CL')}
-                        </span>
-                      )}
-                    </div>
+                    {/* Fila 3: Chasis en mono */}
+                    {x.chassis && (
+                      <div style={{ fontSize:11, color:'#9CA3AF', fontFamily:"'SF Mono',Consolas,monospace" }}>
+                        {x.chassis}
+                      </div>
+                    )}
+                    {/* Fila 4: Precio si existe */}
+                    {x.sale_price > 0 && (
+                      <div style={{ fontSize:15, fontWeight:800, color:'#374151', letterSpacing:'-0.01em', marginTop:2 }}>
+                        ${Number(x.sale_price).toLocaleString('es-CL')}
+                      </div>
+                    )}
                   </div>
 
                   {/* ── IDENTIFICADORES — chasis foto + motor (compacto) ── */}
@@ -1054,37 +1039,38 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     </div>
                   </div>
 
-                  {/* ── ESTADO — select rápido ── */}
-                  <div className="crm-inv-status" onClick={e=>e.stopPropagation()} style={{
-                    flexShrink:0, padding:'10px 12px',
-                    borderRight:'1px solid #F3F4F6',
-                    display:'flex', flexDirection:'column', justifyContent:'center', gap:6, minWidth:110,
+                  {/* ── ZONA DERECHA: estado + sucursal + acciones ── */}
+                  <div className="crm-inv-actions" onClick={e=>e.stopPropagation()} style={{
+                    flexShrink:0, padding:'12px 14px',
+                    display:'flex', flexDirection:'column',
+                    alignItems:'flex-end', justifyContent:'space-between',
+                    minWidth:128, borderLeft:'1px solid #F3F4F6',
+                    alignSelf:'stretch',
                   }}>
+                    {/* Badge de estado arriba */}
                     {isSold ? (
-                      <>
-                        <div style={{
-                          display:'inline-flex', alignItems:'center', gap:5,
-                          padding:'5px 10px', borderRadius:20,
-                          background:ST_CFG.vendida.bg, border:`1.5px solid ${ST_CFG.vendida.border}`,
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
+                        <span style={{
+                          fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:99,
+                          background:ST_CFG.vendida.bg, color:ST_CFG.vendida.color, border:`1px solid ${ST_CFG.vendida.border}`,
                         }}>
-                          <span style={{ fontSize:12, color:ST_CFG.vendida.color }}>✓</span>
-                          <span style={{ fontSize:11, fontWeight:800, color:ST_CFG.vendida.color }}>Vendida</span>
-                        </div>
-                        {x.sold_at && <div style={{ fontSize:9, color:'#9CA3AF', paddingLeft:2 }}>{fD(x.sold_at)}</div>}
-                      </>
+                          {ST_CFG.vendida.icon} Vendida
+                        </span>
+                        {x.sold_at && <div style={{ fontSize:9, color:'#9CA3AF' }}>{fD(x.sold_at)}</div>}
+                      </div>
                     ) : (
                       <div style={{
                         display:'inline-flex', alignItems:'center', gap:5,
-                        padding:'5px 9px', borderRadius:20,
+                        padding:'4px 9px', borderRadius:99,
                         background:stCfg.bg, border:`1.5px solid ${stCfg.border}`,
                       }}>
-                        <span style={{ fontSize:12, color:stCfg.color }}>{stCfg.icon}</span>
+                        <span style={{ fontSize:11, color:stCfg.color }}>{stCfg.icon}</span>
                         <select value={x.status}
                           onClick={e=>e.stopPropagation()}
                           onChange={e=>handleStatus(x.id,e.target.value)}
                           style={{
                             background:'transparent', border:'none',
-                            fontSize:11, fontWeight:800, color:stCfg.color,
+                            fontSize:10, fontWeight:800, color:stCfg.color,
                             cursor:'pointer', padding:0, outline:'none', fontFamily:'inherit',
                           }}>
                           {Object.entries(INV_ST).filter(([k])=>k!=='vendida').map(([k,v])=>(
@@ -1093,47 +1079,37 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         </select>
                       </div>
                     )}
-                  </div>
 
-                  {/* ── ACCIONES ── */}
-                  <div className="crm-inv-actions" onClick={e=>e.stopPropagation()} style={{
-                    flexShrink:0, padding:'10px 12px',
-                    display:'flex', flexDirection:'column', justifyContent:'center', gap:6, minWidth:100,
-                  }}>
-                    {!isSold ? (
-                      <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                        <button onClick={()=>toggleHist(x.id)}
-                          style={{
-                            ...miniBtn,
-                            background: isHistOpen ? '#EEF2FF' : '#F9FAFB',
-                            color: isHistOpen ? '#4F46E5' : '#6B7280',
-                            border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}`,
-                          }}>
-                          {histLoading[x.id]?'…':'Historial'}
-                        </button>
-                        {brs.filter(b=>b.id!==x.branch_id).length > 0 && (
-                          <select defaultValue=""
-                            onClick={e=>e.stopPropagation()}
-                            onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
-                            style={{ ...miniBtn, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer' }}>
-                            <option value="" disabled>Mover</option>
-                            {brs.filter(b=>b.id!==x.branch_id).map(b=>(
-                              <option key={b.id} value={b.id}>{b.name}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    ) : (
+                    {/* Sucursal en el medio */}
+                    {bCode && (
+                      <span style={{ fontSize:10, fontWeight:600, color:bCfg.color, background:bCfg.light, padding:'2px 7px', borderRadius:99, border:`1px solid ${bCfg.color}30`, textAlign:'right' }}>
+                        {bCfg.label}
+                      </span>
+                    )}
+
+                    {/* Acciones abajo */}
+                    <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'stretch' }}>
                       <button onClick={()=>toggleHist(x.id)}
                         style={{
-                          ...miniBtn, width:'100%',
+                          ...miniBtn,
                           background: isHistOpen ? '#EEF2FF' : '#F9FAFB',
                           color: isHistOpen ? '#4F46E5' : '#6B7280',
                           border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}`,
                         }}>
-                        {histLoading[x.id]?'Cargando…':'Ver historial'}
+                        {histLoading[x.id]?'…':'Historial'}
                       </button>
-                    )}
+                      {!isSold && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
+                        <select defaultValue=""
+                          onClick={e=>e.stopPropagation()}
+                          onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
+                          style={{ ...miniBtn, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer' }}>
+                          <option value="" disabled>Mover</option>
+                          {brs.filter(b=>b.id!==x.branch_id).map(b=>(
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </div>
                 </div>
 

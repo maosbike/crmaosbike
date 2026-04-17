@@ -142,72 +142,176 @@ export function PipelineView({leads,user,nav,updLead}){
     );
   }
 
+  // Devuelve texto para el badge SLA en el footer de la card (null si no aplica)
+  const getSlaLabel=(l)=>{
+    if(l.sla_status==='breached')return 'SLA vencido';
+    if(l.sla_status==='warning')return 'Atender ya';
+    const sla=getSlaInfo(l);
+    if(sla.breach)return 'SLA vencido';
+    if(sla.warning)return 'Atender ya';
+    return null;
+  };
+
   return(
     <div>
       <ViewHeader title="Pipeline" count={pLeads.length} itemLabel="ficha" subtitle={hasRole(user, ROLES.VEND)?"Mis fichas":undefined} size="md" />
       {pipeErr && <ErrorMsg msg={pipeErr} />}
-      <div style={{display:'flex',gap:12,height:'calc(100vh - 130px)',overflowX:'auto',padding:'0 4px 16px',scrollbarWidth:'thin',scrollbarColor:'#D1D5DB #F9FAFB'}}>
+      <div style={{
+        display:'flex', gap:10,
+        height:'calc(100vh - 130px)',
+        overflowX:'auto', padding:'0 0 16px',
+        scrollbarWidth:'thin',
+        scrollbarColor:'#D1D5DB #F9FAFB',
+      }}>
         {stages.map(stage=>{
-          const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);
+          const sc=TICKET_STATUS[stage], sl=pLeads.filter(l=>l.status===stage);
           return(
             <div key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(stage)}
-              style={{minWidth:240,width:240,flexShrink:0,display:'flex',flexDirection:'column',background:'#F9FAFB',borderRadius:12,border:'1px solid #E5E7EB',overflow:'hidden'}}>
+              style={{
+                minWidth:250, width:250, flexShrink:0,
+                display:'flex', flexDirection:'column',
+                background:'#F9FAFB',
+                borderRadius:12,
+                border:'1px solid #E5E7EB',
+                overflow:'hidden',
+              }}>
               {/* Header de columna */}
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',marginBottom:0,borderBottom:`3px solid ${sc?.c}`,background:'#fff',borderRadius:'10px 10px 0 0'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <div style={{width:10,height:10,borderRadius:'50%',background:sc?.c,flexShrink:0}}/>
-                  <span style={{fontSize:13,fontWeight:700,color:'#111827'}}>{sc?.l}</span>
+              <div style={{
+                padding:'12px 14px',
+                background:'#FFFFFF',
+                borderBottom:`3px solid ${sc?.c}`,
+                display:'flex', alignItems:'center', justifyContent:'space-between',
+              }}>
+                <div style={{display:'flex', alignItems:'center', gap:8}}>
+                  <div style={{width:8, height:8, borderRadius:'50%', background:sc?.c, flexShrink:0}}/>
+                  <span style={{fontSize:13, fontWeight:700, color:'#111827'}}>{sc?.l}</span>
                 </div>
-                <span style={{background:sc?.bg,color:sc?.c,fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:99,minWidth:22,textAlign:'center'}}>
+                <span style={{
+                  fontSize:11, fontWeight:700, minWidth:20, textAlign:'center',
+                  padding:'2px 8px', borderRadius:99,
+                  background:sc?.bg, color:sc?.c,
+                }}>
                   {sl.length}
                 </span>
               </div>
-              {/* Cards con scroll interno */}
-              <div style={{flex:1,overflowY:'auto',padding:8,scrollbarWidth:'thin'}}>
+
+              {/* Zona scrollable de cards */}
+              <div style={{
+                flex:1, overflowY:'auto',
+                padding:'8px',
+                scrollbarWidth:'thin',
+                scrollbarColor:'#D1D5DB transparent',
+                display:'flex', flexDirection:'column', gap:6,
+              }}>
                 {sl.map(l=>{
                   const m=l.model_brand?{brand:l.model_brand,model:l.model_name,price:l.model_price||0,bonus:l.model_bonus||0}:null;
-                  const sla=getSlaInfo(l);
                   const slaColor=getSlaColor(l);
+                  const slaLabel=getSlaLabel(l);
+                  const slaLabelColor=slaColor==='#EF4444'?'#EF4444':slaColor==='#F59E0B'?'#F59E0B':'#6B7280';
+                  const slaLabelBg=slaColor==='#EF4444'?'#FEF2F2':slaColor==='#F59E0B'?'#FFFBEB':'#F3F4F6';
                   return(
                     <div key={l.id} draggable onDragStart={()=>setDragId(l.id)} onClick={()=>nav("ticket",l.id)}
-                      style={{background:'#fff',border:'1px solid #E5E7EB',borderLeft:`3px solid ${slaColor}`,borderRadius:10,overflow:'hidden',cursor:'grab',transition:'box-shadow 0.15s',marginBottom:6}}
-                      onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.10)';}}
+                      style={{
+                        background:'#FFFFFF',
+                        borderRadius:10,
+                        border:'1px solid #E5E7EB',
+                        borderLeft:`3px solid ${slaColor}`,
+                        padding:0,
+                        overflow:'hidden',
+                        cursor:'grab',
+                        transition:'box-shadow 0.12s',
+                      }}
+                      onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.10)';}}
                       onMouseLeave={e=>{e.currentTarget.style.boxShadow='none';}}>
-                      <div style={{padding:'10px 12px'}}>
-                        {/* Fila 1: Nombre + badge urgente */}
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
-                          <span style={{fontSize:13,fontWeight:700,color:'#111827',flex:1,marginRight:6}}>{l.fn} {l.ln||''}</span>
-                          {l.priority==='alta'&&<span style={{fontSize:9,fontWeight:700,color:'#EF4444',background:'#FEF2F2',padding:'2px 6px',borderRadius:99,flexShrink:0}}>URGENTE</span>}
+
+                      {/* Foto del modelo como banner */}
+                      {l.model_image && (
+                        <div style={{height:76, overflow:'hidden', background:'#F3F4F6', borderBottom:'1px solid #F3F4F6'}}>
+                          <img
+                            src={l.model_image}
+                            alt={l.model_name||''}
+                            style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+                          />
                         </div>
-                        {/* Fila 2: Modelo con imagen */}
-                        {m&&(
-                          <div style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#4B5563',marginBottom:4}}>
-                            {l.model_image&&<img src={l.model_image} alt="" style={{width:28,height:20,padding:2,boxSizing:'border-box',objectFit:'contain',objectPosition:'center',borderRadius:3,background:'#F3F4F6'}}/>}
-                            {m.brand} {m.model||''}
+                      )}
+
+                      {/* Contenido de la card */}
+                      <div style={{padding:'10px 12px'}}>
+                        {/* Nombre + urgente */}
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:3}}>
+                          <span style={{
+                            fontSize:13, fontWeight:700, color:'#111827',
+                            flex:1, marginRight:6,
+                            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                          }}>{l.fn} {l.ln||''}</span>
+                          {l.priority==='alta'&&(
+                            <span style={{fontSize:9, fontWeight:700, color:'#EF4444', background:'#FEF2F2', padding:'2px 6px', borderRadius:99, flexShrink:0}}>
+                              URGENTE
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Modelo */}
+                        {m && (
+                          <div style={{fontSize:11, color:'#4B5563', marginBottom:6}}>
+                            {[m.brand, m.model].filter(Boolean).join(' ')}
                           </div>
                         )}
-                        {/* Fila 3: Precio */}
-                        {m&&m.price>0&&<div style={{fontSize:12,fontWeight:600,color:'#374151',marginBottom:4}}>${Number(m.price-m.bonus).toLocaleString('es-CL')}</div>}
-                        {/* Fila 4: SLA badges */}
-                        {sla.breach&&<div style={{display:'flex',alignItems:'center',gap:4,marginBottom:6,padding:'3px 8px',borderRadius:6,background:'rgba(239,68,68,0.1)',fontSize:10,color:'#EF4444',fontWeight:600}}><Ic.alert size={11} color="#EF4444"/>SLA vencido · {sla.horas}h</div>}
-                        {sla.warning&&!sla.breach&&<div style={{display:'flex',alignItems:'center',gap:4,marginBottom:6,padding:'3px 8px',borderRadius:6,background:'rgba(245,158,11,0.1)',fontSize:10,color:'#F59E0B',fontWeight:600}}><Ic.clock size={11} color="#F59E0B"/>{3-sla.horas}h para SLA</div>}
-                        {/* Fila 5: Info operacional */}
-                        <div style={{display:'flex',gap:8,alignItems:'center',marginTop:6,paddingTop:6,borderTop:'1px solid #F3F4F6'}}>
-                          <span style={{fontSize:10,color:'#9CA3AF',flex:1}}>#{l.num}</span>
-                          <span style={{fontSize:10,color:'#9CA3AF'}}>{l.seller_fn||''}</span>
-                          {m&&m.price>0&&<span style={{fontSize:10,fontWeight:600,color:'#F28100'}}>{fmt(m.price-m.bonus)}</span>}
+                        {!m && (
+                          <div style={{fontSize:11, color:'#D1D5DB', fontStyle:'italic', marginBottom:6}}>Sin moto asignada</div>
+                        )}
+
+                        {/* Precio */}
+                        {m && m.price > 0 && (
+                          <div style={{fontSize:13, fontWeight:700, color:'#374151', marginBottom:6, letterSpacing:'-0.01em'}}>
+                            ${Number(m.price - m.bonus).toLocaleString('es-CL')}
+                          </div>
+                        )}
+
+                        {/* Footer: SLA badge + vendedor + botón venta */}
+                        <div style={{
+                          display:'flex', alignItems:'center', justifyContent:'space-between',
+                          paddingTop:8, borderTop:'1px solid #F3F4F6', gap:6,
+                        }}>
+                          {/* SLA badge o ticket num */}
+                          <div style={{display:'flex', alignItems:'center', gap:5, flex:1, minWidth:0}}>
+                            {slaLabel ? (
+                              <span style={{
+                                fontSize:9, fontWeight:700,
+                                color:slaLabelColor, background:slaLabelBg,
+                                padding:'2px 6px', borderRadius:99, flexShrink:0,
+                              }}>
+                                {slaLabel}
+                              </span>
+                            ) : (
+                              <span style={{fontSize:10, color:'#9CA3AF'}}>#{l.num}</span>
+                            )}
+                            {l.seller_fn && (
+                              <span style={{fontSize:10, color:'#9CA3AF', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                                {l.seller_fn}
+                              </span>
+                            )}
+                          </div>
+                          {/* Botón venta */}
+                          <div style={{flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                            <button onClick={e=>{e.stopPropagation();setSellLead(l);}}
+                              style={{padding:'4px 8px', fontSize:10, fontWeight:600,
+                                background:'rgba(16,185,129,0.08)', color:'#059669',
+                                border:'1px solid rgba(16,185,129,0.25)', borderRadius:6,
+                                cursor:'pointer', display:'flex', alignItems:'center', gap:3, fontFamily:'inherit'}}>
+                              <Ic.sale size={10} color="#059669"/>Venta
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      {/* Botón Registrar venta */}
-                      <div style={{padding:'0 12px 10px'}} onClick={e=>e.stopPropagation()}>
-                        <button onClick={e=>{e.stopPropagation();setSellLead(l);}} style={{width:'100%',padding:'5px 0',fontSize:10,fontWeight:600,background:'rgba(16,185,129,0.08)',color:'#059669',border:'1px solid rgba(16,185,129,0.25)',borderRadius:6,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
-                          <Ic.sale size={11} color="#059669"/>Registrar venta
-                        </button>
                       </div>
                     </div>
                   );
                 })}
-                {sl.length===0&&<Empty title="Sin fichas en este estado" />}
+                {sl.length===0&&(
+                  <div style={{padding:'24px 12px', textAlign:'center', color:'#D1D5DB', fontSize:12}}>
+                    Sin fichas
+                  </div>
+                )}
               </div>
             </div>
           );

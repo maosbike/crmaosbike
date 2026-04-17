@@ -265,174 +265,246 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           action={hasFilters ? <button onClick={clearFilters} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button> : undefined}
         />
       ):(
-        <>
+        <div style={{...S.card,padding:0,overflow:'hidden',marginTop:0}}>
           {/* Header columnas — solo desktop */}
           {!isMobile&&(
-            <div style={{display:'grid',gridTemplateColumns:'1fr 150px 130px 90px 90px',padding:'6px 16px 6px 19px',background:'#F9FAFB',borderBottom:'1px solid #E5E7EB',borderTop:'1px solid #E5E7EB',borderRadius:'10px 10px 0 0',border:'1px solid #E5E7EB'}}>
-              {['Lead / Modelo','Estado','Vendedor','Origen','Fecha'].map(col=>(
-                <div key={col} style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>{col}</div>
-              ))}
+            <div style={{
+              display:'flex',
+              padding:'6px 16px 6px 108px',
+              background:'#F9FAFB',
+              borderBottom:'1px solid #E5E7EB',
+            }}>
+              <div style={{flex:1,fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em'}}>
+                Lead · Modelo
+              </div>
+              <div style={{width:130,fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em',textAlign:'right',paddingRight:16}}>
+                Estado · Fecha
+              </div>
             </div>
           )}
-          <div style={{display:'flex',flexDirection:'column',gap:isMobile?8:0,background:isMobile?'transparent':'#FFFFFF',border:isMobile?'none':'1px solid #E5E7EB',borderTop:'none',borderRadius:isMobile?0:'0 0 10px 10px',overflow:isMobile?'visible':'hidden'}}>
-            {(stF?f:[...f].sort((a,b)=>{const ai=STATUS_ORDER.indexOf(a.status);const bi=STATUS_ORDER.indexOf(b.status);return(ai===-1?99:ai)-(bi===-1?99:bi);})).map(x=>{
-              const stStrip=stripFor(x.status);
-              const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280',bg:'#F9FAFB'};
-              const prCfg=PRIORITY[x.priority]||{l:'—',c:'#9CA3AF'};
-              const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_code||null;
 
-              // ── Variante MOBILE ──────────────────────────────────────────
-              if (isMobile) {
-                return (
-                  <div key={x.id} onClick={()=>nav("ticket",x.id)}
-                    style={{background:'#FFFFFF',borderRadius:12,border:'1px solid #E5E7EB',padding:'10px 12px',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',display:'flex',flexDirection:'column',gap:6,cursor:'pointer',position:'relative',borderLeft:`3px solid ${stCfg.c}`}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,paddingLeft:4}}>
-                      <div style={{flex:1,minWidth:0,fontSize:14,fontWeight:700,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+          {/* Filas de leads */}
+          {(stF?f:[...f].sort((a,b)=>{const ai=STATUS_ORDER.indexOf(a.status);const bi=STATUS_ORDER.indexOf(b.status);return(ai===-1?99:ai)-(bi===-1?99:bi);})).map(x=>{
+            const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280',bg:'#F9FAFB'};
+            const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_name||x.branch_code||null;
+
+            // ── Variante MOBILE ──────────────────────────────────────────
+            if (isMobile) {
+              return (
+                <div
+                  key={x.id}
+                  onClick={()=>nav('ticket',x.id)}
+                  style={{
+                    display:'flex',alignItems:'stretch',
+                    background:'#FFFFFF',
+                    borderBottom:'1px solid #F3F4F6',
+                    cursor:'pointer',minHeight:72,
+                    borderLeft:`4px solid ${stCfg.c}`,
+                  }}
+                >
+                  {/* Foto compacta */}
+                  <div style={{
+                    width:64,flexShrink:0,
+                    background:'#F3F4F6',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    overflow:'hidden',
+                  }}>
+                    {x.model_image ? (
+                      <img src={x.model_image} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                    ) : (
+                      <Ic.bike size={22} color="#D1D5DB"/>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div style={{flex:1,padding:'10px 12px',minWidth:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                      <div style={{fontSize:13,fontWeight:700,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>
                         {x.fn} {x.ln}
                       </div>
-                      {x.needs_attention&&<span title="Necesita atención" style={{fontSize:10,fontWeight:800,color:'#ffffff',background:'#DC2626',padding:'2px 6px',borderRadius:6}}>!</span>}
-                      <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:700,color:prCfg.c}}>
-                        <span style={{width:6,height:6,borderRadius:'50%',background:prCfg.c}}/>{prCfg.l}
-                      </span>
+                      {x.needs_attention&&<span title="Necesita atención" style={{fontSize:9,fontWeight:800,color:'#fff',background:'#DC2626',padding:'1px 5px',borderRadius:4,flexShrink:0}}>!</span>}
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:8,paddingLeft:4}}>
-                      <div style={{flex:1,minWidth:0,fontSize:12,color:'#4B5563',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                        {x.model_brand?`${x.model_brand} ${x.model_name||''}`:<span style={{color:'#D1D5DB',fontStyle:'italic'}}>Sin moto</span>}
-                        {x.comuna?` · ${x.comuna}`:''}
-                      </div>
-                      <span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:99,background:stCfg.bg,color:stCfg.c,flexShrink:0}}>{stCfg.l}</span>
+                    <div style={{fontSize:11,color:'#4B5563',marginBottom:4,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                      {(x.model_brand||x.model_name)?[x.model_brand,x.model_name].filter(Boolean).join(' '):'Sin modelo'}
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:8,paddingLeft:4,fontSize:11,color:'#6B7280'}}>
-                      <span style={{flex:1,minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                        {x.seller_fn?`${x.seller_fn} ${x.seller_ln||''}`:'Sin asignar'}{brName?` · ${brName}`:''}
-                      </span>
-                      {x.num&&<span style={{fontSize:10,color:'#9CA3AF'}}>#{x.num}</span>}
-                      {(()=>{
-                        const hasC=!!x.lastContact;
-                        const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
-                        const urgente=refH>=24;
-                        return<span style={{fontSize:10,color:urgente?'#EF4444':'#9CA3AF',fontWeight:urgente?700:400}}>
-                          {hasC?ago(x.lastContact):`sin contacto · ${ago(x.createdAt)}`}
-                        </span>;
-                      })()}
-                    </div>
-                    {x.followup_next_step&&(()=>{
-                      const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
-                      const txt=x.followup_next_step.length>40?x.followup_next_step.slice(0,40)+'…':x.followup_next_step;
-                      return<div style={{paddingLeft:4,fontSize:10,color:venc?'#EF4444':'#6B7280',fontStyle:'italic',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Próximo: {txt}</div>;
-                    })()}
-                  </div>
-                );
-              }
-
-              // ── Variante DESKTOP: grid 5 columnas ───────────────────────
-              const hasC=!!x.lastContact;
-              const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
-              const urgente=refH>=24;
-              return(
-                <div key={x.id}
-                  onClick={()=>nav("ticket",x.id)}
-                  onMouseEnter={e=>{e.currentTarget.style.background='#FAFAFA';e.currentTarget.querySelector('.crm-row-accent').style.opacity='1';}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='#FFFFFF';e.currentTarget.querySelector('.crm-row-accent').style.opacity='0';}}
-                  className="crm-lead-row"
-                  style={{display:'grid',gridTemplateColumns:'1fr 150px 130px 90px 90px',alignItems:'center',padding:'11px 16px',background:'#FFFFFF',borderBottom:'1px solid #F3F4F6',cursor:'pointer',transition:'background 0.1s',position:'relative',minWidth:0}}
-                >
-                  {/* Acento izquierdo (aparece en hover) */}
-                  <div className="crm-row-accent" style={{position:'absolute',left:0,top:0,bottom:0,width:3,background:stCfg.c,opacity:0,transition:'opacity 0.1s'}}/>
-
-                  {/* Col 1: Cliente + modelo */}
-                  <div style={{minWidth:0,paddingLeft:6}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                      <span style={{fontSize:13,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</span>
-                      {x.needs_attention&&<span title="Necesita atención · 48h sin gestión" style={{fontSize:9,fontWeight:800,color:'#fff',background:'#DC2626',padding:'1px 5px',borderRadius:4,flexShrink:0}}>!</span>}
-                      {x.num&&<span style={{fontSize:10,color:'#9CA3AF',flexShrink:0}}>#{x.num}</span>}
-                    </div>
-                    {x.model_brand?(
-                      <div style={{fontSize:11,color:'#6B7280',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                        {x.model_brand} {x.model_name||''}
-                        {x.model_year?` · ${x.model_year}`:''}
-                        {x.model_price>0?` · ${fmt(x.model_price)}`:''}
-                      </div>
-                    ):(
-                      <div style={{fontSize:11,color:'#D1D5DB',fontStyle:'italic'}}>Sin moto</div>
-                    )}
-                    {x.followup_next_step&&(()=>{
-                      const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
-                      const txt=x.followup_next_step.length>42?x.followup_next_step.slice(0,42)+'…':x.followup_next_step;
-                      return<div style={{fontSize:10,color:venc?'#EF4444':'#15803D',marginTop:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Próximo: {txt}</div>;
-                    })()}
-                  </div>
-
-                  {/* Col 2: Estado + prioridad */}
-                  <div style={{display:'flex',flexDirection:'column',gap:5}}>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:99,background:stCfg.bg,color:stCfg.c,alignSelf:'flex-start',whiteSpace:'nowrap'}}>
-                      <span style={{width:5,height:5,borderRadius:'50%',background:stCfg.c,flexShrink:0}}/>
+                    <span style={{
+                      fontSize:10,fontWeight:600,
+                      padding:'2px 7px',borderRadius:99,
+                      background:stCfg.bg,color:stCfg.c,
+                    }}>
                       {stCfg.l}
                     </span>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:600,color:prCfg.c,alignSelf:'flex-start'}}>
-                      <span style={{width:5,height:5,borderRadius:'50%',background:prCfg.c}}/>{prCfg.l}
-                    </span>
                   </div>
 
-                  {/* Col 3: Vendedor + traspaso */}
-                  <div style={{minWidth:0,overflow:'hidden'}} onClick={e=>e.stopPropagation()}>
-                    {x.seller_fn?(
-                      <div style={{fontSize:12,fontWeight:600,color:'#1F2937',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.seller_fn} {x.seller_ln}</div>
-                    ):(
-                      <div style={{fontSize:11,color:'#D1D5DB'}}>Sin asignar</div>
-                    )}
-                    {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:1}}>{brName}</div>}
-                    {!hasRole(user,ROLES.VEND)&&allSellers.length>0&&(
-                      <div style={{marginTop:6}}>
-                        {reassigningId===x.id?(
-                          <div style={{display:'flex',flexDirection:'column',gap:4}} onClick={e=>e.stopPropagation()}>
-                            <select value={reassignTo} onChange={e=>setReassignTo(e.target.value)}
-                              style={{fontSize:11,borderRadius:6,border:'1px solid #D1D5DB',padding:'4px 6px',background:'#F9FAFB',fontFamily:'inherit',width:'100%'}}>
-                              <option value="">Seleccionar...</option>
-                              {allSellers.filter(s=>s.id!==x.seller_id).map(s=>(
-                                <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                              ))}
-                            </select>
-                            <div style={{display:'flex',gap:4}}>
-                              <button onClick={e=>handleReassign(e,x.id)} disabled={!reassignTo||reassigningBusy}
-                                style={{flex:1,fontSize:10,fontWeight:700,padding:'4px 0',borderRadius:5,border:'none',background:'#3B82F6',color:'#ffffff',cursor:'pointer',fontFamily:'inherit',opacity:!reassignTo||reassigningBusy?0.5:1}}>
-                                {reassigningBusy?'…':'Reasignar'}
-                              </button>
-                              <button onClick={()=>{setReassigningId(null);setReassignTo('');}}
-                                style={{fontSize:10,padding:'4px 8px',borderRadius:5,border:'1px solid #E5E7EB',background:'#F9FAFB',cursor:'pointer',fontFamily:'inherit'}}>
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        ):(
-                          <button onClick={e=>{e.stopPropagation();setReassigningId(x.id);setReassignTo('');}}
-                            style={{fontSize:10,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'none',padding:'3px 9px',borderRadius:5,cursor:'pointer',fontFamily:'inherit'}}>
-                            ↗ Traspasar
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Col 4: Fuente */}
-                  <div style={{fontSize:11,color:'#6B7280'}}>
-                    {SRC_SHORT[x.source]||x.source||'—'}
-                  </div>
-
-                  {/* Col 5: Fecha + badge urgencia */}
-                  <div style={{textAlign:'right'}}>
-                    <div style={{fontSize:11,color:'#374151',fontWeight:500}}>{fD(hasC?x.lastContact:x.createdAt)}</div>
-                    <div style={{marginTop:3}}>
-                      <span style={{fontSize:10,fontWeight:700,color:urgente?'#EF4444':'#9CA3AF'}}>
-                        {hasC?ago(x.lastContact):`${ago(x.createdAt)}`}
-                      </span>
-                    </div>
+                  {/* Fecha (móvil) */}
+                  <div style={{padding:'10px 12px',display:'flex',alignItems:'center',flexShrink:0}}>
+                    <span style={{fontSize:10,color:'#C4C9D4'}}>{fD(x.createdAt)}</span>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        </>
+            }
+
+            // ── Variante DESKTOP: tarjeta horizontal ─────────────────────
+            return (
+              <div
+                key={x.id}
+                onClick={()=>nav('ticket',x.id)}
+                style={{
+                  display:'flex',alignItems:'stretch',
+                  background:'#FFFFFF',
+                  borderBottom:'1px solid #F3F4F6',
+                  cursor:'pointer',
+                  transition:'background 0.1s',
+                  minHeight:80,
+                }}
+                onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
+                onMouseLeave={e=>e.currentTarget.style.background='#FFFFFF'}
+              >
+                {/* Franja de color de estado (4px) */}
+                <div style={{
+                  width:4,flexShrink:0,
+                  background:stCfg.c,
+                }}/>
+
+                {/* Foto del modelo */}
+                <div style={{
+                  width:88,flexShrink:0,
+                  background:'#F3F4F6',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  overflow:'hidden',
+                }}>
+                  {x.model_image ? (
+                    <img
+                      src={x.model_image}
+                      alt={x.model_name||'Moto'}
+                      style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+                    />
+                  ) : (
+                    <Ic.bike size={28} color="#D1D5DB"/>
+                  )}
+                </div>
+
+                {/* Contenido principal */}
+                <div style={{flex:1,padding:'12px 16px',display:'flex',flexDirection:'column',justifyContent:'center',gap:4,minWidth:0}}>
+                  {/* Nombre del lead */}
+                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                    <div style={{
+                      fontSize:14,fontWeight:700,color:'#111827',
+                      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+                    }}>
+                      {x.fn} {x.ln}
+                    </div>
+                    {x.needs_attention&&<span title="Necesita atención · 48h sin gestión" style={{fontSize:9,fontWeight:800,color:'#fff',background:'#DC2626',padding:'1px 5px',borderRadius:4,flexShrink:0}}>!</span>}
+                    {x.num&&<span style={{fontSize:10,color:'#9CA3AF',flexShrink:0}}>#{x.num}</span>}
+                  </div>
+
+                  {/* Modelo + año */}
+                  <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                    {(x.model_brand||x.model_name) ? (
+                      <span style={{fontSize:12,color:'#4B5563',fontWeight:500}}>
+                        {[x.model_brand,x.model_name].filter(Boolean).join(' ')}
+                      </span>
+                    ) : (
+                      <span style={{fontSize:12,color:'#D1D5DB'}}>Sin modelo asignado</span>
+                    )}
+                    {x.model_year&&(
+                      <span style={{
+                        fontSize:10,fontWeight:700,
+                        color:'#4F46E5',background:'#EEF2FF',
+                        padding:'1px 6px',borderRadius:99,
+                      }}>
+                        {x.model_year}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Vendedor · sucursal · origen */}
+                  <div style={{fontSize:11,color:'#9CA3AF',display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                    {x.seller_fn&&(
+                      <span>{x.seller_fn} {x.seller_ln||''}</span>
+                    )}
+                    {brName&&<span>· {brName}</span>}
+                    {x.source&&<span>· {SRC_SHORT[x.source]||x.source}</span>}
+                    {x.followup_next_step&&(()=>{
+                      const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
+                      const txt=x.followup_next_step.length>38?x.followup_next_step.slice(0,38)+'…':x.followup_next_step;
+                      return<span style={{color:venc?'#EF4444':'#15803D',fontStyle:'italic'}}>· Próximo: {txt}</span>;
+                    })()}
+                  </div>
+                </div>
+
+                {/* Zona derecha: estado + fecha + precio */}
+                <div style={{
+                  display:'flex',flexDirection:'column',alignItems:'flex-end',
+                  justifyContent:'center',gap:6,
+                  padding:'12px 16px',flexShrink:0,minWidth:130,
+                }}>
+                  <span style={{
+                    fontSize:11,fontWeight:600,
+                    padding:'3px 9px',borderRadius:99,
+                    background:stCfg.bg,
+                    color:stCfg.c,
+                    whiteSpace:'nowrap',
+                  }}>
+                    {stCfg.l}
+                  </span>
+                  <span style={{fontSize:10,color:'#C4C9D4'}}>
+                    {fD(x.createdAt)}
+                  </span>
+                  {x.model_price>0&&(
+                    <span style={{fontSize:11,fontWeight:600,color:'#9CA3AF'}}>
+                      ${Number(x.model_price).toLocaleString('es-CL')}
+                    </span>
+                  )}
+                </div>
+
+                {/* Zona de reasignación (solo admin) */}
+                {!hasRole(user,ROLES.VEND)&&allSellers.length>0&&(
+                  <div style={{
+                    display:'flex',alignItems:'center',
+                    padding:'0 12px',flexShrink:0,
+                    borderLeft:'1px solid #F3F4F6',
+                  }} onClick={e=>e.stopPropagation()}>
+                    {reassigningId===x.id ? (
+                      <div style={{display:'flex',alignItems:'center',gap:6}} onClick={e=>e.stopPropagation()}>
+                        <select
+                          value={reassignTo}
+                          onChange={e=>setReassignTo(e.target.value)}
+                          style={{...selectCtrl,height:30,fontSize:11}}
+                        >
+                          <option value="">Vendedor...</option>
+                          {allSellers.filter(s=>s.id!==x.seller_id).map(s=>(
+                            <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={e=>handleReassign(e,x.id)}
+                          disabled={!reassignTo||reassigningBusy}
+                          style={{...S.btn,fontSize:11,padding:'5px 10px',opacity:!reassignTo||reassigningBusy?0.5:1}}
+                        >
+                          Reasignar
+                        </button>
+                        <button
+                          onClick={e=>{e.stopPropagation();setReassigningId(null);setReassignTo('');}}
+                          style={{...S.gh,padding:'5px 8px',fontSize:11}}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={e=>{e.stopPropagation();setReassigningId(x.id);setReassignTo('');}}
+                        style={{fontSize:10,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'none',padding:'3px 9px',borderRadius:5,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}
+                      >
+                        ↗ Traspasar
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nueva ficha" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={[{v:"",l:"Seleccionar..."},...COMUNAS.map(c=>({v:c,l:c}))]}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.filter(b=>b.code!=='MPSY'&&b.code!=='MOV').map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{display:"grid",gridTemplateColumns:!hasRole(user, ROLES.VEND)&&allSellers.length>0?"1fr 1fr":"1fr",gap:10,marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/>{!hasRole(user, ROLES.VEND)&&allSellers.length>0&&<Field label="Asignar vendedor" value={nw.seller_id} onChange={v=>setNw({...nw,seller_id:v})} opts={[{v:"",l:"Auto-asignar"},...allSellers.map(s=>({v:s.id,l:`${s.first_name} ${s.last_name}`}))]}/>}</div><ErrorMsg msg={addErr} /><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>{setShowNew(false);setAddErr('');}} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear ficha"}</button></div></form></Modal>}

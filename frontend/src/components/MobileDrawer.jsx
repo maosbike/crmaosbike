@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, TY, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
 // Grupos del sidebar — misma estructura que App.jsx SIDEBAR_GROUPS
 const DRAWER_GROUPS = [
@@ -21,30 +21,57 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
     <>
       {open&&<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",zIndex:88}}/>}
       <div className={`crm-drawer${open?" open":""}`} style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:"#FFFFFF",borderRight:"1px solid #E5E7EB",display:"flex",flexDirection:"column",zIndex:89,overflowY:"auto"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",height:52,borderBottom:"1px solid #E5E7EB",flexShrink:0}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}><img src="/logo.png" alt="MaosBike" style={{height:24}}/><span style={{fontSize:11,fontWeight:600,color:"#6B7280"}}>CRM</span></div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px 0 20px",height:56,borderBottom:"1px solid #F3F4F6",flexShrink:0}}>
+          <div>
+            <img src="/logo.png" alt="MaosBike" style={{height:28,objectFit:'contain',display:'block'}}
+              onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
+            />
+            <div style={{width:28,height:28,borderRadius:7,background:'#F28100',display:'none',alignItems:'center',justifyContent:'center'}}>
+              <Ic.bike size={16} color="#fff"/>
+            </div>
+          </div>
           <button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18} color="#6B7280"/></button>
         </div>
-        <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column",gap:1}}>
+        <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column"}}>
           {DRAWER_GROUPS.map((group,gi)=>{
             const groupItems=items.filter(it=>group.ids.includes(it.id));
             if(groupItems.length===0)return null;
             return(
               <div key={group.label}>
-                {gi>0&&<div style={{height:1,background:"#F3F4F6",margin:"6px 4px"}}/>}
-                <div style={{fontSize:9,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:"0.1em",padding:"12px 16px 4px",marginTop:gi===0?0:4}}>{group.label}</div>
-                {groupItems.map(it=>{const act=page===it.id||(it.id==="leads"&&page==="ticket");return<button key={it.id} onClick={()=>nav(it.id)} style={{display:"flex",alignItems:"center",gap:9,padding:"12px 10px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:500,fontFamily:"inherit",background:act?"rgba(242,129,0,0.1)":"transparent",color:act?"#F28100":"#6B7280",textAlign:"left"}}><it.icon size={17}/>{it.label}</button>;})}
+                <div style={{...TY.micro,padding:"12px 12px 4px",color:"#C4C9D4",marginTop:gi===0?0:4}}>{group.label}</div>
+                {groupItems.map(it=>{
+                  const act=page===it.id||(it.id==="leads"&&page==="ticket");
+                  return(
+                    <button key={it.id} onClick={()=>nav(it.id)} style={{
+                      display:"flex",alignItems:"center",gap:10,
+                      padding:"8px 12px 8px 16px",marginBottom:1,
+                      borderRadius:8,border:"none",cursor:"pointer",
+                      fontSize:13,fontWeight:act?600:500,fontFamily:"inherit",
+                      background:act?"rgba(242,129,0,0.08)":"transparent",
+                      color:act?"#C2680A":"#4B5563",
+                      textAlign:"left",userSelect:"none",
+                      position:"relative",width:"100%",
+                    }}>
+                      {act&&<div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",width:3,height:20,background:"#F28100",borderRadius:"0 3px 3px 0"}}/>}
+                      <it.icon size={16} color={act?"#C2680A":"#4B5563"}/>
+                      {it.label}
+                    </button>
+                  );
+                })}
               </div>
             );
           })}
         </nav>
-        <div style={{borderTop:"1px solid #E5E7EB",padding:10,display:"flex",flexDirection:"column",gap:6}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 4px"}}>
-            <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:11,fontWeight:700,flexShrink:0}}>{initials}</div>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600}}>{user?.fn||user?.first_name} {user?.ln||user?.last_name}</div><div style={{fontSize:10,color:"#6B7280"}}>{user?.role?.replace(/_/g," ")}</div></div>
+        <div style={{borderTop:"1px solid #F3F4F6",padding:"12px 14px",display:"flex",flexDirection:"column",gap:6}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 0 8px"}}>
+            <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(242,129,0,0.12)",display:"flex",alignItems:"center",justifyContent:"center",color:"#C2680A",fontSize:11,fontWeight:700,flexShrink:0,fontFamily:"inherit"}}>{initials}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{...TY.bodyB,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.fn||user?.first_name} {user?.ln&&user?.ln!=='-'?user?.ln:(user?.last_name&&user?.last_name!=='-'?user?.last_name:'')}</div>
+              <div style={{...TY.meta,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.role?.replace(/_/g," ")}</div>
+            </div>
           </div>
-          <button onClick={onChangePw} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 10px",borderRadius:8,border:"1px solid #D1D5DB",background:"transparent",color:"#6B7280",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.lock size={14}/>Cambiar contraseña</button>
-          <button onClick={onLogout} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 10px",borderRadius:8,border:"none",background:"transparent",color:"#EF4444",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.out size={14}/>Cerrar sesión</button>
+          <button onClick={onChangePw} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"1px solid #E5E7EB",background:"transparent",color:"#4B5563",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.lock size={14} color="#6B7280"/>Cambiar contraseña</button>
+          <button onClick={onLogout} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"none",background:"transparent",color:"#EF4444",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.out size={14} color="#EF4444"/>Cerrar sesión</button>
         </div>
       </div>
     </>

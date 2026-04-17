@@ -1,4 +1,4 @@
-import { Ic, hasRole, ROLES, ROLE_ADMIN_WRITE } from '../ui.jsx';
+import { Ic, TY, hasRole, ROLES, ROLE_ADMIN_WRITE } from '../ui.jsx';
 
 // Bottom nav mobile — 5 tabs primarias. Visible solo en <768px via .crm-bottom-nav.
 // El ítem "Más" abre el drawer con el resto (Admin, Importar, Reportes, Supplier, etc.).
@@ -38,7 +38,7 @@ export function BottomNav({ page, nav, user, onMenuOpen }) {
               borderTop: act ? '2px solid #F28100' : '2px solid transparent',
             }}>
             <it.icon size={20} color={color}/>
-            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em' }}>{it.label}</span>
+            <span style={{ fontSize: 9, fontWeight: act ? 700 : 600, letterSpacing: 0, textTransform: 'none', fontFamily: 'inherit' }}>{it.label}</span>
           </button>
         );
       })}

@@ -243,14 +243,19 @@ export const S={
     display:'block',
     marginBottom:5,
     letterSpacing:'0.01em',
+    fontFamily:'inherit',
   },
 };
 S.btnSec = S.btn2;
+// S.lbl usa TY.label como base — sobreescribe solo las props de layout
+// No se puede definir con TY al inicio porque TY se declara después en el archivo.
+// Esta reasignación asegura coherencia con la escala tipográfica.
+S.lbl = { fontSize:11, fontWeight:600, lineHeight:1.3, color:'#4B5563', fontFamily:'inherit', display:'block', marginBottom:5, letterSpacing:'0.01em' };
 
 // Shared components
 export const Bdg=({l,c,bg,size})=>{
   const z=size==='sm'?{padding:"2px 7px",fontSize:9,borderRadius:8}:{padding:"3px 10px",fontSize:11,borderRadius:20};
-  return <span style={{display:"inline-flex",...z,fontWeight:600,color:c,background:bg||`${c}18`,whiteSpace:"nowrap"}}>{l}</span>;
+  return <span style={{display:"inline-flex",...z,fontWeight:600,color:c,background:bg||`${c}18`,whiteSpace:"nowrap",fontFamily:'inherit'}}>{l}</span>;
 };
 export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}/>:<Bdg l={s} c="#6B7280"/>;};
 export const PBdg=({p})=>{const x=PRIORITY[p];return x?<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,color:x.c}}><span style={{width:7,height:7,borderRadius:"50%",background:x.c}}/>{x.l}</span>:null;};
@@ -274,14 +279,14 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
       {Ico&&ib&&(
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div>
-          <span style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.04em",fontWeight:600}}>{label}</span>
+          <span style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.07em",fontWeight:700,fontFamily:'inherit'}}>{label}</span>
         </div>
       )}
       {(!Ico||!ib)&&label&&(
-        <div style={{fontSize:10,fontWeight:700,color:isAlert?fg:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em'}}>{label}</div>
+        <div style={{fontSize:10,fontWeight:700,color:isAlert?fg:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em',fontFamily:'inherit'}}>{label}</div>
       )}
-      <span style={{fontSize:22,fontWeight:900,color:isAlert?fg:fg||undefined,letterSpacing:'-0.8px',lineHeight:1}}>{v}</span>
-      {sub&&<span style={{fontSize:11,color:sc||"#6B7280"}}>{sub}</span>}
+      <span style={{fontSize:24,fontWeight:800,color:isAlert?fg:fg||undefined,letterSpacing:'-0.02em',lineHeight:1,fontFamily:'inherit'}}>{v}</span>
+      {sub&&<span style={{fontSize:11,color:sc||"#6B7280",fontFamily:'inherit'}}>{sub}</span>}
     </div>
   );
 };
@@ -319,24 +324,25 @@ export function ViewHeader({ preheader, title, subtitle, count, itemLabel='regis
     ? <>{count} {itemLabel}{count === 1 ? '' : 's'}{filtered && <span style={{ color: '#F28100', fontWeight: 700, marginLeft: 4 }}>· filtrado</span>}</>
     : null;
   const sub = subtitle ?? autoSub;
-  const titleSize = size === 'md'
-    ? (isMobile ? 16 : 20)
-    : 18;
-  const titleWeight = size === 'md' ? 700 : 700;
-  const titleLetter = size === 'md' ? '-0.4px' : '-0.2px';
+  // size='md': TY.h1 en desktop, 16px en mobile. size='sm': 18px fijo.
+  const titleStyle = size === 'md'
+    ? (isMobile
+        ? { margin:0, fontSize:16, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit' }
+        : { margin:0, fontSize:20, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit', letterSpacing:'-0.02em' })
+    : { margin:0, fontSize:18, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit', letterSpacing:'-0.01em' };
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: isMobile ? 16 : 24 }}>
       <div style={{ minWidth: 0, flex: '1 1 auto' }}>
         {preheader && (
-          <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+          <p style={{ margin: '0 0 3px', fontSize:10, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:'inherit' }}>
             {preheader}
           </p>
         )}
-        <h1 style={{ margin: 0, color: '#111827', lineHeight: 1.2, fontSize: titleSize, fontWeight: titleWeight, letterSpacing: titleLetter }}>
+        <h1 style={titleStyle}>
           {title}
         </h1>
         {sub && (
-          <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 500, color: '#6B7280' }}>
+          <p style={{ margin: '3px 0 0', fontSize:13, fontWeight:500, color:'#6B7280', fontFamily:'inherit' }}>
             {sub}
           </p>
         )}
@@ -492,8 +498,8 @@ export function ErrorMsg({ msg }) {
   return (
     <div style={{
       background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.20)',
-      borderRadius:8, padding:'9px 13px', color:'#DC2626', fontSize:12,
-      fontWeight:500, marginBottom:12,
+      borderRadius:8, padding:'9px 13px', marginBottom:12,
+      fontSize:13, fontWeight:400, lineHeight:1.5, color:'#DC2626', fontFamily:'inherit',
     }}>{msg}</div>
   );
 }
@@ -502,6 +508,34 @@ export function ErrorMsg({ msg }) {
  * AccordionSection — sección colapsable con header clickable.
  * Props: title, icon (string/node, opcional), isOpen (bool), onToggle (fn)
  */
+/**
+ * TY — Escala tipográfica del sistema. Usar con spread: {...TY.h1}
+ * No mezclar con fontSizes sueltos. Esta escala reemplaza todos los
+ * valores ad-hoc de fontSize/fontWeight en los componentes.
+ */
+export const TY = {
+  // Números grandes / KPIs
+  kpi:   { fontSize:28, fontWeight:800, lineHeight:1, letterSpacing:'-0.02em', fontFamily:'inherit' },
+  kpiSm: { fontSize:20, fontWeight:700, lineHeight:1, letterSpacing:'-0.01em', fontFamily:'inherit' },
+
+  // Títulos de vista y sección
+  h1:    { fontSize:20, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit' },
+  h2:    { fontSize:15, fontWeight:700, lineHeight:1.3, color:'#111827', fontFamily:'inherit' },
+  h3:    { fontSize:13, fontWeight:600, lineHeight:1.4, color:'#374151', fontFamily:'inherit' },
+
+  // Texto de contenido
+  body:  { fontSize:13, fontWeight:400, lineHeight:1.5, color:'#374151', fontFamily:'inherit' },
+  bodyB: { fontSize:13, fontWeight:600, lineHeight:1.5, color:'#111827', fontFamily:'inherit' },
+
+  // Labels de campo y texto de tabla
+  label: { fontSize:11, fontWeight:600, lineHeight:1.3, color:'#4B5563', fontFamily:'inherit' },
+  meta:  { fontSize:11, fontWeight:400, lineHeight:1.3, color:'#6B7280', fontFamily:'inherit' },
+
+  // Headers de tabla, badges, labels de grupo en uppercase
+  micro: { fontSize:10, fontWeight:700, lineHeight:1.2, color:'#9CA3AF',
+           textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:'inherit' },
+};
+
 export function AccordionSection({ title, icon, isOpen, onToggle, children }) {
   return (
     <div style={{

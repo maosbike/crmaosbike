@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, setToken, clearToken } from "./services/api";
-import { Ic, S, mapTicket, ROLES, hasRole, ROLE_ADMIN_WRITE, ROLE_ADMIN_READ, TERMINAL_STATUSES } from "./ui";
+import { Ic, S, TY, mapTicket, ROLES, hasRole, ROLE_ADMIN_WRITE, ROLE_ADMIN_READ, TERMINAL_STATUSES } from "./ui";
 import { OverdueLeadsModal } from "./components/OverdueLeadsModal";
 
 import { Login } from "./components/Login";
@@ -188,10 +188,13 @@ export default function App(){
     <div style={{display:"flex",height:"100vh",background:"#F9FAFB",color:"#111827",fontFamily:"'Inter',system-ui,sans-serif",fontSize:14,overflow:"hidden"}}>
       <MobileDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)} items={items} page={page} nav={(pg,lid)=>{setDrawerOpen(false);nav(pg,lid);}} user={user} onChangePw={()=>{setDrawerOpen(false);setShowChangePw(true);}} onLogout={handleLogout}/>
       <aside className="crm-sidebar" style={{width:220,minWidth:220,height:'100vh',background:'#FFFFFF',borderRight:'1px solid #E5E7EB',display:'flex',flexDirection:'column',overflow:'hidden',flexShrink:0}}>
-        <div style={{height:52,display:'flex',alignItems:'center',padding:'0 16px',borderBottom:'1px solid #F3F4F6',flexShrink:0}}>
-          <img src="/logo.png" alt="MaosBike" style={{height:26,marginRight:8}}/>
-          <span style={{fontSize:15,fontWeight:800,color:'#F28100',letterSpacing:'-0.5px'}}>MaosBike</span>
-          <span style={{fontSize:13,fontWeight:500,color:'#9CA3AF',marginLeft:2}}>CRM</span>
+        <div style={{height:56,display:'flex',alignItems:'center',justifyContent:'flex-start',padding:'0 20px',borderBottom:'1px solid #F3F4F6',flexShrink:0}}>
+          <img src="/logo.png" alt="MaosBike" style={{height:30,objectFit:'contain'}}
+            onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
+          />
+          <div style={{width:32,height:32,borderRadius:8,background:'#F28100',display:'none',alignItems:'center',justifyContent:'center'}}>
+            <Ic.bike size={18} color="#fff"/>
+          </div>
         </div>
         <nav style={{flex:1,padding:'8px 8px',display:'flex',flexDirection:'column',overflowY:'auto'}}>
           {SIDEBAR_GROUPS.map((group,gi)=>{
@@ -199,23 +202,23 @@ export default function App(){
             if(groupItems.length===0)return null;
             return(
               <div key={group.label}>
-                {gi>0&&<div style={{height:1,background:'#F3F4F6',margin:'8px 12px 4px'}}/>}
-                <span style={{fontSize:9,fontWeight:700,color:'#C4C9D4',textTransform:'uppercase',letterSpacing:'0.12em',padding:'14px 16px 4px',display:'block'}}>{group.label}</span>
+                <div style={{...TY.micro,padding:'12px 12px 4px',color:'#C4C9D4',marginTop:gi===0?0:4}}>{group.label}</div>
                 {groupItems.map(it=>{
                   const act=page===it.id||(it.id==='leads'&&page==='ticket');
                   return(
                     <button key={it.id} onClick={()=>nav(it.id)} style={{
                       display:'flex',alignItems:'center',gap:10,
-                      padding:'9px 12px',marginBottom:1,
+                      padding:'8px 12px 8px 16px',marginBottom:1,
                       borderRadius:8,
-                      background:act?'rgba(242,129,0,0.10)':'transparent',
-                      color:act?'#EA7800':'#4B5563',
+                      background:act?'rgba(242,129,0,0.08)':'transparent',
+                      color:act?'#C2680A':'#4B5563',
                       fontSize:13,fontWeight:act?600:500,
                       border:'none',cursor:'pointer',width:'100%',textAlign:'left',
-                      borderLeft:act?'3px solid #F28100':'3px solid transparent',
                       userSelect:'none',fontFamily:'inherit',
+                      position:'relative',
                     }}>
-                      <it.icon size={15} color={act?'#F28100':'#4B5563'}/>
+                      {act&&<div style={{position:'absolute',left:0,top:'50%',transform:'translateY(-50%)',width:3,height:20,background:'#F28100',borderRadius:'0 3px 3px 0'}}/>}
+                      <it.icon size={15} color={act?'#C2680A':'#4B5563'}/>
                       {it.label}
                     </button>
                   );
@@ -225,12 +228,12 @@ export default function App(){
           })}
         </nav>
         <div style={{padding:'12px 14px',borderTop:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-          <div style={{width:32,height:32,borderRadius:'50%',background:'rgba(242,129,0,0.15)',color:'#F28100',fontSize:12,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          <div style={{width:30,height:30,borderRadius:'50%',background:'rgba(242,129,0,0.12)',color:'#C2680A',fontWeight:700,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'inherit'}}>
             {(user.fn[0]+(user.ln&&user.ln!=='-'?user.ln[0]:'')).toUpperCase()}
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:12,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.fn}</div>
-            <div style={{fontSize:10,color:'#6B7280'}}>{user.branchName||user.role}</div>
+            <div style={{...TY.bodyB,fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.fn} {user.ln&&user.ln!=='-'?user.ln:''}</div>
+            <div style={{...TY.meta,fontSize:10,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.branchName||user.role}</div>
           </div>
           <button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#6B7280"/></button>
           <button onClick={handleLogout} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#6B7280"/></button>
@@ -242,7 +245,7 @@ export default function App(){
           <NotifBell nav={nav}/>
         </header>
         <header className="crm-desktop-hdr" style={{height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',background:'#FFFFFF',borderBottom:'1px solid #E5E7EB',flexShrink:0}}>
-          <span style={{fontSize:14,fontWeight:600,color:'#374151'}}>{getCurrentPageLabel(page)}</span>
+          <span style={{...TY.h3,color:'#6B7280'}}>{getCurrentPageLabel(page)}</span>
           <div style={{display:'flex',alignItems:'center',gap:8}}><NotifBell nav={nav}/></div>
         </header>
         <main className="crm-scroll-area" style={{flex:1,overflow:"auto",padding:"16px 20px"}}>

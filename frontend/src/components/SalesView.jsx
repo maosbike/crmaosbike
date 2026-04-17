@@ -1628,7 +1628,7 @@ export function SalesView({ user, realBranches }) {
   };
 
   return (
-    <div style={{ maxWidth: 1400 }}>
+    <div>
 
       {/* ── Header ── */}
       <ViewHeader
@@ -1666,20 +1666,20 @@ export function SalesView({ user, realBranches }) {
 
       {/* ── KPIs ── */}
       {stats && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <Stat label="Ventas" value={stats.total} color="#111827" style={{flex:'1 1 110px'}} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
+          <Stat label="Ventas" value={stats.total} color="#111827" />
           {isAdmin && <Stat label="Pend. distribuidor" value={stats.pendiente_distribuidor}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} style={{flex:'1 1 110px'}} />}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} />}
           <Stat label="Sin factura cli." value={stats.sin_factura_cli}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.sin_factura_cli > 0} style={{flex:'1 1 110px'}} />
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.sin_factura_cli > 0} />
           <Stat label="Pend. homolog." value={stats.sin_homologacion}
-            color="#6D28D9" bg="#F5F3FF" border="#C4B5FD" alert={stats.sin_homologacion > 0} style={{flex:'1 1 110px'}} />
+            color="#6D28D9" bg="#F5F3FF" border="#C4B5FD" alert={stats.sin_homologacion > 0} />
           <Stat label="Pend. inscripción" value={stats.sin_inscripcion}
-            color="#0E7490" bg="#ECFEFF" border="#67E8F9" alert={stats.sin_inscripcion > 0} style={{flex:'1 1 110px'}} />
+            color="#0E7490" bg="#ECFEFF" border="#67E8F9" alert={stats.sin_inscripcion > 0} />
           <Stat label="Pend. entrega" value={stats.pendiente_entrega}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_entrega > 0} style={{flex:'1 1 110px'}} />
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_entrega > 0} />
           {isAdmin && stats.total_venta > 0 && (
-            <Stat label="Total vendido" value={fmt(stats.total_venta)} color="#065F46" bg="#ECFDF5" border="#A7F3D0" style={{flex:'1 1 110px'}} />
+            <Stat label="Total vendido" value={fmt(stats.total_venta)} color="#065F46" bg="#ECFDF5" border="#A7F3D0" />
           )}
         </div>
       )}
@@ -1799,218 +1799,214 @@ export function SalesView({ user, realBranches }) {
       ) : (
 
       <div className="crm-sales-table" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
-                    overflow: 'auto', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 760 }}>
-          <thead>
-            <tr>
-              {[
-                ['Tipo',        'center', 'nowrap'],
-                ['Fecha',       'left',   'nowrap'],
-                ['Cliente',     'left',   'nowrap'],
-                ['Vendedor',    'left',   'nowrap'],
-                ...(isAdmin ? [['Sucursal', 'left', 'nowrap']] : []),
-                ['Moto',        'left',   'nowrap'],
-                ['Chasis',      'left',   'nowrap'],
-                ['Precio / Abono', 'right', 'nowrap'],
-                ...(isAdmin ? [['Distribuidor','center','nowrap']] : []),
-                ['Entregada',   'center', 'nowrap'],
-                ['Docs',        'center', 'nowrap'],
-                ['',            'center', 'nowrap'],
-              ].map(([h, align, ws]) => (
-                <th key={h} style={{
-                  textAlign: align, padding: '8px 12px', fontSize: 10,
-                  fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
-                  letterSpacing: '0.08em', whiteSpace: ws,
-                  borderBottom: '2px solid #F3F4F6', background: '#F9FAFB',
-                  position: 'sticky', top: 0, zIndex: 1,
+                    overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+
+        {/* ── Header de tabla ── */}
+        {(() => {
+          const tplCols = isAdmin
+            ? '4px 1fr 160px minmax(120px,160px) minmax(100px,140px) 90px 110px 72px 56px 56px 100px'
+            : '4px 1fr 160px minmax(120px,160px) 90px 110px 72px 56px 56px 100px';
+          const adminCols = isAdmin
+            ? ['Venta / Cliente', 'Moto · Chasis', 'Vendedor', 'Sucursal', 'Precio / Abono', 'Distribuidor', 'Entrega', 'Docs', '']
+            : ['Venta / Cliente', 'Moto · Chasis', 'Vendedor', 'Precio / Abono', 'Entrega', 'Docs', ''];
+          return (
+            <div style={{
+              display: 'grid', gridTemplateColumns: tplCols,
+              background: '#F9FAFB', borderBottom: '2px solid #E5E7EB',
+              borderRadius: '12px 12px 0 0',
+            }}>
+              <div/>{/* franja */}
+              {adminCols.map(col => (
+                <div key={col} style={{
+                  padding: '8px 14px',
+                  fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  whiteSpace: 'nowrap',
                 }}>
-                  {h}
-                </th>
+                  {col}
+                </div>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={99} style={{ textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 }}>
-                Cargando…
-              </td></tr>
-            )}
-            {!loading && sales.length === 0 && (
-              <tr><td colSpan={99} style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
-                <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba otros filtros' : 'No hay ventas registradas aún'}</div>
-              </td></tr>
-            )}
-            {!loading && sales.map(s => {
-              const isRes = s.status === 'reservada';
-              const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
-              const docsOk = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
-              const docCount = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
-              const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
-              const blLeft = isRes ? '3px solid #F59E0B' : '3px solid #10B981';
-              const bgRow  = isRes ? 'rgba(245,158,11,0.04)' : 'transparent';
-              return (
-                <tr key={s.id}
-                  onClick={() => setSelSale(s)}
-                  style={{ borderBottom: `1px solid ${isRes ? '#FEF3C7' : '#F3F4F6'}`,
-                           borderLeft: blLeft, background: bgRow,
-                           transition: 'background 0.1s', cursor: 'pointer' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = isRes ? '#FEF3C7' : '#F5F6FF'; e.currentTarget.style.borderLeft = '3px solid #F28100'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = bgRow; e.currentTarget.style.borderLeft = blLeft; }}>
+            </div>
+          );
+        })()}
 
-                  {/* Tipo */}
-                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                    {isRes ? (
-                      <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 7px', borderRadius: 6,
-                        background: '#FFFBEB', color: '#B45309', border: '1px solid #FCD34D',
-                        textTransform: 'uppercase', letterSpacing: '0.06em' }}>RESERVA</span>
-                    ) : (
-                      <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 7px', borderRadius: 6,
-                        background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0',
-                        textTransform: 'uppercase', letterSpacing: '0.06em' }}>VENTA</span>
-                    )}
-                  </td>
+        {/* ── Filas ── */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 }}>Cargando…</div>
+        )}
+        {!loading && sales.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
+            <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba otros filtros' : 'No hay ventas registradas aún'}</div>
+          </div>
+        )}
+        {!loading && sales.map(s => {
+          const isRes = s.status === 'reservada';
+          const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
+          const docsOk = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
+          const docCount = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
+          const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
+          const accentColor = isRes ? '#F59E0B' : '#10B981';
+          const bgRow = isRes ? 'rgba(245,158,11,0.03)' : 'transparent';
+          const tplCols = isAdmin
+            ? '4px 1fr 160px minmax(120px,160px) minmax(100px,140px) 90px 110px 72px 56px 56px 100px'
+            : '4px 1fr 160px minmax(120px,160px) 90px 110px 72px 56px 56px 100px';
+          return (
+            <div key={s.id}
+              onClick={() => setSelSale(s)}
+              style={{
+                display: 'grid', gridTemplateColumns: tplCols,
+                alignItems: 'center',
+                borderBottom: '1px solid #F3F4F6',
+                background: bgRow,
+                cursor: 'pointer', transition: 'background 0.1s',
+                minHeight: 58,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = isRes ? '#FFFBEB' : '#F5F6FF'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = bgRow; }}>
 
-                  {/* Fecha */}
-                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#6B7280', fontSize: 11 }}>
-                    {fD(s.sold_at)}
-                    {s.ticket_num && (
-                      <div style={{ fontSize: 9, color: '#F28100', fontWeight: 700, marginTop: 1 }}>
-                        {s.ticket_num}
-                      </div>
-                    )}
-                  </td>
+              {/* Franja de color */}
+              <div style={{ alignSelf: 'stretch', background: accentColor }}/>
 
-                  {/* Cliente */}
-                  <td style={{ padding: '10px 12px', maxWidth: 150, overflow: 'hidden',
-                               textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontWeight: 700, color: '#111827' }}>{s.client_name || '—'}</span>
-                    {s.client_rut && (
-                      <div style={{ fontSize: 10, color: '#9CA3AF' }}>{s.client_rut}</div>
-                    )}
-                  </td>
-
-                  {/* Vendedor */}
-                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: 11, color: '#374151' }}>
-                    {sellerName}
-                  </td>
-
-                  {/* Sucursal (solo admin) */}
-                  {isAdmin && (
-                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: 11, color: '#6B7280' }}>
-                      {s.branch_name || '—'}
-                      {s.added_as_sold && (
-                        <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, color: '#7C3AED',
-                                      background: '#EDE9FE', borderRadius: 4, padding: '1px 5px',
-                                      display: 'inline-block', letterSpacing: '0.05em' }}>
-                          BODEGA DIRECTA
-                        </div>
-                      )}
-                    </td>
+              {/* Venta / Cliente */}
+              <div style={{ padding: '10px 14px', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 5,
+                    background: isRes ? '#FFFBEB' : '#ECFDF5',
+                    color: isRes ? '#B45309' : '#065F46',
+                    border: `1px solid ${isRes ? '#FCD34D' : '#A7F3D0'}`,
+                    textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
+                  }}>
+                    {isRes ? 'RESERVA' : 'VENTA'}
+                  </span>
+                  {s.ticket_num && (
+                    <span style={{ fontSize: 9, color: '#F28100', fontWeight: 700 }}>{s.ticket_num}</span>
                   )}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {s.client_name || '—'}
+                </div>
+                {s.client_rut && (
+                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>{s.client_rut}</div>
+                )}
+              </div>
 
-                  {/* Moto */}
-                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontWeight: 700, color: '#111827' }}>{s.brand}</span>
-                    <span style={{ color: '#4B5563' }}> {s.model}</span>
-                    {s.year && <span style={{ color: '#9CA3AF', fontSize: 10 }}> {s.year}</span>}
-                  </td>
-
-                  {/* Chasis */}
-                  <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#374151',
-                                   background: '#F3F4F6', padding: '3px 8px',
-                                   borderRadius: 6, border: '1px solid #E5E7EB',
-                                   letterSpacing: '0.03em' }}>
+              {/* Moto + Chasis */}
+              <div style={{ padding: '10px 14px', minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {s.brand} {s.model}{s.year ? ` ${s.year}` : ''}
+                </div>
+                {s.chassis && (
+                  <div style={{ marginTop: 2 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280',
+                      background: '#F3F4F6', padding: '1px 6px', borderRadius: 4,
+                      border: '1px solid #E5E7EB', letterSpacing: '0.03em',
+                      fontFamily: "'SF Mono',Consolas,monospace" }}>
                       {s.chassis}
                     </span>
-                  </td>
+                  </div>
+                )}
+              </div>
 
-                  {/* Precio / Abono */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <div style={{ fontWeight: 800, color: s.sale_price ? '#111827' : '#D1D5DB', fontSize: 13 }}>
-                      {s.sale_price ? fmt(s.sale_price) : '—'}
+              {/* Vendedor */}
+              <div style={{ padding: '10px 14px', fontSize: 11, color: '#4B5563', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {sellerName}
+              </div>
+
+              {/* Sucursal (solo admin) */}
+              {isAdmin && (
+                <div style={{ padding: '10px 14px', fontSize: 11, color: '#6B7280', minWidth: 0 }}>
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.branch_name || '—'}</div>
+                  {s.added_as_sold && (
+                    <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, color: '#7C3AED',
+                                  background: '#EDE9FE', borderRadius: 4, padding: '1px 5px',
+                                  display: 'inline-block', letterSpacing: '0.05em' }}>
+                      BODEGA
                     </div>
-                    {isRes && s.sale_price > 0 && (
-                      <div style={{ fontSize: 10, marginTop: 2 }}>
-                        <span style={{ color: '#059669' }}>+{fmt(s.invoice_amount || 0)}</span>
-                        {' '}
-                        <span style={{ color: saldo > 0 ? '#DC2626' : '#059669', fontWeight: 700 }}>
-                          {saldo > 0 ? `falta ${fmt(saldo)}` : '✓ saldado'}
-                        </span>
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Estado pago distribuidor (solo admin) */}
-                  {isAdmin && (
-                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                      {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <DistributorBadge paid={s.distributor_paid} />}
-                    </td>
                   )}
+                </div>
+              )}
 
-                  {/* Entregada */}
-                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                    {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <StatusDot ok={s.delivered} />}
-                  </td>
-
-                  {/* Docs (resumen n/4) */}
-                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                    {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : (
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                        background: docsOk ? '#ECFDF5' : docCount > 0 ? '#FFFBEB' : '#F9FAFB',
-                        color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
-                        border: `1px solid ${docsOk ? '#A7F3D0' : docCount > 0 ? '#FCD34D' : '#E5E7EB'}`,
-                      }}>
-                        {docCount}/4
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Acciones */}
-                  <td style={{ padding: '6px 8px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
-                      {/* Descargar doc */}
-                      <button title={isRes ? 'Ver nota de reserva' : 'Ver nota de venta'}
-                        onClick={() => openNoteFromSale(s)}
-                        style={{ padding:'4px 6px', borderRadius:6, border:'1px solid #E5E7EB', background:'transparent',
-                                 color:'#6B7280', cursor:'pointer', lineHeight:1, display:'inline-flex', alignItems:'center' }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-                        </svg>
-                      </button>
-                      {/* Eliminar (super_admin) */}
-                      {isSuperAdmin && confirmDeleteId === s.id ? (
-                        <>
-                          <button onClick={() => handleDeleteRow(s)} disabled={deleting}
-                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#EF4444',
-                                     color: '#ffffff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                            {deleting ? '…' : 'Confirmar'}
-                          </button>
-                          <button onClick={() => setConfirmDeleteId(null)}
-                            style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB',
-                                     color: '#6B7280', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-                            No
-                          </button>
-                        </>
-                      ) : isSuperAdmin ? (
-                        <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar"
-                          style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #FECACA', background: 'transparent',
-                                   color: '#FCA5A5', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                          </svg>
-                        </button>
-                      ) : null}
+              {/* Precio / Abono */}
+              <div style={{ padding: '10px 14px', textAlign: 'right' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: s.sale_price ? '#111827' : '#D1D5DB', letterSpacing: '-0.02em' }}>
+                  {s.sale_price ? fmt(s.sale_price) : '—'}
+                </div>
+                {isRes && s.sale_price > 0 && (
+                  <div style={{ fontSize: 10, marginTop: 2 }}>
+                    <span style={{ color: '#059669' }}>Abono: {fmt(s.invoice_amount || 0)}</span>
+                    <br/>
+                    <span style={{ color: saldo > 0 ? '#DC2626' : '#059669', fontWeight: 700 }}>
+                      {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
                     </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Distribuidor (solo admin) */}
+              {isAdmin && (
+                <div style={{ padding: '10px 8px', textAlign: 'center' }}>
+                  {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <DistributorBadge paid={s.distributor_paid} />}
+                </div>
+              )}
+
+              {/* Entregada */}
+              <div style={{ padding: '10px 8px', display: 'flex', justifyContent: 'center' }}>
+                {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <StatusDot ok={s.delivered} />}
+              </div>
+
+              {/* Docs */}
+              <div style={{ padding: '10px 6px', textAlign: 'center' }}>
+                {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+                    background: docsOk ? '#ECFDF5' : docCount > 0 ? '#FFFBEB' : '#F9FAFB',
+                    color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
+                    border: `1px solid ${docsOk ? '#A7F3D0' : docCount > 0 ? '#FCD34D' : '#E5E7EB'}`,
+                  }}>
+                    {docCount}/4
+                  </span>
+                )}
+              </div>
+
+              {/* Acciones */}
+              <div style={{ padding: '6px 10px', display: 'flex', gap: 4, justifyContent: 'flex-end' }}
+                   onClick={e => e.stopPropagation()}>
+                <button title={isRes ? 'Ver nota de reserva' : 'Ver nota de venta'}
+                  onClick={() => openNoteFromSale(s)}
+                  style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'transparent',
+                           color: '#6B7280', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </button>
+                {isSuperAdmin && confirmDeleteId === s.id ? (
+                  <>
+                    <button onClick={() => handleDeleteRow(s)} disabled={deleting}
+                      style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#EF4444',
+                               color: '#ffffff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {deleting ? '…' : 'Borrar'}
+                    </button>
+                    <button onClick={() => setConfirmDeleteId(null)}
+                      style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB',
+                               color: '#6B7280', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      No
+                    </button>
+                  </>
+                ) : isSuperAdmin ? (
+                  <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar"
+                    style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #FECACA', background: 'transparent',
+                             color: '#FCA5A5', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                    </svg>
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
       </div>
       )} {/* fin isMobile ternario */}
 
