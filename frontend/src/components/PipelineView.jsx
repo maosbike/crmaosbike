@@ -292,7 +292,7 @@ export function PipelineView({leads,user,nav,updLead}){
               onDragOver={e => e.preventDefault()}
               onDrop={() => drop(stage)}
               style={{
-                minWidth:300, width:300, flexShrink:0,
+                minWidth:320, width:320, flexShrink:0,
                 display:'flex', flexDirection:'column',
                 background:'#F9FAFB',
                 borderRadius:14,
@@ -331,7 +331,7 @@ export function PipelineView({leads,user,nav,updLead}){
               <div style={{
                 flex:1, overflowY:'auto',
                 padding:'10px',
-                display:'flex', flexDirection:'column', gap:8,
+                display:'flex', flexDirection:'column', gap:10,
                 scrollbarWidth:'thin',
                 scrollbarColor:'#E5E7EB transparent',
               }}>
@@ -345,6 +345,7 @@ export function PipelineView({leads,user,nav,updLead}){
                     borderRadius:12,
                     color:'#D1D5DB',
                     gap:10,
+                    minHeight:200,
                   }}>
                     <Ic.bike size={28} color="#E5E7EB"/>
                     <span style={{fontSize:12, color:'#C4C9D4'}}>Sin fichas</span>
@@ -369,40 +370,43 @@ export function PipelineView({leads,user,nav,updLead}){
                         background:'#FFFFFF',
                         borderRadius:10,
                         border:'1px solid #E5E7EB',
-                        overflow:'hidden',
+                        overflow:'visible',
                         cursor:'grab',
                         transition:'box-shadow 0.12s',
                         display:'flex',
                         alignItems:'stretch',
+                        minHeight:110,
                       }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.10)'; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
                     >
-                      {/* Franja SLA (4px) */}
-                      <div style={{
-                        width:4, flexShrink:0,
-                        background:slaColor,
-                      }}/>
-
-                      {/* Foto del modelo */}
-                      {l.model_image && (
+                      {/* Zona visual izquierda: foto si hay, franja SLA si no */}
+                      {l.model_image ? (
                         <div style={{
                           width:68, flexShrink:0,
                           background:'#F3F4F6',
                           overflow:'hidden',
+                          borderRadius:'10px 0 0 10px',
                         }}>
                           <img
                             src={l.model_image} alt=""
                             style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
                           />
                         </div>
+                      ) : (
+                        <div style={{
+                          width:4, flexShrink:0,
+                          background:slaColor,
+                          borderRadius:'10px 0 0 10px',
+                        }}/>
                       )}
 
                       {/* Contenido */}
                       <div style={{
                         flex:1, minWidth:0,
-                        padding:'12px 14px',
+                        padding:'14px 16px',
                         display:'flex', flexDirection:'column', gap:3,
+                        justifyContent:'space-between',
                       }}>
                         {/* Nombre + prioridad */}
                         <div style={{
@@ -431,7 +435,17 @@ export function PipelineView({leads,user,nav,updLead}){
                         <div style={{fontSize:12, color:'#6B7280', lineHeight:1.3}}>
                           {m
                             ? `${m.brand || ''} ${m.model || ''}`.trim() || 'Sin modelo'
-                            : <span style={{color:'#D1D5DB', fontStyle:'italic'}}>Sin moto asignada</span>
+                            : (
+                              <div style={{
+                                display:'inline-flex', alignItems:'center',
+                                fontSize:10, color:'#C4C9D4',
+                                padding:'2px 8px', borderRadius:99,
+                                background:'#F9FAFB', border:'1px solid #F3F4F6',
+                                alignSelf:'flex-start',
+                              }}>
+                                Sin moto asignada
+                              </div>
+                            )
                           }
                         </div>
 

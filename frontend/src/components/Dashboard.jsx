@@ -26,43 +26,43 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
         {/* Sin atender — SLA vencido */}
         <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:12,padding:'14px 16px',cursor:stats?'pointer':'default'}}
           onClick={()=>stats&&nav('leads')}>
-          <div style={{fontSize:26,fontWeight:800,color:'#DC2626',lineHeight:1,marginBottom:4}}>
+          <div style={{fontSize:28,fontWeight:800,color:'#DC2626',lineHeight:1,marginBottom:4}}>
             {kpi("vencidos","sla_vencidos")}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>Sin atender</div>
         </div>
         {/* Leads activos */}
         <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-          <div style={{fontSize:26,fontWeight:800,color:'#111827',lineHeight:1,marginBottom:4}}>
+          <div style={{fontSize:28,fontWeight:800,color:'#111827',lineHeight:1,marginBottom:4}}>
             {active.length}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>Activos</div>
         </div>
         {/* Ganados */}
         <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'14px 16px'}}>
-          <div style={{fontSize:26,fontWeight:800,color:'#15803D',lineHeight:1,marginBottom:4}}>
+          <div style={{fontSize:28,fontWeight:800,color:'#15803D',lineHeight:1,marginBottom:4}}>
             {ganados.length}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>Ganados</div>
         </div>
         {/* Atender ya */}
         <div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:12,padding:'14px 16px'}}>
-          <div style={{fontSize:26,fontWeight:800,color:'#B45309',lineHeight:1,marginBottom:4}}>
+          <div style={{fontSize:28,fontWeight:800,color:'#B45309',lineHeight:1,marginBottom:4}}>
             {kpi("prox_vencer","proximos_vencer")}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>Atender ya</div>
         </div>
         {/* Stock disponible */}
         <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-          <div style={{fontSize:26,fontWeight:800,color:'#374151',lineHeight:1,marginBottom:4}}>
+          <div style={{fontSize:28,fontWeight:800,color:'#374151',lineHeight:1,marginBottom:4}}>
             {avail}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>Stock disp.</div>
         </div>
         {/* Tareas hoy */}
         <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-          <div style={{fontSize:26,fontWeight:800,color:'#374151',lineHeight:1,marginBottom:4}}>
-            {kpi("recordatorios_hoy")}
+          <div style={{fontSize:28,fontWeight:800,color:'#374151',lineHeight:1,marginBottom:4}}>
+            {tareasHoy.length||kpi("recordatorios_hoy")}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>Tareas hoy</div>
         </div>
@@ -119,18 +119,22 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
             </div>
           </div>
           <div style={{maxHeight:280,overflowY:'auto'}}>
-            {tareasHoy.slice(0,8).map((t,i)=>(
-              <div key={i} onClick={()=>t.ticket_id&&nav('ticket',String(t.ticket_id))}
-                style={{padding:'9px 16px',borderBottom:'1px solid #F9FAFB',cursor:'pointer',display:'flex',alignItems:'center',gap:10}}
-                onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
-                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.title}</div>
-                  <div style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{t.client_name||''}</div>
+            {tareasHoy.slice(0,8).map((t,i)=>{
+              const clientName=[t.client_first,t.client_last].filter(Boolean).join(' ').trim()||t.client_name||'';
+              const timeLabel=t.due_time?t.due_time.slice(0,5):fD(t.due_date);
+              return(
+                <div key={i} onClick={()=>t.ticket_id&&nav('ticket',String(t.ticket_id))}
+                  style={{padding:'9px 16px',borderBottom:'1px solid #F9FAFB',cursor:'pointer',display:'flex',alignItems:'center',gap:10}}
+                  onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.title||'—'}</div>
+                    <div style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{clientName}</div>
+                  </div>
+                  <span style={{fontSize:11,fontWeight:600,color:'#F28100',flexShrink:0}}>{timeLabel}</span>
                 </div>
-                <span style={{fontSize:11,fontWeight:600,color:'#F28100',flexShrink:0}}>{t.reminder_time||fD(t.reminder_date)}</span>
-              </div>
-            ))}
+              );
+            })}
             {tareasHoy.length===0&&(
               <div style={{padding:'28px 16px',textAlign:'center',color:'#9CA3AF',fontSize:12}}>Sin tareas para hoy</div>
             )}
@@ -151,7 +155,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
             const stCfg=TICKET_STATUS[l.status]||{l:l.status,c:'#6B7280',bg:'#F9FAFB'};
             const fotoUrl=l.model_image||null;
             return(
-              <div key={l.id} onClick={()=>nav('ticket',l.id)}
+              <div key={l.id} onClick={()=>nav('ticket',String(l.id))}
                 style={{padding:'10px 16px',borderBottom:'1px solid #F9FAFB',cursor:'pointer',display:'flex',alignItems:'center',gap:10}}
                 onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>

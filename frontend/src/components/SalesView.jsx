@@ -1814,6 +1814,7 @@ export function SalesView({ user, realBranches }) {
               display: 'grid', gridTemplateColumns: tplCols,
               background: '#F9FAFB', borderBottom: '2px solid #E5E7EB',
               borderRadius: '12px 12px 0 0',
+              position: 'sticky', top: 0, zIndex: 1,
             }}>
               <div/>{/* franja */}
               {adminCols.map(col => (
@@ -1860,7 +1861,7 @@ export function SalesView({ user, realBranches }) {
                 borderBottom: '1px solid #F3F4F6',
                 background: bgRow,
                 cursor: 'pointer', transition: 'background 0.1s',
-                minHeight: 58,
+                minHeight: 60,
               }}
               onMouseEnter={e => { e.currentTarget.style.background = isRes ? '#FFFBEB' : '#F5F6FF'; }}
               onMouseLeave={e => { e.currentTarget.style.background = bgRow; }}>
@@ -1888,7 +1889,7 @@ export function SalesView({ user, realBranches }) {
                   {s.client_name || '—'}
                 </div>
                 {s.client_rut && (
-                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>{s.client_rut}</div>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>{s.client_rut}</div>
                 )}
               </div>
 

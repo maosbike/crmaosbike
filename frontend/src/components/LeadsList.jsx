@@ -369,9 +369,10 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 {/* Foto del modelo */}
                 <div style={{
                   width:88,flexShrink:0,
-                  background:'#F3F4F6',
+                  background:x.model_image?'#F3F4F6':stCfg.bg||'#F9FAFB',
                   display:'flex',alignItems:'center',justifyContent:'center',
                   overflow:'hidden',
+                  borderRight:'1px solid #F3F4F6',
                 }}>
                   {x.model_image ? (
                     <img
@@ -380,17 +381,20 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
                     />
                   ) : (
-                    <Ic.bike size={28} color="#D1D5DB"/>
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                      <Ic.bike size={24} color={stCfg.c||'#D1D5DB'}/>
+                    </div>
                   )}
                 </div>
 
                 {/* Contenido principal */}
                 <div style={{flex:1,padding:'12px 16px',display:'flex',flexDirection:'column',justifyContent:'center',gap:4,minWidth:0}}>
                   {/* Nombre del lead */}
-                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
                     <div style={{
                       fontSize:14,fontWeight:700,color:'#111827',
                       whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+                      minWidth:0,flex:1,
                     }}>
                       {x.fn} {x.ln}
                     </div>
