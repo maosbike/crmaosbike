@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader } from '../ui.jsx';
+import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -108,15 +108,16 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
   // Vendedor: solo puede editar sus propias notas. Admins pueden editar todo.
   const canEdit    = isVendedor ? isOwner : (isRes ? true : CAN_CREATE.includes(user.role));
 
-  const [editing,      setEditing]      = useState(false);
-  const [form,         setForm]         = useState({});
-  const [saving,       setSaving]       = useState(false);
-  const [converting,   setConverting]   = useState(false);
-  const [err,          setErr]          = useState('');
-  const [uploading,    setUploading]    = useState('');
-  const [toggling,     setToggling]     = useState(false);
-  const [postItems,    setPostItems]    = useState([]);
-  const [savingItems,  setSavingItems]  = useState(false);
+  const [editing,           setEditing]           = useState(false);
+  const [form,              setForm]              = useState({});
+  const [saving,            setSaving]            = useState(false);
+  const [converting,        setConverting]        = useState(false);
+  const [err,               setErr]               = useState('');
+  const [uploading,         setUploading]         = useState('');
+  const [toggling,          setToggling]          = useState(false);
+  const [postItems,         setPostItems]         = useState([]);
+  const [savingItems,       setSavingItems]       = useState(false);
+  const [showConfirmConvert,setShowConfirmConvert]= useState(false);
 
   useEffect(() => {
     setForm({
@@ -165,8 +166,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
     finally { setSaving(false); }
   }
 
-  async function handleConvertToVenta() {
-    if (!window.confirm('¿Confirmar conversión a nota de venta? Esta acción no se puede deshacer.')) return;
+  async function doConvert() {
     setConverting(true); setErr('');
     try {
       if (sale.is_note_only) {
@@ -206,7 +206,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
     try {
       await api.updateSale(sale.id, { delivered: !sale.delivered });
       onUpdated();
-    } catch(e) { alert(e.message || 'Error'); }
+    } catch(e) { setErr(e.message || 'Error'); }
     finally { setToggling(false); }
   }
 
@@ -222,7 +222,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       await api.updateSale(sale.id, { sale_notes: newNotes });
       setPostItems([]);
       onUpdated();
-    } catch(e) { alert(e.message || 'Error'); }
+    } catch(e) { setErr(e.message || 'Error'); }
     finally { setSavingItems(false); }
   }
 
@@ -232,7 +232,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
     try {
       await api.uploadSaleDoc(sale.id, field, file);
       onUpdated();
-    } catch (e) { alert(e.message); }
+    } catch (e) { setErr(e.message); }
     finally { setUploading(''); }
   }
 
@@ -406,6 +406,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       </div>
 
       {/* Acciones principales */}
+      {!editing && err && <ErrorMsg msg={err} />}
       {!editing ? (
         <div style={{ display: 'flex', gap: 8, flexWrap:'wrap' }}>
           {/* Descargar documento */}
@@ -423,7 +424,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
           )}
           {/* Convertir a venta (solo reservas saldadas o cualquiera) */}
           {isRes && canEdit && (
-            <button onClick={handleConvertToVenta} disabled={converting}
+            <button onClick={() => setShowConfirmConvert(true)} disabled={converting}
               style={{ ...S.btn, flex: 1, background: saldo === 0 ? '#059669' : '#F28100',
                        display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
               {converting ? 'Convirtiendo…' : saldo === 0 ? '✓ Pasar a venta (saldado)' : '→ Registrar como venta'}
@@ -495,6 +496,18 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
             <button onClick={() => setEditing(false)} style={{ ...S.btn2, flex: 1 }}>Cancelar</button>
           </div>
         </div>
+      )}
+
+      {showConfirmConvert && (
+        <Modal open onClose={() => setShowConfirmConvert(false)} title="Confirmar conversión">
+          <p style={{ fontSize: 13, color: '#374151', marginBottom: 8 }}>
+            Esta acción convertirá el registro a nota de venta y <strong>no se puede deshacer</strong>.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+            <button style={{ ...S.btn2 }} onClick={() => setShowConfirmConvert(false)}>Cancelar</button>
+            <button style={{ ...S.btn }} onClick={() => { setShowConfirmConvert(false); doConvert(); }}>Convertir a venta</button>
+          </div>
+        </Modal>
       )}
     </Modal>
   );
@@ -820,7 +833,6 @@ async function openNote(data, type) {
   doc.save(fileName);
   } catch (err) {
     console.error('Error generando PDF:', err);
-    alert('Error al generar el PDF: ' + err.message);
   }
 }
 
@@ -1566,6 +1578,8 @@ export function SalesView({ user, realBranches }) {
   const [fType,          setFType]          = useState('');  // '' | 'vendida' | 'reservada'
   const [confirmDeleteId,setConfirmDeleteId]= useState(null);
   const [deleting,       setDeleting]       = useState(false);
+  const [deleteMsg,      setDeleteMsg]      = useState('');  // mensaje tras eliminar (éxito o error)
+  const [deleteErr,      setDeleteErr]      = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1608,16 +1622,17 @@ export function SalesView({ user, realBranches }) {
     setSelSale(null);
     setStats(prev => prev ? { ...prev, total: Math.max(0, (prev.total || 1) - 1) } : prev);
     if (ticketIdWas) {
-      alert(`Venta eliminada. La unidad volvió a Disponible.\n\nRecordá revisar el ticket vinculado si es necesario.`);
+      setDeleteMsg('Venta eliminada. La unidad volvió a Disponible. Revisa el ticket vinculado si es necesario.');
+      setTimeout(() => setDeleteMsg(''), 6000);
     }
   };
 
   const handleDeleteRow = async (sale) => {
-    setDeleting(true);
+    setDeleting(true); setDeleteErr('');
     try {
       const res = await api.deleteSale(sale.id, sale.is_note_only);
       handleDeleted(sale.id, res.ticket_id_was);
-    } catch (e) { alert(e.message || 'Error al eliminar'); }
+    } catch (e) { setDeleteErr(e.message || 'Error al eliminar'); }
     finally { setDeleting(false); setConfirmDeleteId(null); }
   };
 
@@ -1650,6 +1665,13 @@ export function SalesView({ user, realBranches }) {
           </>
         )}
       />
+
+      {deleteMsg && (
+        <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#166534' }}>
+          {deleteMsg}
+        </div>
+      )}
+      {deleteErr && <ErrorMsg msg={deleteErr} />}
 
       {/* ── KPIs ── */}
       {stats && (

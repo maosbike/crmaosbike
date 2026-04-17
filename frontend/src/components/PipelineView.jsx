@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile, ViewHeader, Empty } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile, ViewHeader, Empty, ErrorMsg } from '../ui.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 export function PipelineView({leads,user,nav,updLead}){
   const isMobile=useIsMobile();
   const[dragId,setDragId]=useState(null);
   const[sellLead,setSellLead]=useState(null);
+  const[pipeErr,setPipeErr]=useState('');
   // Mobile: estado actualmente visible (1 columna a la vez) + sheet de "Mover a"
   const[mobStage,setMobStage]=useState(PIPELINE_STAGES[0]);
   const[moveLead,setMoveLead]=useState(null);
@@ -29,7 +30,7 @@ export function PipelineView({leads,user,nav,updLead}){
       }catch{}
     }catch(ex){
       updLead(ld.id,{status:prev});
-      alert('No se pudo cambiar el estado: '+(ex.message||'Error'));
+      setPipeErr('No se pudo cambiar el estado: '+(ex.message||'Error'));
     }
   };
   const getSlaInfo=(l)=>{
@@ -47,7 +48,7 @@ export function PipelineView({leads,user,nav,updLead}){
       try{ const full=await api.getTicket(l.id); if(full?.timeline)updLead(l.id,{timeline:full.timeline}); }catch{}
     }catch(ex){
       updLead(l.id,{status:prev});
-      alert('No se pudo cambiar el estado: '+(ex.message||'Error'));
+      setPipeErr('No se pudo cambiar el estado: '+(ex.message||'Error'));
     }finally{ setMoving(false); setMoveLead(null); }
   };
 
@@ -58,6 +59,7 @@ export function PipelineView({leads,user,nav,updLead}){
     return (
       <div>
         <ViewHeader title="Pipeline" subtitle={hasRole(user, ROLES.VEND)?"Mis fichas":undefined} size="md" />
+        {pipeErr && <ErrorMsg msg={pipeErr} />}
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
           <select value={mobStage} onChange={e=>setMobStage(e.target.value)}
             style={{flex:1,height:40,borderRadius:8,border:"1px solid #D1D5DB",padding:"0 10px",fontSize:14,background:"#F9FAFB",color:"#111827",fontFamily:"inherit"}}>
@@ -117,6 +119,7 @@ export function PipelineView({leads,user,nav,updLead}){
   return(
     <div>
       <ViewHeader title="Pipeline" subtitle={hasRole(user, ROLES.VEND)?"Mis fichas":undefined} size="md" />
+      {pipeErr && <ErrorMsg msg={pipeErr} />}
       <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:14}}>
         {stages.map(stage=>{
           const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);

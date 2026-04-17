@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
@@ -892,119 +892,107 @@ export function TicketView({lead,user,nav,updLead}){
       {showSell&&<SellFromTicketModal ticketId={lead.id} lead={lead} user={user} onClose={()=>setShowSell(false)} onSuccess={()=>{updLead(lead.id,{status:"ganado"});}}/>}
 
       {/* ══ MODAL SEGUIMIENTO OBLIGATORIO ═══════════════════════ */}
-      {showFollowup&&(
-        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.50)',zIndex:1002,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-          <div style={{ background:'#ffffff',borderRadius:16,width:'100%',maxWidth:500,boxShadow:'0 20px 60px rgba(0,0,0,0.22)',overflow:'hidden' }}>
-            <div style={{ padding:'18px 22px',borderBottom:'1px solid #FEE2E2',background:'#FFF5F5',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <div>
-                <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>⚠️ Registrar seguimiento</div>
-                <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
-              </div>
-              {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+      {showFollowup&&<Modal
+        onClose={!fqSaving?()=>{setShowFollowup(false);resetFq();}:undefined}
+        headerContent={
+          <div style={{ margin:'-24px -24px 0',padding:'18px 22px',borderBottom:'1px solid #FEE2E2',background:'#FFF5F5',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
+            <div>
+              <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>Registrar seguimiento</div>
+              <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
             </div>
-            <div style={{ padding:'20px 22px',display:'flex',flexDirection:'column',gap:14 }}>
-              {/* Estado de seguimiento */}
-              <div>
-                <div style={{ fontSize:11,fontWeight:700,color:'#374151',marginBottom:8 }}>¿Cuál es el estado actual del seguimiento?</div>
-                <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
-                  {FOLLOWUP_OPTS.map(o=>(
-                    <button key={o.v} type="button" onClick={()=>setFq(p=>({...p,status:o.v}))}
-                      style={{ textAlign:'left',padding:'8px 13px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:fq.status===o.v?700:400,
-                        background:fq.status===o.v?'#FEF2F2':'#F9FAFB',
-                        color:fq.status===o.v?'#B91C1C':'#374151',
-                        border:`1.5px solid ${fq.status===o.v?'#FECACA':'#E5E7EB'}`,display:'flex',alignItems:'center',gap:8 }}>
-                      <span style={{ width:8,height:8,borderRadius:'50%',flexShrink:0,background:fq.status===o.v?'#EF4444':'#D1D5DB' }}/>
-                      {o.l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Comentario */}
-              <div>
-                <label style={{ ...S.lbl,marginBottom:5 }}>Comentario breve <span style={{ color:'#EF4444' }}>*</span> <span style={{ fontWeight:400,color:'#9CA3AF' }}>(mín. 15 caracteres)</span></label>
-                <textarea value={fq.note} onChange={e=>setFq(p=>({...p,note:e.target.value}))}
-                  maxLength={5000}
-                  rows={3} style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}
-                  placeholder="Ej: Llamé al cliente, dice que va a hablar con su pareja antes de decidir..."/>
-                <div style={{ textAlign:'right',fontSize:10,color:fq.note.length>=15?'#10B981':'#9CA3AF',marginTop:2 }}>{fq.note.length}/15</div>
-              </div>
-              {/* Próximo paso */}
-              <div>
-                <label style={{ ...S.lbl,marginBottom:5 }}>Próximo paso <span style={{ color:'#EF4444' }}>*</span></label>
-                <input value={fq.nextStep} onChange={e=>setFq(p=>({...p,nextStep:e.target.value}))}
-                  maxLength={500}
-                  style={{ ...S.inp,width:'100%',fontSize:12 }} placeholder="Ej: Volver a llamar el jueves a las 15:00"/>
-              </div>
-              {/* Fecha próxima gestión */}
-              <div>
-                <label style={{ ...S.lbl,marginBottom:5 }}>Fecha próxima gestión <span style={{ color:'#EF4444' }}>*</span></label>
-                <input type="date" value={fq.nextAt} onChange={e=>setFq(p=>({...p,nextAt:e.target.value}))}
-                  min={new Date().toISOString().split('T')[0]}
-                  style={{ ...S.inp,width:'100%',fontSize:12 }}/>
-              </div>
-              {fqErr&&<div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>⚠ {fqErr}</div>}
-              <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
-                {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>}
-                <button onClick={submitFollowup} disabled={fqSaving}
-                  style={{ ...S.btn,padding:'9px 20px',fontSize:12,fontWeight:700,background:'#DC2626',borderColor:'#B91C1C',opacity:fqSaving?0.6:1 }}>
-                  {fqSaving?'Guardando...':'Confirmar seguimiento'}
-                </button>
-              </div>
+            {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+          </div>
+        }
+      >
+        <div style={{ display:'flex',flexDirection:'column',gap:14,marginTop:20 }}>
+          {/* Estado de seguimiento */}
+          <div>
+            <div style={{ fontSize:11,fontWeight:700,color:'#374151',marginBottom:8 }}>¿Cuál es el estado actual del seguimiento?</div>
+            <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
+              {FOLLOWUP_OPTS.map(o=>(
+                <ChoiceChip key={o.v} tone="danger" selected={fq.status===o.v} onClick={()=>setFq(p=>({...p,status:o.v}))}>
+                  {o.l}
+                </ChoiceChip>
+              ))}
             </div>
           </div>
+          {/* Comentario */}
+          <div>
+            <label style={{ ...S.lbl,marginBottom:5 }}>Comentario breve <span style={{ color:'#EF4444' }}>*</span> <span style={{ fontWeight:400,color:'#9CA3AF' }}>(mín. 15 caracteres)</span></label>
+            <textarea value={fq.note} onChange={e=>setFq(p=>({...p,note:e.target.value}))}
+              maxLength={5000}
+              rows={3} style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}
+              placeholder="Ej: Llamé al cliente, dice que va a hablar con su pareja antes de decidir..."/>
+            <div style={{ textAlign:'right',fontSize:10,color:fq.note.length>=15?'#10B981':'#9CA3AF',marginTop:2 }}>{fq.note.length}/15</div>
+          </div>
+          {/* Próximo paso */}
+          <div>
+            <label style={{ ...S.lbl,marginBottom:5 }}>Próximo paso <span style={{ color:'#EF4444' }}>*</span></label>
+            <input value={fq.nextStep} onChange={e=>setFq(p=>({...p,nextStep:e.target.value}))}
+              maxLength={500}
+              style={{ ...S.inp,width:'100%',fontSize:12 }} placeholder="Ej: Volver a llamar el jueves a las 15:00"/>
+          </div>
+          {/* Fecha próxima gestión */}
+          <div>
+            <label style={{ ...S.lbl,marginBottom:5 }}>Fecha próxima gestión <span style={{ color:'#EF4444' }}>*</span></label>
+            <input type="date" value={fq.nextAt} onChange={e=>setFq(p=>({...p,nextAt:e.target.value}))}
+              min={new Date().toISOString().split('T')[0]}
+              style={{ ...S.inp,width:'100%',fontSize:12 }}/>
+          </div>
+          {fqErr&&<div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>⚠ {fqErr}</div>}
+          <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
+            {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>}
+            <button onClick={submitFollowup} disabled={fqSaving}
+              style={{ ...S.btn,padding:'9px 20px',fontSize:12,fontWeight:700,background:'#DC2626',borderColor:'#B91C1C',opacity:fqSaving?0.6:1 }}>
+              {fqSaving?'Guardando...':'Confirmar seguimiento'}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>}
 
       {/* ══ MODAL MARCAR COMO PERDIDO ════════════════════════════ */}
-      {perdidoModal&&(
-        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1001,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
-          onClick={e=>{if(e.target===e.currentTarget&&!perdidoSaving)setPerdidoModal(false);}}>
-          <div style={{ background:'#ffffff',borderRadius:16,width:'100%',maxWidth:440,boxShadow:'0 20px 60px rgba(0,0,0,0.18)',overflow:'hidden' }}>
-            {/* Header */}
-            <div style={{ padding:'18px 22px',borderBottom:'1px solid #FEE2E2',background:'#FFF5F5',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <div>
-                <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>❌ Marcar como perdido</div>
-                <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
-              </div>
-              {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+      {perdidoModal&&<Modal
+        onClose={!perdidoSaving?()=>setPerdidoModal(false):undefined}
+        headerContent={
+          <div style={{ margin:'-24px -24px 0',padding:'18px 22px',borderBottom:'1px solid #FEE2E2',background:'#FFF5F5',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
+            <div>
+              <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>Marcar como perdido</div>
+              <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
             </div>
-            <div style={{ padding:'20px 22px',display:'flex',flexDirection:'column',gap:14 }}>
-              {/* Motivos */}
-              <div>
-                <div style={{ fontSize:11,fontWeight:700,color:'#374151',marginBottom:8 }}>¿Por qué se perdió este lead?</div>
-                <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
-                  {PERDIDO_MOTIVOS.map(m=>(
-                    <button key={m} type="button" onClick={()=>setPerdidoMotivo(m)}
-                      style={{ textAlign:'left',padding:'9px 14px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:perdidoMotivo===m?700:400,
-                        background:perdidoMotivo===m?'#FEF2F2':'#F9FAFB',
-                        color:perdidoMotivo===m?'#B91C1C':'#374151',
-                        border:`1.5px solid ${perdidoMotivo===m?'#FECACA':'#E5E7EB'}`,transition:'all 0.1s',display:'flex',alignItems:'center',gap:10 }}>
-                      <span style={{ width:9,height:9,borderRadius:'50%',flexShrink:0,background:perdidoMotivo===m?'#EF4444':'#D1D5DB',transition:'background 0.1s' }}/>
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Detalle libre */}
-              <div>
-                <label style={{ ...S.lbl,marginBottom:6 }}>Detalle adicional <span style={{ fontWeight:400,color:'#9CA3AF' }}>(opcional)</span></label>
-                <textarea value={perdidoDetalle} onChange={e=>setPerdidoDetalle(e.target.value)}
-                  maxLength={5000}
-                  rows={3} placeholder="Ej: El cliente compró una Yamaha MT-03 en otro concesionario..."
-                  style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}/>
-              </div>
-              {/* Acciones */}
-              <div style={{ display:'flex',gap:10,justifyContent:'flex-end' }}>
-                {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ ...S.btn2,fontSize:13 }}>Cancelar</button>}
-                <button onClick={confirmPerdido} disabled={!perdidoMotivo||perdidoSaving}
-                  style={{ ...S.btn,fontSize:13,background:'#EF4444',opacity:!perdidoMotivo||perdidoSaving?0.6:1,cursor:!perdidoMotivo?'default':'pointer',display:'flex',alignItems:'center',gap:7 }}>
-                  {perdidoSaving?'Guardando...':'Confirmar pérdida'}
-                </button>
-              </div>
+            {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+          </div>
+        }
+      >
+        <div style={{ display:'flex',flexDirection:'column',gap:14,marginTop:20 }}>
+          {/* Motivos */}
+          <div>
+            <div style={{ fontSize:11,fontWeight:700,color:'#374151',marginBottom:8 }}>¿Por qué se perdió este lead?</div>
+            <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
+              {PERDIDO_MOTIVOS.map(m=>(
+                <ChoiceChip key={m} tone="danger" selected={perdidoMotivo===m} onClick={()=>setPerdidoMotivo(m)}>
+                  {m}
+                </ChoiceChip>
+              ))}
             </div>
           </div>
+          {/* Detalle libre */}
+          <div>
+            <label style={{ ...S.lbl,marginBottom:6 }}>Detalle adicional <span style={{ fontWeight:400,color:'#9CA3AF' }}>(opcional)</span></label>
+            <textarea value={perdidoDetalle} onChange={e=>setPerdidoDetalle(e.target.value)}
+              maxLength={5000}
+              rows={3} placeholder="Ej: El cliente compró una Yamaha MT-03 en otro concesionario..."
+              style={{ ...S.inp,width:'100%',resize:'vertical',fontSize:12 }}/>
+          </div>
+          {/* Acciones */}
+          <div style={{ display:'flex',gap:10,justifyContent:'flex-end' }}>
+            {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ ...S.btn2,fontSize:13 }}>Cancelar</button>}
+            <button onClick={confirmPerdido} disabled={!perdidoMotivo||perdidoSaving}
+              style={{ ...S.btn,fontSize:13,background:'#EF4444',opacity:!perdidoMotivo||perdidoSaving?0.6:1,cursor:!perdidoMotivo?'default':'pointer',display:'flex',alignItems:'center',gap:7 }}>
+              {perdidoSaving?'Guardando...':'Confirmar pérdida'}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>}
 
       {/* ══ MODAL REGISTRAR CONTACTO ══════════════════════════════ */}
       {showContact&&(

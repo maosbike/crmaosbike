@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api';
-import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES } from '../ui.jsx';
+import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES, ChoiceChip } from '../ui.jsx';
 
 // OverdueLeadsModal — modal bloqueante de seguimiento obligatorio.
 // Se muestra cuando el vendedor entra al módulo de leads con leads atrasados.
@@ -122,37 +122,14 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone }) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {FOLLOWUP_OPTS.map(o => (
-                <button
+                <ChoiceChip
                   key={o.v}
-                  type="button"
+                  selected={fq.status === o.v}
+                  tone="brand"
                   onClick={() => setFq(p => ({ ...p, status: o.v }))}
-                  style={{
-                    textAlign: 'left',
-                    padding: '8px 13px',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: 12,
-                    fontWeight: fq.status === o.v ? 700 : 400,
-                    background: fq.status === o.v ? '#FFF7ED' : '#F9FAFB',
-                    color: fq.status === o.v ? '#C2410C' : '#374151',
-                    border: `1.5px solid ${fq.status === o.v ? '#FDBA74' : '#E5E7EB'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
                 >
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      background: fq.status === o.v ? '#F28100' : '#D1D5DB',
-                    }}
-                  />
                   {o.l}
-                </button>
+                </ChoiceChip>
               ))}
             </div>
           </div>

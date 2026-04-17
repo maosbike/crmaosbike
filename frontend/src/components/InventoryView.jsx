@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, useIsMobile } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, useIsMobile, colorNameToCss } from '../ui.jsx';
 
 // ─── Datos de configuración ────────────────────────────────────────────────────
 
@@ -42,38 +42,41 @@ const ST_CFG = Object.fromEntries(
   Object.entries(ST_PALETTE).map(([k, v]) => [k, { ...v, label: INV_ST[k]?.l || k }])
 );
 
-const COLOR_CSS = {
-  // Básicos
-  negro:'#111827', 'negro mate':'#1F2937', 'negro metalico':'#374151', 'negro brillante':'#111827',
-  blanco:'#FFFFFF', 'blanco perla':'#F0EDE8', 'blanco nieve':'#F9FAFB', 'blanco polar':'#F3F4F6',
-  rojo:'#EF4444', 'rojo oscuro':'#991B1B', 'rojo metalico':'#DC2626', 'rojo brillante':'#EF4444',
-  azul:'#2563EB', 'azul marino':'#1E3A8A', 'azul metalico':'#1D4ED8', 'azul oscuro':'#1E3A8A',
+// Entradas locales no cubiertas por COLOR_CSS_MAP de ui.jsx
+const EXTRA_COLORS = {
+  'negro mate':'#1F2937', 'negro metalico':'#374151', 'negro brillante':'#111827',
+  'blanco perla':'#F0EDE8', 'blanco nieve':'#F9FAFB', 'blanco polar':'#F3F4F6',
+  'rojo oscuro':'#991B1B', 'rojo metalico':'#DC2626', 'rojo brillante':'#EF4444',
+  'azul marino':'#1E3A8A', 'azul metalico':'#1D4ED8', 'azul oscuro':'#1E3A8A',
   'azul cielo':'#0EA5E9', 'azul claro':'#38BDF8', 'azul royal':'#2563EB',
-  verde:'#15803D', 'verde oscuro':'#14532D', 'verde militar':'#4D7C0F', 'verde oliva':'#65A30D',
+  'verde oscuro':'#14532D', 'verde militar':'#4D7C0F', 'verde oliva':'#65A30D',
   'verde bosque':'#166534', 'verde metalico':'#16A34A', 'verde lima':'#84CC16',
-  gris:'#9CA3AF', 'gris oscuro':'#374151', 'gris claro':'#D1D5DB', 'gris metalico':'#6B7280',
+  'gris oscuro':'#374151', 'gris claro':'#D1D5DB', 'gris metalico':'#6B7280',
   'gris perla':'#E5E7EB', 'gris plata':'#9CA3AF', 'gris titanio':'#4B5563',
-  naranja:'#EA580C', 'naranja metalico':'#C2410C', 'naranja fluor':'#F97316',
-  amarillo:'#D97706', 'amarillo metalico':'#B45309', 'amarillo fluor':'#EAB308',
-  plateado:'#9CA3AF', plata:'#9CA3AF', 'plata metalico':'#D1D5DB', 'plata mate':'#9CA3AF',
+  'naranja metalico':'#C2410C', 'naranja fluor':'#F97316',
+  'amarillo metalico':'#B45309', 'amarillo fluor':'#EAB308',
+  plata:'#9CA3AF', 'plata metalico':'#D1D5DB', 'plata mate':'#9CA3AF',
   perla:'#E8E0D0', bordo:'#9F1239', vino:'#9F1239', guinda:'#881337',
-  celeste:'#0EA5E9', fucsia:'#DB2777', violeta:'#7C3AED', morado:'#7C3AED', lila:'#A78BFA',
-  dorado:'#D97706', 'oro':'#CA8A04', bronce:'#92400E', cafe:'#78350F',
-  marron:'#92400E', beige:'#D4B896', crema:'#FEF3C7', champagne:'#F5E6C8',
+  fucsia:'#DB2777', violeta:'#7C3AED', lila:'#A78BFA',
+  oro:'#CA8A04', bronce:'#92400E', cafe:'#78350F',
+  marron:'#92400E', crema:'#FEF3C7', champagne:'#F5E6C8',
   titanio:'#6B7280', grafito:'#374151', antracita:'#1F2937',
 };
-// Resolver color CSS: usa normalizeText de utils (fuente única) para matching
-// sin acentos ni case sensitivity.
+// Resolver color CSS: busca primero en entradas extra locales (con normalizeText
+// para matching sin acentos ni case), luego cae a colorNameToCss de ui.jsx.
+// Incluye búsqueda parcial para variantes compuestas ("AZUL METALICO OSCURO" → "azul metalico").
 const getColorCss = c => {
+  if (!c) return null;
   const key = normalizeText(c);
-  const exact = Object.entries(COLOR_CSS).find(([k]) => normalizeText(k) === key);
+  const exact = Object.entries(EXTRA_COLORS).find(([k]) => normalizeText(k) === key);
   if (exact) return exact[1];
-  // Búsqueda parcial: "AZUL METALICO OSCURO" → "azul metalico"
-  const partial = Object.entries(COLOR_CSS).find(([k]) => {
+  const partial = Object.entries(EXTRA_COLORS).find(([k]) => {
     const nk = normalizeText(k);
     return key.includes(nk) || nk.includes(key);
   });
-  return partial ? partial[1] : null;
+  if (partial) return partial[1];
+  const fromCentral = colorNameToCss(c);
+  return fromCentral !== '#9CA3AF' ? fromCentral : null;
 };
 
 // ─── Componente principal ──────────────────────────────────────────────────────
@@ -111,6 +114,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [expandedCards, setExpandedCards] = useState(new Set());
   // Banner de error de recarga — cuando la sincronización con el backend falla.
   const [reloadErr, setReloadErr] = useState('');
+  // Error inline para operaciones de foto/estado/mover fuera del modal de edición.
+  const [inlineErr, setInlineErr] = useState('');
   const toggleExpand = id => setExpandedCards(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // Modal edición
@@ -210,7 +215,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       input.onchange = async e => {
         const file = e.target.files[0]; if (!file) return;
         try { const r = await api.uploadInvPhoto(id,file,field); setInv(p=>p.map(x=>x.id===id?{...x,[field]:r.url}:x)); }
-        catch(ex) { alert(ex.message||'Error al subir foto'); }
+        catch(ex) { setInlineErr(ex.message||'Error al subir foto'); }
       };
       input.click();
     }
@@ -220,13 +225,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     const { id, field } = photoTargetRef.current;
     photoTargetRef.current = null;
     try { const r = await api.uploadInvPhoto(id,file,field); setInv(p=>p.map(x=>x.id===id?{...x,[field]:r.url}:x)); }
-    catch(ex) { alert(ex.message||'Error al subir foto'); }
+    catch(ex) { setInlineErr(ex.message||'Error al subir foto'); }
   };
   const handleImportFile = async e => {
     const file = e.target.files[0]; if (!file) return;
     setImportLoading(true); setImportPreview(null); setImportDone(null);
     try { const d = await api.importInventoryPreview(file); setImportPreview(d); }
-    catch(ex) { alert(ex.message||'Error al leer archivo'); }
+    catch(ex) { setInlineErr(ex.message||'Error al leer archivo'); }
     finally { setImportLoading(false); if(importFileRef.current) importFileRef.current.value=''; }
   };
   const handleImportConfirm = async () => {
@@ -235,16 +240,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     if (!okRows.length) return;
     setImportLoading(true);
     try { const r = await api.importInventoryConfirm(okRows); setImportDone(r); setImportPreview(null); reload(); }
-    catch(ex) { alert(ex.message||'Error al importar'); }
+    catch(ex) { setInlineErr(ex.message||'Error al importar'); }
     finally { setImportLoading(false); }
   };
   const handleStatus = async (id, status) => {
     setInv(p => p.map(x => x.id===id ? {...x,status} : x));
-    try { await api.updateInventory(id, {status}); } catch(ex) { alert(ex.message); reload(); }
+    try { await api.updateInventory(id, {status}); } catch(ex) { setInlineErr(ex.message||'Error al cambiar estado'); reload(); }
   };
   const handleMove = async (id, branch_id) => {
     setInv(p => p.map(x => x.id===id ? {...x,branch_id} : x));
-    try { await api.updateInventory(id, {branch_id}); reload(); } catch(ex) { alert(ex.message); reload(); }
+    try { await api.updateInventory(id, {branch_id}); reload(); } catch(ex) { setInlineErr(ex.message||'Error al mover la unidad'); reload(); }
   };
   const openEdit = (unit) => {
     setEErr(''); setDeleteConfirm(false);
@@ -380,7 +385,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       try {
         const r = await api.uploadBranchPhoto(branchId, file);
         setBranchPhotos(p => ({ ...p, [branchId]: r.url }));
-      } catch (ex) { alert(ex.message || 'Error al subir foto'); }
+      } catch (ex) { setInlineErr(ex.message || 'Error al subir foto de sucursal'); }
     };
     input.click();
   };
@@ -392,7 +397,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       await api.deleteInventory(editTarget.id);
       setInv(p => p.filter(x => x.id !== editTarget.id));
       setEditTarget(null); setDeleteConfirm(false);
-    } catch (ex) { alert(ex.message || 'Error al eliminar'); }
+    } catch (ex) { setEErr(ex.message || 'Error al eliminar'); }
     finally { setDeletingUnit(false); }
   };
 
@@ -406,7 +411,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       a.download = `inventario_${new Date().toISOString().slice(0,10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch(ex) { alert(ex.message || 'Error al exportar'); }
+    } catch(ex) { setInlineErr(ex.message || 'Error al exportar'); }
     finally { setExporting(false); }
   };
 
@@ -433,6 +438,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', color:'#B91C1C', padding:'10px 14px', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span>{reloadErr}</span>
           <button onClick={()=>reload()} style={{ background:'#DC2626', color:'#ffffff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Reintentar</button>
+        </div>
+      )}
+      {inlineErr && (
+        <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', color:'#B91C1C', padding:'10px 14px', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <span>{inlineErr}</span>
+          <button onClick={()=>setInlineErr('')} style={{ background:'none', border:'none', color:'#B91C1C', fontSize:16, cursor:'pointer', lineHeight:1, padding:'0 4px' }}>×</button>
         </div>
       )}
 

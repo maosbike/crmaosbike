@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { ColorPicker } from './ColorPicker.jsx';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss } from '../ui.jsx';
 
 function catColor(c){return CAT_COLOR[c]||"#4B5563";}
 
@@ -20,36 +20,13 @@ function bonoCondColor(condicion){
   return BONO_CONDICION[condicion]?.c || "#10B981";
 }
 
-// Mapeo nombre de color → CSS para los swatches visuales
-const COLOR_CSS_MAP = {
-  negro:'#111827','negro mate':'#1F2937','negro brillante':'#111827','negro metalico':'#374151',
-  blanco:'#F9FAFB','blanco perla':'#F0EDE8','blanco nieve':'#F9FAFB',
-  rojo:'#EF4444','rojo oscuro':'#991B1B','rojo metalico':'#DC2626',
-  azul:'#2563EB','azul marino':'#1E3A8A','azul metalico':'#1D4ED8','azul oscuro':'#1E3A8A',
-  'azul cielo':'#0EA5E9','azul claro':'#38BDF8','azul royal':'#2563EB',
-  verde:'#15803D','verde oscuro':'#14532D','verde militar':'#4D7C0F','verde oliva':'#65A30D',
-  'verde lima':'#84CC16','verde metalico':'#16A34A',
-  gris:'#9CA3AF','gris oscuro':'#374151','gris claro':'#D1D5DB','gris metalico':'#6B7280',
-  'gris perla':'#E5E7EB','gris plata':'#9CA3AF','gris titanio':'#4B5563',
-  naranja:'#EA580C','naranja metalico':'#C2410C','naranja fluor':'#F97316',
-  amarillo:'#D97706','amarillo metalico':'#B45309',
-  plateado:'#9CA3AF',plata:'#9CA3AF','plata metalico':'#D1D5DB',
-  perla:'#E8E0D0',bordo:'#9F1239',vino:'#9F1239',guinda:'#881337',
-  celeste:'#0EA5E9',fucsia:'#DB2777',violeta:'#7C3AED',morado:'#7C3AED',lila:'#A78BFA',
-  dorado:'#D97706',bronce:'#92400E',cafe:'#78350F',
-  marron:'#92400E',beige:'#D4B896',crema:'#FEF3C7',
-  titanio:'#6B7280',grafito:'#374151',antracita:'#1F2937',
-};
+// Resolver color CSS: usa colorNameToCss de ui.jsx (fuente única).
+// Retorna null cuando no hay match (el fallback de colorNameToCss es '#9CA3AF',
+// así que lo convertimos a null para mantener la semántica de "sin color conocido").
 function colorToCss(name){
   if(!name) return null;
-  const k=name.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const exact=Object.entries(COLOR_CSS_MAP).find(([key])=>key.normalize('NFD').replace(/[\u0300-\u036f]/g,'')===k);
-  if(exact) return exact[1];
-  const partial=Object.entries(COLOR_CSS_MAP).find(([key])=>{
-    const n=key.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return k.includes(n)||n.includes(k);
-  });
-  return partial?partial[1]:null;
+  const r=colorNameToCss(name);
+  return r==='#9CA3AF'?null:r;
 }
 // Dado un CSS de fondo, devuelve si es "claro" (necesita texto oscuro)
 function isLightColor(css){
@@ -77,6 +54,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
   const[deleting,setDeleting]=useState(false);
   const[confirmDel,setConfirmDel]=useState(false);
   const[form,setForm]=useState({});
+  const[errMsg,setErrMsg]=useState('');
+  const[successMsg,setSuccessMsg]=useState('');
   const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
   const gallery=Array.isArray(m.image_gallery)?m.image_gallery:(m.image_gallery?JSON.parse(m.image_gallery):[]);
   const colorPhotos=Array.isArray(m.color_photos)?m.color_photos:(m.color_photos?JSON.parse(m.color_photos):[]);
@@ -127,7 +106,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       setM(updated);
       setEditing(false);
       onSaved&&onSaved(updated);
-    }catch(e){alert("Error al guardar");}
+    }catch(e){setErrMsg(e?.message||"Error al guardar");}
     finally{setSaving(false);}
   };
   const handleDelete=async()=>{
@@ -136,7 +115,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       await api.deleteModel(m.id);
       onDeleted&&onDeleted(m.id);
       onClose();
-    }catch(e){alert("Error al eliminar");}
+    }catch(e){setErrMsg(e?.message||"Error al eliminar");}
     finally{setDeleting(false);}
   };
   // Colores — guardado inmediato, no depende del form de edición
@@ -151,7 +130,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       ?colorPhotos.map(p=>p.color.toLowerCase().trim()===c.toLowerCase().trim()?{...p,hex:newColorHex}:p)
       :[...colorPhotos,{color:c,hex:newColorHex,url:null}];
     try{const updated=await api.updateModel(m.id,{colors:newColors,color_photos:newColorPhotos});setM(updated);onSaved&&onSaved(updated);}
-    catch(e){alert("Error al agregar color");}
+    catch(e){setErrMsg(e?.message||"Error al agregar color");}
   };
   const saveActiveColorHex=async()=>{
     if(!activeColor) return;
@@ -160,13 +139,13 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       ?colorPhotos.map(p=>p.color.toLowerCase().trim()===activeColor.toLowerCase().trim()?{...p,hex:activeColorHex}:p)
       :[...colorPhotos,{color:activeColor,hex:activeColorHex,url:null}];
     try{const updated=await api.updateModel(m.id,{color_photos:newColorPhotos});setM(updated);onSaved&&onSaved(updated);}
-    catch(e){alert("Error al guardar hex");}
+    catch(e){setErrMsg(e?.message||"Error al guardar tono");}
     finally{setSavingHex(false);}
   };
   const removeColorImmediate=async(c)=>{
     if(activeColor===c) setActiveColor(null);
     try{const updated=await api.updateModel(m.id,{colors:colors.filter(x=>x!==c)});setM(updated);onSaved&&onSaved(updated);}
-    catch(e){alert("Error al quitar color");}
+    catch(e){setErrMsg(e?.message||"Error al quitar color");}
   };
   const uploadMainImg=async(file)=>{
     setImgUploading(true);
@@ -174,17 +153,17 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       const res=await api.uploadModelImage(m.id,file);
       setM(prev=>({...prev,image_url:res.url}));
       onSaved&&onSaved({...m,image_url:res.url});
-    }catch(e){alert("Error al subir imagen");}
+    }catch(e){setErrMsg(e?.message||"Error al subir imagen");}
     finally{setImgUploading(false);}
   };
   const handleAddGalleryPhoto=async(file)=>{
-    if(gallery.length>=MAX_GALLERY){alert(`Máximo ${MAX_GALLERY} fotos por modelo`);return;}
+    if(gallery.length>=MAX_GALLERY){setErrMsg(`Máximo ${MAX_GALLERY} fotos por modelo`);return;}
     setGalleryUploading(true);
     try{
       const res=await api.addModelGalleryPhoto(m.id,file);
       const updated={...m,image_gallery:res.gallery};
       setM(updated);onSaved&&onSaved(updated);
-    }catch(e){alert(e.message||"Error al subir foto");}
+    }catch(e){setErrMsg(e?.message||"Error al subir foto");}
     finally{setGalleryUploading(false);}
   };
   const handleRemoveGalleryPhoto=async(url)=>{
@@ -193,7 +172,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       const res=await api.removeModelGalleryPhoto(m.id,url);
       const updated={...m,image_gallery:res.gallery};
       setM(updated);onSaved&&onSaved(updated);
-    }catch(e){alert(e.message||"Error al eliminar foto");}
+    }catch(e){setErrMsg(e?.message||"Error al eliminar foto");}
     finally{setGalleryUploading(false);}
   };
   const handleUploadSpec=async(file)=>{
@@ -205,7 +184,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       // Si estamos en modo edición, sincronizar el form también
       setForm(f=>({...f,spec_url:res.url}));
       onSaved&&onSaved(updated);
-    }catch(e){alert(e.message||"Error al subir PDF");}
+    }catch(e){setErrMsg(e?.message||"Error al subir PDF");}
     finally{setSpecUploading(false);}
   };
 
@@ -215,7 +194,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       const res=await api.uploadColorPhoto(m.id,color,file);
       const updated={...m,color_photos:res.color_photos};
       setM(updated);onSaved&&onSaved(updated);
-    }catch(e){alert(e.message||"Error al subir foto de color");}
+    }catch(e){setErrMsg(e?.message||"Error al subir foto de color");}
     finally{setColorPhotoUploading(null);}
   };
   const handleRemoveColorPhoto=async(color)=>{
@@ -224,7 +203,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
       const res=await api.removeColorPhoto(m.id,color);
       const updated={...m,color_photos:res.color_photos};
       setM(updated);onSaved&&onSaved(updated);
-    }catch(e){alert(e.message||"Error al quitar foto de color");}
+    }catch(e){setErrMsg(e?.message||"Error al quitar foto de color");}
     finally{setColorPhotoUploading(null);}
   };
 
@@ -258,6 +237,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
         </div>
 
         <div style={{padding:20}}>
+          {errMsg&&<div style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.20)',borderRadius:8,padding:'9px 13px',color:'#DC2626',fontSize:12,fontWeight:500,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>{errMsg}</span><button onClick={()=>setErrMsg('')} style={{background:'none',border:'none',color:'#DC2626',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px'}}>×</button></div>}
           {/* Marca + categoría */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
             <div style={{fontSize:11,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{m.brand}</div>
@@ -641,17 +621,18 @@ function AddModelModal({onClose,onAdded,allCategories}){
   const[colors,setColors]=useState([]);
   const[colorInput,setColorInput]=useState("");
   const[saving,setSaving]=useState(false);
+  const[errMsg,setErrMsg]=useState('');
   const addColor=()=>{const c=colorInput.trim();if(c&&!colors.includes(c))setColors(cs=>[...cs,c]);setColorInput("");};
   const removeColor=(c)=>setColors(cs=>cs.filter(x=>x!==c));
   const handleSubmit=async(e)=>{
     e.preventDefault();
-    if(!form.brand.trim()||!form.model.trim()){alert("Marca y modelo son obligatorios");return;}
-    setSaving(true);
+    if(!form.brand.trim()||!form.model.trim()){setErrMsg("Marca y modelo son obligatorios");return;}
+    setSaving(true); setErrMsg('');
     try{
       const created=await api.createModel({...form,commercial_name:form.commercial_name||form.model,cc:form.cc?Number(form.cc):null,year:Number(form.year),price:Number(form.price)||0,bonus:Number(form.bonus)||0,bono_tipo:form.bono_tipo||null,bono_condicion:form.bono_condicion||null,bono_requisitos:form.bono_requisitos||null,colors});
       onAdded(created);
       onClose();
-    }catch(e){alert(e.message||"Error al crear");}
+    }catch(e){setErrMsg(e?.message||"Error al crear");}
     finally{setSaving(false);}
   };
   return(
@@ -744,6 +725,7 @@ function AddModelModal({onClose,onAdded,allCategories}){
               <button type="button" onClick={addColor} style={{...S.btn,padding:"6px 12px",fontSize:12}}>+</button>
             </div>
           </div>
+          {errMsg&&<div style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.20)',borderRadius:8,padding:'9px 13px',color:'#DC2626',fontSize:12,fontWeight:500,marginBottom:12}}>{errMsg}</div>}
           <div style={{display:"flex",gap:8}}>
             <button type="submit" disabled={saving} style={{...S.btn,flex:1}}>{saving?"Guardando…":"Agregar al catálogo"}</button>
             <button type="button" onClick={onClose} style={{...S.btnSec,flex:1}}>Cancelar</button>
@@ -802,15 +784,16 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
   const[renameFrom,setRenameFrom]=useState("");
   const[renameTo,setRenameTo]=useState("");
   const[saving,setSaving]=useState(false);
+  const[errMsg,setErrMsg]=useState('');
   const handleRename=async()=>{
-    if(!renameFrom||!renameTo.trim()){alert("Completá ambos campos");return;}
-    if(renameFrom===renameTo.trim()){alert("El nombre es igual");return;}
-    setSaving(true);
+    if(!renameFrom||!renameTo.trim()){setErrMsg("Completá ambos campos");return;}
+    if(renameFrom===renameTo.trim()){setErrMsg("El nombre nuevo es igual al actual");return;}
+    setSaving(true); setErrMsg('');
     try{
       const r=await api.renameCategory(renameFrom,renameTo.trim());
       onRenamed(renameFrom,renameTo.trim(),r.updated);
       setRenameFrom("");setRenameTo("");
-    }catch(e){alert(e.message||"Error");}
+    }catch(e){setErrMsg(e?.message||"Error al renombrar");}
     finally{setSaving(false);}
   };
   return(
@@ -843,7 +826,8 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
           {saving?"Guardando…":"Renombrar en todos los modelos"}
         </button>
       </div>
-      <div style={{fontSize:11,color:"#9CA3AF",marginTop:10}}>
+      {errMsg&&<div style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.20)',borderRadius:8,padding:'9px 13px',color:'#DC2626',fontSize:12,fontWeight:500,marginTop:10}}>{errMsg}</div>}
+      <div style={{fontSize:11,color:"#9CA3AF",marginTop:8}}>
         Renombrar actualiza la categoría en todos los modelos que la tengan asignada.
         Para crear una categoría nueva, asignala directamente al editar un modelo.
       </div>
@@ -857,6 +841,7 @@ export function CatalogView({user}){
   const[selected,setSelected]=useState(null);
   const[showAdd,setShowAdd]=useState(false);
   const[showManageCats,setShowManageCats]=useState(false);
+  const[successMsg,setSuccessMsg]=useState('');
   // Navegación: null = vista marcas, string = marca activa
   const[activeBrand,setActiveBrand]=useState(null);
   // null = todas las categorías de la marca, string = categoría activa
@@ -875,7 +860,7 @@ export function CatalogView({user}){
   const onDeleted=(id)=>{setModels(ms=>ms.filter(m=>m.id!==id));setSelected(null);};
   const handleCategoryRenamed=(from,to,count)=>{
     setModels(ms=>ms.map(m=>m.category===from?{...m,category:to}:m));
-    alert(`Categoría renombrada: "${from}" → "${to}" (${count} modelo${count!==1?"s":""})`);
+    setSuccessMsg(`Categoría renombrada: "${from}" → "${to}" (${count} modelo${count!==1?"s":""})`);
   };
 
   // Categorías únicas (modelos + hardcoded como fallback)
@@ -894,6 +879,7 @@ export function CatalogView({user}){
     const visibleBrands=brands.filter(b=>filteredModels.some(m=>m.brand===b));
     return(
       <div>
+        {successMsg&&<div style={{background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.25)',borderRadius:8,padding:'9px 13px',color:'#065F46',fontSize:12,fontWeight:500,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>{successMsg}</span><button onClick={()=>setSuccessMsg('')} style={{background:'none',border:'none',color:'#065F46',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px'}}>×</button></div>}
         <ViewHeader
           preheader="Referencia · Catálogo"
           title="Catálogo"

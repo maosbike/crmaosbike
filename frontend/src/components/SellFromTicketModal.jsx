@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { S, Modal, PAYMENT_TYPES, fmt, normalizeText as normalize, hasRole, ROLE_ADMIN_WRITE } from '../ui.jsx';
+import { S, Modal, PAYMENT_TYPES, fmt, normalizeText as normalize, hasRole, ROLE_ADMIN_WRITE, ErrorMsg } from '../ui.jsx';
 
 export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }) {
   const [inv, setInv]         = useState([]);
   const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
+  const [err, setErr]         = useState('');
 
   // ── Producto cotizado en el ticket (historial, no se toca) ──────────────
   const quoted = lead?.model_brand ? {
@@ -73,9 +74,10 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
   // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!noStock && !form.inventory_id) { alert('Selecciona una unidad de inventario o activa "Sin unidad en stock"'); return; }
-    if (noStock && (!form.brand.trim() || !form.model.trim())) { alert('Indica la marca y modelo'); return; }
-    if (!form.sold_by) { alert('Selecciona el vendedor'); return; }
+    setErr('');
+    if (!noStock && !form.inventory_id) { setErr('Selecciona una unidad de inventario o activa "Nota sin stock"'); return; }
+    if (noStock && (!form.brand.trim() || !form.model.trim())) { setErr('Indica la marca y modelo'); return; }
+    if (!form.sold_by) { setErr('Selecciona el vendedor'); return; }
     setSaving(true);
     try {
       // Construye la línea Autofin que se anexa a sale_notes (solo si aplica)
@@ -139,7 +141,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
       onSuccess && onSuccess();
       onClose();
     } catch (ex) {
-      alert(ex.message || 'Error al registrar venta');
+      setErr(ex.message || 'Error al registrar venta');
     } finally {
       setSaving(false);
     }
@@ -464,6 +466,9 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             />
           </div>
         </div>
+
+        {/* Error */}
+        <ErrorMsg msg={err} />
 
         {/* Acciones */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, borderTop: '1px solid #F3F4F6' }}>

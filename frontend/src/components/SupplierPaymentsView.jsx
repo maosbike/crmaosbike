@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, Loader } from '../ui.jsx';
+import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, Loader, ErrorMsg } from '../ui.jsx';
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 const EMPTY = () => ({
@@ -331,6 +331,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
     payment_date: p0.payment_date?.slice(0,10)||'',
   } : {});
   const [saving,setSaving]=useState(false);
+  const [err,setErr]=useState('');
   const [cd,setCD]=useState(false);
   const [deleting,setDel]=useState(false);
   // modelRow = modelo del catálogo actualmente asociado (para el ColorPicker).
@@ -377,9 +378,9 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
       };
       const u=await api.updateSupplierPayment(p.id,payload);
       setP(u);onUpdated(u);setEditing(false);
-    }catch(e){alert(e.message);}finally{setSaving(false);}
+    }catch(e){setErr(e.message);}finally{setSaving(false);}
   };
-  const del=async()=>{setDel(true);try{await api.deleteSupplierPayment(p.id);onDeleted(p.id);onClose();}catch(e){alert(e.message);setDel(false);setCD(false);}};
+  const del=async()=>{setDel(true);try{await api.deleteSupplierPayment(p.id);onDeleted(p.id);onClose();}catch(e){setErr(e.message);setDel(false);setCD(false);}};
 
   const dv = due(p);
   const overdue = dv && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
@@ -387,6 +388,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
   return (
     <Modal onClose={onClose} title={`Factura ${p.invoice_number||'-'}`} wide>
       <div style={{maxHeight:'78vh',overflowY:'auto',paddingRight:4}}>
+        <ErrorMsg msg={err}/>
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16,flexWrap:'wrap'}}>
           {overdue&&<Bdg l="Vencido" c="#EF4444" bg="rgba(239,68,68,0.12)"/>}
           {p.paid_amount&&<Bdg l="Pagado" c="#15803D" bg="rgba(21,128,61,0.12)"/>}
