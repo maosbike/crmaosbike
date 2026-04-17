@@ -1560,13 +1560,12 @@ export function SalesView({ user, realBranches }) {
   const [toDate,         setToDate]         = useState('');
   const [fBranch,        setFBranch]        = useState('');
   const [fSeller,        setFSeller]        = useState('');
-  const [fType,          setFType]          = useState('');  // '' | 'vendida' | 'reservada'
+  const [fType,          setFType]          = useState('');
   const [confirmDeleteId,setConfirmDeleteId]= useState(null);
   const [deleting,       setDeleting]       = useState(false);
-  const [deleteMsg,      setDeleteMsg]      = useState('');  // mensaje tras eliminar (éxito o error)
+  const [deleteMsg,      setDeleteMsg]      = useState('');
   const [deleteErr,      setDeleteErr]      = useState('');
 
-  // Debounce búsqueda — 350ms para no disparar una llamada por tecla
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 350);
     return () => clearTimeout(t);
@@ -1575,14 +1574,13 @@ export function SalesView({ user, realBranches }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // limit explícito para no depender del default del backend (que ahora pagina).
       const params = { limit: 500 };
-      if (debouncedQ) params.q        = debouncedQ;
-      if (fromDate)   params.from     = fromDate;
-      if (toDate)     params.to       = toDate;
-      if (fBranch)    params.branch_id= fBranch;
+      if (debouncedQ) params.q         = debouncedQ;
+      if (fromDate)   params.from      = fromDate;
+      if (toDate)     params.to        = toDate;
+      if (fBranch)    params.branch_id = fBranch;
       if (fSeller && isAdmin) params.seller_id = fSeller;
-      if (fType)      params.status   = fType;
+      if (fType)      params.status    = fType;
 
       const [salesRes, statsRes] = await Promise.all([
         api.getSales(params),
@@ -1600,7 +1598,6 @@ export function SalesView({ user, realBranches }) {
     if (isAdmin) {
       api.getSellers().then(s => setSellers(s || [])).catch(() => {});
     } else if (user.role === 'vendedor') {
-      // Vendedor solo se ve a sí mismo en el selector de vendedor
       setSellers([{ id: user.id, first_name: user.fn, last_name: user.ln }]);
     }
   }, [isAdmin, user.id]);
@@ -1627,8 +1624,17 @@ export function SalesView({ user, realBranches }) {
     finally { setDeleting(false); setConfirmDeleteId(null); }
   };
 
+  // ── Columnas de la tabla desktop ──
+  // franja | cliente | moto | vendedor | [sucursal] | precio | [dist] | entrega | docs | acciones
+  const tplCols = isAdmin
+    ? '4px minmax(160px,1.4fr) minmax(140px,1.2fr) minmax(110px,0.9fr) minmax(110px,0.9fr) 110px minmax(90px,auto) 52px 56px 90px'
+    : '4px minmax(160px,1.4fr) minmax(140px,1.2fr) minmax(120px,1fr) 110px 52px 56px 90px';
+  const tplHeaders = isAdmin
+    ? ['Cliente', 'Moto · Chasis', 'Vendedor', 'Sucursal', 'Precio', 'Distribuidor', 'Entrega', 'Docs', '']
+    : ['Cliente', 'Moto · Chasis', 'Vendedor', 'Precio', 'Entrega', 'Docs', ''];
+
   return (
-    <div>
+    <div style={{ fontFamily: 'inherit' }}>
 
       {/* ── Header ── */}
       <ViewHeader
@@ -1639,26 +1645,35 @@ export function SalesView({ user, realBranches }) {
         filtered={hasFilters}
         actions={canCreate && (
           <>
-            <button onClick={() => setShowNew('reserva')}
-              style={{ display: 'flex', alignItems: 'center', justifyContent:'center', gap: 6, background: '#FFFFFF',
-                       border: '1.5px solid #111827', color: '#111827', borderRadius: 9,
-                       fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                       padding: '9px 14px', fontFamily: 'inherit' }}>
-              <Ic.plus size={14} color="#111827" /> Nota de reserva
+            <button onClick={() => setShowNew('reserva')} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: '#FFFFFF', border: '1.5px solid #374151', color: '#374151',
+              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
+            }}>
+              <Ic.plus size={13} color="#374151" /> Reserva
             </button>
-            <button onClick={() => setShowNew('venta')}
-              style={{ display: 'flex', alignItems: 'center', justifyContent:'center', gap: 6, background: '#F28100',
-                       border: 'none', color: '#FFFFFF', borderRadius: 9, fontSize: 12,
-                       fontWeight: 700, cursor: 'pointer', padding: '9px 14px',
-                       fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(242,129,0,0.35)' }}>
-              <Ic.plus size={14} color="#ffffff" /> Nota de venta
+            <button onClick={() => setShowNew('venta')} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: '#F28100', border: 'none', color: '#FFFFFF',
+              borderRadius: 8, fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
+              whiteSpace: 'nowrap', boxShadow: '0 2px 6px rgba(242,129,0,0.30)',
+            }}>
+              <Ic.plus size={13} color="#fff" /> Nueva venta
             </button>
           </>
         )}
       />
 
+      {/* ── Mensajes de estado ── */}
       {deleteMsg && (
-        <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#166534' }}>
+        <div style={{
+          marginBottom: 12, padding: '10px 16px', borderRadius: 8,
+          fontSize: 12, fontFamily: 'inherit',
+          background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#166534',
+        }}>
           {deleteMsg}
         </div>
       )}
@@ -1668,26 +1683,39 @@ export function SalesView({ user, realBranches }) {
       {stats && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-          gap: 12, marginBottom: 20,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+          gap: 10, marginBottom: 20,
         }}>
           {[
-            { label: 'Total registros',    val: stats.total ?? '—',                       color: '#111827' },
-            ...(isAdmin && stats.total_venta > 0 ? [{ label: 'Monto total',  val: `$${(stats.total_venta || 0).toLocaleString('es-CL')}`, color: '#065F46' }] : []),
-            { label: 'Reservas activas',   val: stats.pendiente_entrega ?? '—',            color: '#B45309' },
-            { label: 'Sin factura cli.',   val: stats.sin_factura_cli ?? '—',              color: stats.sin_factura_cli > 0 ? '#B45309' : '#6B7280' },
-            { label: 'Pend. homologación', val: stats.sin_homologacion ?? '—',             color: stats.sin_homologacion > 0 ? '#6D28D9' : '#6B7280' },
-            { label: 'Pend. inscripción',  val: stats.sin_inscripcion ?? '—',              color: stats.sin_inscripcion > 0 ? '#0E7490' : '#6B7280' },
-            ...(isAdmin ? [{ label: 'Pend. distribuidor', val: stats.pendiente_distribuidor ?? '—', color: stats.pendiente_distribuidor > 0 ? '#B45309' : '#6B7280' }] : []),
+            { label: 'Total',              val: stats.total ?? '—',                  color: '#111827', icon: '●' },
+            ...(isAdmin && stats.total_venta > 0 ? [{
+              label: 'Monto total',
+              val: `$${(stats.total_venta || 0).toLocaleString('es-CL')}`,
+              color: '#15803D', icon: '$',
+            }] : []),
+            { label: 'Reservas activas',   val: stats.pendiente_entrega ?? '—',      color: '#B45309', icon: '◐' },
+            { label: 'Sin factura cli.',   val: stats.sin_factura_cli ?? '—',        color: stats.sin_factura_cli > 0 ? '#B45309' : '#9CA3AF', icon: '!' },
+            { label: 'Pend. homologación', val: stats.sin_homologacion ?? '—',       color: stats.sin_homologacion > 0 ? '#6D28D9' : '#9CA3AF', icon: '~' },
+            { label: 'Pend. inscripción',  val: stats.sin_inscripcion ?? '—',        color: stats.sin_inscripcion > 0 ? '#0E7490' : '#9CA3AF', icon: '~' },
+            ...(isAdmin ? [{ label: 'Pend. distribuidor', val: stats.pendiente_distribuidor ?? '—', color: stats.pendiente_distribuidor > 0 ? '#B45309' : '#9CA3AF', icon: '○' }] : []),
           ].map(k => (
             <div key={k.label} style={{
               background: '#FFFFFF', border: '1px solid #E5E7EB',
-              borderRadius: 12, padding: '16px 18px',
+              borderRadius: 10, padding: '14px 16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: k.color, lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 4 }}>
+              <div style={{
+                fontSize: 22, fontWeight: 800, color: k.color,
+                lineHeight: 1, letterSpacing: '-0.03em', marginBottom: 5,
+                fontFamily: 'inherit',
+              }}>
                 {k.val}
               </div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <div style={{
+                fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                lineHeight: 1.3,
+              }}>
                 {k.label}
               </div>
             </div>
@@ -1695,51 +1723,58 @@ export function SalesView({ user, realBranches }) {
         </div>
       )}
 
-      {/* ── Bloque de filtros ── */}
+      {/* ── Filtros ── */}
       <div style={{
         background: '#FFFFFF', border: '1px solid #E5E7EB',
-        borderRadius: 12, padding: '14px 18px',
-        marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10,
+        borderRadius: 10, padding: '12px 16px',
+        marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8,
       }}>
-        {/* Fila 1: búsqueda + chips tipo */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
-            <Ic.search size={14} color="#9CA3AF" style={{
-              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none',
+          {/* Búsqueda */}
+          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
+            <Ic.search size={13} color="#9CA3AF" style={{
+              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none',
             }}/>
-            <input value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Buscar venta, cliente, chasis..."
-              style={{ ...S.inp, paddingLeft: 36, fontSize: 13, border: '1px solid #E5E7EB', borderRadius: 8 }}/>
+            <input
+              value={q} onChange={e => setQ(e.target.value)}
+              placeholder="Buscar cliente, moto, chasis…"
+              style={{ ...S.inp, paddingLeft: 32, fontSize: 12, height: 34, border: '1px solid #E5E7EB' }}
+            />
           </div>
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            {[{v:'',l:'Todas'},{v:'reservada',l:'Reservas'},{v:'vendida',l:'Ventas'}].map(t => (
+          {/* Chips tipo */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[{ v: '', l: 'Todas' }, { v: 'reservada', l: 'Reservas' }, { v: 'vendida', l: 'Ventas' }].map(t => (
               <button key={t.v} onClick={() => setFType(t.v)} style={{
-                padding: '6px 14px', borderRadius: 99, border: '1px solid',
+                padding: '5px 12px', borderRadius: 99, border: '1px solid',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'all 0.12s',
                 borderColor: fType === t.v ? '#F28100' : '#E5E7EB',
-                background: fType === t.v ? 'rgba(242,129,0,0.08)' : '#FFFFFF',
-                color: fType === t.v ? '#C2680A' : '#6B7280',
-              }}>{t.l}</button>
+                background:  fType === t.v ? 'rgba(242,129,0,0.07)' : '#FFFFFF',
+                color:       fType === t.v ? '#C2680A' : '#6B7280',
+              }}>
+                {t.l}
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Fila 2: fechas + sucursal + vendedor + limpiar */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-            style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }} title="Desde"/>
+            title="Desde"
+            style={{ ...selectCtrl, height: 34, flex: '1 1 120px', minWidth: 100, fontSize: 12 }}/>
           <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-            style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }} title="Hasta"/>
+            title="Hasta"
+            style={{ ...selectCtrl, height: 34, flex: '1 1 120px', minWidth: 100, fontSize: 12 }}/>
           {isAdmin && realBranches.length > 0 && (
             <select value={fBranch} onChange={e => setFBranch(e.target.value)}
-              style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }}>
+              style={{ ...selectCtrl, height: 34, flex: '1 1 120px', minWidth: 110, fontSize: 12 }}>
               <option value="">Sucursal</option>
               {realBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           )}
           {isAdmin && sellers.length > 0 && (
             <select value={fSeller} onChange={e => setFSeller(e.target.value)}
-              style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }}>
+              style={{ ...selectCtrl, height: 34, flex: '1 1 120px', minWidth: 110, fontSize: 12 }}>
               <option value="">Vendedor</option>
               {sellers.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
             </select>
@@ -1747,8 +1782,11 @@ export function SalesView({ user, realBranches }) {
           {hasFilters && (
             <button onClick={clearFilters} style={{
               ...S.gh, height: 34, fontSize: 12, fontWeight: 600,
-              border: '1px solid #E5E7EB', borderRadius: 8, padding: '0 14px', flexShrink: 0,
-            }}>Limpiar</button>
+              border: '1px solid #E5E7EB', borderRadius: 8,
+              padding: '0 12px', flexShrink: 0, color: '#6B7280',
+            }}>
+              Limpiar
+            </button>
           )}
         </div>
       </div>
@@ -1757,12 +1795,14 @@ export function SalesView({ user, realBranches }) {
       {isMobile ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {loading && (
-            <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 }}>Cargando…</div>
+            <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF', fontSize: 13, fontFamily: 'inherit' }}>
+              Cargando…
+            </div>
           )}
           {!loading && sales.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
+            <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF', fontFamily: 'inherit' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
-              <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba otros filtros' : 'No hay ventas registradas aún'}</div>
+              <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba con otros filtros' : 'No hay ventas registradas aún'}</div>
             </div>
           )}
           {!loading && sales.map(s => {
@@ -1770,256 +1810,345 @@ export function SalesView({ user, realBranches }) {
             const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
             return (
               <div key={s.id} onClick={() => setSelSale(s)} style={{
-                ...S.card, padding: 0, overflow: 'hidden',
-                display: 'flex', alignItems: 'stretch',
+                background: '#FFFFFF', border: '1px solid #E5E7EB',
                 borderLeft: `4px solid ${isRes ? '#F59E0B' : '#10B981'}`,
-                marginBottom: 0, cursor: 'pointer',
+                borderRadius: 10, overflow: 'hidden',
+                display: 'flex', alignItems: 'stretch',
+                cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
               }}>
-                <div style={{ flex: 1, padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                <div style={{ flex: 1, minWidth: 0, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: 700, color: '#111827',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+                    }}>
                       {s.brand} {s.model}{s.year ? ` ${s.year}` : ''}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: isRes ? '#B45309' : '#15803D' }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, flexShrink: 0,
+                      color: isRes ? '#B45309' : '#15803D',
+                      background: isRes ? '#FFFBEB' : '#ECFDF5',
+                      border: `1px solid ${isRes ? '#FCD34D' : '#A7F3D0'}`,
+                      padding: '2px 7px', borderRadius: 99,
+                    }}>
                       {isRes ? 'Reserva' : 'Venta'}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{s.client_name || '—'}</div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>
-                    {s.sale_price ? fmt(s.sale_price) : '—'}
+                  <div style={{
+                    fontSize: 12, color: '#6B7280', marginBottom: 6,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {s.client_name || '—'}
                   </div>
-                  {isRes && s.sale_price > 0 && (
-                    <div style={{ fontSize: 11, marginTop: 3, color: saldo > 0 ? '#B45309' : '#059669', fontWeight: 600 }}>
-                      {saldo > 0 ? `Falta: ${fmt(saldo)}` : 'Saldado'}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>
+                      {s.sale_price ? fmt(s.sale_price) : '—'}
+                    </span>
+                    {isRes && s.sale_price > 0 && (
+                      <span style={{ fontSize: 11, color: saldo > 0 ? '#B45309' : '#059669', fontWeight: 600 }}>
+                        {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: '#9CA3AF' }}>{fD(s.sold_at)}</span>
+                <div style={{
+                  padding: '12px 14px', display: 'flex',
+                  flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center',
+                  gap: 4, flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: 11, color: '#9CA3AF', whiteSpace: 'nowrap' }}>{fD(s.sold_at)}</span>
+                  {!isRes && <StatusDot ok={s.delivered} />}
                 </div>
               </div>
             );
           })}
         </div>
+
       ) : (
 
-      <div className="crm-sales-table" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
-                    overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', width: '100%' }}>
+        <div style={{
+          background: '#FFFFFF', border: '1px solid #E5E7EB',
+          borderRadius: 12, overflow: 'hidden',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        }}>
 
-        {/* ── Header de tabla ── */}
-        {(() => {
-          const tplCols = isAdmin
-            ? '4px 1fr 180px 140px 130px 80px 72px 56px 56px 100px'
-            : '4px 1fr 180px 130px 80px 72px 56px 56px 100px';
-          const adminCols = isAdmin
-            ? ['Venta / Cliente', 'Moto · Chasis', 'Vendedor', 'Sucursal', 'Precio / Abono', 'Dist.', 'Entrega', 'Docs', '']
-            : ['Venta / Cliente', 'Moto · Chasis', 'Vendedor', 'Precio / Abono', 'Entrega', 'Docs', ''];
-          return (
-            <div style={{
-              display: 'grid', gridTemplateColumns: tplCols,
-              background: '#F9FAFB', borderBottom: '2px solid #E5E7EB',
-              borderRadius: '12px 12px 0 0',
-              position: 'sticky', top: 0, zIndex: 1,
-            }}>
-              <div/>{/* franja */}
-              {adminCols.map((col, i) => (
-                <div key={col + i} style={{
-                  padding: '9px 14px',
-                  fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {col}
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* ── Filas ── */}
-        {loading && (
-          <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 }}>Cargando…</div>
-        )}
-        {!loading && sales.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
-            <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba otros filtros' : 'No hay ventas registradas aún'}</div>
+          {/* ── Header de tabla ── */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: tplCols,
+            background: '#F9FAFB', borderBottom: '2px solid #E5E7EB',
+            borderRadius: '12px 12px 0 0',
+            position: 'sticky', top: 0, zIndex: 1,
+          }}>
+            <div/>{/* franja color */}
+            {tplHeaders.map((col, i) => (
+              <div key={col + i} style={{
+                padding: '10px 12px',
+                fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                whiteSpace: 'nowrap', overflow: 'hidden',
+                fontFamily: 'inherit',
+              }}>
+                {col}
+              </div>
+            ))}
           </div>
-        )}
-        {!loading && sales.map(s => {
-          const isRes = s.status === 'reservada';
-          const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
-          const docsOk = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
-          const docCount = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
-          const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
-          const accentColor = isRes ? '#F59E0B' : '#10B981';
-          const bgRow = isRes ? 'rgba(245,158,11,0.03)' : 'transparent';
-          const tplCols = isAdmin
-            ? '4px 1fr 180px 140px 130px 80px 72px 56px 56px 100px'
-            : '4px 1fr 180px 130px 80px 72px 56px 56px 100px';
-          return (
-            <div key={s.id}
-              onClick={() => setSelSale(s)}
-              style={{
-                display: 'grid', gridTemplateColumns: tplCols,
-                alignItems: 'center',
-                borderBottom: '1px solid #F3F4F6',
-                background: bgRow,
-                cursor: 'pointer', transition: 'background 0.1s',
-                minHeight: 60,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#FAFAFA'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = bgRow; }}>
 
-              {/* Franja de color */}
-              <div style={{ alignSelf: 'stretch', background: accentColor }}/>
+          {/* ── Estado vacío / cargando ── */}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13, fontFamily: 'inherit' }}>
+              Cargando…
+            </div>
+          )}
+          {!loading && sales.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF', fontFamily: 'inherit' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
+              <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba con otros filtros' : 'No hay ventas registradas aún'}</div>
+            </div>
+          )}
 
-              {/* Venta / Cliente */}
-              <div style={{ padding: '10px 14px', minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                  <span style={{
-                    fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 5,
-                    background: isRes ? '#FFFBEB' : '#ECFDF5',
-                    color: isRes ? '#B45309' : '#065F46',
-                    border: `1px solid ${isRes ? '#FCD34D' : '#A7F3D0'}`,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
-                  }}>
-                    {isRes ? 'RESERVA' : 'VENTA'}
-                  </span>
-                  {s.ticket_num && (
-                    <span style={{ fontSize: 9, color: '#F28100', fontWeight: 700 }}>{s.ticket_num}</span>
-                  )}
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {s.client_name || '—'}
-                </div>
-                {s.client_rut && (
-                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>{s.client_rut}</div>
-                )}
-              </div>
+          {/* ── Filas ── */}
+          {!loading && sales.map(s => {
+            const isRes      = s.status === 'reservada';
+            const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
+            const docsOk     = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
+            const docCount   = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
+            const saldo      = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
+            const accentColor = isRes ? '#F59E0B' : '#10B981';
+            const bgRow       = isRes ? 'rgba(245,158,11,0.025)' : 'transparent';
+            return (
+              <div
+                key={s.id}
+                onClick={() => setSelSale(s)}
+                style={{
+                  display: 'grid', gridTemplateColumns: tplCols,
+                  alignItems: 'center',
+                  borderBottom: '1px solid #F3F4F6',
+                  background: bgRow,
+                  cursor: 'pointer', transition: 'background 0.1s',
+                  minHeight: 56,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FAFAFA'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = bgRow; }}
+              >
+                {/* Franja de color */}
+                <div style={{ alignSelf: 'stretch', background: accentColor, borderRadius: 0 }}/>
 
-              {/* Moto + Chasis */}
-              <div style={{ padding: '10px 14px', minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {s.brand} {s.model}{s.year ? ` ${s.year}` : ''}
-                </div>
-                {s.chassis && (
-                  <div style={{ marginTop: 2 }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280',
-                      background: '#F3F4F6', padding: '1px 6px', borderRadius: 4,
-                      border: '1px solid #E5E7EB', letterSpacing: '0.03em',
-                      fontFamily: 'inherit' }}>
-                      {s.chassis}
+                {/* Cliente */}
+                <div style={{ padding: '8px 12px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                      background: isRes ? '#FFFBEB' : '#ECFDF5',
+                      color: isRes ? '#B45309' : '#065F46',
+                      border: `1px solid ${isRes ? '#FCD34D' : '#A7F3D0'}`,
+                      textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0,
+                      fontFamily: 'inherit',
+                    }}>
+                      {isRes ? 'Reserva' : 'Venta'}
                     </span>
+                    {s.ticket_num && (
+                      <span style={{ fontSize: 9, color: '#F28100', fontWeight: 700, flexShrink: 0 }}>
+                        {s.ticket_num}
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* Vendedor */}
-              <div style={{ padding: '10px 14px', fontSize: 11, color: '#4B5563', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {sellerName}
-              </div>
-
-              {/* Sucursal (solo admin) */}
-              {isAdmin && (
-                <div style={{ padding: '10px 14px', fontSize: 11, color: '#6B7280', minWidth: 0 }}>
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.branch_name || '—'}</div>
-                  {s.added_as_sold && (
-                    <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, color: '#7C3AED',
-                                  background: '#EDE9FE', borderRadius: 4, padding: '1px 5px',
-                                  display: 'inline-block', letterSpacing: '0.05em' }}>
-                      BODEGA
+                  <div style={{
+                    fontSize: 13, fontWeight: 700, color: '#111827',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    fontFamily: 'inherit',
+                  }}>
+                    {s.client_name || '—'}
+                  </div>
+                  {s.client_rut && (
+                    <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1, fontFamily: 'inherit' }}>
+                      {s.client_rut}
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Precio / Abono */}
-              <div style={{ padding: '10px 14px', textAlign: 'right' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: s.sale_price ? '#111827' : '#D1D5DB', letterSpacing: '-0.02em' }}>
-                  {s.sale_price ? fmt(s.sale_price) : '—'}
-                </div>
-                {isRes && s.sale_price > 0 && (
-                  <div style={{ fontSize: 10, marginTop: 2 }}>
-                    <span style={{ color: '#059669' }}>Abono: {fmt(s.invoice_amount || 0)}</span>
-                    <br/>
-                    <span style={{ color: saldo > 0 ? '#DC2626' : '#059669', fontWeight: 700 }}>
-                      {saldo > 0 ? `Falta: ${fmt(saldo)}` : 'Saldado'}
+                {/* Moto + Chasis */}
+                <div style={{ padding: '8px 12px', minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 12, fontWeight: 700, color: '#111827',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    marginBottom: 2, fontFamily: 'inherit',
+                  }}>
+                    {s.brand} {s.model}{s.year ? ` ${s.year}` : ''}
+                  </div>
+                  {s.chassis && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, color: '#6B7280',
+                      background: '#F3F4F6', padding: '1px 6px', borderRadius: 4,
+                      border: '1px solid #E5E7EB', letterSpacing: '0.02em',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                      display: 'inline-block', maxWidth: '100%',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {s.chassis}
                     </span>
+                  )}
+                </div>
+
+                {/* Vendedor */}
+                <div style={{
+                  padding: '8px 12px', minWidth: 0,
+                  fontSize: 12, color: '#4B5563',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  fontFamily: 'inherit',
+                }}>
+                  {sellerName}
+                </div>
+
+                {/* Sucursal (solo admin) */}
+                {isAdmin && (
+                  <div style={{ padding: '8px 12px', minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 12, color: '#4B5563',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      fontFamily: 'inherit',
+                    }}>
+                      {s.branch_name || '—'}
+                    </div>
+                    {s.added_as_sold && (
+                      <span style={{
+                        marginTop: 2, fontSize: 9, fontWeight: 700, color: '#7C3AED',
+                        background: '#EDE9FE', borderRadius: 4, padding: '1px 6px',
+                        display: 'inline-block', letterSpacing: '0.05em', fontFamily: 'inherit',
+                      }}>
+                        BODEGA
+                      </span>
+                    )}
                   </div>
                 )}
-              </div>
 
-              {/* Distribuidor (solo admin) */}
-              {isAdmin && (
-                <div style={{ padding: '10px 8px', textAlign: 'center' }}>
-                  {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <DistributorBadge paid={s.distributor_paid} />}
-                </div>
-              )}
-
-              {/* Entregada */}
-              <div style={{ padding: '10px 8px', display: 'flex', justifyContent: 'center' }}>
-                {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : <StatusDot ok={s.delivered} />}
-              </div>
-
-              {/* Docs */}
-              <div style={{ padding: '10px 6px', textAlign: 'center' }}>
-                {isRes ? <span style={{ color: '#D1D5DB', fontSize: 11 }}>—</span> : (
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
-                    background: docsOk ? '#ECFDF5' : docCount > 0 ? '#FFFBEB' : '#F9FAFB',
-                    color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
-                    border: `1px solid ${docsOk ? '#A7F3D0' : docCount > 0 ? '#FCD34D' : '#E5E7EB'}`,
+                {/* Precio / Saldo */}
+                <div style={{ padding: '8px 12px', textAlign: 'right', minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 800,
+                    color: s.sale_price ? '#111827' : '#D1D5DB',
+                    letterSpacing: '-0.02em', fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
                   }}>
-                    {docCount}/4
-                  </span>
-                )}
-              </div>
+                    {s.sale_price ? fmt(s.sale_price) : '—'}
+                  </div>
+                  {isRes && s.sale_price > 0 && (
+                    <div style={{ marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: '#059669', fontFamily: 'inherit' }}>
+                        Abono: {fmt(s.invoice_amount || 0)}
+                      </div>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, fontFamily: 'inherit',
+                        color: saldo > 0 ? '#DC2626' : '#059669',
+                      }}>
+                        {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-              {/* Acciones */}
-              <div style={{ padding: '6px 10px', display: 'flex', gap: 4, justifyContent: 'flex-end' }}
-                   onClick={e => e.stopPropagation()}>
-                <button title={isRes ? 'Ver nota de reserva' : 'Ver nota de venta'}
-                  onClick={() => openNoteFromSale(s)}
-                  style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #E5E7EB', background: 'transparent',
-                           color: '#6B7280', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                  </svg>
-                </button>
-                {isSuperAdmin && confirmDeleteId === s.id ? (
-                  <>
-                    <button onClick={() => handleDeleteRow(s)} disabled={deleting}
-                      style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#EF4444',
-                               color: '#ffffff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {deleting ? '…' : 'Borrar'}
-                    </button>
-                    <button onClick={() => setConfirmDeleteId(null)}
-                      style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #E5E7EB', background: '#F9FAFB',
-                               color: '#6B7280', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      No
-                    </button>
-                  </>
-                ) : isSuperAdmin ? (
-                  <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar"
-                    style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #FECACA', background: 'transparent',
-                             color: '#FCA5A5', cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}>
+                {/* Distribuidor (solo admin) */}
+                {isAdmin && (
+                  <div style={{ padding: '8px 10px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    {isRes
+                      ? <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>
+                      : <DistributorBadge paid={s.distributor_paid} />
+                    }
+                  </div>
+                )}
+
+                {/* Entregada */}
+                <div style={{ padding: '8px 10px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {isRes
+                    ? <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>
+                    : <StatusDot ok={s.delivered} />
+                  }
+                </div>
+
+                {/* Docs */}
+                <div style={{ padding: '8px 8px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {isRes ? (
+                    <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>
+                  ) : (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
+                      background: docsOk ? '#ECFDF5' : docCount > 0 ? '#FFFBEB' : '#F3F4F6',
+                      color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
+                      border: `1px solid ${docsOk ? '#A7F3D0' : docCount > 0 ? '#FCD34D' : '#E5E7EB'}`,
+                      fontFamily: 'inherit', whiteSpace: 'nowrap',
+                    }}>
+                      {docCount}/4
+                    </span>
+                  )}
+                </div>
+
+                {/* Acciones */}
+                <div style={{ padding: '6px 8px', display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}
+                     onClick={e => e.stopPropagation()}>
+                  <button
+                    title={isRes ? 'Ver nota de reserva' : 'Ver nota de venta'}
+                    onClick={() => openNoteFromSale(s)}
+                    style={{
+                      padding: '5px 7px', borderRadius: 6,
+                      border: '1px solid #E5E7EB', background: '#FFFFFF',
+                      color: '#6B7280', cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center',
+                      transition: 'border-color 0.1s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#D1D5DB'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; }}
+                  >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
                     </svg>
                   </button>
-                ) : null}
+                  {isSuperAdmin && confirmDeleteId === s.id ? (
+                    <>
+                      <button onClick={() => handleDeleteRow(s)} disabled={deleting} style={{
+                        padding: '4px 8px', borderRadius: 6, border: 'none',
+                        background: '#EF4444', color: '#fff',
+                        fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                        {deleting ? '…' : 'Borrar'}
+                      </button>
+                      <button onClick={() => setConfirmDeleteId(null)} style={{
+                        padding: '4px 7px', borderRadius: 6,
+                        border: '1px solid #E5E7EB', background: '#F9FAFB',
+                        color: '#6B7280', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                        No
+                      </button>
+                    </>
+                  ) : isSuperAdmin ? (
+                    <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar" style={{
+                      padding: '5px 7px', borderRadius: 6,
+                      border: '1px solid #FECACA', background: '#FFFFFF',
+                      color: '#FCA5A5', cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center',
+                    }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6"/>
+                        <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                      </svg>
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-      )} {/* fin isMobile ternario */}
+            );
+          })}
+        </div>
+      )}
 
-      {/* Contador */}
+      {/* ── Contador ── */}
       {!loading && sales.length > 0 && (
-        <div style={{ textAlign: 'right', fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
-          {sales.filter(s=>s.status==='vendida').length} venta{sales.filter(s=>s.status==='vendida').length!==1?'s':''} · {sales.filter(s=>s.status==='reservada').length} reserva{sales.filter(s=>s.status==='reservada').length!==1?'s':''}
+        <div style={{ textAlign: 'right', fontSize: 11, color: '#9CA3AF', marginTop: 8, fontFamily: 'inherit' }}>
+          {sales.filter(s => s.status === 'vendida').length} venta{sales.filter(s => s.status === 'vendida').length !== 1 ? 's' : ''}
+          {' · '}
+          {sales.filter(s => s.status === 'reservada').length} reserva{sales.filter(s => s.status === 'reservada').length !== 1 ? 's' : ''}
         </div>
       )}
 
