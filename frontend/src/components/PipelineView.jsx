@@ -224,26 +224,24 @@ export function PipelineView({leads,user,nav,updLead}){
                       onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.10)';}}
                       onMouseLeave={e=>{e.currentTarget.style.boxShadow='none';}}>
 
-                      {/* Foto del modelo como banner */}
-                      {l.model_image && (
-                        <div style={{height:76, overflow:'hidden', background:'#F3F4F6', borderBottom:'1px solid #F3F4F6'}}>
-                          <img
-                            src={l.model_image}
-                            alt={l.model_name||''}
-                            style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
-                          />
-                        </div>
-                      )}
-
                       {/* Contenido de la card */}
                       <div style={{padding:'10px 12px'}}>
-                        {/* Nombre + urgente */}
+                        {/* Nombre + urgente + thumbnail inline */}
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:3}}>
-                          <span style={{
-                            fontSize:13, fontWeight:700, color:'#111827',
-                            flex:1, marginRight:6,
-                            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                          }}>{l.fn} {l.ln||''}</span>
+                          <div style={{display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0, marginRight:6}}>
+                            {l.model_image && (
+                              <div style={{
+                                width:32, height:28, borderRadius:5, overflow:'hidden',
+                                background:'#F3F4F6', flexShrink:0,
+                              }}>
+                                <img src={l.model_image} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                              </div>
+                            )}
+                            <span style={{
+                              fontSize:13, fontWeight:700, color:'#111827',
+                              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                            }}>{l.fn} {l.ln||''}</span>
+                          </div>
                           {l.priority==='alta'&&(
                             <span style={{fontSize:9, fontWeight:700, color:'#EF4444', background:'#FEF2F2', padding:'2px 6px', borderRadius:99, flexShrink:0}}>
                               URGENTE
