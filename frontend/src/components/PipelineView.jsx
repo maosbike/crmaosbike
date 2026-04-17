@@ -156,7 +156,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   {/* Foto */}
                   {l.model_image && (
                     <div style={{width:72, flexShrink:0, background:'#F3F4F6', overflow:'hidden'}}>
-                      <img src={l.model_image} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+                      <img src={l.model_image} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
                     </div>
                   )}
                   {/* Contenido */}
@@ -390,7 +390,7 @@ export function PipelineView({leads,user,nav,updLead}){
                         }}>
                           <img
                             src={l.model_image} alt=""
-                            style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+                            style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}
                           />
                         </div>
                       ) : (
