@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ErrorMsg } from '../ui.jsx';
 
 export function ForceChangeView({user,onChanged}){
   const[form,setForm]=useState({current:"",next:"",confirm:""});
@@ -31,7 +31,7 @@ export function ForceChangeView({user,onChanged}){
             <Field label="Nueva contraseña *" value={form.next} onChange={v=>setForm({...form,next:v})} type="password" ph="Mínimo 8 caracteres" req/>
             <Field label="Confirmar nueva contraseña *" value={form.confirm} onChange={v=>setForm({...form,confirm:v})} type="password" ph="Repite la nueva contraseña" req/>
           </div>
-          {err&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.20)",borderRadius:8,padding:"9px 13px",color:"#DC2626",fontSize:12,fontWeight:500,marginBottom:12}}>{err}</div>}
+          <ErrorMsg msg={err}/>
           <button type="submit" disabled={loading} style={{...S.btn,width:"100%",justifyContent:"center",height:42,fontSize:14,opacity:loading?0.7:1}}>{loading?"Guardando...":"Establecer nueva contraseña"}</button>
         </form>
       </div>

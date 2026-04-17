@@ -256,13 +256,35 @@ export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}
 export const PBdg=({p})=>{const x=PRIORITY[p];return x?<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,color:x.c}}><span style={{width:7,height:7,borderRadius:"50%",background:x.c}}/>{x.l}</span>:null;};
 // SlaBdg: muestra estado SLA en lenguaje comercial. fa = first_action_at (si existe, está atendido a tiempo → sin badge)
 export const SlaBdg=({s,fa})=>{if(!s||s==='normal'&&fa)return null;const x=SLA_STATUS[s];if(!x)return null;return<Bdg l={x.l} c={x.c} bg={x.bg}/>;};
-export const Stat=({icon:Ico,ic,ib,label,val,sub,sc,al})=>(
-  <div style={{...S.card,display:"flex",flexDirection:"column",gap:4}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div><span style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.04em",fontWeight:600}}>{label}</span></div>
-    <span style={{fontSize:22,fontWeight:800,color:al?"#EF4444":undefined}}>{val}</span>
-    {sub&&<span style={{fontSize:11,color:sc||"#6B7280"}}>{sub}</span>}
-  </div>
-);
+export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,alert,style})=>{
+  // Acepta tanto val/al/ic/ib (uso original de KPIs con icono) como
+  // value/color/bg/border/alert (forma compacta sin icono, eg. KpiCard migrado).
+  const v=val!==undefined?val:value;
+  const isAlert=al||alert||false;
+  const fg=color||undefined;
+  const cardBg=bg||(isAlert?bg:'#FFFFFF');
+  const cardBd=border||'#E5E7EB';
+  return(
+    <div style={{...S.card,display:"flex",flexDirection:"column",gap:4,
+      background:isAlert?cardBg:'#FFFFFF',
+      border:`1px solid ${isAlert?cardBd:'#E5E7EB'}`,
+      boxShadow:isAlert?`0 2px 8px ${cardBd}44`:'0 1px 4px rgba(0,0,0,0.06)',
+      ...style,
+    }}>
+      {Ico&&ib&&(
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div>
+          <span style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.04em",fontWeight:600}}>{label}</span>
+        </div>
+      )}
+      {(!Ico||!ib)&&label&&(
+        <div style={{fontSize:10,fontWeight:700,color:isAlert?fg:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em'}}>{label}</div>
+      )}
+      <span style={{fontSize:22,fontWeight:900,color:isAlert?fg:fg||undefined,letterSpacing:'-0.8px',lineHeight:1}}>{v}</span>
+      {sub&&<span style={{fontSize:11,color:sc||"#6B7280"}}>{sub}</span>}
+    </div>
+  );
+};
 export const Modal=({onClose,title,children,wide,headerContent})=>(
   <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
     <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'#FFFFFF',borderRadius:16,width:'100%',maxWidth:wide?680:480,maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
@@ -473,5 +495,48 @@ export function ErrorMsg({ msg }) {
       borderRadius:8, padding:'9px 13px', color:'#DC2626', fontSize:12,
       fontWeight:500, marginBottom:12,
     }}>{msg}</div>
+  );
+}
+
+/**
+ * AccordionSection — sección colapsable con header clickable.
+ * Props: title, icon (string/node, opcional), isOpen (bool), onToggle (fn)
+ */
+export function AccordionSection({ title, icon, isOpen, onToggle, children }) {
+  return (
+    <div style={{
+      border:'1px solid #F3F4F6', borderRadius:10,
+      marginBottom:8, overflow:'hidden',
+    }}>
+      <button
+        onClick={onToggle}
+        type="button"
+        style={{
+          width:'100%', display:'flex', alignItems:'center',
+          justifyContent:'space-between',
+          padding:'10px 14px',
+          background: isOpen ? '#F9FAFB' : '#FFFFFF',
+          border:'none', cursor:'pointer', textAlign:'left',
+          borderBottom: isOpen ? '1px solid #F3F4F6' : 'none',
+          fontFamily:'inherit',
+        }}
+      >
+        <div style={{display:'flex', alignItems:'center', gap:8}}>
+          {icon && <span style={{color:'#9CA3AF', fontSize:14}}>{icon}</span>}
+          <span style={{fontSize:13, fontWeight:600, color:'#374151'}}>{title}</span>
+        </div>
+        <span style={{
+          fontSize:11, color:'#9CA3AF',
+          display:'inline-block',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition:'transform 0.2s',
+        }}>▾</span>
+      </button>
+      {isOpen && (
+        <div style={{padding:'14px'}}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }

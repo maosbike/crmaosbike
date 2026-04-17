@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, Loader } from '../ui.jsx';
+import { Ic, S, Bdg, Modal, Field, fmt, fD, Loader, Empty } from '../ui.jsx';
 
 export function RemindersTab({ticketId,user}){
   const[reminders,setReminders]=useState([]);
@@ -30,10 +30,10 @@ export function RemindersTab({ticketId,user}){
         <span style={{fontWeight:600,fontSize:13}}>Recordatorios del lead</span>
         <button onClick={()=>setShowNew(true)} style={{...S.btn,fontSize:12,display:"flex",alignItems:"center",gap:5}}><Ic.plus size={13}/>Nuevo</button>
       </div>
-      {reminders.length===0&&<div style={{padding:24,textAlign:"center",color:"#6B7280",fontSize:12,background:"#F9FAFB",borderRadius:10}}>Sin recordatorios. Crea uno para hacer seguimiento.</div>}
+      {reminders.length===0&&<Empty icon={Ic.remind} title="Sin recordatorios" hint="Crea uno para hacer seguimiento de este lead."/>}
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {reminders.map(r=>(
-          <div key={r.id} style={{background:"#F9FAFB",borderRadius:10,padding:12,border:`1px solid ${r.status==="overdue"?"rgba(239,68,68,0.3)":r.status==="completed"?"rgba(16,185,129,0.2)":"#E5E7EB"}`}}>
+          <div key={r.id} style={{...S.secCard,border:`1px solid ${r.status==="overdue"?"rgba(239,68,68,0.3)":r.status==="completed"?"rgba(16,185,129,0.2)":"#F3F4F6"}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>

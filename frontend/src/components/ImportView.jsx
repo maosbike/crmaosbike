@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, Loader, ErrorMsg, Empty } from '../ui.jsx';
 
 export function ImportView() {
   const [step, setStep]         = useState('upload');
@@ -15,6 +15,7 @@ export function ImportView() {
   const [logs, setLogs]         = useState(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('import');
+  const [errMsg, setErrMsg]     = useState('');
 
   const STATUS_CFG = {
     valid:    { l:'Válido',       c:'#10B981', bg:'rgba(16,185,129,0.1)' },
@@ -33,7 +34,8 @@ export function ImportView() {
       setPreview(data);
       setStep('preview');
       setFilter('all');
-    } catch (e) { alert(e.message); }
+      setErrMsg('');
+    } catch (e) { setErrMsg(e.message || 'Error al procesar el archivo'); }
     finally { setLoading(false); }
   };
 
@@ -52,7 +54,8 @@ export function ImportView() {
         skip_dups: skipDups,
       });
       setResult(data); setStep('result');
-    } catch (e) { alert(e.message); }
+      setErrMsg('');
+    } catch (e) { setErrMsg(e.message || 'Error al confirmar importación'); }
     finally { setLoading(false); }
   };
 
@@ -81,34 +84,37 @@ export function ImportView() {
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
-        <div>
-          <h2 style={{fontSize:18,fontWeight:700,margin:0}}>Importar prospectos</h2>
-          <p style={{fontSize:12,color:'#6B7280',margin:'4px 0 0'}}>Carga masiva — acceso exclusivo super_admin</p>
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          {[{k:'import',l:'Importación'},{k:'logs',l:'Historial'}].map(t=>(
-            <button key={t.k} onClick={()=>{setActiveTab(t.k);if(t.k==='logs')loadLogs();}}
-              style={{...S.btn2,padding:'6px 14px',fontSize:12,
-                background:activeTab===t.k?'rgba(242,129,0,0.1)':'transparent',
-                color:activeTab===t.k?'#F28100':'#6B7280',
-                border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
-              {t.l}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ViewHeader
+        preheader="Administración"
+        title="Importar prospectos"
+        subtitle="Carga masiva — acceso exclusivo super_admin"
+        size="md"
+        actions={
+          <div style={{display:'flex',gap:8}}>
+            {[{k:'import',l:'Importación'},{k:'logs',l:'Historial'}].map(t=>(
+              <button key={t.k} onClick={()=>{setActiveTab(t.k);if(t.k==='logs')loadLogs();}}
+                style={{...S.btn2,padding:'6px 14px',fontSize:12,
+                  background:activeTab===t.k?'rgba(242,129,0,0.1)':'transparent',
+                  color:activeTab===t.k?'#F28100':'#6B7280',
+                  border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
+                {t.l}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <ErrorMsg msg={errMsg}/>
 
       {activeTab==='logs'&&(
         <div style={S.card}>
           <h3 style={{fontSize:13,fontWeight:600,margin:'0 0 14px'}}>Historial de importaciones</h3>
-          {logsLoading&&<div style={{color:'#6B7280',fontSize:12}}>Cargando...</div>}
-          {logs&&logs.length===0&&<div style={{color:'#6B7280',fontSize:12}}>Sin importaciones registradas.</div>}
+          {logsLoading&&<Loader label="Cargando historial…"/>}
+          {logs&&logs.length===0&&<Empty icon={Ic.file} title="Sin importaciones registradas" hint="Las importaciones quedan registradas aquí."/>}
           {logs&&logs.length>0&&(
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-                <thead><tr>{['Fecha','Archivo','Importado por','Total','Importados','Errores','Dups.','Sin vendedor'].map(h=>(
-                  <th key={h} style={{textAlign:'left',padding:'6px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                <thead><tr style={{background:'#F9FAFB'}}>{['Fecha','Archivo','Importado por','Total','Importados','Errores','Dups.','Sin vendedor'].map(h=>(
+                  <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{h}</th>
                 ))}</tr></thead>
                 <tbody>{logs.map(l=>(
                   <tr key={l.id} style={{borderBottom:'1px solid #FFFFFF'}}>
@@ -132,22 +138,25 @@ export function ImportView() {
         <>
           {step==='upload'&&(
             <div style={{display:'flex',flexDirection:'column',gap:16}}>
-              <div
-                onDragOver={e=>{e.preventDefault();setDragOver(true);}}
-                onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
-                style={{...S.card,border:`2px dashed ${dragOver?'#F28100':'#D1D5DB'}`,textAlign:'center',
-                  padding:'48px 24px',cursor:'pointer',transition:'border 0.2s',
-                  background:dragOver?'rgba(242,129,0,0.04)':'#FFFFFF'}}
-                onClick={()=>document.getElementById('imp-file-input').click()}
-              >
-                <Ic.dl size={36} color={dragOver?'#F28100':'#1F2937'}/>
-                <div style={{fontSize:15,fontWeight:600,marginTop:12,marginBottom:6}}>
-                  {loading?'Procesando archivo..':'Arrastra tu archivo aquí o haz clic para seleccionar'}
+              {loading
+                ? <Loader label="Procesando archivo…"/>
+                : (
+                <div
+                  onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+                  onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
+                  style={{...S.card,border:`2px dashed ${dragOver?'#F28100':'#D1D5DB'}`,textAlign:'center',
+                    padding:'48px 24px',cursor:'pointer',transition:'border 0.2s',background:'#FAFAFA'}}
+                  onClick={()=>document.getElementById('imp-file-input').click()}
+                >
+                  <Ic.dl size={36} color={dragOver?'#F28100':'#1F2937'}/>
+                  <div style={{fontSize:15,fontWeight:600,marginTop:12,marginBottom:6}}>
+                    Arrastra tu archivo aquí o haz clic para seleccionar
+                  </div>
+                  <div style={{fontSize:12,color:'#6B7280'}}>CSV o XLSX · Máximo 5 MB</div>
+                  <input id="imp-file-input" type="file" accept=".csv,.xlsx,.xls" style={{display:'none'}}
+                    onChange={e=>e.target.files[0]&&processFile(e.target.files[0])}/>
                 </div>
-                <div style={{fontSize:12,color:'#6B7280'}}>CSV o XLSX · Máximo 5 MB</div>
-                <input id="imp-file-input" type="file" accept=".csv,.xlsx,.xls" style={{display:'none'}}
-                  onChange={e=>e.target.files[0]&&processFile(e.target.files[0])}/>
-              </div>
+                )}
 
               <div style={{...S.card,display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
                 <Ic.file size={20} color='#F28100'/>
@@ -165,8 +174,8 @@ export function ImportView() {
                 <h3 style={{fontSize:13,fontWeight:600,margin:'0 0 12px'}}>Columnas del archivo</h3>
                 <div style={{overflowX:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
-                    <thead><tr>{['Columna','Obligatoria','Descripción'].map(h=>(
-                      <th key={h} style={{textAlign:'left',padding:'5px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600}}>{h}</th>
+                    <thead><tr style={{background:'#F9FAFB'}}>{['Columna','Obligatoria','Descripción'].map(h=>(
+                      <th key={h} style={{textAlign:'left',padding:'6px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>{h}</th>
                     ))}</tr></thead>
                     <tbody>{[
                       ['nombre',    'Sí',  'Nombre del prospecto'],
@@ -240,9 +249,9 @@ export function ImportView() {
               <div style={S.card}>
                 <div style={{overflowX:'auto',maxHeight:400,overflowY:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,minWidth:720}}>
-                    <thead style={{position:'sticky',top:0,background:'#FFFFFF',zIndex:1}}>
+                    <thead style={{position:'sticky',top:0,background:'#F9FAFB',zIndex:1}}>
                       <tr>{['Fila','Estado','Nombre','Teléfono','Email','Sucursal','Moto','Observaciones'].map(h=>(
-                        <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                        <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid #E5E7EB',color:'#6B7280',fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{h}</th>
                       ))}</tr>
                     </thead>
                     <tbody>

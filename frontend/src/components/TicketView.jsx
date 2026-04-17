@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, AccordionSection, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
@@ -51,25 +51,6 @@ export function TicketView({lead,user,nav,updLead}){
   // ── Acordeón "Datos del Cliente" ──
   const[openSections,setOpenSections]=useState({identificacion:true,contacto:false,perfil:false,financiamiento:false});
   const toggleSection=(key)=>setOpenSections(prev=>({...prev,[key]:!prev[key]}));
-  const AccordionSection=({sectionKey,title,icon,children})=>{
-    const isOpen=openSections[sectionKey];
-    return(
-      <div style={{border:'1px solid #F3F4F6',borderRadius:10,marginBottom:8,overflow:'hidden'}}>
-        <button onClick={()=>toggleSection(sectionKey)} type="button"
-          style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',
-            padding:'10px 14px',background:isOpen?'#F9FAFB':'#FFFFFF',
-            border:'none',cursor:'pointer',textAlign:'left',fontFamily:'inherit',
-            borderBottom:isOpen?'1px solid #F3F4F6':'none'}}>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            {icon&&<span style={{fontSize:13}}>{icon}</span>}
-            <span style={{fontSize:13,fontWeight:600,color:'#374151'}}>{title}</span>
-          </div>
-          <span style={{fontSize:12,color:'#9CA3AF',display:'inline-block',transform:isOpen?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▾</span>
-        </button>
-        {isOpen&&<div style={{padding:'14px'}}>{children}</div>}
-      </div>
-    );
-  };
   const m=lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:lead.model_price||0,bonus:lead.model_bonus||0,year:lead.model_year||2025,cc:lead.model_cc||0,cat:lead.model_category||'',colors:[],image:lead.model_image||null}:null;
   const s={fn:lead.seller_fn||'',ln:lead.seller_ln||''};
   const br={name:lead.branch_name||'',code:lead.branch_code||'',addr:lead.branch_addr||''};
@@ -617,7 +598,7 @@ export function TicketView({lead,user,nav,updLead}){
         </div>
         <div style={{ padding:'14px 20px' }}>
 
-          <AccordionSection sectionKey="identificacion" title="Identificación Personal" icon="👤">
+          <AccordionSection title="Identificación Personal" icon="👤" isOpen={openSections.identificacion} onToggle={()=>toggleSection('identificacion')}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
               <Field label="RUT" value={displayRut(lead.rut)} onChange={v=>upd("rut",v)}/>
               <Field label="Nombre" value={lead.fn} onChange={v=>upd("fn",v)}/>
@@ -626,7 +607,7 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </AccordionSection>
 
-          <AccordionSection sectionKey="contacto" title="Contacto" icon="📞">
+          <AccordionSection title="Contacto" icon="📞" isOpen={openSections.contacto} onToggle={()=>toggleSection('contacto')}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
               <Field label="Email" value={lead.email} onChange={v=>upd("email",v)} type="email"/>
               <Field label="Celular" value={lead.phone} onChange={v=>upd("phone",v)}/>
@@ -635,7 +616,7 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </AccordionSection>
 
-          <AccordionSection sectionKey="perfil" title="Perfil Financiero" icon="💼">
+          <AccordionSection title="Perfil Financiero" icon="💼" isOpen={openSections.perfil} onToggle={()=>toggleSection('perfil')}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
               <Field label="Situación Laboral" value={lead.sitLab} onChange={v=>upd("sitLab",v)} opts={[{v:"",l:"Seleccionar..."},...SIT_LABORAL.map(s=>({v:s,l:s}))]}/>
               <Field label="Continuidad Laboral" value={lead.continuidad} onChange={v=>upd("continuidad",v)} opts={[{v:"",l:"Seleccionar..."},...CONTINUIDAD.map(c=>({v:c,l:c}))]}/>
@@ -644,7 +625,7 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </AccordionSection>
 
-          <AccordionSection sectionKey="financiamiento" title="Financiamiento" icon="🏦">
+          <AccordionSection title="Financiamiento" icon="🏦" isOpen={openSections.financiamiento} onToggle={()=>toggleSection('financiamiento')}>
             {/* Toggle — siempre visible primero */}
             <div style={{ padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB', marginBottom:12 }}>
               <label style={{ ...S.lbl, marginBottom:5 }}>Solicita financiamiento</label>

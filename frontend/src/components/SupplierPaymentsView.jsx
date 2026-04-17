@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, Loader, ErrorMsg } from '../ui.jsx';
+import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, Loader, Empty, ErrorMsg, useIsMobile } from '../ui.jsx';
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 const EMPTY = () => ({
@@ -29,12 +29,18 @@ function due(p) {
   return d.toISOString().slice(0,10);
 }
 
-function useBP() {
-  const calc = () => { const w=window.innerWidth; return w<640?'sm':w<1080?'md':'lg'; };
-  const [bp,setBp] = useState(calc);
-  useEffect(()=>{ const fn=()=>setBp(calc); window.addEventListener('resize',fn); return ()=>window.removeEventListener('resize',fn); },[]);
-  return bp;
+/* ── Status helpers ─────────────────────────────────────────────────────── */
+function pagoStatus(p) {
+  const dv = due(p);
+  const overdue = dv && !p.paid_amount && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
+  if (p.paid_amount) return { l:'Pagado',    c:'#15803D', bg:'rgba(21,128,61,0.10)'   };
+  if (overdue)       return { l:'Vencido',   c:'#DC2626', bg:'rgba(220,38,38,0.10)'   };
+  return               { l:'Pendiente',  c:'#D97706', bg:'rgba(217,119,6,0.10)'    };
 }
+const statusBorderColor = (p) => {
+  const s = pagoStatus(p);
+  return s.c;
+};
 
 /* ── Catalog image helper ───────────────────────────────────────────────── */
 function motoImg(p) {
@@ -59,7 +65,7 @@ function ColorChip({color}) {
   </span>;
 }
 
-/* ── Catalog model picker — devuelve el modelo completo (con colores y fotos) ─ */
+/* ── Catalog model picker ───────────────────────────────────────────────── */
 function CatalogModelPicker({ brand, model, onSelect }) {
   const [brands,setBrands] = useState([]);
   const [models,setModels] = useState([]);
@@ -88,11 +94,7 @@ function CatalogModelPicker({ brand, model, onSelect }) {
   </div>;
 }
 
-/* ── Color picker constreñido a los colores del modelo de catálogo ──────── */
-// Si el modelo existe en catálogo, listamos la unión de `colors` + `color_photos[].color`
-// y dejamos solo esos valores como opciones. Si el registro tiene un color "viejo"
-// que no matchea, se preserva pero marcado como "fuera de catálogo" hasta que
-// el usuario elija uno válido.
+/* ── Catalog color picker ───────────────────────────────────────────────── */
 function catalogColors(modelRow) {
   if (!modelRow) return [];
   const out = new Set();
@@ -131,12 +133,12 @@ function CatalogColorPicker({ modelRow, value, onChange }) {
   );
 }
 
-/* ── Shared inline style tokens (matching CRM palette) ─────────────────── */
+/* ── Shared inline tokens ───────────────────────────────────────────────── */
 const lbl9 = { display:'block', fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:5 };
 const secTitle = (color='#374151') => ({ fontSize:9, fontWeight:800, color, textTransform:'uppercase', letterSpacing:'0.14em', paddingBottom:7, marginBottom:10, borderBottom:`2px solid ${color}22` });
 const secCard = S.secCard;
 
-/* ── Form field (uses S.inp / S.lbl from ui.jsx) ──────────────────────── */
+/* ── Form field ─────────────────────────────────────────────────────────── */
 function F({ label, value, onChange, type='text', half, hl }) {
   return (
     <div style={{ gridColumn: half?'auto':'1/-1' }}>
@@ -149,7 +151,7 @@ function F({ label, value, onChange, type='text', half, hl }) {
   );
 }
 
-/* ── File upload zone ──────────────────────────────────────────────────── */
+/* ── File upload zone ───────────────────────────────────────────────────── */
 function FileZone({ label, file, onFile, url, onUrl, accent='#F28100' }) {
   const [mode, setMode] = useState(url?'url':'upload');
   const [drag, setDrag] = useState(false);
@@ -178,7 +180,7 @@ function FileZone({ label, file, onFile, url, onUrl, accent='#F28100' }) {
   );
 }
 
-/* ── Section wrapper ───────────────────────────────────────────────────── */
+/* ── Section wrapper ────────────────────────────────────────────────────── */
 function Sec({ title, color, children }) {
   return (
     <div style={{ marginBottom:16 }}>
@@ -188,7 +190,7 @@ function Sec({ title, color, children }) {
   );
 }
 
-/* ── Detail row ────────────────────────────────────────────────────────── */
+/* ── Detail row ─────────────────────────────────────────────────────────── */
 function DR({ label, value, bold, span }) {
   if (!value && value!==0) return null;
   return (
@@ -199,7 +201,7 @@ function DR({ label, value, bold, span }) {
   );
 }
 
-/* ── New payment modal ─────────────────────────────────────────────────── */
+/* ── New payment modal ──────────────────────────────────────────────────── */
 function NewModal({ onClose, onCreated }) {
   const [step,setStep]=useState(1);
   const [invFile,setInvFile]=useState(null);
@@ -208,7 +210,7 @@ function NewModal({ onClose, onCreated }) {
   const [recUrl,setRecUrl]=useState('');
   const [busy,setBusy]=useState(false);
   const [form,setForm]=useState(EMPTY());
-  const [modelRow,setModelRow]=useState(null);  // modelo completo del catálogo
+  const [modelRow,setModelRow]=useState(null);
   const [hl,setHl]=useState({});
   const [saving,setSaving]=useState(false);
   const [err,setErr]=useState('');
@@ -217,7 +219,6 @@ function NewModal({ onClose, onCreated }) {
     setModelRow(m);
     if (m) {
       setForm(f=>({...f, model_id: m.id, brand: m.brand, model: m.commercial_name||m.model,
-        // Si el color actual no está en el catálogo del nuevo modelo, lo limpiamos.
         color: (catalogColors(m).some(c => c.toLowerCase() === (f.color||'').toLowerCase())) ? f.color : ''}));
     } else {
       setForm(f=>({...f, model_id:''}));
@@ -258,7 +259,7 @@ function NewModal({ onClose, onCreated }) {
             <FileZone label="Factura proveedor" file={invFile} onFile={setInvFile} url={invUrl} onUrl={setInvUrl}/>
             <FileZone label="Comprobante de pago" file={recFile} onFile={setRecFile} url={recUrl} onUrl={setRecUrl} accent="#2563EB"/>
           </div>
-          {err&&<div style={{color:'#EF4444',fontSize:12,background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:'6px 10px',fontFamily:'inherit'}}>{err}</div>}
+          <ErrorMsg msg={err}/>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             <button onClick={extract} disabled={busy} style={{...S.btn,flex:2,minWidth:140,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>{busy?'Analizando...':'Analizar y extraer datos'}</button>
             <button onClick={()=>{const nf={...EMPTY()};if(invUrl)nf.invoice_url=invUrl;if(recUrl)nf.receipt_url=recUrl;setForm(f=>({...f,...nf}));setHl({});setStep(2);}} style={{...S.btn2,flex:1,minWidth:100}}>Manual</button>
@@ -309,7 +310,7 @@ function NewModal({ onClose, onCreated }) {
               <F label="Notas" value={form.notes} onChange={s('notes')}/>
             </div>
           </Sec>
-          {err&&<div style={{color:'#EF4444',fontSize:12,marginTop:6,fontFamily:'inherit'}}>{err}</div>}
+          <ErrorMsg msg={err}/>
           <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
             <button onClick={()=>setStep(1)} style={{...S.btn2,flex:1,minWidth:80}}>Volver</button>
             <button onClick={save} disabled={saving} style={{...S.btn,flex:2,minWidth:140}}>{saving?'Guardando...':'Guardar registro'}</button>
@@ -320,7 +321,7 @@ function NewModal({ onClose, onCreated }) {
   );
 }
 
-/* ── Detail / edit modal ───────────────────────────────────────────────── */
+/* ── Detail / edit modal ────────────────────────────────────────────────── */
 function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startInEdit }) {
   const [p,setP]=useState(p0);
   const [editing,setEditing]=useState(!!startInEdit);
@@ -334,8 +335,6 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
   const [err,setErr]=useState('');
   const [cd,setCD]=useState(false);
   const [deleting,setDel]=useState(false);
-  // modelRow = modelo del catálogo actualmente asociado (para el ColorPicker).
-  // Se hidrata desde los campos catalog_* que vienen del JOIN backend.
   const hydrateModelRow = (src) => src?.model_id ? ({
     id: src.model_id,
     brand: src.brand,
@@ -359,10 +358,8 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
 
   const startEdit=()=>{setForm({...p,invoice_date:p.invoice_date?.slice(0,10)||'',due_date:p.due_date?.slice(0,10)||'',payment_date:p.payment_date?.slice(0,10)||''});setModelRow(hydrateModelRow(p));setEditing(true);};
   const save=async()=>{
-    setSaving(true);
+    setSaving(true);setErr('');
     try{
-      // Enviamos solo los campos editables + model_id explícito (incluso si es '' → null backend).
-      // Evitamos enviar catalog_* y metadatos que el backend igual ignora.
       const payload = {
         invoice_number: form.invoice_number, invoice_date: form.invoice_date,
         due_date: form.due_date, payment_date: form.payment_date,
@@ -384,45 +381,78 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
 
   const dv = due(p);
   const overdue = dv && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
+  const st_badge = pagoStatus(p);
+
+  /* Modal header personalizado con badge de estado */
+  const headerContent = (
+    <div style={{padding:'18px 20px 14px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
+      <div style={{minWidth:0}}>
+        <h2 style={{fontSize:15,fontWeight:700,color:'#111827',margin:0}}>
+          Factura {p.invoice_number||'—'}
+        </h2>
+        {(p.catalog_name||p.model) && (
+          <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{p.catalog_name||p.model}</div>
+        )}
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+        <Bdg l={st_badge.l} c={st_badge.c} bg={st_badge.bg}/>
+        <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>
+      </div>
+    </div>
+  );
 
   return (
-    <Modal onClose={onClose} title={`Factura ${p.invoice_number||'-'}`} wide>
+    <Modal onClose={onClose} wide headerContent={headerContent}>
       <div style={{maxHeight:'78vh',overflowY:'auto',paddingRight:4}}>
         <ErrorMsg msg={err}/>
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-          {overdue&&<Bdg l="Vencido" c="#EF4444" bg="rgba(239,68,68,0.12)"/>}
-          {p.paid_amount&&<Bdg l="Pagado" c="#15803D" bg="rgba(21,128,61,0.12)"/>}
-          <span style={{flex:1}}/>
-          {!editing&&<button onClick={startEdit} style={{...S.btn2,padding:'5px 14px',fontSize:12}}>Editar</button>}
-          {canDel&&!editing&&<button onClick={()=>setCD(true)} style={{...S.btn2,padding:'5px 14px',fontSize:12,color:'#EF4444',borderColor:'#FECACA'}}>Eliminar</button>}
-        </div>
+
+        {/* Acciones */}
+        {!editing && (
+          <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+            <button onClick={startEdit} style={{...S.btn2,padding:'6px 14px',fontSize:12}}>
+              <Ic.file size={13}/> Editar
+            </button>
+            {canDel && (
+              <button onClick={()=>setCD(true)} style={{...S.btn2,padding:'6px 14px',fontSize:12,color:'#DC2626',borderColor:'#FECACA'}}>
+                Eliminar
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Confirmacion eliminar */}
         {cd&&(
-          <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:12,marginBottom:12}}>
-            <div style={{fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#EF4444',marginBottom:8}}>¿Eliminar este registro?</div>
+          <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:12,marginBottom:14}}>
+            <div style={{fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:8}}>¿Eliminar este registro?</div>
             <div style={{display:'flex',gap:8}}>
-              <button onClick={del} disabled={deleting} style={{...S.btn,background:'#EF4444',padding:'5px 14px',fontSize:12}}>{deleting?'Eliminando...':'Eliminar'}</button>
-              <button onClick={()=>setCD(false)} style={{...S.btn2,padding:'5px 14px',fontSize:12}}>Cancelar</button>
+              <button onClick={del} disabled={deleting} style={{...S.btn,background:'#DC2626',padding:'6px 14px',fontSize:12}}>{deleting?'Eliminando...':'Eliminar'}</button>
+              <button onClick={()=>setCD(false)} style={{...S.btn2,padding:'6px 14px',fontSize:12}}>Cancelar</button>
             </div>
           </div>
         )}
+
         {editing ? (
           <div>
-            <Sec title="Factura" color="#F28100"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="N° Factura" value={form.invoice_number} onChange={st('invoice_number')} half/>
-              <F label="Fecha emision" value={form.invoice_date} onChange={st('invoice_date')} type="date" half/>
-              <F label="Vencimiento" value={form.due_date} onChange={st('due_date')} type="date" half/>
-              <F label="Neto ($)" value={form.neto} onChange={st('neto')} type="number" half/>
-              <F label="IVA ($)" value={form.iva} onChange={st('iva')} type="number" half/>
-              <F label="Total ($)" value={form.total_amount} onChange={st('total_amount')} type="number" half/>
-              <F label="Monto pagado ($)" value={form.paid_amount} onChange={st('paid_amount')} type="number" half/>
-            </div></Sec>
-            <Sec title="Comprobante" color="#2563EB"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
-              <F label="N° Comprobante" value={form.receipt_number} onChange={st('receipt_number')} half/>
-              <F label="Fecha pago" value={form.payment_date} onChange={st('payment_date')} type="date" half/>
-              <F label="Banco" value={form.banco} onChange={st('banco')}/>
-              <F label="Medio pago" value={form.payment_method} onChange={st('payment_method')} half/>
-              <F label="Pagador" value={form.payer_name} onChange={st('payer_name')} half/>
-            </div></Sec>
+            <Sec title="Factura" color="#F28100">
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
+                <F label="N° Factura" value={form.invoice_number} onChange={st('invoice_number')} half/>
+                <F label="Fecha emision" value={form.invoice_date} onChange={st('invoice_date')} type="date" half/>
+                <F label="Vencimiento" value={form.due_date} onChange={st('due_date')} type="date" half/>
+                <F label="Neto ($)" value={form.neto} onChange={st('neto')} type="number" half/>
+                <F label="IVA ($)" value={form.iva} onChange={st('iva')} type="number" half/>
+                <F label="Total ($)" value={form.total_amount} onChange={st('total_amount')} type="number" half/>
+                <F label="Monto pagado ($)" value={form.paid_amount} onChange={st('paid_amount')} type="number" half/>
+              </div>
+            </Sec>
+            <Sec title="Comprobante" color="#2563EB">
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
+                <F label="N° Comprobante" value={form.receipt_number} onChange={st('receipt_number')} half/>
+                <F label="Fecha pago" value={form.payment_date} onChange={st('payment_date')} type="date" half/>
+                <F label="Banco" value={form.banco} onChange={st('banco')}/>
+                <F label="Medio pago" value={form.payment_method} onChange={st('payment_method')} half/>
+                <F label="Pagador" value={form.payer_name} onChange={st('payer_name')} half/>
+              </div>
+            </Sec>
             <Sec title="Vehículo" color="#374151">
               <div style={{marginBottom:10}}>
                 <CatalogModelPicker brand={form.brand} model={form.model_id} onSelect={pickModel}/>
@@ -437,11 +467,13 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
                 <F label="N° Chasis" value={form.chassis} onChange={st('chassis')} half/>
               </div>
             </Sec>
-            <Sec title="Archivos / notas" color="#6B7280"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
-              <F label="URL Factura" value={form.invoice_url} onChange={st('invoice_url')}/>
-              <F label="URL Comprobante" value={form.receipt_url} onChange={st('receipt_url')}/>
-              <F label="Notas" value={form.notes} onChange={st('notes')}/>
-            </div></Sec>
+            <Sec title="Archivos / notas" color="#6B7280">
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
+                <F label="URL Factura" value={form.invoice_url} onChange={st('invoice_url')}/>
+                <F label="URL Comprobante" value={form.receipt_url} onChange={st('receipt_url')}/>
+                <F label="Notas" value={form.notes} onChange={st('notes')}/>
+              </div>
+            </Sec>
             <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
               <button onClick={save} disabled={saving} style={{...S.btn,flex:2,minWidth:120}}>{saving?'Guardando...':'Guardar'}</button>
               <button onClick={()=>setEditing(false)} style={{...S.btn2,flex:1,minWidth:80}}>Cancelar</button>
@@ -511,79 +543,159 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
   );
 }
 
-/* ── Mobile card (matches S.card from ui.jsx) ──────────────────────────── */
-function Card({ p, onClick }) {
+/* ── Mobile card ────────────────────────────────────────────────────────── */
+function MobileCard({ p, onClick }) {
   const dv = due(p);
-  const ov = dv && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
+  const st = pagoStatus(p);
   const img = motoImg(p);
   return (
-    <div onClick={onClick} style={{ ...S.card, cursor:'pointer', marginBottom:10 }}>
-      <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:10 }}>
-        {img&&<img src={img} alt="" style={{width:48,height:36,objectFit:'contain',borderRadius:6,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>}
+    <div onClick={onClick} style={{
+      ...S.card,
+      cursor:'pointer',
+      marginBottom:10,
+      borderLeft:`3px solid ${st.c}`,
+      paddingLeft:13,
+    }}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:8}}>
+        {img&&<img src={img} alt="" style={{width:44,height:34,objectFit:'contain',borderRadius:6,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:'inherit',fontWeight:800,fontSize:13,color:'#111827'}}>{p.invoice_number||'-'}</div>
-          {p.model&&<div style={{fontSize:11,fontWeight:600,color:'#374151'}}>{p.catalog_name||p.model}</div>}
+          <div style={{fontWeight:800,fontSize:13,color:'#111827',letterSpacing:'-0.2px'}}>{p.invoice_number||'—'}</div>
+          {(p.catalog_name||p.model)&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:1}}>{p.catalog_name||p.model}</div>}
         </div>
-        <span style={{ fontWeight:800,fontSize:14,color:'#111827' }}>{$(p.total_amount)}</span>
-      </div>
-      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 12px',fontSize:12,fontFamily:'inherit' }}>
-        <div><span style={lbl9}>Color</span> <span style={{color:'#374151'}}>{p.color||'-'}</span></div>
-        <div><span style={lbl9}>Año</span> <span style={{color:'#374151'}}>{p.commercial_year||'-'}</span></div>
-        <div><span style={{...lbl9,color:ov?'#EF4444':undefined}}>Venc.</span> <span style={{fontWeight:ov?700:400,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</span></div>
-        {p.paid_amount&&<div><span style={lbl9}>Pagado</span> <strong style={{color:'#15803D'}}>{$(p.paid_amount)}</strong></div>}
-        {p.chassis&&<div><span style={lbl9}>Chasis</span> <span style={{fontSize:11,color:'#111827'}}>{p.chassis}</span></div>}
-        {p.motor_num&&<div><span style={lbl9}>Motor</span> <span style={{fontSize:11,color:'#111827'}}>{p.motor_num}</span></div>}
-      </div>
-      {(ov||p.paid_amount)&&(
-        <div style={{display:'flex',gap:6,marginTop:10}}>
-          {ov&&<Bdg l="Vencido" c="#EF4444" bg="rgba(239,68,68,0.12)"/>}
-          {p.paid_amount&&<Bdg l="Pagado" c="#15803D" bg="rgba(21,128,61,0.12)"/>}
+        <div style={{textAlign:'right',flexShrink:0}}>
+          <div style={{fontWeight:800,fontSize:14,color:'#111827'}}>{$(p.total_amount)}</div>
+          <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
         </div>
-      )}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px 12px',fontSize:12}}>
+        {p.color&&<div><span style={lbl9}>Color</span><span style={{color:'#374151'}}>{p.color}</span></div>}
+        {p.commercial_year&&<div><span style={lbl9}>Año</span><span style={{color:'#374151'}}>{p.commercial_year}</span></div>}
+        {dv&&<div><span style={{...lbl9,color:pagoStatus(p).l==='Vencido'?'#DC2626':'#9CA3AF'}}>Venc.</span><span style={{fontWeight:pagoStatus(p).l==='Vencido'?700:400,color:pagoStatus(p).l==='Vencido'?'#DC2626':'#374151'}}>{fd(dv)}</span></div>}
+        {p.paid_amount&&<div><span style={lbl9}>Pagado</span><strong style={{color:'#15803D'}}>{$(p.paid_amount)}</strong></div>}
+        {p.chassis&&<div><span style={lbl9}>Chasis</span><span style={{fontSize:11,color:'#111827'}}>{p.chassis}</span></div>}
+        {p.motor_num&&<div><span style={lbl9}>Motor</span><span style={{fontSize:11,color:'#111827'}}>{p.motor_num}</span></div>}
+      </div>
     </div>
   );
 }
 
-/* ── Summary card ─────────────────────────────────────────────────────── */
-function SumCard({ label, value, sub, color='#111827', bg='#FFFFFF' }) {
+/* ── Desktop table row ──────────────────────────────────────────────────── */
+const TABLE_COLS = '230px minmax(200px,1fr) 130px 130px 110px 110px 110px';
+
+function TableHeader() {
+  const cols = ['Factura / Fecha','Modelo / Vehículo','Total','Pagado','Venc.','Pago','Estado'];
   return (
-    <div style={{ ...S.card, padding:'12px 14px', background:bg, display:'flex', flexDirection:'column', gap:3 }}>
-      <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>{label}</div>
-      <div style={{ fontSize:17, fontWeight:900, color, letterSpacing:'-0.3px' }}>{value}</div>
-      {sub && <div style={{ fontSize:10, color:'#9CA3AF', fontWeight:500 }}>{sub}</div>}
+    <div style={{
+      display:'grid',
+      gridTemplateColumns: TABLE_COLS,
+      padding:'8px 16px',
+      background:'#F9FAFB',
+      borderBottom:'2px solid #E5E7EB',
+      borderRadius:'12px 12px 0 0',
+    }}>
+      {cols.map(col=>(
+        <div key={col} style={{
+          fontSize:10, fontWeight:700, color:'#9CA3AF',
+          textTransform:'uppercase', letterSpacing:'0.08em',
+        }}>{col}</div>
+      ))}
     </div>
   );
 }
 
-/* ── Main view ─────────────────────────────────────────────────────────── */
+function TableRow({ p, onClick }) {
+  const [hov,setHov]=useState(false);
+  const dv = due(p);
+  const ov = dv && !p.paid_amount && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
+  const st = pagoStatus(p);
+  const img = motoImg(p);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={()=>setHov(true)}
+      onMouseLeave={()=>setHov(false)}
+      style={{
+        display:'grid',
+        gridTemplateColumns: TABLE_COLS,
+        padding:'11px 16px',
+        borderBottom:'1px solid #F3F4F6',
+        alignItems:'center',
+        cursor:'pointer',
+        background: hov ? '#FAFAFA' : '#FFFFFF',
+        transition:'background 120ms',
+        gap:0,
+      }}>
+
+      {/* Factura / Fecha */}
+      <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+        {img
+          ? <img src={img} alt="" style={{width:40,height:30,objectFit:'contain',borderRadius:6,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>
+          : <div style={{width:40,height:30,borderRadius:6,border:'1px dashed #E5E7EB',background:'#F9FAFB',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ic.bike size={14} color="#D1D5DB"/></div>
+        }
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#F28100',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>#{p.invoice_number||'—'}</div>
+          <div style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{fd(p.invoice_date)}</div>
+        </div>
+      </div>
+
+      {/* Modelo */}
+      <div style={{minWidth:0,paddingRight:12}}>
+        <div style={{fontSize:13,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.catalog_name||p.model||'—'}</div>
+        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3,flexWrap:'wrap'}}>
+          {p.color&&<ColorChip color={p.color}/>}
+          {p.commercial_year&&<span style={{fontSize:10,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'1px 7px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
+          {!p.model_id&&(p.brand||p.model)&&<span style={{fontSize:9,fontWeight:700,color:'#B45309',background:'#FEF3C7',padding:'1px 6px',borderRadius:20,border:'1px solid #FDE68A',textTransform:'uppercase',letterSpacing:'0.04em'}}>Sin catálogo</span>}
+        </div>
+      </div>
+
+      {/* Total */}
+      <div style={{fontSize:13,fontWeight:700,color:'#111827'}}>{$(p.total_amount)}</div>
+
+      {/* Pagado */}
+      <div style={{fontSize:13,fontWeight:600,color:p.paid_amount?'#15803D':'#D1D5DB'}}>{$(p.paid_amount)}</div>
+
+      {/* Vencimiento */}
+      <div style={{fontSize:12,fontWeight:ov?700:400,color:ov?'#DC2626':'#374151'}}>{fd(dv)}</div>
+
+      {/* Fecha pago */}
+      <div style={{fontSize:12,color:p.payment_date?'#374151':'#D1D5DB'}}>{p.payment_date?fd(p.payment_date):'—'}</div>
+
+      {/* Estado */}
+      <div>
+        <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main view ──────────────────────────────────────────────────────────── */
 export function SupplierPaymentsView({ user }) {
-  const canDel  = hasRole(user, ROLES.SUPER);
+  const canDel    = hasRole(user, ROLES.SUPER);
   const canCreate = hasRole(user, ...ROLE_ADMIN_WRITE);
-  const canEdit   = canCreate;
-  const bp = useBP();
+  const isMobile  = useIsMobile();
 
   const [data,setData]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showNew,setShowNew]=useState(false);
   const [sel,setSel]=useState(null);
-  const [editFromList,setEditFromList]=useState(false); // abrir modal directo en modo edit
+  const [editFromList,setEditFromList]=useState(false);
   const [syncing,setSyncing]=useState(false);
   const [syncRes,setSyncRes]=useState(null);
 
-  // Filtros locales (se aplican sobre `data` ya cargado)
+  // Filtros
   const [q,setQ]=useState('');
-  const [stF,setStF]=useState('');            // '', 'pagado', 'pendiente'
+  const [stF,setStF]=useState('');
   const [fromF,setFromF]=useState('');
   const [toF,setToF]=useState('');
-  const [payFromF,setPayFromF]=useState('');  // fecha_pago desde
-  const [payToF,setPayToF]=useState('');      // fecha_pago hasta
+  const [payFromF,setPayFromF]=useState('');
+  const [payToF,setPayToF]=useState('');
   const [brF,setBrF]=useState('');
-  // Por defecto ordenamos por Fecha de pago desc — es el criterio más útil
-  // cuando la vista se usa para auditar pagos ya realizados.
-  const [sortBy,setSortBy]=useState('payment_date');   // payment_date | invoice_date | due_date | total_amount | paid_amount
+  const [sortBy,setSortBy]=useState('payment_date');
   const [sortDir,setSortDir]=useState('desc');
 
-  // Paginado: trae todas las páginas (chunks de 500) — la vista filtra en cliente.
+  // Mobile: expandir/contraer filtros
+  const [filtersOpen,setFiltersOpen]=useState(false);
+
   const load = useCallback(async()=>{
     setLoading(true);
     const PAGE_SIZE=500, MAX_PAGES=40;
@@ -609,13 +721,10 @@ export function SupplierPaymentsView({ user }) {
     finally{setSyncing(false);}
   };
 
-  // ── Filtrado + orden (cliente) ──────────────────────────────────────────
   const brands = Array.from(new Set(data.map(p=>p.brand).filter(Boolean))).sort();
-
   const norm = (s) => (s||'').toString().toLowerCase();
   const qn = norm(q.trim());
   const filtered = data.filter(p=>{
-    // Búsqueda amplia — todos los campos relevantes
     if (qn) {
       const hay = [p.invoice_number, p.receipt_number, p.provider, p.brand, p.model,
                    p.catalog_name, p.color, p.chassis, p.motor_num, p.banco]
@@ -632,70 +741,53 @@ export function SupplierPaymentsView({ user }) {
     }
     if (payFromF || payToF) {
       const pd = (p.payment_date||'').slice(0,10);
-      // Si se pide rango de fecha_pago y el registro no tiene → queda fuera
       if (!pd) return false;
       if (payFromF && pd < payFromF) return false;
       if (payToF   && pd > payToF)   return false;
     }
     return true;
   });
-  // Ordena comparando por el tipo de dato real — fechas como timestamp,
-  // montos como número. Registros con valor faltante quedan al final
-  // en cualquier dirección (no contaminan el orden con un 0 o un '').
+
   const isDateSort   = ['payment_date','invoice_date','due_date'].includes(sortBy);
   const isNumberSort = ['total_amount','paid_amount'].includes(sortBy);
-  const rawVal = (p) => {
-    if (sortBy === 'due_date') return due(p);
-    return p[sortBy];
-  };
+  const rawVal = (p) => { if (sortBy === 'due_date') return due(p); return p[sortBy]; };
   const toCmp = (v) => {
     if (v == null || v === '') return null;
-    if (isDateSort) {
-      const d = new Date(String(v).slice(0,10) + 'T12:00:00').getTime();
-      return isNaN(d) ? null : d;
-    }
-    if (isNumberSort) {
-      const n = parseInt(v);
-      return isNaN(n) ? null : n;
-    }
+    if (isDateSort) { const d = new Date(String(v).slice(0,10)+'T12:00:00').getTime(); return isNaN(d)?null:d; }
+    if (isNumberSort) { const n = parseInt(v); return isNaN(n)?null:n; }
     return String(v).toLowerCase();
   };
   const sorted = [...filtered].sort((a,b)=>{
-    const na = toCmp(rawVal(a));
-    const nb = toCmp(rawVal(b));
-    // Nulos siempre al final, independientemente de asc/desc
-    if (na == null && nb == null) return 0;
-    if (na == null) return 1;
-    if (nb == null) return -1;
-    if (na < nb) return sortDir==='asc' ? -1 : 1;
-    if (na > nb) return sortDir==='asc' ?  1 : -1;
-    return 0;
+    const na=toCmp(rawVal(a)), nb=toCmp(rawVal(b));
+    if(na==null&&nb==null)return 0; if(na==null)return 1; if(nb==null)return -1;
+    if(na<nb)return sortDir==='asc'?-1:1; if(na>nb)return sortDir==='asc'?1:-1; return 0;
   });
 
-  // ── Resumen (sobre filtrados) ──────────────────────────────────────────
   const sum = sorted.reduce((acc,p)=>{
-    const tot = parseInt(p.total_amount)||0;
-    const paid= parseInt(p.paid_amount)||0;
-    const dv = due(p);
-    const ov = dv && !p.paid_amount && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
-    acc.total  += tot;
-    acc.paid   += paid;
-    acc.motos  += (p.chassis || p.motor_num || p.model_id ? 1 : 0);
-    if (ov) acc.overdue++;
+    const tot=parseInt(p.total_amount)||0, paid=parseInt(p.paid_amount)||0;
+    const dv=due(p), ov=dv&&!p.paid_amount&&new Date(dv.slice(0,10)+'T12:00:00')<new Date();
+    acc.total+=tot; acc.paid+=paid;
+    acc.motos+=(p.chassis||p.motor_num||p.model_id?1:0);
+    if(ov)acc.overdue++;
     return acc;
-  }, { total:0, paid:0, motos:0, overdue:0 });
+  },{ total:0, paid:0, motos:0, overdue:0 });
   const saldo = Math.max(0, sum.total - sum.paid);
-
   const pending = data.filter(p=>!p.paid_amount).length;
+  const hasFilters = q||stF||fromF||toF||payFromF||payToF||brF;
+  const clearFilters = ()=>{ setQ('');setStF('');setFromF('');setToF('');setPayFromF('');setPayToF('');setBrF(''); };
 
-  const hasFilters = q || stF || fromF || toF || payFromF || payToF || brF;
-  const clearFilters = () => { setQ(''); setStF(''); setFromF(''); setToF(''); setPayFromF(''); setPayToF(''); setBrF(''); };
-
-  const ctrl = { height:32, borderRadius:7, border:'1.5px solid #E5E7EB', background:'#FFFFFF', color:'#374151', fontSize:12, padding:'0 8px', fontFamily:'inherit', outline:'none' };
-  const flt  = { fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3, display:'block' };
+  // Estilo compartido para controles de filtro compactos
+  const fc = {
+    ...S.inp,
+    height:34,
+    padding:'0 10px',
+    fontSize:12,
+    width:'auto',
+    lineHeight:'34px',
+  };
 
   return (
-    <div style={{ fontFamily:'Inter,system-ui,sans-serif',flex:1,display:'flex',flexDirection:'column',minHeight:0 }}>
+    <div style={{ fontFamily:'Inter,system-ui,sans-serif', flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
 
       {/* Header */}
       <ViewHeader
@@ -704,10 +796,10 @@ export function SupplierPaymentsView({ user }) {
         subtitle={pending > 0 ? `${pending} sin monto pagado registrado` : null}
         actions={canCreate && (
           <>
-            <button onClick={sync} disabled={syncing} style={{...S.btn2,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600}}>
+            <button onClick={sync} disabled={syncing} style={S.btn2}>
               <Ic.refresh size={14} color={syncing?'#9CA3AF':'#374151'}/>{syncing?'Sincronizando...':'Sincronizar con Drive'}
             </button>
-            <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700}}>
+            <button onClick={()=>setShowNew(true)} style={S.btn}>
               <Ic.plus size={14}/> Nuevo pago
             </button>
           </>
@@ -718,196 +810,218 @@ export function SupplierPaymentsView({ user }) {
       {syncRes&&(
         <div style={{marginBottom:12,padding:'10px 14px',borderRadius:8,fontSize:12,fontFamily:'inherit',background:syncRes.ok?'#F0FDF4':'#FEF2F2',border:`1px solid ${syncRes.ok?'#BBF7D0':'#FECACA'}`,color:syncRes.ok?'#166534':'#991B1B',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
           {syncRes.ok?`Sincronización exitosa: ${syncRes.created} nuevos, ${syncRes.updated} actualizados`:syncRes.error}
-          <button onClick={()=>setSyncRes(null)} style={{...S.gh,marginLeft:'auto',fontSize:18,opacity:.5,lineHeight:1,padding:4}}>x</button>
+          <button onClick={()=>setSyncRes(null)} style={{...S.gh,marginLeft:'auto',padding:4,lineHeight:1}}><Ic.x size={14}/></button>
         </div>
       )}
 
-      {/* ── Resumen (sobre lista filtrada) ── */}
-      <div style={{ display:'grid', gridTemplateColumns: bp==='sm' ? 'repeat(2,1fr)' : 'repeat(6,1fr)', gap:10, marginBottom:14 }}>
-        <SumCard label="Registros" value={sorted.length} sub={sorted.length!==data.length?`de ${data.length}`:null}/>
-        <SumCard label="Motos"     value={sum.motos}/>
-        <SumCard label="Facturado" value={$(sum.total)}/>
-        <SumCard label="Pagado"    value={$(sum.paid)} color="#15803D"/>
-        <SumCard label="Saldo"     value={$(saldo)} color={saldo>0?'#C2410C':'#15803D'}/>
-        <SumCard label="Vencidas"  value={sum.overdue} color={sum.overdue>0?'#EF4444':'#111827'}/>
+      {/* ── KPI strip ── */}
+      <div style={{
+        display:'flex', gap:10, flexWrap:'wrap', marginBottom:16,
+      }}>
+        {[
+          { label:'Registros', val:sorted.length,    color:'#374151', isMoney:false, sub: sorted.length!==data.length?`de ${data.length} total`:null },
+          { label:'Motos',     val:sum.motos,        color:'#374151', isMoney:false },
+          { label:'Facturado', val:sum.total,        color:'#374151', isMoney:true  },
+          { label:'Pagado',    val:sum.paid,         color:'#15803D', isMoney:true  },
+          { label:'Saldo',     val:saldo,            color:saldo>0?'#DC2626':'#15803D', isMoney:true },
+          { label:'Vencidas',  val:sum.overdue,      color:sum.overdue>0?'#DC2626':'#374151', isMoney:false },
+        ].map(k=>(
+          <div key={k.label} style={{
+            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            borderRadius:10, padding:'10px 16px',
+            flex: isMobile ? '1 1 calc(50% - 5px)' : '1 1 100px',
+          }}>
+            <div style={{fontSize:18, fontWeight:800, color:k.color, lineHeight:1, marginBottom:3}}>
+              {k.isMoney ? $(k.val) : k.val}
+            </div>
+            <div style={{fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em'}}>
+              {k.label}
+            </div>
+            {k.sub&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{k.sub}</div>}
+          </div>
+        ))}
       </div>
 
       {/* ── Filtros ── */}
-      <div style={{ ...S.card, padding:'12px 14px', marginBottom:14, display:'flex', gap:10, alignItems:'flex-end', flexWrap:'wrap' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 1 240px', minWidth:200 }}>
-          <Ic.search size={15} color="#9CA3AF"/>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Factura, comprobante, proveedor, modelo, color, chasis, motor, banco…"
-            style={{...S.inp, border:'none', background:'transparent', flex:1, padding:0, height:30, fontSize:13}}/>
-        </div>
-        <div>
-          <label style={flt}>Estado</label>
-          <select value={stF} onChange={e=>setStF(e.target.value)} style={ctrl}>
-            <option value="">Todos</option>
-            <option value="pagado">Pagado</option>
-            <option value="pendiente">Pendiente</option>
-          </select>
-        </div>
-        <div>
-          <label style={flt}>Emisión desde</label>
-          <input type="date" value={fromF} onChange={e=>setFromF(e.target.value)} style={{...ctrl, minWidth:130}}/>
-        </div>
-        <div>
-          <label style={flt}>Emisión hasta</label>
-          <input type="date" value={toF} onChange={e=>setToF(e.target.value)} style={{...ctrl, minWidth:130}}/>
-        </div>
-        <div>
-          <label style={flt}>Pago desde</label>
-          <input type="date" value={payFromF} onChange={e=>setPayFromF(e.target.value)} style={{...ctrl, minWidth:130}}/>
-        </div>
-        <div>
-          <label style={flt}>Pago hasta</label>
-          <input type="date" value={payToF} onChange={e=>setPayToF(e.target.value)} style={{...ctrl, minWidth:130}}/>
-        </div>
-        <div>
-          <label style={flt}>Marca</label>
-          <select value={brF} onChange={e=>setBrF(e.target.value)} style={ctrl}>
-            <option value="">Todas</option>
-            {brands.map(b=><option key={b} value={b}>{b}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={flt}>Ordenar por</label>
-          <div style={{ display:'flex', gap:6 }}>
-            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={ctrl}>
-              <option value="payment_date">Fecha de pago</option>
-              <option value="due_date">Vencimiento</option>
-              <option value="invoice_date">Fecha emisión</option>
-              <option value="paid_amount">Monto pagado</option>
-              <option value="total_amount">Total factura</option>
-            </select>
-            <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
-              title={sortDir==='asc'?'Ascendente':'Descendente'}
-              style={{...ctrl, cursor:'pointer', padding:'0 10px', fontWeight:700, color:'#374151'}}>
-              {sortDir==='asc'?'↑':'↓'}
-            </button>
-          </div>
-        </div>
-        {hasFilters && <button onClick={clearFilters} style={{ ...ctrl, cursor:'pointer', padding:'0 10px', fontWeight:600, color:'#6B7280', background:'#F9FAFB' }}>Limpiar</button>}
-      </div>
-
-      {/* Mobile: cards */}
-      {bp==='sm' ? (
-        <div style={{flex:1,overflowY:'auto'}}>
-          {loading&&<Loader label="Cargando pagos…" />}
-          {!loading&&sorted.length===0&&<div style={{padding:48,textAlign:'center',color:'#9CA3AF',fontWeight:500,fontFamily:'inherit'}}>{hasFilters?'Sin resultados con estos filtros':'Sin registros'}</div>}
-          {!loading&&sorted.map(p=><Card key={p.id} p={p} onClick={()=>{setEditFromList(false);setSel(p);}}/>)}
-        </div>
-      ) : (
-        /* Desktop / tablet — card-rows, no tabla plana */
-        <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:8}}>
-          {loading&&<Loader label="Cargando pagos…" />}
-          {!loading&&sorted.length===0&&<div style={{...S.card,padding:48,textAlign:'center',color:'#9CA3AF'}}><div style={{fontWeight:700,marginBottom:4}}>{hasFilters?'Sin resultados con estos filtros':'Sin registros'}</div><div style={{fontSize:12}}>{hasFilters?<button onClick={clearFilters} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button>:'Registra el primer pago con Drive o manualmente'}</div></div>}
-          {!loading&&sorted.map(p=>{
-            const dv=due(p);
-            const ov=dv && !p.paid_amount && new Date(dv.slice(0,10)+'T12:00:00')<new Date();
-            const img=motoImg(p);
-            const col = { display:'flex',flexDirection:'column',justifyContent:'center' };
-            const lbl = { fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:3 };
-            // Layout elástico — flex-wrap en lugar de anchos fijos.
-            // flex-basis define el "ancho ideal" pero las celdas pueden encoger o
-            // envolver según el ancho disponible.
-            return (
-              <div key={p.id} onClick={()=>{setEditFromList(false);setSel(p);}}
-                className="crm-sp-row"
-                style={{...S.card,padding:0,display:'flex',alignItems:'stretch',cursor:'pointer',overflow:'hidden',minHeight:0,flexWrap:'wrap'}}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.09)';}}
-                onMouseLeave={e=>{e.currentTarget.style.boxShadow=S.card.boxShadow;}}>
-
-                {/* ── IZQUIERDO: foto grande + factura + fecha ── */}
-                <div style={{...col,flex:'1 1 230px',maxWidth:280,alignItems:'center',gap:10,padding:'14px 14px',background:'#F9FAFB',borderRight:'1px solid #F3F4F6'}}>
-                  {img
-                    ? <img src={img} alt="" style={{width:'100%',height:160,objectFit:'contain',borderRadius:10,border:'1px solid #E5E7EB',background:'#ffffff'}}/>
-                    : <div style={{width:'100%',height:160,borderRadius:10,border:'1px dashed #D1D5DB',background:'#ffffff',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic.bike size={54} color="#D1D5DB"/></div>
-                  }
-                  <div style={{textAlign:'center',marginTop:2}}>
-                    <div style={{fontWeight:900,fontSize:14,color:'#F28100',letterSpacing:'-0.2px'}}>#{p.invoice_number||'—'}</div>
-                    <div style={{fontSize:11,color:'#9CA3AF',marginTop:2}}>{fd(p.invoice_date)}</div>
-                  </div>
+      {isMobile ? (
+        /* Mobile: botón expandible */
+        <div style={{marginBottom:14}}>
+          <button onClick={()=>setFiltersOpen(o=>!o)} style={{
+            ...S.btn2, width:'100%', justifyContent:'space-between',
+            padding:'9px 14px', fontSize:13,
+          }}>
+            <span style={{display:'flex',alignItems:'center',gap:7}}>
+              <Ic.search size={14}/>
+              {hasFilters ? 'Filtros activos' : 'Filtrar / buscar'}
+            </span>
+            <span style={{fontSize:12,color:'#9CA3AF'}}>{filtersOpen?'▲':'▼'}</span>
+          </button>
+          {filtersOpen&&(
+            <div style={{
+              background:'#F9FAFB', border:'1px solid #E5E7EB',
+              borderRadius:'0 0 10px 10px', padding:'12px 14px',
+              display:'flex', flexDirection:'column', gap:10,
+            }}>
+              <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Factura, modelo, color, chasis…"
+                style={{...S.inp}}/>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                <div>
+                  <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3}}>Estado</label>
+                  <select value={stF} onChange={e=>setStF(e.target.value)} style={{...S.inp,height:34,padding:'0 10px',fontSize:12}}>
+                    <option value="">Todos</option>
+                    <option value="pagado">Pagado</option>
+                    <option value="pendiente">Pendiente</option>
+                  </select>
                 </div>
-
-                {/* ── CENTRAL: modelo + chips + chasis/motor ── */}
-                <div style={{...col,flex:'2 1 260px',minWidth:0,padding:'16px 22px',gap:8,borderRight:'1px solid #F3F4F6'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <div style={{fontWeight:800,fontSize:17,color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:1.2,flex:1,minWidth:0}}>
-                      {p.catalog_name||p.model||'—'}
-                    </div>
-                    {!p.model_id && (p.brand||p.model) && (
-                      <span title="Sin asociar al catálogo" style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#B45309', background:'#FEF3C7', border:'1px solid #FDE68A', padding:'2px 7px', borderRadius:20, letterSpacing:'0.04em', textTransform:'uppercase' }}>Sin catálogo</span>
-                    )}
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginTop:2}}>
-                    <ColorChip color={p.color}/>
-                    {p.commercial_year&&<span style={{fontSize:11,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'2px 9px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
-                  </div>
-                  {(p.chassis||p.motor_num)&&(
-                    <div style={{display:'flex',gap:28,paddingTop:8,borderTop:'1px solid #F3F4F6',marginTop:4,flexWrap:'wrap'}}>
-                      {p.chassis&&<div style={{minWidth:0}}>
-                        <div style={lbl}>Chasis</div>
-                        <div style={{fontSize:12,fontWeight:600,color:'#1F2937',letterSpacing:'0.01em',wordBreak:'break-all'}}>{p.chassis}</div>
-                      </div>}
-                      {p.motor_num&&<div style={{minWidth:0}}>
-                        <div style={lbl}>Motor</div>
-                        <div style={{fontSize:12,fontWeight:600,color:'#1F2937',letterSpacing:'0.01em',wordBreak:'break-all'}}>{p.motor_num}</div>
-                      </div>}
-                    </div>
-                  )}
-                </div>
-
-                {/* ── DERECHO: grilla horizontal equilibrada, elástica ── */}
-                <div style={{...col,flex:'3 1 340px',minWidth:260,padding:'16px 20px',gap:12}}>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(90px, 1fr))',gap:'10px 14px',alignItems:'start'}}>
-                    <div style={{minWidth:0}}>
-                      <div style={lbl}>Total factura</div>
-                      <div style={{fontSize:15,fontWeight:900,color:'#111827',letterSpacing:'-0.3px',overflow:'hidden',textOverflow:'ellipsis'}}>{$(p.total_amount)}</div>
-                    </div>
-                    <div style={{minWidth:0}}>
-                      <div style={lbl}>Monto pagado</div>
-                      <div style={{fontSize:14,fontWeight:700,color:p.paid_amount?'#15803D':'#D1D5DB',overflow:'hidden',textOverflow:'ellipsis'}}>{$(p.paid_amount)}</div>
-                    </div>
-                    <div style={{minWidth:0}}>
-                      <div style={{...lbl,color:ov?'#EF4444':'#9CA3AF'}}>Vencimiento</div>
-                      <div style={{fontSize:12,fontWeight:ov?700:500,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</div>
-                    </div>
-                    <div style={{minWidth:0}}>
-                      <div style={lbl}>Fecha pago</div>
-                      <div style={{fontSize:12,color:p.payment_date?'#374151':'#D1D5DB'}}>{p.payment_date?fd(p.payment_date):'—'}</div>
-                    </div>
-                  </div>
-                  {/* Documentos — siempre abajo a la derecha del bloque de acciones.
-                      Espaciador superior mantiene la posición estable aunque no haya docs. */}
-                  <div style={{flex:1,minHeight:0}}/>
-                  <div style={{display:'flex',gap:6,alignItems:'center',justifyContent:'flex-end',flexWrap:'wrap',minHeight:26}}>
-                    {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                      style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#FFF7ED',border:'1px solid #FED7AA',color:'#C2410C',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
-                      <Ic.file size={11}/> Factura
-                    </a>}
-                    {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                      style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'5px 10px',borderRadius:6,background:'#EFF6FF',border:'1px solid #BFDBFE',color:'#1D4ED8',textDecoration:'none',fontFamily:'inherit',whiteSpace:'nowrap'}}>
-                      <Ic.file size={11}/> Comprobante
-                    </a>}
-                  </div>
+                <div>
+                  <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3}}>Marca</label>
+                  <select value={brF} onChange={e=>setBrF(e.target.value)} style={{...S.inp,height:34,padding:'0 10px',fontSize:12}}>
+                    <option value="">Todas</option>
+                    {brands.map(b=><option key={b} value={b}>{b}</option>)}
+                  </select>
                 </div>
               </div>
-            );
-          })}
+              {hasFilters&&(
+                <button onClick={clearFilters} style={{...S.gh,justifyContent:'center',width:'100%',fontSize:12}}>
+                  <Ic.x size={13}/> Limpiar filtros
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Desktop: barra compacta de una línea */
+        <div style={{
+          display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
+          background:'#F9FAFB', border:'1px solid #E5E7EB',
+          borderRadius:10, padding:'8px 14px', marginBottom:14,
+        }}>
+          {/* Buscador */}
+          <div style={{display:'flex',alignItems:'center',gap:7,flex:'1 1 200px',minWidth:160}}>
+            <Ic.search size={14} color="#9CA3AF"/>
+            <input value={q} onChange={e=>setQ(e.target.value)}
+              placeholder="Factura, modelo, color, chasis, motor…"
+              style={{...S.inp,border:'none',background:'transparent',flex:1,padding:0,height:30,fontSize:13}}/>
+          </div>
+          <div style={{width:1,height:22,background:'#E5E7EB',flexShrink:0}}/>
+          {/* Estado */}
+          <div>
+            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Estado</label>
+            <select value={stF} onChange={e=>setStF(e.target.value)} style={fc}>
+              <option value="">Todos</option>
+              <option value="pagado">Pagado</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+          {/* Emisión */}
+          <div>
+            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Emisión desde</label>
+            <input type="date" value={fromF} onChange={e=>setFromF(e.target.value)} style={{...fc,minWidth:128}}/>
+          </div>
+          <div>
+            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>hasta</label>
+            <input type="date" value={toF} onChange={e=>setToF(e.target.value)} style={{...fc,minWidth:128}}/>
+          </div>
+          {/* Pago */}
+          <div>
+            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Pago desde</label>
+            <input type="date" value={payFromF} onChange={e=>setPayFromF(e.target.value)} style={{...fc,minWidth:128}}/>
+          </div>
+          <div>
+            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>hasta</label>
+            <input type="date" value={payToF} onChange={e=>setPayToF(e.target.value)} style={{...fc,minWidth:128}}/>
+          </div>
+          {/* Marca */}
+          <div>
+            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Marca</label>
+            <select value={brF} onChange={e=>setBrF(e.target.value)} style={fc}>
+              <option value="">Todas</option>
+              {brands.map(b=><option key={b} value={b}>{b}</option>)}
+            </select>
+          </div>
+          {/* Ordenar */}
+          <div>
+            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Ordenar</label>
+            <div style={{display:'flex',gap:5}}>
+              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={fc}>
+                <option value="payment_date">Fecha pago</option>
+                <option value="due_date">Vencimiento</option>
+                <option value="invoice_date">Emisión</option>
+                <option value="paid_amount">Monto pagado</option>
+                <option value="total_amount">Total</option>
+              </select>
+              <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
+                title={sortDir==='asc'?'Ascendente':'Descendente'}
+                style={{...S.btn2,padding:'0 10px',height:34,fontSize:13,fontWeight:700}}>
+                {sortDir==='asc'?'↑':'↓'}
+              </button>
+            </div>
+          </div>
+          {/* Limpiar */}
+          {hasFilters&&(
+            <button onClick={clearFilters} style={{...S.gh,height:34,padding:'0 10px',fontSize:12}}>
+              <Ic.x size={13}/> Limpiar
+            </button>
+          )}
         </div>
       )}
 
-      {/* Footer */}
-      {!loading&&sorted.length>0&&(
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:'#9CA3AF',fontFamily:'inherit'}}>
+      {/* ── Lista ── */}
+      {isMobile ? (
+        <div style={{flex:1,overflowY:'auto'}}>
+          {loading && <Loader label="Cargando pagos…"/>}
+          {!loading && sorted.length===0 && (
+            <Empty
+              icon={Ic.invoice}
+              title={hasFilters?'Sin resultados':'Sin registros'}
+              hint={hasFilters?'Prueba ajustando los filtros':'Registra el primer pago con Drive o manualmente.'}
+              action={hasFilters&&<button onClick={clearFilters} style={S.btn2}>Limpiar filtros</button>}
+            />
+          )}
+          {!loading && sorted.map(p=>(
+            <MobileCard key={p.id} p={p} onClick={()=>{setEditFromList(false);setSel(p);}}/>
+          ))}
+        </div>
+      ) : (
+        /* Desktop: tabla */
+        <div style={{flex:1,overflowY:'auto'}}>
+          {loading && <Loader label="Cargando pagos…"/>}
+          {!loading && sorted.length===0 && (
+            <div style={{...S.card,padding:0,overflow:'hidden'}}>
+              <Empty
+                icon={Ic.invoice}
+                title={hasFilters?'Sin resultados con estos filtros':'Sin registros de pagos'}
+                hint={hasFilters?'Prueba ajustando los filtros o limpiando la búsqueda.':'Registra el primer pago con Drive o manualmente.'}
+                action={hasFilters&&<button onClick={clearFilters} style={S.btn2}>Limpiar filtros</button>}
+              />
+            </div>
+          )}
+          {!loading && sorted.length>0 && (
+            <div style={{...S.card,padding:0,overflow:'hidden'}}>
+              <TableHeader/>
+              {sorted.map(p=>(
+                <TableRow key={p.id} p={p} onClick={()=>{setEditFromList(false);setSel(p);}}/>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer — conteo + resumen */}
+      {!loading && sorted.length>0 && (
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:'#9CA3AF',fontFamily:'inherit',flexWrap:'wrap',gap:6}}>
           <span>{sorted.length} de {data.length} registro{data.length!==1?'s':''}</span>
-          <span>Facturado: <strong style={{color:'#111827'}}>{$(sum.total)}</strong> · Pagado: <strong style={{color:'#15803D'}}>{$(sum.paid)}</strong> · Saldo: <strong style={{color:saldo>0?'#C2410C':'#111827'}}>{$(saldo)}</strong></span>
+          <span>
+            Facturado: <strong style={{color:'#111827'}}>{$(sum.total)}</strong>
+            {' · '}Pagado: <strong style={{color:'#15803D'}}>{$(sum.paid)}</strong>
+            {' · '}Saldo: <strong style={{color:saldo>0?'#C2410C':'#111827'}}>{$(saldo)}</strong>
+          </span>
         </div>
       )}
 
       {showNew&&<NewModal onClose={()=>setShowNew(false)} onCreated={p=>{setData(d=>[p,...d]);setShowNew(false);}}/>}
-      {sel&&<DetailModal payment={sel} canDel={canDel} startInEdit={editFromList} onClose={()=>{setSel(null);setEditFromList(false);}}
+      {sel&&<DetailModal payment={sel} canDel={canDel} startInEdit={editFromList}
+        onClose={()=>{setSel(null);setEditFromList(false);}}
         onUpdated={p=>{setData(d=>d.map(x=>x.id===p.id?p:x));setSel(p);}}
         onDeleted={id=>{setData(d=>d.filter(x=>x.id!==id));setSel(null);}}/>}
     </div>

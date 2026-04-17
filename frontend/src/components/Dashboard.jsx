@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, ACTIVE_STATUSES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, useIsMobile } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, ACTIVE_STATUSES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, useIsMobile, ErrorMsg, Btn } from '../ui.jsx';
 
 export function Dashboard({leads,inv,user,nav,branches=[]}){
   const[stats,setStats]=useState(null);
+  const[statsErr,setStatsErr]=useState('');
   const isMobile = useIsMobile();
   const active=leads.filter(l=>ACTIVE_STATUSES.includes(l.status));
   const ganados=leads.filter(l=>l.status==="ganado");
   const perdidos=leads.filter(l=>l.status==="perdido");
   const avail=inv.filter(x=>x.status==="disponible").length;
   const pipe=Object.entries(TICKET_STATUS).slice(0,5).map(([k,v])=>({name:v.l,count:leads.filter(l=>l.status===k).length,color:v.c}));
-  useEffect(()=>{api.getCommercialStats().then(d=>setStats(d)).catch(()=>{});},[]);
+  useEffect(()=>{api.getCommercialStats().then(d=>setStats(d)).catch(()=>{setStatsErr('No se pudieron cargar los datos.');});},[]);
   const kpi=(key,...fallbacks)=>{if(!stats)return 0;for(const k of[key,...fallbacks]){const v=stats.stats?.[k]??stats.kpis?.[k]??stats[k];if(v!==undefined&&v!==null)return v;}return 0;};
   const urgentes=stats?.leads_urgentes||stats?.urgentes||[];
   const tareasHoy=stats?.recordatorios_hoy||stats?.tareas_hoy||stats?.reminders_today||[];
@@ -18,9 +19,10 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
   return(
     <div>
       <ViewHeader title={`${/a$/i.test((user.fn||'').trim())?'Bienvenida':'Bienvenido'}, ${user.fn}`} subtitle={user.branchName||"Todas las sucursales"} size="md" />
+      {statsErr && <ErrorMsg msg={statsErr} />}
 
       {/* ── Bloque 1: KPI strip horizontal ── */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10,marginBottom:16}}>
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'repeat(2,1fr)':'repeat(auto-fill,minmax(130px,1fr))',gap:10,marginBottom:16}}>
         {/* Sin atender — SLA vencido */}
         <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:12,padding:'14px 16px',cursor: stats ? 'pointer' : 'default'}}
           onClick={()=>stats&&nav('leads')}>
@@ -75,7 +77,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
             <span style={{fontSize:13,fontWeight:700,color:'#111827'}}>Sin atender hoy</span>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
               <span style={{fontSize:10,fontWeight:600,color:'#EF4444',background:'#FEF2F2',padding:'2px 7px',borderRadius:99}}>{urgentes.length}</span>
-              {urgentes.length>8&&<button onClick={()=>nav('leads')} style={{...S.gh,fontSize:11,color:'#EF4444',padding:'2px 6px'}}>Ver todos →</button>}
+              {urgentes.length>8&&<Btn variant="ghost" size="sm" onClick={()=>nav('leads')} style={{fontSize:11,color:'#EF4444',padding:'2px 6px'}}>Ver todos →</Btn>}
             </div>
           </div>
           <div style={{maxHeight:240,overflowY:'auto'}}>
@@ -113,7 +115,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
             <span style={{fontSize:13,fontWeight:700,color:'#111827'}}>Tareas hoy</span>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
               <span style={{fontSize:10,fontWeight:600,color:'#F28100',background:'rgba(242,129,0,0.1)',padding:'2px 7px',borderRadius:99}}>{tareasHoy.length}</span>
-              {tareasHoy.length>8&&<button onClick={()=>nav('calendar')} style={{...S.gh,fontSize:11,color:'#F28100',padding:'2px 6px'}}>Ver todas →</button>}
+              {tareasHoy.length>8&&<Btn variant="ghost" size="sm" onClick={()=>nav('calendar')} style={{fontSize:11,color:'#F28100',padding:'2px 6px'}}>Ver todas →</Btn>}
             </div>
           </div>
           <div style={{maxHeight:240,overflowY:'auto'}}>
@@ -140,7 +142,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
       <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:16}}>
         <div style={{padding:'12px 16px 10px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <span style={{fontSize:13,fontWeight:700,color:'#111827'}}>Leads recientes</span>
-          <button style={{...S.gh,fontSize:12,color:'#F28100'}} onClick={()=>nav('leads')}>Ver todos →</button>
+          <Btn variant="ghost" size="sm" onClick={()=>nav('leads')} style={{fontSize:12,color:'#F28100'}}>Ver todos →</Btn>
         </div>
         <div>
           {leads.slice(0,6).map(l=>{

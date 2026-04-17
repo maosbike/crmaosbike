@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg, selectCtrl, useIsMobile } from '../ui.jsx';
+import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg, selectCtrl, useIsMobile } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -81,23 +81,6 @@ function DistributorBadge({ paid }) {
   );
 }
 
-// ─── KPI card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, color = '#374151', bg = '#F9FAFB', border = '#E5E7EB', alert = false }) {
-  return (
-    <div style={{
-      background: alert ? bg : '#FFFFFF',
-      border: `1px solid ${alert ? border : '#E5E7EB'}`,
-      borderRadius: 10, padding: '10px 16px',
-      flex: '1 1 110px',
-      display: 'flex', flexDirection: 'column', gap: 3,
-      boxShadow: alert ? `0 2px 8px ${border}44` : '0 1px 3px rgba(0,0,0,0.04)',
-    }}>
-      <div style={{ fontSize: 22, fontWeight: 900, color, letterSpacing: '-0.8px', lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: alert ? color : '#9CA3AF',
-                    textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</div>
-    </div>
-  );
-}
 
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
@@ -1684,19 +1667,19 @@ export function SalesView({ user, realBranches }) {
       {/* ── KPIs ── */}
       {stats && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <KpiCard label="Ventas" value={stats.total} color="#111827" />
-          {isAdmin && <KpiCard label="Pend. distribuidor" value={stats.pendiente_distribuidor}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} />}
-          <KpiCard label="Sin factura cli." value={stats.sin_factura_cli}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.sin_factura_cli > 0} />
-          <KpiCard label="Pend. homolog." value={stats.sin_homologacion}
-            color="#6D28D9" bg="#F5F3FF" border="#C4B5FD" alert={stats.sin_homologacion > 0} />
-          <KpiCard label="Pend. inscripción" value={stats.sin_inscripcion}
-            color="#0E7490" bg="#ECFEFF" border="#67E8F9" alert={stats.sin_inscripcion > 0} />
-          <KpiCard label="Pend. entrega" value={stats.pendiente_entrega}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_entrega > 0} />
+          <Stat label="Ventas" value={stats.total} color="#111827" style={{flex:'1 1 110px'}} />
+          {isAdmin && <Stat label="Pend. distribuidor" value={stats.pendiente_distribuidor}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} style={{flex:'1 1 110px'}} />}
+          <Stat label="Sin factura cli." value={stats.sin_factura_cli}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.sin_factura_cli > 0} style={{flex:'1 1 110px'}} />
+          <Stat label="Pend. homolog." value={stats.sin_homologacion}
+            color="#6D28D9" bg="#F5F3FF" border="#C4B5FD" alert={stats.sin_homologacion > 0} style={{flex:'1 1 110px'}} />
+          <Stat label="Pend. inscripción" value={stats.sin_inscripcion}
+            color="#0E7490" bg="#ECFEFF" border="#67E8F9" alert={stats.sin_inscripcion > 0} style={{flex:'1 1 110px'}} />
+          <Stat label="Pend. entrega" value={stats.pendiente_entrega}
+            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_entrega > 0} style={{flex:'1 1 110px'}} />
           {isAdmin && stats.total_venta > 0 && (
-            <KpiCard label="Total vendido" value={fmt(stats.total_venta)} color="#065F46" bg="#ECFDF5" border="#A7F3D0" />
+            <Stat label="Total vendido" value={fmt(stats.total_venta)} color="#065F46" bg="#ECFDF5" border="#A7F3D0" style={{flex:'1 1 110px'}} />
           )}
         </div>
       )}

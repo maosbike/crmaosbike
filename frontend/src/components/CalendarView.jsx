@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile } from '../ui.jsx';
+import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile, Btn, Empty } from '../ui.jsx';
 
 const EVENT_TYPES={
   follow_up:'Seguimiento',call:'Llamada',meeting:'Reunión',
@@ -196,9 +196,9 @@ export function CalendarView({user,nav}){
             <button onClick={()=>setDate(new Date(yr,mo-1,1))} style={{...S.btn2,padding:'6px 14px'}}>←</button>
             <span style={{fontWeight:700,fontSize:15,minWidth:160,textAlign:'center'}}>{MESES[mo]} {yr}</span>
             <button onClick={()=>setDate(new Date(yr,mo+1,1))} style={{...S.btn2,padding:'6px 14px'}}>→</button>
-            <button onClick={()=>openNew()} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12}}>
+            <Btn variant="primary" size="sm" onClick={()=>openNew()} style={{display:'flex',alignItems:'center',gap:6}}>
               <Ic.plus size={14}/>Nuevo evento
-            </button>
+            </Btn>
           </div>
         }
       />
@@ -251,7 +251,7 @@ export function CalendarView({user,nav}){
                 </div>
               ))}
               {getDaysWithEvents(events).length===0&&(
-                <div style={{padding:'32px 0',textAlign:'center',color:'#9CA3AF',fontSize:13}}>Sin eventos este mes</div>
+                <Empty icon={Ic.cal} title="Sin eventos este mes" hint="Creá un nuevo evento con el botón de arriba." />
               )}
             </div>
           }

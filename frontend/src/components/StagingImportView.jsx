@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, Loader, ErrorMsg, Empty } from '../ui.jsx';
 
 export function StagingImportView() {
   const [step, setStep]           = useState('upload');
@@ -106,11 +106,11 @@ export function StagingImportView() {
           <div style={{ display: 'flex', gap: 8 }}>
           {['upload','history'].map(t => (
             <button key={t} onClick={() => { setStep(t); if (t === 'history') loadBatches(); }}
-              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: step === t ? '#F28100' : 'transparent', color: step === t ? '#ffffff' : '#6B7280', fontSize: 12, cursor: 'pointer', fontWeight: step === t ? 700 : 400 }}>
+              style={step===t ? {...S.btn,padding:'6px 14px',fontSize:12} : {...S.btn2,padding:'6px 14px',fontSize:12}}>
               {t === 'upload' ? 'Nueva importación' : 'Historial'}
             </button>
           ))}
-          </div>
+        </div>
         }
       />
 
@@ -123,32 +123,37 @@ export function StagingImportView() {
         <div>
           {step === 'done' && result && (
             <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#10B981', marginBottom: 6 }}>¡Publicado exitosamente!</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#10B981', marginBottom: 6 }}>Publicado exitosamente</div>
               <div style={{ fontSize: 12, color: '#6B7280' }}>
                 {result.published} modelos actualizados · {result.created} modelos nuevos creados
                 {result.errors && result.errors.length > 0 && <span style={{ color: '#EF4444' }}> · {result.errors.length} errores</span>}
               </div>
-              <button onClick={reset} style={{ marginTop: 12, padding: '7px 16px', borderRadius: 8, border: 'none', background: '#F28100', color: '#ffffff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>Nueva importación</button>
+              <button onClick={reset} style={{ ...S.btn, marginTop: 12, fontSize: 12 }}>Nueva importación</button>
             </div>
           )}
 
-          <div style={{ background: '#F9FAFB', border: '2px dashed #D1D5DB', borderRadius: 14, padding: 40, textAlign: 'center', marginBottom: 16 }}
-            onDragOver={e => e.preventDefault()} onDrop={handleDrop}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#1F2937' }}>
-              {uploading ? 'Procesando PDF...' : 'Arrastra el PDF de lista de precios aquí'}
+          {uploading
+            ? <Loader label="Procesando PDF…"/>
+            : (
+            <div style={{ ...S.card, border: '2px dashed #D1D5DB', textAlign: 'center', padding: '40px 24px', marginBottom: 16, background: '#FAFAFA', cursor: 'pointer' }}
+              onDragOver={e => e.preventDefault()} onDrop={handleDrop}
+              onClick={() => document.getElementById('staging-file-input').click()}>
+              <Ic.upload size={32} color="#9CA3AF" style={{marginBottom:12}}/>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#1F2937' }}>
+                Arrastra el PDF de lista de precios aquí
+              </div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 16 }}>
+                Formatos soportados: Honda · Yamaha (Yamaimport) · MMB (Keeway/Benelli/Benda/QJ) · Promobility
+              </div>
+              <label style={{ ...S.btn, cursor: 'pointer' }}>
+                Seleccionar PDF
+                <input id="staging-file-input" type="file" accept=".pdf" style={{ display: 'none' }} disabled={uploading}
+                  onChange={e => e.target.files[0] && handleUpload(e.target.files[0])} />
+              </label>
             </div>
-            <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 16 }}>
-              Formatos soportados: Honda · Yamaha (Yamaimport) · MMB (Keeway/Benelli/Benda/QJ) · Promobility
-            </div>
-            <label style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#F28100', color: '#ffffff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>
-              {uploading ? 'Procesando...' : 'Seleccionar PDF'}
-              <input type="file" accept=".pdf" style={{ display: 'none' }} disabled={uploading}
-                onChange={e => e.target.files[0] && handleUpload(e.target.files[0])} />
-            </label>
-          </div>
+            )}
 
-          <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: 14, fontSize: 12, color: '#6B7280' }}>
+          <div style={{ ...S.card, background: '#F9FAFB', fontSize: 12, color: '#6B7280' }}>
             El parser extrae automáticamente: <span style={{ color: '#1F2937', fontWeight: 500 }}>marca · modelo · categoría · precio lista · bono todo medio de pago</span>. Después puedes revisar y corregir cada fila antes de publicar.
           </div>
         </div>
@@ -163,34 +168,34 @@ export function StagingImportView() {
         return (
           <div>
             {/* Resumen */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
               {[
                 { label: 'Total', val: batchData.rows.length, c: '#1F2937' },
                 { label: 'Válidos', val: validRows.length, c: '#10B981' },
                 { label: 'Con error', val: errorRows.length, c: '#EF4444' },
                 { label: 'Rechazados', val: rejectedRows.length, c: '#6B7280' },
               ].map(({ label, val, c }) => (
-                <div key={label} style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 10, padding: '10px 16px', textAlign: 'center' }}>
+                <div key={label} style={{ ...S.card, padding: '10px 16px', textAlign: 'center', minWidth: 80 }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: c }}>{val}</div>
-                  <div style={{ fontSize: 10, color: '#6B7280', textTransform: 'uppercase' }}>{label}</div>
+                  <div style={{ fontSize: 10, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>{label}</div>
                 </div>
               ))}
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                <button onClick={reset} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={reset} style={S.btn2}>Cancelar</button>
                 <button onClick={handlePublish} disabled={publishing || validRows.length === 0}
-                  style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: validRows.length === 0 ? '#D1D5DB' : '#10B981', color: '#ffffff', fontSize: 13, cursor: validRows.length === 0 ? 'default' : 'pointer', fontWeight: 700 }}>
+                  style={{ ...S.btn, background: validRows.length === 0 ? '#D1D5DB' : '#10B981', opacity: publishing ? 0.7 : 1 }}>
                   {publishing ? 'Publicando...' : `Publicar ${validRows.length} modelos al catálogo`}
                 </button>
               </div>
             </div>
 
             {/* Tabla */}
-            <div style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'auto' }}>
+            <div style={{ ...S.card, padding: 0, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 700 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <tr style={{ borderBottom: '1px solid #E5E7EB', background: '#F9FAFB' }}>
                     {['Estado','Marca','Modelo','Cat.','Precio lista','Bono','Match','Acciones'].map(h => (
-                      <th key={h} style={{ padding: '9px 10px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '9px 10px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -263,11 +268,10 @@ export function StagingImportView() {
       {/* ── HISTORY ── */}
       {step === 'history' && (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: '#1F2937' }}>Importaciones anteriores</div>
           {batches.length === 0
-            ? <div style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 12 }}>Sin importaciones registradas</div>
+            ? <Empty icon={Ic.file} title="Sin importaciones registradas" hint="Las importaciones de precios quedan registradas aquí."/>
             : batches.map(b => (
-              <div key={b.id} style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div key={b.id} style={{ ...S.card, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{b.filename}</div>
                   <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
@@ -277,15 +281,16 @@ export function StagingImportView() {
                     {b.rejected_rows > 0 && <span style={{ color: '#6B7280' }}> · {b.rejected_rows} rechazados</span>}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: b.status === 'published' ? 'rgba(16,185,129,0.1)' : '#F3F4F6', color: b.status === 'published' ? '#10B981' : '#6B7280', border: `1px solid ${b.status === 'published' ? 'rgba(16,185,129,0.3)' : '#E5E7EB'}` }}>
-                  {b.status === 'published' ? 'Publicado' : b.status === 'partial' ? 'Parcial' : 'Pendiente'}
-                </span>
+                <Bdg
+                  l={b.status === 'published' ? 'Publicado' : b.status === 'partial' ? 'Parcial' : 'Pendiente'}
+                  c={b.status === 'published' ? '#10B981' : '#6B7280'}
+                />
                 {b.status !== 'published' && (
                   <button onClick={async () => {
                     const d = await api.getPriceBatch(b.id);
                     setBatchData({ batch_id: b.id, rows: d.rows, total: d.rows.length, filename: b.filename });
                     setStep('review');
-                  }} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #D1D5DB', background: 'transparent', color: '#F28100', fontSize: 11, cursor: 'pointer' }}>
+                  }} style={{ ...S.btn2, padding: '5px 12px', fontSize: 11, color: '#F28100', borderColor: 'rgba(242,129,0,0.3)' }}>
                     Revisar
                   </button>
                 )}

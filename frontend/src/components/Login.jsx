@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, setToken } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ErrorMsg } from '../ui.jsx';
 
 export function Login({onLogin}){
   const[identifier,setIdentifier]=useState("");
@@ -25,7 +25,7 @@ export function Login({onLogin}){
         <form onSubmit={go} style={{background:"#FFFFFF",border:"1px solid #F3F4F6",borderRadius:16,padding:"36px 32px",boxShadow:"0 4px 24px rgba(0,0,0,0.10)"}}>
           <div style={{marginBottom:14}}><label style={S.lbl}>Usuario o Email</label><input value={identifier} onChange={e=>setIdentifier(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go(e)} placeholder="nombre de usuario" autoComplete="username" style={{...S.inp,width:"100%"}}/></div>
           <div style={{marginBottom:18}}><label style={S.lbl}>Contraseña</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go(e)} autoComplete="current-password" style={{...S.inp,width:"100%"}}/></div>
-          {err&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.20)",borderRadius:8,padding:"9px 13px",color:"#DC2626",fontSize:12,fontWeight:500,marginBottom:14}}>{err}</div>}
+          <ErrorMsg msg={err}/>
           <button type="submit" disabled={loading} style={{...S.btn,width:"100%",justifyContent:"center",height:42,fontSize:14,opacity:loading?0.7:1}}>{loading?"Ingresando...":"Ingresar"}</button>
         </form>
       </div>

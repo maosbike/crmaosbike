@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { ColorPicker } from './ColorPicker.jsx';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg } from '../ui.jsx';
 
 function catColor(c){return CAT_COLOR[c]||"#4B5563";}
 
@@ -237,7 +237,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
         </div>
 
         <div style={{padding:20}}>
-          {errMsg&&<div style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.20)',borderRadius:8,padding:'9px 13px',color:'#DC2626',fontSize:12,fontWeight:500,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>{errMsg}</span><button onClick={()=>setErrMsg('')} style={{background:'none',border:'none',color:'#DC2626',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px'}}>×</button></div>}
+          {errMsg&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><ErrorMsg msg={errMsg}/><button onClick={()=>setErrMsg('')} style={{background:'none',border:'none',color:'#DC2626',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px',marginLeft:8,flexShrink:0}}>×</button></div>}
           {/* Marca + categoría */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
             <div style={{fontSize:11,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{m.brand}</div>
@@ -477,42 +477,42 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
 
               <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Marca</div>
+                  <label style={S.lbl}>Marca</label>
                   <input value={form.brand} onChange={e=>setForm(f=>({...f,brand:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Modelo (código)</div>
+                  <label style={S.lbl}>Modelo (código)</label>
                   <input value={form.model} onChange={e=>setForm(f=>({...f,model:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
               </div>
               <div style={{marginBottom:10}}>
-                <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Nombre comercial</div>
+                <label style={S.lbl}>Nombre comercial</label>
                 <input value={form.commercial_name} onChange={e=>setForm(f=>({...f,commercial_name:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
               </div>
               <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría</div>
+                  <label style={S.lbl}>Categoría</label>
                   <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}} listId="cat-detail"/>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Cilindrada (cc)</div>
+                  <label style={S.lbl}>Cilindrada (cc)</label>
                   <input value={form.cc} onChange={e=>setForm(f=>({...f,cc:e.target.value}))} placeholder="ej: 150" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
               </div>
               <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Año</div>
+                  <label style={S.lbl}>Año</label>
                   <input value={form.year} onChange={e=>setForm(f=>({...f,year:e.target.value}))} placeholder="ej: 2025" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
                 <div/>
               </div>
               <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Precio lista ($)</div>
+                  <label style={S.lbl}>Precio lista ($)</label>
                   <input type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder="ej: 2990000" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Bono ($) — monto del descuento</div>
+                  <label style={S.lbl}>Bono ($) — monto del descuento</label>
                   <input type="number" value={form.bonus} onChange={e=>setForm(f=>({...f,bonus:e.target.value}))} placeholder="ej: 150000" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 </div>
               </div>
@@ -521,29 +521,29 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
                   <div style={{fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Condición del bono</div>
                   <div style={{marginBottom:8}}>
-                    <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>¿A qué aplica este bono?</div>
+                    <label style={S.lbl}>¿A qué aplica este bono?</label>
                     <select value={form.bono_condicion} onChange={e=>setForm(f=>({...f,bono_condicion:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}>
                       <option value="">Seleccionar condición...</option>
                       {Object.entries(BONO_CONDICION).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
                     </select>
                   </div>
                   <div style={{marginBottom:8}}>
-                    <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Tipo / nombre del bono <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></div>
+                    <label style={S.lbl}>Tipo / nombre del bono <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></label>
                     <input value={form.bono_tipo} onChange={e=>setForm(f=>({...f,bono_tipo:e.target.value}))} placeholder="ej: Bono mes, Bono aniversario..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                   </div>
                   <div>
-                    <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Requisitos adicionales <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></div>
+                    <label style={S.lbl}>Requisitos adicionales <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></label>
                     <textarea value={form.bono_requisitos} onChange={e=>setForm(f=>({...f,bono_requisitos:e.target.value}))} rows={2} placeholder="ej: Requiere firma de contrato antes del 30/04..." style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical",fontSize:12}}/>
                   </div>
                 </div>
               )}
               <div style={{marginBottom:10}}>
-                <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Descripción</div>
+                <label style={S.lbl}>Descripción</label>
                 <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={3} style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical"}} placeholder="Descripción comercial del modelo..."/>
               </div>
               {/* Ficha técnica — URL manual o subir PDF */}
               <div style={{marginBottom:10}}>
-                <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>URL ficha técnica (PDF o página)</div>
+                <label style={S.lbl}>URL ficha técnica (PDF o página)</label>
                 <input value={form.spec_url} onChange={e=>setForm(f=>({...f,spec_url:e.target.value}))} placeholder="https://..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 <div style={{marginTop:5,display:"flex",alignItems:"center",gap:8}}>
                   <label style={{fontSize:11,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 10px"}}>
@@ -645,39 +645,39 @@ function AddModelModal({onClose,onAdded,allCategories}){
         <form onSubmit={handleSubmit} style={{padding:20}}>
           <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
             <div>
-              <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Marca *</div>
+              <label style={S.lbl}>Marca *</label>
               <input required value={form.brand} onChange={e=>setForm(f=>({...f,brand:e.target.value}))} placeholder="ej: Honda" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
             <div>
-              <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Modelo (código) *</div>
+              <label style={S.lbl}>Modelo (código) *</label>
               <input required value={form.model} onChange={e=>setForm(f=>({...f,model:e.target.value}))} placeholder="ej: CB 300F" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
           </div>
           <div style={{marginBottom:10}}>
-            <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Nombre comercial</div>
+            <label style={S.lbl}>Nombre comercial</label>
             <input value={form.commercial_name} onChange={e=>setForm(f=>({...f,commercial_name:e.target.value}))} placeholder="Igual al modelo si se deja vacío" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
           </div>
           <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
             <div>
-              <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría</div>
+              <label style={S.lbl}>Categoría</label>
               <CategoryCombo value={form.category||""} onChange={v=>setForm(f=>({...f,category:v}))} allCategories={allCategories||Object.keys(CAT_COLOR)} style={{...S.inp,width:"100%",boxSizing:"border-box"}} listId="cat-add"/>
             </div>
             <div>
-              <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Cilindrada (cc)</div>
+              <label style={S.lbl}>Cilindrada (cc)</label>
               <input type="number" value={form.cc} onChange={e=>setForm(f=>({...f,cc:e.target.value}))} placeholder="ej: 300" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
             <div>
-              <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Año</div>
+              <label style={S.lbl}>Año</label>
               <input type="number" value={form.year} onChange={e=>setForm(f=>({...f,year:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
             <div>
-              <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Precio lista ($)</div>
+              <label style={S.lbl}>Precio lista ($)</label>
               <input type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder="0" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
             <div>
-              <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Bono ($)</div>
+              <label style={S.lbl}>Bono ($)</label>
               <input type="number" value={form.bonus} onChange={e=>setForm(f=>({...f,bonus:e.target.value}))} placeholder="0" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
             </div>
           </div>
@@ -686,33 +686,33 @@ function AddModelModal({onClose,onAdded,allCategories}){
               <div style={{fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Condición del bono</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>¿A qué aplica?</div>
+                  <label style={S.lbl}>¿A qué aplica?</label>
                   <select value={form.bono_condicion} onChange={e=>setForm(f=>({...f,bono_condicion:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box",fontSize:12}}>
                     <option value="">Seleccionar...</option>
                     {Object.entries(BONO_CONDICION).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
                   </select>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Tipo de bono</div>
+                  <label style={S.lbl}>Tipo de bono</label>
                   <input value={form.bono_tipo} onChange={e=>setForm(f=>({...f,bono_tipo:e.target.value}))} placeholder="ej: Bono mes..." style={{...S.inp,width:"100%",boxSizing:"border-box",fontSize:12}}/>
                 </div>
               </div>
               <div>
-                <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Requisitos</div>
+                <label style={S.lbl}>Requisitos</label>
                 <input value={form.bono_requisitos} onChange={e=>setForm(f=>({...f,bono_requisitos:e.target.value}))} placeholder="ej: Requiere contrato antes del 30/04..." style={{...S.inp,width:"100%",boxSizing:"border-box",fontSize:12}}/>
               </div>
             </div>
           )}
           <div style={{marginBottom:10}}>
-            <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Descripción</div>
+            <label style={S.lbl}>Descripción</label>
             <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={2} style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical"}} placeholder="Descripción comercial..."/>
           </div>
           <div style={{marginBottom:10}}>
-            <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>URL ficha técnica</div>
+            <label style={S.lbl}>URL ficha técnica</label>
             <input value={form.spec_url} onChange={e=>setForm(f=>({...f,spec_url:e.target.value}))} placeholder="https://..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
           </div>
           <div style={{marginBottom:16}}>
-            <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>Colores</div>
+            <label style={S.lbl}>Colores</label>
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
               {colors.map(c=>(
                 <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#F3F4F6",color:"#9CA3AF",border:"1px solid #D1D5DB",display:"flex",alignItems:"center",gap:4}}>
@@ -725,7 +725,7 @@ function AddModelModal({onClose,onAdded,allCategories}){
               <button type="button" onClick={addColor} style={{...S.btn,padding:"6px 12px",fontSize:12}}>+</button>
             </div>
           </div>
-          {errMsg&&<div style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.20)',borderRadius:8,padding:'9px 13px',color:'#DC2626',fontSize:12,fontWeight:500,marginBottom:12}}>{errMsg}</div>}
+          <ErrorMsg msg={errMsg}/>
           <div style={{display:"flex",gap:8}}>
             <button type="submit" disabled={saving} style={{...S.btn,flex:1}}>{saving?"Guardando…":"Agregar al catálogo"}</button>
             <button type="button" onClick={onClose} style={{...S.btnSec,flex:1}}>Cancelar</button>
@@ -739,40 +739,70 @@ function AddModelModal({onClose,onAdded,allCategories}){
 // Tarjeta de modelo (reutilizable)
 function ModelCard({m,onClick}){
   const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
-  const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":null);
   return(
     <div onClick={onClick}
-      style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:14,overflow:"hidden",cursor:"pointer",transition:"border-color 0.15s,box-shadow 0.15s"}}
-      onMouseEnter={e=>{e.currentTarget.style.borderColor="#F2810066";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)";}}
-      onMouseLeave={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.boxShadow="none";}}
+      style={{...S.card,padding:0,overflow:"hidden",cursor:"pointer",transition:"box-shadow 0.15s"}}
+      onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.10)"}
+      onMouseLeave={e=>e.currentTarget.style.boxShadow=S.card.boxShadow}
     >
-      <div style={{height:130,background:"#F9FAFB",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-        {m.image_url
-          ?<img src={m.image_url} alt={m.model} style={{maxWidth:"calc(100% - 20px)",maxHeight:"calc(100% - 16px)",width:"auto",height:"auto",display:"block",objectFit:"contain"}} loading="lazy"/>
-          :<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
-        }
-      </div>
-      <div style={{padding:"10px 12px 12px"}}>
-        <div style={{fontSize:14,fontWeight:700,lineHeight:1.2,marginBottom:3}}>{m.commercial_name||m.model}</div>
-        {specInfo&&<div style={{fontSize:10,color:"#6B7280"}}>{specInfo}{m.year?` · ${m.year}`:""}</div>}
+      {/* Imagen del modelo */}
+      {m.image_url
+        ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:140,objectFit:"cover",display:"block"}} loading="lazy"/>
+        :<div style={{width:"100%",height:140,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
+        </div>
+      }
+
+      {/* Info */}
+      <div style={{padding:"12px 14px"}}>
+        {/* Marca + Modelo */}
+        <div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:2,lineHeight:1.2}}>
+          {m.brand} {m.commercial_name||m.model}
+        </div>
+        {/* Año y categoría como badges */}
+        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+          {m.year&&(
+            <span style={{fontSize:10,fontWeight:600,color:"#4F46E5",background:"#EEF2FF",padding:"2px 6px",borderRadius:99}}>
+              {m.year}
+            </span>
+          )}
+          {m.category&&(
+            <span style={{fontSize:10,fontWeight:600,color:"#6B7280",background:"#F3F4F6",padding:"2px 6px",borderRadius:99}}>
+              {m.category}
+            </span>
+          )}
+          {m.cc&&(
+            <span style={{fontSize:10,fontWeight:600,color:"#6B7280",background:"#F3F4F6",padding:"2px 6px",borderRadius:99}}>
+              {m.cc}cc
+            </span>
+          )}
+        </div>
+        {/* Precio */}
         {m.price>0&&(
-          <div style={{marginTop:8,borderTop:"1px solid #F3F4F6",paddingTop:8}}>
-            <div style={{fontSize:15,fontWeight:800,color:"#F28100"}}>{fmt(m.price)}</div>
+          <div style={{marginBottom:colors.length>0?8:0}}>
+            <div style={{fontSize:15,fontWeight:800,color:"#374151"}}>{fmt(m.price)}</div>
             {m.bonus>0&&m.bonus<m.price&&(()=>{
               const cond=m.bono_condicion;
               const color=bonoCondColor(cond);
-              const label=cond&&cond!=="todo_medio_pago"?`⚠ ${bonoCondLabel(cond)}`:"Todo medio de pago";
-              return<div style={{fontSize:10,color}}>{m.bono_tipo||"Bono"} {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b><br/><span style={{fontSize:9,opacity:0.8}}>{label}</span></div>;
+              const label=cond&&cond!=="todo_medio_pago"?`${bonoCondLabel(cond)}`:"Todo medio de pago";
+              return<div style={{fontSize:10,color}}>{m.bono_tipo||"Bono"} {fmt(m.bonus)} → <b>{fmt(m.price-m.bonus)}</b></div>;
             })()}
           </div>
         )}
+        {/* Colores disponibles — swatches CSS */}
         {colors.length>0&&(
-          <div style={{marginTop:7,paddingTop:7,borderTop:"1px solid #F3F4F6"}}>
-            <div style={{fontSize:8,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>Colores</div>
-            <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
-              {colors.slice(0,6).map(c=><span key={c} style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"#F3F4F6",color:"#374151",fontWeight:500,border:"1px solid #E5E7EB"}}>{c}</span>)}
-              {colors.length>6&&<span style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:"#F3F4F6",color:"#6B7280",fontWeight:600}}>+{colors.length-6}</span>}
-            </div>
+          <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap",alignItems:"center"}}>
+            {colors.slice(0,6).map(c=>(
+              <div key={c} title={c} style={{
+                width:14,height:14,borderRadius:"50%",
+                background:colorNameToCss(c),
+                border:"1px solid rgba(0,0,0,0.1)",
+                flexShrink:0,
+              }}/>
+            ))}
+            {colors.length>6&&(
+              <span style={{fontSize:10,color:"#9CA3AF"}}>+{colors.length-6}</span>
+            )}
           </div>
         )}
       </div>
@@ -814,11 +844,11 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
       {/* Renombrar */}
       <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
         <div style={{flex:"0 0 180px"}}>
-          <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Categoría a renombrar</div>
+          <label style={S.lbl}>Categoría a renombrar</label>
           <CategoryCombo value={renameFrom} onChange={setRenameFrom} allCategories={allCategories} style={{...S.inp,width:"100%",boxSizing:"border-box"}} listId="cat-rename"/>
         </div>
         <div style={{flex:"0 0 180px"}}>
-          <div style={{fontSize:10,color:"#6B7280",marginBottom:3}}>Nuevo nombre</div>
+          <label style={S.lbl}>Nuevo nombre</label>
           <input value={renameTo} onChange={e=>setRenameTo(e.target.value)} placeholder="ej: Enduro" style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
         </div>
         <button onClick={handleRename} disabled={saving||!renameFrom||!renameTo.trim()}
@@ -826,7 +856,7 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
           {saving?"Guardando…":"Renombrar en todos los modelos"}
         </button>
       </div>
-      {errMsg&&<div style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.20)',borderRadius:8,padding:'9px 13px',color:'#DC2626',fontSize:12,fontWeight:500,marginTop:10}}>{errMsg}</div>}
+      {errMsg&&<div style={{marginTop:10}}><ErrorMsg msg={errMsg}/></div>}
       <div style={{fontSize:11,color:"#9CA3AF",marginTop:8}}>
         Renombrar actualiza la categoría en todos los modelos que la tengan asignada.
         Para crear una categoría nueva, asignala directamente al editar un modelo.
@@ -850,6 +880,9 @@ export function CatalogView({user}){
   const[search,setSearch]=useState("");
   const canEdit=user&&(user.role==="super_admin"||user.role==="admin_comercial");
   const canDelete=user&&user.role==="super_admin";
+  const isMobile=useIsMobile();
+  const isTablet=useIsMobile(1024);
+  const gridCols=isMobile?'1fr':isTablet?'repeat(2,1fr)':'repeat(auto-fill, minmax(220px,1fr))';
 
   useEffect(()=>{
     api.getModels().then(d=>setModels(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));
@@ -879,11 +912,16 @@ export function CatalogView({user}){
     const visibleBrands=brands.filter(b=>filteredModels.some(m=>m.brand===b));
     return(
       <div>
-        {successMsg&&<div style={{background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.25)',borderRadius:8,padding:'9px 13px',color:'#065F46',fontSize:12,fontWeight:500,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>{successMsg}</span><button onClick={()=>setSuccessMsg('')} style={{background:'none',border:'none',color:'#065F46',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px'}}>×</button></div>}
+        {successMsg&&(
+          <div style={{background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.25)',borderRadius:8,padding:'9px 13px',color:'#065F46',fontSize:12,fontWeight:500,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span>{successMsg}</span>
+            <button onClick={()=>setSuccessMsg('')} style={{background:'none',border:'none',color:'#065F46',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px'}}>×</button>
+          </div>
+        )}
         <ViewHeader
           preheader="Referencia · Catálogo"
           title="Catálogo"
-          subtitle={loading ? 'Cargando...' : `${models.length} modelos · ${brands.length} marcas`}
+          subtitle={loading ? undefined : `${models.length} modelos · ${brands.length} marcas`}
           actions={
             <>
               {canEdit && <button onClick={()=>setShowManageCats(v=>!v)} style={{...S.btn2,fontSize:12,padding:"6px 14px"}}>Categorías</button>}
@@ -892,54 +930,64 @@ export function CatalogView({user}){
           }
         />
 
-        {/* Panel gestión categorías */}
-        {canEdit&&showManageCats&&<ManageCategoriesPanel allCategories={allCategories} onRenamed={handleCategoryRenamed} onClose={()=>setShowManageCats(false)}/>}
+        {loading&&<Loader label="Cargando catálogo…"/>}
 
-        {/* Búsqueda global */}
-        <div style={{position:"relative",marginBottom:20,maxWidth:360}}>
-          <Ic.search size={14} color="#9CA3AF" style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)"}}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar en todo el catálogo..." style={{...S.inp,paddingLeft:34,width:"100%",boxSizing:"border-box"}}/>
-        </div>
+        {!loading&&(
+          <>
+            {/* Panel gestión categorías */}
+            {canEdit&&showManageCats&&<ManageCategoriesPanel allCategories={allCategories} onRenamed={handleCategoryRenamed} onClose={()=>setShowManageCats(false)}/>}
 
-        {/* Si hay búsqueda, mostrar resultados flat */}
-        {q?(
-          filteredModels.length===0?(
-            <div style={{textAlign:"center",padding:40,color:"#9CA3AF",fontSize:13}}>Sin resultados para "{search}"</div>
-          ):(
-            <div>
-              <div style={{fontSize:11,color:"#9CA3AF",marginBottom:12,fontWeight:600}}>{filteredModels.length} resultado{filteredModels.length!==1?"s":""}</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
-                {filteredModels.map(m=><ModelCard key={m.id} m={m} onClick={()=>setSelected(m)}/>)}
-              </div>
+            {/* Barra de filtros: búsqueda global */}
+            <div style={{display:'flex',alignItems:'center',gap:10,background:'#F9FAFB',border:'1px solid #E5E7EB',borderRadius:10,padding:'8px 12px',marginBottom:20}}>
+              <Ic.search size={14} color="#9CA3AF" style={{flexShrink:0}}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar marca, modelo..." style={{...S.inp,border:'none',background:'transparent',padding:0,outline:'none',flex:1}}/>
             </div>
-          )
-        ):(
-          /* Grid de marcas */
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
-            {visibleBrands.map(brand=>{
-              const bms=models.filter(m=>m.brand===brand);
-              const cats=[...new Set(bms.map(m=>m.category).filter(Boolean))].sort();
-              return(
-                <div key={brand} onClick={()=>{setActiveBrand(brand);setActiveCat(null);}}
-                  style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:16,padding:"20px 20px 16px",cursor:"pointer",transition:"box-shadow 0.15s,border-color 0.15s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#F28100";e.currentTarget.style.boxShadow="0 4px 18px rgba(242,129,0,0.12)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.boxShadow="none";}}
-                >
-                  <div style={{fontSize:18,fontWeight:900,color:"#111827",letterSpacing:"-0.5px",marginBottom:4}}>{brand}</div>
-                  <div style={{fontSize:12,color:"#9CA3AF",marginBottom:cats.length?12:0}}>{bms.length} modelo{bms.length!==1?"s":""}</div>
-                  {cats.length>0&&(
-                    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                      {cats.map(c=>(
-                        <span key={c} style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:catColor(c)+"18",color:catColor(c),fontWeight:600,border:`1px solid ${catColor(c)}30`}}>
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+
+            {/* Si hay búsqueda, mostrar resultados flat */}
+            {q?(
+              filteredModels.length===0?(
+                <Empty icon={Ic.search} title={`Sin resultados para "${search}"`} hint="Intenta con otra marca o nombre de modelo."/>
+              ):(
+                <div>
+                  <div style={{fontSize:11,color:"#9CA3AF",marginBottom:12,fontWeight:600}}>{filteredModels.length} resultado{filteredModels.length!==1?"s":""}</div>
+                  <div style={{display:"grid",gridTemplateColumns:gridCols,gap:12}}>
+                    {filteredModels.map(m=><ModelCard key={m.id} m={m} onClick={()=>setSelected(m)}/>)}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              )
+            ):(
+              /* Grid de marcas */
+              visibleBrands.length===0?(
+                <Empty icon={Ic.bike} title="Catálogo vacío" hint="Agrega el primer modelo para comenzar." action={canEdit&&<button onClick={()=>setShowAdd(true)} style={S.btn}>+ Agregar moto</button>}/>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:gridCols,gap:12}}>
+                  {visibleBrands.map(brand=>{
+                    const bms=models.filter(m=>m.brand===brand);
+                    const cats=[...new Set(bms.map(m=>m.category).filter(Boolean))].sort();
+                    return(
+                      <div key={brand} onClick={()=>{setActiveBrand(brand);setActiveCat(null);}}
+                        style={{...S.card,cursor:"pointer",transition:"box-shadow 0.15s,border-color 0.15s"}}
+                        onMouseEnter={e=>{e.currentTarget.style.borderColor="#F28100";e.currentTarget.style.boxShadow="0 4px 18px rgba(242,129,0,0.12)";}}
+                        onMouseLeave={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.boxShadow=S.card.boxShadow;}}
+                      >
+                        <div style={{fontSize:18,fontWeight:900,color:"#111827",letterSpacing:"-0.5px",marginBottom:4}}>{brand}</div>
+                        <div style={{fontSize:12,color:"#9CA3AF",marginBottom:cats.length?12:0}}>{bms.length} modelo{bms.length!==1?"s":""}</div>
+                        {cats.length>0&&(
+                          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                            {cats.map(c=>(
+                              <span key={c} style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:catColor(c)+"18",color:catColor(c),fontWeight:600,border:`1px solid ${catColor(c)}30`}}>
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+          </>
         )}
 
         {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={allCategories}/>}
@@ -1006,9 +1054,9 @@ export function CatalogView({user}){
       {(() => {
         const list=activeCat==="__sin_categoria"?uncategorized:shownModels;
         return list.length===0?(
-          <div style={{textAlign:"center",padding:40,color:"#9CA3AF",fontSize:13}}>Sin modelos en esta categoría</div>
+          <Empty icon={Ic.bike} title="Sin modelos en esta categoría" hint="Cambia el filtro o agrega un modelo nuevo."/>
         ):(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:gridCols,gap:12}}>
             {list.map(m=><ModelCard key={m.id} m={m} onClick={()=>setSelected(m)}/>)}
           </div>
         );
