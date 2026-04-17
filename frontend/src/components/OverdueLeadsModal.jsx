@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api';
-import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES, ChoiceChip } from '../ui.jsx';
+import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES, ChoiceChip, TICKET_STATUS, SRC, fD, ago } from '../ui.jsx';
 
 // OverdueLeadsModal — modal bloqueante de seguimiento obligatorio.
 // Se muestra cuando el vendedor entra al módulo de leads con leads atrasados.
@@ -10,8 +10,9 @@ import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES, ChoiceChip } from '../ui.jsx';
 //   overdueLeads  — array de leads con needs_attention=true, ya ordenados ASC por needs_attention_since
 //   onResolved(id) — callback cuando un lead queda resuelto
 //   onDone()       — callback cuando todos los leads están resueltos
+//   onViewLead(id) — callback para navegar a la ficha del lead (cierra el modal)
 
-export function OverdueLeadsModal({ overdueLeads, onResolved, onDone }) {
+export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead }) {
   const [idx, setIdx] = useState(0);
   const [fq, setFq] = useState({ status: '', note: '', nextStep: '', nextAt: '' });
   const [err, setErr] = useState('');
@@ -67,6 +68,27 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone }) {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Zona de contexto — helpers
+  const statusDef = TICKET_STATUS[lead.status] || null;
+  const phoneVal = lead.phone?.trim() || '';
+  const modelLabel = (lead.model_brand || lead.model_name)
+    ? [lead.model_brand, lead.model_name].filter(Boolean).join(' ')
+    : null;
+  const lastContactLabel = lead.lastContact ? ago(lead.lastContact) : null;
+  const nextFollowupLabel = lead.next_followup_at ? fD(lead.next_followup_at) : null;
+  const lastObs = lead.last_contact_entry?.note
+    || lead.last_contact_entry?.title
+    || lead.followup_note
+    || null;
+  const sellerName = [lead.seller_fn, lead.seller_ln].filter(Boolean).join(' ') || null;
+  const srcLabel = lead.source ? (SRC[lead.source] || lead.source) : null;
+
+  // Estilo compartido para filas de grilla de contexto
+  const ctxRowStyle = { display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12 };
+  const ctxLabelStyle = { color: '#9CA3AF', minWidth: 0, whiteSpace: 'nowrap' };
+  const ctxValStyle = { color: '#111827', fontWeight: 500, minWidth: 0 };
+  const ctxMissingStyle = { color: '#9CA3AF', fontStyle: 'italic' };
+
   return (
     <div
       style={{
@@ -86,7 +108,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone }) {
           background: '#FFFFFF',
           borderRadius: 16,
           width: '100%',
-          maxWidth: 480,
+          maxWidth: 540,
           maxHeight: '90vh',
           overflow: 'auto',
           boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -110,6 +132,124 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone }) {
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
             #{lead.num} · {lead.fn}{lead.ln ? ` ${lead.ln}` : ''}
           </div>
+        </div>
+
+        {/* Zona de contexto */}
+        <div
+          style={{
+            padding: '14px 22px',
+            background: '#F9FAFB',
+            borderBottom: '1px solid #E5E7EB',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          {/* Grilla 2 columnas: datos clave */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+
+            {/* Teléfono */}
+            <div style={ctxRowStyle}>
+              <span style={ctxLabelStyle}>Telefono</span>
+              {phoneVal
+                ? <span style={ctxValStyle}>{phoneVal}</span>
+                : <span style={ctxMissingStyle}>Sin telefono</span>
+              }
+            </div>
+
+            {/* Estado */}
+            <div style={ctxRowStyle}>
+              <span style={ctxLabelStyle}>Estado</span>
+              {statusDef
+                ? (
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: statusDef.c,
+                    background: `${statusDef.c}1F`,
+                    borderRadius: 12,
+                    padding: '2px 8px',
+                    lineHeight: '18px',
+                  }}>
+                    {statusDef.l}
+                  </span>
+                )
+                : <span style={ctxMissingStyle}>—</span>
+              }
+            </div>
+
+            {/* Modelo */}
+            <div style={ctxRowStyle}>
+              <span style={ctxLabelStyle}>Moto</span>
+              {modelLabel
+                ? <span style={ctxValStyle}>{modelLabel}</span>
+                : <span style={ctxMissingStyle}>Sin modelo asignado</span>
+              }
+            </div>
+
+            {/* Origen */}
+            <div style={ctxRowStyle}>
+              <span style={ctxLabelStyle}>Origen</span>
+              {srcLabel
+                ? <span style={ctxValStyle}>{srcLabel}</span>
+                : <span style={ctxMissingStyle}>—</span>
+              }
+            </div>
+
+            {/* Sucursal */}
+            {lead.branch_name && (
+              <div style={ctxRowStyle}>
+                <span style={ctxLabelStyle}>Sucursal</span>
+                <span style={ctxValStyle}>{lead.branch_name}</span>
+              </div>
+            )}
+
+            {/* Vendedor */}
+            {sellerName && (
+              <div style={ctxRowStyle}>
+                <span style={ctxLabelStyle}>Vendedor</span>
+                <span style={ctxValStyle}>{sellerName}</span>
+              </div>
+            )}
+
+          </div>
+
+          {/* Último contacto */}
+          <div style={ctxRowStyle}>
+            <span style={ctxLabelStyle}>Ultimo contacto</span>
+            {lastContactLabel
+              ? <span style={{ ...ctxValStyle, color: '#D97706' }}>{lastContactLabel}</span>
+              : <span style={ctxMissingStyle}>Sin contacto registrado</span>
+            }
+          </div>
+
+          {/* Próximo comprometido — solo si existe */}
+          {nextFollowupLabel && (
+            <div style={ctxRowStyle}>
+              <span style={ctxLabelStyle}>Prox. comprometido</span>
+              <span style={ctxValStyle}>{nextFollowupLabel}</span>
+            </div>
+          )}
+
+          {/* Última observación — solo si existe */}
+          {lastObs && (
+            <div style={{ fontSize: 12, color: '#374151' }}>
+              <div style={{ color: '#9CA3AF', marginBottom: 4, fontSize: 11 }}>Ultima observacion</div>
+              <div style={{
+                background: '#F3F4F6',
+                borderRadius: 6,
+                padding: '6px 10px',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                lineHeight: '1.5',
+                color: '#374151',
+              }}>
+                {lastObs}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Cuerpo del formulario */}
@@ -210,8 +350,26 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone }) {
             </div>
           )}
 
-          {/* Acción */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Footer — Ver ficha + Guardar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            {onViewLead && (
+              <button
+                onClick={() => onViewLead(lead.id)}
+                style={{
+                  background: 'none',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: 8,
+                  padding: '9px 16px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#374151',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Ver ficha completa
+              </button>
+            )}
             <button
               onClick={handleSubmit}
               disabled={saving}
@@ -222,6 +380,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone }) {
                 fontWeight: 700,
                 opacity: saving ? 0.6 : 1,
                 minWidth: 160,
+                marginLeft: onViewLead ? 0 : 'auto',
               }}
             >
               {saving

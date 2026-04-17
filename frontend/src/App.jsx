@@ -137,6 +137,10 @@ export default function App(){
     setShowOverdueModal(false);
     setOverdueResolved(new Set());
   };
+  const handleViewLead=(id)=>{
+    setShowOverdueModal(false);
+    nav('ticket',String(id));
+  };
 
   const PAGE_LABELS = {
     dashboard: 'Dashboard',
@@ -271,6 +275,7 @@ export default function App(){
           overdueLeads={overdueLeads}
           onResolved={handleOverdueResolved}
           onDone={handleOverdueDone}
+          onViewLead={handleViewLead}
         />
       )}
     </div>
