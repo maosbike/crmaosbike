@@ -164,9 +164,12 @@ export function PipelineView({leads,user,nav,updLead}){
                     </div>
                   )}
                   {/* Contenido */}
-                  <div style={{flex:1, padding:'12px 14px', minWidth:0}}>
+                  <div style={{flex:1, padding:'12px 14px', minWidth:0, overflow:'hidden'}}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:6, marginBottom:4}}>
-                      <span style={{fontSize:14, fontWeight:700, color:'#111827', lineHeight:1.3}}>
+                      <span style={{
+                        fontSize:14, fontWeight:700, color:'#111827', lineHeight:1.3,
+                        minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                      }}>
                         {l.fn} {l.ln || ''}
                       </span>
                       {l.priority === 'alta' && (
@@ -177,11 +180,17 @@ export function PipelineView({leads,user,nav,updLead}){
                         }}>URGENTE</span>
                       )}
                     </div>
-                    <div style={{fontSize:12, color:'#6B7280', marginBottom:4}}>
+                    <div style={{
+                      fontSize:12, color:'#6B7280', marginBottom:4,
+                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                    }}>
                       {m ? `${m.brand} ${m.model}`.trim() : <span style={{color:'#D1D5DB', fontStyle:'italic'}}>Sin moto</span>}
                     </div>
                     {m && m.price > 0 && (
-                      <div style={{fontSize:13, fontWeight:700, color:'#374151', letterSpacing:'-0.01em'}}>
+                      <div style={{
+                        fontSize:13, fontWeight:700, color:'#374151', letterSpacing:'-0.01em',
+                        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                      }}>
                         ${Number(m.price - m.bonus).toLocaleString('es-CL')}
                       </div>
                     )}
@@ -375,7 +384,6 @@ export function PipelineView({leads,user,nav,updLead}){
                         borderRadius:10,
                         border:'1px solid #E5E7EB',
                         borderLeft:`4px solid ${slaColor}`,
-                        overflow:'visible',
                         cursor:'grab',
                         transition:'box-shadow 0.12s',
                         display:'flex',
@@ -404,7 +412,7 @@ export function PipelineView({leads,user,nav,updLead}){
 
                       {/* Contenido */}
                       <div style={{
-                        flex:1, minWidth:0,
+                        flex:1, minWidth:0, overflow:'hidden',
                         padding:'14px 16px',
                         display:'flex', flexDirection:'column', gap:3,
                         justifyContent:'space-between',
@@ -417,7 +425,7 @@ export function PipelineView({leads,user,nav,updLead}){
                           <span style={{
                             fontSize:14, fontWeight:700, color:'#111827',
                             lineHeight:1.35,
-                            wordBreak:'break-word',
+                            minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                           }}>
                             {l.fn} {l.ln || ''}
                           </span>
@@ -433,7 +441,10 @@ export function PipelineView({leads,user,nav,updLead}){
                         </div>
 
                         {/* Modelo */}
-                        <div style={{fontSize:12, color:'#6B7280', lineHeight:1.3}}>
+                        <div style={{
+                          fontSize:12, color:'#6B7280', lineHeight:1.3,
+                          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                        }}>
                           {m
                             ? `${m.brand || ''} ${m.model || ''}`.trim() || 'Sin modelo'
                             : (
@@ -455,6 +466,7 @@ export function PipelineView({leads,user,nav,updLead}){
                           <div style={{
                             fontSize:13, fontWeight:700, color:'#374151',
                             letterSpacing:'-0.01em', marginTop:2,
+                            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                           }}>
                             ${Number(m.price - m.bonus).toLocaleString('es-CL')}
                           </div>
