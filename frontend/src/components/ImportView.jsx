@@ -190,7 +190,7 @@ export function ImportView() {
                       ['color_pref','No',  'Color de moto preferido'],
                     ].map(([col,req,desc])=>(
                       <tr key={col} style={{borderBottom:'1px solid #FFFFFF'}}>
-                        <td style={{padding:'5px 10px',fontFamily:'monospace',color:'#F28100'}}>{col}</td>
+                        <td style={{padding:'5px 10px',fontFamily:'inherit',color:'#F28100'}}>{col}</td>
                         <td style={{padding:'5px 10px',color:req.includes('Sí')?'#10B981':'#4B5563',fontWeight:req.includes('Sí')?600:400}}>{req}</td>
                         <td style={{padding:'5px 10px',color:'#6B7280'}}>{desc}</td>
                       </tr>

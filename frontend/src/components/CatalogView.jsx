@@ -381,7 +381,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                         <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
                           {css&&<span style={{width:14,height:14,borderRadius:7,background:css,border:`1.5px solid ${light?"#D1D5DB":"rgba(0,0,0,0.15)"}`,display:"inline-block",flexShrink:0}}/>}
                           <span style={{fontSize:13,fontWeight:700,color:"#111827"}}>{activeColor}</span>
-                          {hexVal&&<span style={{fontSize:10,color:"#9CA3AF",fontFamily:"monospace"}}>{hexVal}</span>}
+                          {hexVal&&<span style={{fontSize:10,color:"#9CA3AF",fontFamily:'inherit'}}>{hexVal}</span>}
                         </div>
                         <div style={{fontSize:10,color:"#9CA3AF",marginBottom:canEdit?8:0}}>
                           {photoUrl?"Foto específica de este color":"Sin foto — muestra la imagen general del modelo"}

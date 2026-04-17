@@ -592,7 +592,7 @@ export function AdminView() {
             </div>
             <p style={{ fontWeight:600,marginBottom:4 }}>{resetInfo.name}</p>
             <p style={{ color:'#6B7280',fontSize:12,marginBottom:12 }}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
-            <div style={{ background:'#F9FAFB',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'monospace',fontSize:18,fontWeight:700,letterSpacing:2,color:'#F28100' }}>
+            <div style={{ background:'#F9FAFB',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'inherit',fontSize:18,fontWeight:700,letterSpacing:2,color:'#F28100' }}>
               {resetInfo.temp}
             </div>
             <p style={{ color:'#6B7280',fontSize:11,marginBottom:16 }}>Comparte esta contraseña con el usuario de forma segura.</p>

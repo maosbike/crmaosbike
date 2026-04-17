@@ -1000,7 +1000,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     </div>
                     {/* Fila 3: Chasis en mono */}
                     {x.chassis && (
-                      <div style={{ fontSize:11, color:'#9CA3AF', fontFamily:"'SF Mono',Consolas,monospace" }}>
+                      <div style={{ fontSize:11, color:'#9CA3AF', fontFamily:'inherit' }}>
                         {x.chassis}
                       </div>
                     )}
@@ -1125,7 +1125,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         <div style={{ fontSize:12, fontWeight:700, color:'#4F46E5' }}>Trazabilidad de la unidad</div>
                         <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>
                           {x.brand} {x.model}{x.year?` · ${x.year}`:''} · Chasis{' '}
-                          <span style={{ fontFamily:"'SF Mono',Consolas,monospace", fontWeight:600, color:'#4F46E5' }}>{x.chassis}</span>
+                          <span style={{ fontFamily:'inherit', fontWeight:600, color:'#4F46E5' }}>{x.chassis}</span>
                         </div>
                       </div>
                       <button onClick={()=>toggleHist(x.id)}
@@ -1247,7 +1247,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 const cc = cp?.hex || getColorCss(eForm.color);
                 return <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5 }}>
                   <span style={{ width:20,height:14,borderRadius:3,background:cc||'#E5E7EB',border:'1px solid #D1D5DB',display:'inline-block'}}/>
-                  {cc&&<span style={{ fontSize:10,color:'#9CA3AF',fontFamily:'monospace' }}>{cc}</span>}
+                  {cc&&<span style={{ fontSize:10,color:'#9CA3AF',fontFamily:'inherit' }}>{cc}</span>}
                 </div>;
               })()}
             </div>
@@ -1478,8 +1478,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           <td style={{ padding:'5px 8px',fontWeight:600 }}>{r.brand||'-'}</td>
                           <td style={{ padding:'5px 8px' }}>{r.model||'-'}</td>
                           <td style={{ padding:'5px 8px' }}>{r.color||'-'}</td>
-                          <td style={{ padding:'5px 8px',fontFamily:"'SF Mono',Consolas,monospace",fontSize:10 }}>{r.chassis||'-'}</td>
-                          <td style={{ padding:'5px 8px',fontFamily:"'SF Mono',Consolas,monospace",fontSize:10 }}>{r.motor_num||'-'}</td>
+                          <td style={{ padding:'5px 8px',fontFamily:'inherit',fontSize:10 }}>{r.chassis||'-'}</td>
+                          <td style={{ padding:'5px 8px',fontFamily:'inherit',fontSize:10 }}>{r.motor_num||'-'}</td>
                           <td style={{ padding:'5px 8px' }}>{r.status}</td>
                           <td style={{ padding:'5px 8px',color:ic,fontSize:10,fontWeight:600 }}>
                             {r._status==='ok'?'Nueva':r._status==='warning'?`Incompleta · ${r._warnings?.join(', ')}`:r._status==='duplicate'?'Ya existe':r._errors?.join(', ')}

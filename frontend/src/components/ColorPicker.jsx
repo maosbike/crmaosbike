@@ -35,7 +35,7 @@ export function ColorPicker({ value = '#111827', onChange }) {
           style={{ width:28, height:28, padding:2, border:'1px solid #E5E7EB', borderRadius:6, cursor:'pointer', background:'#ffffff' }} />
         <input value={hex} onChange={e=>handleText(e.target.value)}
           placeholder="#000000" maxLength={7}
-          style={{ width:82, padding:'3px 7px', border:'1px solid #E5E7EB', borderRadius:6, fontSize:12, fontFamily:'monospace', color:'#111827' }} />
+          style={{ width:82, padding:'3px 7px', border:'1px solid #E5E7EB', borderRadius:6, fontSize:12, fontFamily:'inherit', color:'#111827' }} />
         {'EyeDropper' in window && (
           <button type="button" onClick={pickScreen}
             title="Cuentagotas — toma un color de cualquier parte de la pantalla"

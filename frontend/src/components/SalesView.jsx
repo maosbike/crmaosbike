@@ -1903,7 +1903,7 @@ export function SalesView({ user, realBranches }) {
                     <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280',
                       background: '#F3F4F6', padding: '1px 6px', borderRadius: 4,
                       border: '1px solid #E5E7EB', letterSpacing: '0.03em',
-                      fontFamily: "'SF Mono',Consolas,monospace" }}>
+                      fontFamily: 'inherit' }}>
                       {s.chassis}
                     </span>
                   </div>
