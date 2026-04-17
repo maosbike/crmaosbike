@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fD } from '../ui.jsx';
+import { Ic, S, Modal, Field, fD, ViewHeader, Loader } from '../ui.jsx';
 
 const EVENT_TYPES={
   follow_up:'Seguimiento',call:'Llamada',meeting:'Reunión',
@@ -166,21 +166,21 @@ export function CalendarView({user,nav}){
   return(
     <div>
       {/* Header */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:10}}>
-        <div>
-          <h1 style={{fontSize:18,fontWeight:700,margin:0}}>Calendario</h1>
-          <p style={{color:'#6B7280',fontSize:12,margin:'2px 0 0'}}>{events.length} eventos este mes</p>
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-          <button onClick={()=>setDate(new Date(yr,mo-1,1))} style={{...S.btn2,padding:'6px 14px'}}>←</button>
-          <span style={{fontWeight:700,fontSize:15,minWidth:160,textAlign:'center'}}>{MESES[mo]} {yr}</span>
-          <button onClick={()=>setDate(new Date(yr,mo+1,1))} style={{...S.btn2,padding:'6px 14px'}}>→</button>
-          <button onClick={()=>openNew()} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12}}>
-            <Ic.plus size={14}/>Nuevo evento
-          </button>
-        </div>
-      </div>
-
+      <ViewHeader
+        title="Calendario"
+        subtitle={`${events.length} eventos este mes`}
+        size="md"
+        actions={
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            <button onClick={()=>setDate(new Date(yr,mo-1,1))} style={{...S.btn2,padding:'6px 14px'}}>←</button>
+            <span style={{fontWeight:700,fontSize:15,minWidth:160,textAlign:'center'}}>{MESES[mo]} {yr}</span>
+            <button onClick={()=>setDate(new Date(yr,mo+1,1))} style={{...S.btn2,padding:'6px 14px'}}>→</button>
+            <button onClick={()=>openNew()} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12}}>
+              <Ic.plus size={14}/>Nuevo evento
+            </button>
+          </div>
+        }
+      />
       {/* Leyenda */}
       <div style={{display:'flex',gap:14,marginBottom:12,flexWrap:'wrap'}}>
         {[
@@ -203,7 +203,7 @@ export function CalendarView({user,nav}){
           {DIAS.map(d=><div key={d} style={{padding:'9px 4px',textAlign:'center',fontSize:10,fontWeight:600,color:'#6B7280',textTransform:'uppercase'}}>{d}</div>)}
         </div>
         {loading
-          ?<div style={{padding:48,textAlign:'center',color:'#6B7280',fontSize:12}}>Cargando eventos...</div>
+          ?<Loader label="Cargando eventos…" />
           :<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
             {cells.map((day,i)=>{
               const evs=eventsForDay(day);

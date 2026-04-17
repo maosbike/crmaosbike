@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, useIsMobile } from '../ui.jsx';
 
 // ─── Datos de configuración ────────────────────────────────────────────────────
 
@@ -106,14 +106,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const isAdmin      = hasRole(user, ...ROLE_ADMIN_WRITE);
   const isSuperAdmin = hasRole(user, ROLES.SUPER);
 
-  // Mobile detection — 768px alineado con responsive.css (≤767px es mobile).
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  // Mobile detection — usa hook centralizado de ui.jsx (alineado con responsive.css ≤767px).
+  const isMobile = useIsMobile();
   const [expandedCards, setExpandedCards] = useState(new Set());
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
   // Banner de error de recarga — cuando la sincronización con el backend falla.
   const [reloadErr, setReloadErr] = useState('');
   const toggleExpand = id => setExpandedCards(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -1209,7 +1204,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           LIGHTBOX
       ══════════════════════════════════════════════════════════ */}
       {viewPhoto && (
-        <div onClick={()=>setViewPhoto(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.78)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:70,cursor:'pointer',backdropFilter:'blur(4px)' }}>
+        <div onClick={()=>setViewPhoto(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.78)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:500,cursor:'pointer',backdropFilter:'blur(4px)' }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:'#FFFFFF',borderRadius:16,padding:20,maxWidth:600,width:'90%',boxShadow:'0 32px 80px rgba(0,0,0,0.35)' }}>
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14 }}>
               <span style={{ fontSize:14,fontWeight:700 }}>{viewPhoto.title}</span>
@@ -1555,7 +1550,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {/* ── Bottom sheet: cámara o galería (solo mobile) ── */}
       {showPhotoPicker && (
         <div onClick={()=>setShowPhotoPicker(false)}
-          style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:9999,display:'flex',flexDirection:'column',justifyContent:'flex-end' }}>
+          style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1001,display:'flex',flexDirection:'column',justifyContent:'flex-end' }}>
           <div onClick={e=>e.stopPropagation()}
             style={{ background:'#ffffff',borderRadius:'18px 18px 0 0',padding:'12px 16px 32px' }}>
             <div style={{ width:36,height:4,borderRadius:2,background:'#D1D5DB',margin:'0 auto 18px' }}/>

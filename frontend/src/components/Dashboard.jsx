@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader } from '../ui.jsx';
 
 export function Dashboard({leads,inv,user,nav,branches=[]}){
   const[stats,setStats]=useState(null);
@@ -14,7 +14,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
   const tareasHoy=stats?.recordatorios_hoy||stats?.tareas_hoy||stats?.reminders_today||[];
   return(
     <div>
-      <div style={{marginBottom:18}}><h1 style={{fontSize:18,fontWeight:700,margin:0}}>{/a$/i.test((user.fn||'').trim())?'Bienvenida':'Bienvenido'}, {user.fn}</h1><p style={{color:"#6B7280",fontSize:12,margin:"2px 0 0"}}>{user.branchName||"Todas las sucursales"}</p></div>
+      <ViewHeader title={`${/a$/i.test((user.fn||'').trim())?'Bienvenida':'Bienvenido'}, ${user.fn}`} subtitle={user.branchName||"Todas las sucursales"} size="md" />
 
       {stats&&<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:14}}>
@@ -46,7 +46,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
       </>}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",gap:10,marginBottom:18}}>
-        <Stat icon={Ic.ticket} ic="#3B82F6" ib="rgba(59,130,246,0.1)" label="Tickets Activos" val={active.length} sub={`${ganados.length} ganados`}/>
+        <Stat icon={Ic.ticket} ic="#3B82F6" ib="rgba(59,130,246,0.1)" label="Leads Activos" val={active.length} sub={`${ganados.length} ganados`}/>
         <Stat icon={Ic.target} ic="#10B981" ib="rgba(16,185,129,0.1)" label="Ganados" val={ganados.length} sub={`${leads.length>0?((ganados.length/leads.length)*100).toFixed(0):0}% conversión`} sc="#10B981"/>
         <Stat icon={Ic.box} ic="#8B5CF6" ib="rgba(139,92,246,0.1)" label="Stock Disponible" val={avail} sub={`${inv.length} total`}/>
         <Stat icon={Ic.alert} ic="#EF4444" ib="rgba(239,68,68,0.1)" label="Perdidos" val={leads.filter(l=>l.status==="perdido").length} al={leads.filter(l=>l.status==="perdido").length>0}/>
@@ -55,7 +55,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
         <div style={S.card}><h3 style={{fontSize:13,fontWeight:600,margin:"0 0 10px"}}>Pipeline</h3><div style={{display:"flex",gap:4,marginBottom:4}}>{pipe.map((d,i)=><div key={i} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700}}>{d.count}</div>)}</div><div style={{display:"flex",gap:4,alignItems:"flex-end",height:88,overflow:"hidden"}}>{pipe.map((d,i)=>{const maxH=Math.max(...pipe.map(x=>x.count),1);const barH=Math.max(Math.round((d.count/maxH)*76),d.count>0?4:2);return<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><div style={{width:"100%",height:barH,background:d.color,borderRadius:4,opacity:0.8}}/><span style={{fontSize:8,color:"#6B7280",textAlign:"center",lineHeight:1.1}}>{d.name}</span></div>})}</div></div>
         <div style={S.card}><h3 style={{fontSize:13,fontWeight:600,margin:"0 0 14px"}}>Inventario por Sucursal</h3>{branches.map(b=><div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #F3F4F6",fontSize:12}}><span style={{color:"#6B7280"}}>{b.name}</span><span style={{fontWeight:700}}>{inv.filter(x=>x.branch_id===b.id&&x.status==="disponible").length} disp.</span></div>)}</div>
       </div>
-      <div style={S.card}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><h3 style={{fontSize:13,fontWeight:600,margin:0}}>Tickets Recientes</h3><button onClick={()=>nav("leads")} style={{...S.gh,fontSize:11,color:"#F28100"}}>Ver todos →</button></div>{leads.slice(0,6).map(l=>{const motoBrand=l.model_brand||'';const motoModel=l.model_name||'';return<div key={l.id} onClick={()=>nav("ticket",l.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.fn} {l.ln}</div><div style={{fontSize:11,color:"#6B7280"}}>{motoBrand&&motoModel?`${motoBrand} ${motoModel} · `:`${motoBrand||motoModel||'Sin moto'} · `}{l.num}</div></div><PBdg p={l.priority}/><TBdg s={l.status}/></div>;})}</div>
+      <div style={S.card}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><h3 style={{fontSize:13,fontWeight:600,margin:0}}>Leads Recientes</h3><button onClick={()=>nav("leads")} style={{...S.gh,fontSize:11,color:"#F28100"}}>Ver todos →</button></div>{leads.slice(0,6).map(l=>{const motoBrand=l.model_brand||'';const motoModel=l.model_name||'';return<div key={l.id} onClick={()=>nav("ticket",l.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 6px",borderRadius:8,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{l.fn} {l.ln}</div><div style={{fontSize:11,color:"#6B7280"}}>{motoBrand&&motoModel?`${motoBrand} ${motoModel} · `:`${motoBrand||motoModel||'Sin moto'} · `}{l.num}</div></div><PBdg p={l.priority}/><TBdg s={l.status}/></div>;})}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PIPELINE_STAGES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile, ViewHeader, Empty } from '../ui.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 export function PipelineView({leads,user,nav,updLead}){
@@ -57,7 +57,7 @@ export function PipelineView({leads,user,nav,updLead}){
     const sl=pLeads.filter(l=>l.status===mobStage);
     return (
       <div>
-        <h1 style={{fontSize:17,fontWeight:700,margin:"0 0 10px"}}>Pipeline</h1>
+        <ViewHeader title="Pipeline" subtitle={hasRole(user, ROLES.VEND)?"Mis fichas":undefined} size="md" />
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
           <select value={mobStage} onChange={e=>setMobStage(e.target.value)}
             style={{flex:1,height:40,borderRadius:8,border:"1px solid #D1D5DB",padding:"0 10px",fontSize:14,background:"#F9FAFB",color:"#111827",fontFamily:"inherit"}}>
@@ -67,10 +67,10 @@ export function PipelineView({leads,user,nav,updLead}){
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
           <span style={{width:8,height:8,borderRadius:"50%",background:sc?.c}}/>
           <span style={{fontSize:12,fontWeight:700,color:sc?.c}}>{sc?.l}</span>
-          <span style={{fontSize:11,color:"#6B7280"}}>· {sl.length} ticket{sl.length!==1?"s":""}</span>
+          <span style={{fontSize:11,color:"#6B7280"}}>· {sl.length} ficha{sl.length!==1?"s":""}</span>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {sl.length===0 && <div style={{padding:30,textAlign:"center",color:"#9CA3AF",fontSize:12}}>Sin tickets en este estado</div>}
+          {sl.length===0 && <Empty title="Sin fichas en este estado" />}
           {sl.map(l=>{
             const sla=getSlaInfo(l);
             return (
@@ -116,7 +116,7 @@ export function PipelineView({leads,user,nav,updLead}){
 
   return(
     <div>
-      <h1 style={{fontSize:18,fontWeight:700,margin:"0 0 14px"}}>Pipeline {hasRole(user, ROLES.VEND)&&<span style={{fontSize:13,fontWeight:400,color:"#6B7280"}}>· Mis tickets</span>}</h1>
+      <ViewHeader title="Pipeline" subtitle={hasRole(user, ROLES.VEND)?"Mis fichas":undefined} size="md" />
       <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:14}}>
         {stages.map(stage=>{
           const sc=TICKET_STATUS[stage],sl=pLeads.filter(l=>l.status===stage);
@@ -147,7 +147,7 @@ export function PipelineView({leads,user,nav,updLead}){
                     </div>
                   );
                 })}
-                {sl.length===0&&<div style={{padding:16,textAlign:"center",color:"#6B7280",fontSize:11}}>Sin tickets</div>}
+                {sl.length===0&&<Empty title="Sin fichas en este estado" />}
               </div>
             </div>
           );

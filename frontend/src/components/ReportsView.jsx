@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
-import { S, TICKET_STATUS, FIN_STATUS, fmt, ViewHeader } from '../ui.jsx';
+import { S, TICKET_STATUS, FIN_STATUS, fmt, ViewHeader, Loader } from '../ui.jsx';
 
 const TABS = ['General','Marca','Modelo','Sucursal','Vendedor','Financiamiento','Color','Estado','Tiempo'];
 
@@ -38,12 +38,14 @@ function Sparkline({ data, width=320, height=60 }) {
   const mx = Math.max(...vals, 1);
   const mn = Math.min(...vals, 0);
   const range = mx - mn || 1;
-  const pts = vals.map((v, i) => `${(i/(vals.length-1))*width},${height - ((v-mn)/range)*height}`).join(' ');
-  return <svg width={width} height={height+20} style={{ display:'block' }}>
+  // Usa viewBox para que el SVG sea responsive dentro del contenedor.
+  const VW = 320; // coordenadas internas fijas
+  const pts = vals.map((v, i) => `${(i/(vals.length-1))*VW},${height - ((v-mn)/range)*height}`).join(' ');
+  return <svg viewBox={`0 0 ${VW} ${height+20}`} width="100%" style={{ display:'block', maxWidth: VW }}>
     <polyline points={pts} fill="none" stroke="#F28100" strokeWidth="2"/>
-    {vals.map((v,i) => <circle key={i} cx={(i/(vals.length-1))*width} cy={height - ((v-mn)/range)*height} r="2.5" fill="#F28100"/>)}
+    {vals.map((v,i) => <circle key={i} cx={(i/(vals.length-1))*VW} cy={height - ((v-mn)/range)*height} r="2.5" fill="#F28100"/>)}
     <text x="0" y={height+14} fill="#9CA3AF" fontSize="9">{data[0]?.label}</text>
-    <text x={width} y={height+14} fill="#9CA3AF" fontSize="9" textAnchor="end">{data[data.length-1]?.label}</text>
+    <text x={VW} y={height+14} fill="#9CA3AF" fontSize="9" textAnchor="end">{data[data.length-1]?.label}</text>
   </svg>;
 }
 
@@ -101,7 +103,7 @@ export function ReportsView({ branches = [] }) {
     loadData(nf);
   };
 
-  if (loading && !data) return <div style={{ padding:20, color:'#6B7280' }}>Cargando reportes...</div>;
+  if (loading && !data) return <Loader label="Cargando reportes…" />;
   if (!data) return <div style={{ padding:20, color:'#6B7280' }}>Error cargando reportes</div>;
 
   const k = data.kpi;
@@ -156,8 +158,8 @@ export function ReportsView({ branches = [] }) {
     </div>
 
     {/* ── Tabs ── */}
-    <div style={{ display:'flex', gap:4, marginBottom:14, flexWrap:'wrap' }}>
-      {TABS.map(t => <button key={t} onClick={()=>setTab(t)} style={btnF(tab===t)}>{t}</button>)}
+    <div style={{ display:'flex', gap:4, marginBottom:14, overflowX:'auto', WebkitOverflowScrolling:'touch', flexWrap:'nowrap', paddingBottom:2 }}>
+      {TABS.map(t => <button key={t} onClick={()=>setTab(t)} style={{...btnF(tab===t),flexShrink:0}}>{t}</button>)}
     </div>
 
     {/* ── Tab content ── */}

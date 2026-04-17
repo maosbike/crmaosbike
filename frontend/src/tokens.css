@@ -161,4 +161,35 @@
   --transition-fast:   120ms ease;
   --transition-base:   200ms ease;
   --transition-slow:   300ms ease;
+
+  /* ─── Spacing: valores intermedios necesarios ──────────────── */
+  --space-2_5: 10px;
+  --space-3_5: 14px;
+  --space-4_5: 18px;
+  --space-5_5: 22px;
+
+  /* ─── Color · Indigo (trazabilidad, año, historial) ────────── */
+  --indigo:        #4F46E5;
+  --indigo-strong: #6366F1;
+  --indigo-soft:   #EEF2FF;
+  --indigo-muted:  #C7D2FE;
+  --indigo-hover:  #A5B4FC;
+
+  /* ─── Color · Warning SLA (alias explícito) ─────────────────── */
+  --sla-warning: var(--warning);
+
+  /* ─── Overlay: niveles adicionales ──────────────────────────── */
+  --scrim-strong: rgba(0, 0, 0, 0.60);
+  --scrim-heavy:  rgba(0, 0, 0, 0.75);
+
+  /* ─── Z-index: capa extendida ────────────────────────────────── */
+  --z-overlay:     50;
+  --z-overlay-ui:  51;
+  --z-modal-above: 500;
+  --z-modal-top:   1002;
+  --z-blocking:    2000;
+
+  /* ─── Tipografía: peso y tamaño adicional ────────────────────── */
+  --fw-black: 900;
+  --fs-2xs:   9px;
 }

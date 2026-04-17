@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, Loader } from '../ui.jsx';
 
 export function RemindersTab({ticketId,user}){
   const[reminders,setReminders]=useState([]);
@@ -23,7 +23,7 @@ export function RemindersTab({ticketId,user}){
   const complete=async(id)=>{try{await api.completeReminder(id);setReminders(p=>p.map(r=>r.id===id?{...r,status:"completed"}:r));}catch(ex){alert('No se pudo marcar como completado: '+(ex.message||'Error'));}};
   const del=async(id)=>{if(!confirm("¿Eliminar recordatorio?"))return;try{await api.deleteReminder(id);setReminders(p=>p.filter(r=>r.id!==id));}catch(ex){alert('No se pudo eliminar el recordatorio: '+(ex.message||'Error'));}};
 
-  if(loading)return<div style={{padding:20,textAlign:"center",color:"#6B7280",fontSize:12}}>Cargando...</div>;
+  if(loading)return<Loader label="Cargando recordatorios…" />;
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>

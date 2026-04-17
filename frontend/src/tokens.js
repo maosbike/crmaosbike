@@ -75,10 +75,19 @@ export const T = {
     overlay4:       'rgba(0, 0, 0, 0.30)',
     overlay5:       'rgba(0, 0, 0, 0.55)',
     scrim:          'rgba(0, 0, 0, 0.45)',
+    scrimStrong:    'rgba(0, 0, 0, 0.60)',
+    scrimHeavy:     'rgba(0, 0, 0, 0.75)',
 
     whiteSoft:      'rgba(255, 255, 255, 0.10)',
     whiteMuted:     'rgba(255, 255, 255, 0.40)',
     whiteStrong:    'rgba(255, 255, 255, 0.90)',
+
+    // Indigo (trazabilidad, año, historial)
+    indigo:         '#4F46E5',
+    indigoStrong:   '#6366F1',
+    indigoSoft:     '#EEF2FF',
+    indigoMuted:    '#C7D2FE',
+    indigoHover:    '#A5B4FC',
   },
 
   // Spacing (base-4). Valores en px (number) para usar directo en inline styles.
@@ -88,9 +97,13 @@ export const T = {
     1:   4,
     1.5: 6,
     2:   8,
+    2.5: 10,
     3:  12,
+    3.5: 14,
     4:  16,
+    4.5: 18,
     5:  20,
+    5.5: 22,
     6:  24,
     8:  32,
     10: 40,
@@ -109,6 +122,7 @@ export const T = {
   },
 
   fs: {
+    '2xs':  9,
     xxs:  10,
     xs:   11,
     sm:   12,
@@ -126,6 +140,7 @@ export const T = {
     semi:    600,
     bold:    700,
     xbold:   800,
+    black:   900,
   },
 
   lh: {
@@ -161,6 +176,11 @@ export const T = {
     drawer:    89,
     header:    90,
     toast:    100,
+    overlay:   50,
+    overlayUi: 51,
+    modalAbove:500,
+    modalTop: 1002,
+    blocking: 2000,
   },
 
   transition: {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, ROLES as ROLE_KEYS, ViewHeader } from '../ui.jsx';
+import { Ic, S, Modal, Field, Bdg, Empty, Loader, ROLES as ROLE_KEYS, ViewHeader } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -31,19 +31,6 @@ const sectionLbl = {
 };
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
-
-function RoleBadge({ role }) {
-  const r = ROLES.find(x => x.v === role) || { l: role, c: '#6B7280' };
-  return (
-    <span style={{
-      fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:20,
-      background: r.c+'18', color: r.c, border:`1px solid ${r.c}30`,
-      whiteSpace:'nowrap',
-    }}>
-      {r.l}
-    </span>
-  );
-}
 
 function ActiveToggle({ value, onChange }) {
   return (
@@ -204,11 +191,11 @@ export function AdminView() {
   };
 
   const handleReset = async u => {
-    if (!confirm(`¿Resetear contraseña de ${u.first_name} ${u.last_name}?\n\nSe generará una contraseña temporal y el usuario deberá cambiarla al ingresar.`)) return;
+    if (!confirm(`¿Restablecer contraseña de ${u.first_name} ${u.last_name}?\n\nSe generará una contraseña temporal y el usuario deberá cambiarla al ingresar.`)) return;
     try {
       const r = await api.resetPassword(u.id);
       setResetInfo({ name:`${u.first_name} ${u.last_name}`, temp: r.temp_password });
-    } catch(ex) { alert(ex.message || 'Error al resetear contraseña'); }
+    } catch(ex) { alert(ex.message || 'Error al restablecer contraseña'); }
   };
 
   // ── Handlers existentes ──────────────────────────────────────────────────────
@@ -286,9 +273,9 @@ export function AdminView() {
           <span style={{ color:'#9CA3AF', fontWeight:400, fontSize:12 }}>({users.length})</span>
         </h3>
         {loading
-          ? <div style={{ color:'#6B7280', fontSize:12, padding:8 }}>Cargando...</div>
+          ? <Loader label="Cargando usuarios…" />
           : users.length === 0
-            ? <div style={{ color:'#9CA3AF', fontSize:12, padding:'12px 0' }}>Sin usuarios registrados.</div>
+            ? <Empty title="Sin usuarios" hint="Usa «Nuevo usuario» para agregar uno." />
             : (
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -329,7 +316,7 @@ export function AdminView() {
                       </td>
                       {/* Rol */}
                       <td style={{ padding:'11px 10px' }}>
-                        <RoleBadge role={u.role}/>
+                        <Bdg l={(ROLES.find(x=>x.v===u.role)||{l:u.role,c:'#6B7280'}).l} c={(ROLES.find(x=>x.v===u.role)||{c:'#6B7280'}).c} />
                       </td>
                       {/* Sucursal */}
                       <td style={{ padding:'11px 10px', fontSize:11, color:'#6B7280' }}>

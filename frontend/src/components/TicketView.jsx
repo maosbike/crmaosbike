@@ -410,7 +410,7 @@ export function TicketView({lead,user,nav,updLead}){
         {/* Z3 (Observaciones) eliminado — reemplazado por Comunicación Interna más abajo */}
 
         {/* Z4: STATUS */}
-        <div style={{ padding:'18px 16px', background:'#F9FAFB', display:'flex', flexDirection:'column' }}>
+        <div className="crm-tv-col-status" style={{ padding:'18px 16px', background:'#F9FAFB', display:'flex', flexDirection:'column' }}>
           <div style={{ marginBottom:12, paddingBottom:10, borderBottom:'1px solid #E5E7EB' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
               <span style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>#{lead.num}</span>
@@ -634,12 +634,12 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
 
           </div>
-          {/* Barra Guardar datos del cliente */}
+          {/* Barra Guardar datos del cliente — sticky en mobile para que siempre sea visible */}
           {(()=>{
             const DIRTY_KEYS=['fn','ln','rut','bday','email','phone','comuna','source','sitLab','continuidad','renta','pie','wantsFin','finStatus','rechazoMotivo','motoId'];
             const isDirty=!!savedRef.current&&DIRTY_KEYS.some(k=>String(lead[k]??'')!==String(savedRef.current[k]??''));
             return(
-              <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between', alignItems:'center', position: isDirty?'sticky':'static', bottom:0, background:'#FFFFFF', zIndex:10, paddingBottom: isDirty?10:0 }}>
                 {isDirty?(
                   <span style={{ fontSize:11, fontWeight:700, color:'#F28100', background:'#FFF7ED', padding:'3px 10px', borderRadius:6, border:'1px solid #FDBA74' }}>Cambios sin guardar</span>
                 ):<span/>}

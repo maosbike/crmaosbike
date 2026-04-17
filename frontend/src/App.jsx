@@ -140,7 +140,7 @@ export default function App(){
 
   const items=[
     {id:"dashboard",icon:Ic.home,label:"Dashboard"},
-    ...(r!=="backoffice"?[{id:"leads",icon:Ic.ticket,label:"Leads / Tickets"},{id:"pipeline",icon:Ic.kanban,label:"Pipeline"}]:[]),
+    ...(r!=="backoffice"?[{id:"leads",icon:Ic.ticket,label:"Leads"},{id:"pipeline",icon:Ic.kanban,label:"Pipeline"}]:[]),
     {id:"calendar",icon:Ic.cal,label:"Calendario"},
     {id:"inventory",icon:Ic.box,label:"Inventario"},
     {id:"sales",icon:Ic.sale,label:"Ventas"},
@@ -150,12 +150,41 @@ export default function App(){
     ...(hasRole(user, ROLES.SUPER)?[{id:"admin",icon:Ic.gear,label:"Admin"},{id:"import",icon:Ic.dl,label:"Importar"},{id:"priceimport",icon:Ic.tag,label:"Importar Precios"}]:[]),
   ];
 
+  // Agrupación visual del sidebar. Los grupos definen separadores y labels.
+  // La lógica de items (rol, visibilidad) NO cambia — solo se agrega presentación.
+  const SIDEBAR_GROUPS = [
+    {
+      label: 'Comercial',
+      ids: ['dashboard','leads','pipeline','calendar'],
+    },
+    {
+      label: 'Stock y Ventas',
+      ids: ['inventory','sales','supplier-payments'],
+    },
+    {
+      label: 'Configuración',
+      ids: ['catalog','reports','admin','import','priceimport'],
+    },
+  ];
+
   return(
     <div style={{display:"flex",height:"100vh",background:"#F9FAFB",color:"#111827",fontFamily:"'Inter',system-ui,sans-serif",fontSize:14,overflow:"hidden"}}>
       <MobileDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)} items={items} page={page} nav={(pg,lid)=>{setDrawerOpen(false);nav(pg,lid);}} user={user} onChangePw={()=>{setDrawerOpen(false);setShowChangePw(true);}} onLogout={handleLogout}/>
       <aside className="crm-sidebar" style={{width:210,background:"#FFFFFF",borderRight:"1px solid #E5E7EB",display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 14px",height:52,borderBottom:"1px solid #E5E7EB"}}><img src="/logo.png" alt="MaosBike" style={{height:28}}/><span style={{fontSize:12,fontWeight:600,color:"#6B7280"}}>CRM</span></div>
-        <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column",gap:1}}>{items.map(it=>{const act=page===it.id||(it.id==="leads"&&page==="ticket");return<button key={it.id} onClick={()=>nav(it.id)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:500,fontFamily:"inherit",background:act?"rgba(242,129,0,0.1)":"transparent",color:act?"#F28100":"#6B7280"}}><it.icon size={16}/>{it.label}</button>;})}</nav>
+        <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column",gap:1,overflowY:"auto"}}>
+          {SIDEBAR_GROUPS.map((group,gi)=>{
+            const groupItems=items.filter(it=>group.ids.includes(it.id));
+            if(groupItems.length===0)return null;
+            return(
+              <div key={group.label}>
+                {gi>0&&<div style={{height:1,background:"#F3F4F6",margin:"6px 4px"}}/>}
+                <div style={{fontSize:9,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:"0.1em",padding:"10px 10px 4px",marginTop:gi===0?0:2}}>{group.label}</div>
+                {groupItems.map(it=>{const act=page===it.id||(it.id==="leads"&&page==="ticket");return<button key={it.id} onClick={()=>nav(it.id)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:500,fontFamily:"inherit",background:act?"rgba(242,129,0,0.1)":"transparent",color:act?"#F28100":"#6B7280"}}><it.icon size={16}/>{it.label}</button>;})}
+              </div>
+            );
+          })}
+        </nav>
         <div style={{borderTop:"1px solid #E5E7EB",padding:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"rgba(242,129,0,0.15)",display:"flex",alignItems:"center",justifyContent:"center",color:"#F28100",fontSize:10,fontWeight:700}}>{(user.fn[0]+(user.ln&&user.ln!=='-'?user.ln[0]:'')).toUpperCase()}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:600}}>{user.fn}</div><div style={{fontSize:9,color:"#4B5563"}}>{user.branchName||user.role}</div></div><button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#4B5563"/></button><button onClick={handleLogout} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#4B5563"/></button></div></div>
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
@@ -163,7 +192,7 @@ export default function App(){
           <div style={{display:"flex",alignItems:"center",gap:6}}><img src="/logo.png" alt="MaosBike" style={{height:22}}/><span style={{fontSize:11,fontWeight:600,color:"#6B7280"}}>CRM</span></div>
           <NotifBell nav={nav}/>
         </header>
-        <header className="crm-desktop-hdr" style={{height:48,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",borderBottom:"1px solid #E5E7EB",background:"rgba(255,255,255,0.85)",backdropFilter:"blur(8px)",flexShrink:0}}><NotifBell nav={nav}/></header>
+        <header className="crm-desktop-hdr" style={{height:52,display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"0 18px",borderBottom:"1px solid #E5E7EB",background:"rgba(255,255,255,0.85)",backdropFilter:"blur(8px)",flexShrink:0}}><NotifBell nav={nav}/></header>
         <main className="crm-scroll-area" style={{flex:1,overflow:"auto",padding:"16px 20px"}}>
           {page==="dashboard"&&<Dashboard leads={leads} inv={inv} user={user} nav={nav} branches={realBranches}/>}
           {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches} filter={leadsFilter} onFilterChange={setLeadsFilter}/>}

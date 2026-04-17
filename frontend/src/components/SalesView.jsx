@@ -306,7 +306,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
               {toggling ? 'Actualizando…' : sale.delivered ? 'Moto entregada al cliente' : 'Moto pendiente de entrega'}
             </div>
             <div style={{ fontSize:11, color:'#9CA3AF', marginTop:1 }}>
-              {sale.delivered ? 'Tocá para marcar como pendiente' : 'Tocá para confirmar la entrega'}
+              {sale.delivered ? 'Marcar como pendiente' : 'Confirmar entrega'}
             </div>
           </div>
         </button>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader } from '../ui.jsx';
 
 export function StagingImportView() {
   const [step, setStep]           = useState('upload');
@@ -99,17 +99,20 @@ export function StagingImportView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Importar Precios</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <ViewHeader
+        title="Importar Precios"
+        size="md"
+        actions={
+          <div style={{ display: 'flex', gap: 8 }}>
           {['upload','history'].map(t => (
             <button key={t} onClick={() => { setStep(t); if (t === 'history') loadBatches(); }}
               style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #D1D5DB', background: step === t ? '#F28100' : 'transparent', color: step === t ? '#ffffff' : '#6B7280', fontSize: 12, cursor: 'pointer', fontWeight: step === t ? 700 : 400 }}>
               {t === 'upload' ? 'Nueva importación' : 'Historial'}
             </button>
           ))}
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       <div style={{ background: 'rgba(242,129,0,0.08)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, border: '1px solid rgba(242,129,0,0.3)', fontSize: 12, color: '#F28100' }}>
         <b>Nuevo flujo seguro:</b> los datos no se publican al catálogo hasta que los revises y apruebes explícitamente.

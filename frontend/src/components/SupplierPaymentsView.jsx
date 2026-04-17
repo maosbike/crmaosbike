@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader } from '../ui.jsx';
+import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, Loader } from '../ui.jsx';
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 const EMPTY = () => ({
@@ -297,7 +297,7 @@ function NewModal({ onClose, onCreated }) {
                 <label style={{...S.lbl, fontSize:10, fontWeight:600, color:hl.color?'#92400E':'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color{hl.color?' *':''}</label>
                 <CatalogColorPicker modelRow={modelRow} value={form.color} onChange={s('color')}/>
               </div>
-              <F label="Ano" value={form.commercial_year} onChange={s('commercial_year')} type="number" half hl={!!hl.commercial_year}/>
+              <F label="Año" value={form.commercial_year} onChange={s('commercial_year')} type="number" half hl={!!hl.commercial_year}/>
               <F label="N° Motor" value={form.motor_num} onChange={s('motor_num')} half hl={!!hl.motor_num}/>
               <F label="N° Chasis" value={form.chassis} onChange={s('chassis')} half hl={!!hl.chassis}/>
             </div>
@@ -396,9 +396,9 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
         </div>
         {cd&&(
           <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:12,marginBottom:12}}>
-            <div style={{fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#EF4444',marginBottom:8}}>Eliminar este registro?</div>
+            <div style={{fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#EF4444',marginBottom:8}}>¿Eliminar este registro?</div>
             <div style={{display:'flex',gap:8}}>
-              <button onClick={del} disabled={deleting} style={{...S.btn,background:'#EF4444',padding:'5px 14px',fontSize:12}}>{deleting?'Eliminando...':'Confirmar'}</button>
+              <button onClick={del} disabled={deleting} style={{...S.btn,background:'#EF4444',padding:'5px 14px',fontSize:12}}>{deleting?'Eliminando...':'Eliminar'}</button>
               <button onClick={()=>setCD(false)} style={{...S.btn2,padding:'5px 14px',fontSize:12}}>Cancelar</button>
             </div>
           </div>
@@ -430,7 +430,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
                   <label style={{...S.lbl, fontSize:10, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color</label>
                   <CatalogColorPicker modelRow={modelRow} value={form.color} onChange={st('color')}/>
                 </div>
-                <F label="Ano" value={form.commercial_year} onChange={st('commercial_year')} type="number" half/>
+                <F label="Año" value={form.commercial_year} onChange={st('commercial_year')} type="number" half/>
                 <F label="N° Motor" value={form.motor_num} onChange={st('motor_num')} half/>
                 <F label="N° Chasis" value={form.chassis} onChange={st('chassis')} half/>
               </div>
@@ -489,7 +489,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
                   <DR label="Marca" value={p.brand}/>
                   <DR label="Modelo" value={p.model} bold/>
                   <DR label="Color" value={p.color}/>
-                  <DR label="Ano" value={p.commercial_year}/>
+                  <DR label="Año" value={p.commercial_year}/>
                   <DR label="N° Motor" value={p.motor_num}/>
                   <DR label="N° Chasis" value={p.chassis}/>
                 </div>
@@ -526,7 +526,7 @@ function Card({ p, onClick }) {
       </div>
       <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 12px',fontSize:12,fontFamily:'inherit' }}>
         <div><span style={lbl9}>Color</span> <span style={{color:'#374151'}}>{p.color||'-'}</span></div>
-        <div><span style={lbl9}>Ano</span> <span style={{color:'#374151'}}>{p.commercial_year||'-'}</span></div>
+        <div><span style={lbl9}>Año</span> <span style={{color:'#374151'}}>{p.commercial_year||'-'}</span></div>
         <div><span style={{...lbl9,color:ov?'#EF4444':undefined}}>Venc.</span> <span style={{fontWeight:ov?700:400,color:ov?'#EF4444':'#374151'}}>{fd(dv)}</span></div>
         {p.paid_amount&&<div><span style={lbl9}>Pagado</span> <strong style={{color:'#15803D'}}>{$(p.paid_amount)}</strong></div>}
         {p.chassis&&<div><span style={lbl9}>Chasis</span> <span style={{fontSize:11,color:'#111827'}}>{p.chassis}</span></div>}
@@ -703,7 +703,7 @@ export function SupplierPaymentsView({ user }) {
         actions={canCreate && (
           <>
             <button onClick={sync} disabled={syncing} style={{...S.btn2,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600}}>
-              <Ic.refresh size={14} color={syncing?'#9CA3AF':'#374151'}/>{syncing?'Sincronizando...':'Sync Drive'}
+              <Ic.refresh size={14} color={syncing?'#9CA3AF':'#374151'}/>{syncing?'Sincronizando...':'Sincronizar con Drive'}
             </button>
             <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700}}>
               <Ic.plus size={14}/> Nuevo pago
@@ -715,7 +715,7 @@ export function SupplierPaymentsView({ user }) {
       {/* Sync banner */}
       {syncRes&&(
         <div style={{marginBottom:12,padding:'10px 14px',borderRadius:8,fontSize:12,fontFamily:'inherit',background:syncRes.ok?'#F0FDF4':'#FEF2F2',border:`1px solid ${syncRes.ok?'#BBF7D0':'#FECACA'}`,color:syncRes.ok?'#166534':'#991B1B',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-          {syncRes.ok?`Sync OK: ${syncRes.created} nuevos, ${syncRes.updated} actualizados`:syncRes.error}
+          {syncRes.ok?`Sincronización exitosa: ${syncRes.created} nuevos, ${syncRes.updated} actualizados`:syncRes.error}
           <button onClick={()=>setSyncRes(null)} style={{...S.gh,marginLeft:'auto',fontSize:18,opacity:.5,lineHeight:1,padding:4}}>x</button>
         </div>
       )}
@@ -791,14 +791,14 @@ export function SupplierPaymentsView({ user }) {
       {/* Mobile: cards */}
       {bp==='sm' ? (
         <div style={{flex:1,overflowY:'auto'}}>
-          {loading&&<div style={{padding:32,textAlign:'center',color:'#9CA3AF',fontFamily:'inherit'}}>Cargando...</div>}
+          {loading&&<Loader label="Cargando pagos…" />}
           {!loading&&sorted.length===0&&<div style={{padding:48,textAlign:'center',color:'#9CA3AF',fontWeight:500,fontFamily:'inherit'}}>{hasFilters?'Sin resultados con estos filtros':'Sin registros'}</div>}
           {!loading&&sorted.map(p=><Card key={p.id} p={p} onClick={()=>{setEditFromList(false);setSel(p);}}/>)}
         </div>
       ) : (
         /* Desktop / tablet — card-rows, no tabla plana */
         <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:8}}>
-          {loading&&<div style={{padding:40,textAlign:'center',color:'#9CA3AF'}}>Cargando...</div>}
+          {loading&&<Loader label="Cargando pagos…" />}
           {!loading&&sorted.length===0&&<div style={{...S.card,padding:48,textAlign:'center',color:'#9CA3AF'}}><div style={{fontWeight:700,marginBottom:4}}>{hasFilters?'Sin resultados con estos filtros':'Sin registros'}</div><div style={{fontSize:12}}>{hasFilters?<button onClick={clearFilters} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button>:'Registra el primer pago con Drive o manualmente'}</div></div>}
           {!loading&&sorted.map(p=>{
             const dv=due(p);

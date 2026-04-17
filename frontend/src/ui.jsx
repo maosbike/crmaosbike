@@ -67,7 +67,7 @@ export const PAYMENT_TYPES=["Contado","Transferencia","Tarjeta Débito","Tarjeta
 export const INV_ST={disponible:{l:"Disponible",c:"#10B981"},reservada:{l:"Reservada",c:"#F59E0B"},vendida:{l:"Vendida",c:"#8B5CF6"},preinscrita:{l:"Preinscrita",c:"#06B6D4"}};
 export const SLA_STATUS={
   normal:    {l:"Sin gestionar",c:"#6B7280",bg:"rgba(107,114,128,0.12)"},
-  warning:   {l:"Atender ya",   c:"#F97316",bg:"rgba(249,115,22,0.12)"},
+  warning:   {l:"Atender ya",   c:"#F59E0B",bg:"rgba(245,158,11,0.12)"},
   breached:  {l:"Vencido",      c:"#EF4444",bg:"rgba(239,68,68,0.12)"},
   reassigned:{l:"Reasignado",   c:"#8B5CF6",bg:"rgba(139,92,246,0.12)"},
 };
@@ -161,13 +161,13 @@ export const Ic={
 
 // Styles
 export const S={
-  card:{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,padding:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"},
+  card:{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,0.05)"},
   inp:{background:"#F9FAFB",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 12px",color:"#111827",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"},
   btn:{background:"#F28100",color:"#ffffff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   btn2:{background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   gh:{background:"transparent",border:"none",cursor:"pointer",borderRadius:8,fontFamily:"inherit"},
   lbl:{display:"block",fontSize:11,color:"#6B7280",marginBottom:4,fontWeight:500},
-  secCard:{background:"#FFFFFF",borderRadius:12,border:"1px solid #E5E7EB",boxShadow:"0 1px 4px rgba(0,0,0,0.04)",overflow:"hidden",marginBottom:12},
+  secCard:{background:"#FFFFFF",borderRadius:12,border:"1px solid #E5E7EB",boxShadow:"0 1px 4px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:12},
 };
 S.btnSec = S.btn2;
 
@@ -187,9 +187,17 @@ export const Stat=({icon:Ico,ic,ib,label,val,sub,sc,al})=>(
     {sub&&<span style={{fontSize:11,color:sc||"#6B7280"}}>{sub}</span>}
   </div>
 );
-export const Modal=({onClose,title,children,wide})=>(
+export const Modal=({onClose,title,children,wide,headerContent})=>(
   <div onClick={onClose} className="crm-modal-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:16}}>
-    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:16,padding:24,width:"100%",maxWidth:wide?750:480,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}><h2 style={{fontSize:16,fontWeight:700,margin:0}}>{title}</h2><button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18}/></button></div>{children}</div>
+    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:16,padding:24,width:"100%",maxWidth:wide?750:480,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
+      {headerContent ? headerContent : (
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+          <h2 style={{fontSize:16,fontWeight:700,margin:0}}>{title}</h2>
+          {onClose&&<button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18}/></button>}
+        </div>
+      )}
+      {children}
+    </div>
   </div>
 );
 export const Field=({label,value,onChange,type="text",ph,req,opts,rows,disabled})=>{
@@ -317,6 +325,20 @@ export function Loader({ label='Cargando…' }) {
   );
 }
 
+// selectCtrl / filterLabel — estilos de controles de filtro centralizados.
+// Importar en LeadsList, InventoryView, SupplierPaymentsView en lugar de definir local.
+export const selectCtrl = {
+  height:32, border:'1.5px solid #E5E7EB', borderRadius:7,
+  fontSize:12, padding:'0 8px', background:'#fff',
+  color:'#374151', outline:'none', cursor:'pointer',
+};
+
+export const filterLabel = {
+  fontSize:9, fontWeight:700, color:'#9CA3AF',
+  textTransform:'uppercase', letterSpacing:'0.08em',
+  marginBottom:3, display:'block',
+};
+
 // ChoiceChip — botón-como-radio. Reemplaza el patrón en TicketView followup/perdido + LeadsList reassign.
 const _CHIP_TONES = {
   default: { selBg: T.color.brandSoft,  selFg: T.color.brand,      selBd: T.color.brandMuted,  dotOn: T.color.brand,   dotOff: T.color.borderStrong },
@@ -343,5 +365,37 @@ export function ChoiceChip({ selected, tone='default', onClick, children, disabl
       }}/>
       {children}
     </button>
+  );
+}
+
+// COLOR_CSS_MAP — mapa centralizado nombre→hex para colores de moto.
+// Importar colorNameToCss en InventoryView y CatalogView en lugar de definir local.
+export const COLOR_CSS_MAP = {
+  'Negro':'#1a1a1a','negro':'#1a1a1a',
+  'Blanco':'#f5f5f5','blanco':'#f5f5f5',
+  'Rojo':'#dc2626','rojo':'#dc2626',
+  'Azul':'#2563eb','azul':'#2563eb',
+  'Verde':'#16a34a','verde':'#16a34a',
+  'Amarillo':'#ca8a04','amarillo':'#ca8a04',
+  'Naranja':'#ea580c','naranja':'#ea580c',
+  'Gris':'#6b7280','gris':'#6b7280',
+  'Plateado':'#9ca3af','plateado':'#9ca3af',
+  'Dorado':'#d97706','dorado':'#d97706',
+  'Celeste':'#0ea5e9','celeste':'#0ea5e9',
+  'Morado':'#7c3aed','morado':'#7c3aed',
+  'Café':'#92400e','café':'#92400e',
+  'Beige':'#d6b99a','beige':'#d6b99a',
+};
+export const colorNameToCss = (name) => COLOR_CSS_MAP[name] || COLOR_CSS_MAP[name?.toLowerCase()] || '#9CA3AF';
+
+// ErrorMsg — error inline unificado para formularios.
+export function ErrorMsg({ msg }) {
+  if (!msg) return null;
+  return (
+    <div style={{
+      background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.20)',
+      borderRadius:8, padding:'9px 13px', color:'#DC2626', fontSize:12,
+      fontWeight:500, marginBottom:12,
+    }}>{msg}</div>
   );
 }
