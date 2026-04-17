@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, useIsMobile, colorNameToCss } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, useIsMobile, colorNameToCss, selectCtrl, Empty, ErrorMsg } from '../ui.jsx';
 
 // ─── Datos de configuración ────────────────────────────────────────────────────
 
@@ -111,6 +111,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
   // Mobile detection — usa hook centralizado de ui.jsx (alineado con responsive.css ≤767px).
   const isMobile = useIsMobile();
+  const isTablet = useIsMobile(1024);
+  const gridCols = isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(440px, 1fr))';
+  const [showFilters, setShowFilters] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
   // Banner de error de recarga — cuando la sincronización con el backend falla.
   const [reloadErr, setReloadErr] = useState('');
@@ -480,147 +483,149 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       />
 
       {/* ══════════════════════════════════════════════════════════
-          KPI — 4 tarjetas de estado
+          KPI — strip horizontal compacto
       ══════════════════════════════════════════════════════════ */}
-      <div className="grid-4col" style={{ display:'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: isMobile ? 8 : 12, marginBottom: isMobile ? 14 : 24 }}>
+      <div style={{ display:'flex', gap: isMobile ? 8 : 12, marginBottom: isMobile ? 12 : 18, flexWrap:'wrap' }}>
         {Object.entries(ST_CFG).map(([k,v]) => {
           const active = stF === k;
           const cnt = counts[k] || 0;
           return (
             <button key={k} onClick={()=>setStF(stF===k?'':k)}
               style={{
-                position:'relative', overflow:'hidden', minWidth:0,
-                padding: isMobile ? '14px 12px' : '20px 22px', borderRadius:14, border:'none',
+                flex:'1 1 80px', minWidth: isMobile ? 72 : 100,
+                position:'relative', overflow:'hidden',
+                padding: isMobile ? '10px 10px 8px' : '10px 16px 8px', borderRadius:10, border:'none',
                 background: active ? v.bg : '#FFFFFF',
                 cursor:'pointer', textAlign:'left', fontFamily:'inherit',
                 outline: active ? `2px solid ${v.color}` : '1px solid #E5E7EB',
                 outlineOffset: active ? 1 : 0,
-                boxShadow: active ? `0 4px 20px ${v.color}22` : '0 1px 4px rgba(0,0,0,0.05)',
+                boxShadow: active ? `0 2px 12px ${v.color}22` : '0 1px 3px rgba(0,0,0,0.04)',
                 transition:'all 0.15s',
               }}>
-              {/* Barra de color arriba */}
-              <div style={{ position:'absolute', top:0, left:0, right:0, height:4, background:v.color, borderRadius:'14px 14px 0 0' }}/>
-              <div style={{ fontSize: isMobile ? 26 : 38, fontWeight:900, color: active ? v.color : '#111827', letterSpacing:'-1.5px', lineHeight:1, marginBottom:4 }}>
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:v.color, borderRadius:'10px 10px 0 0' }}/>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight:900, color: active ? v.color : '#111827', letterSpacing:'-1px', lineHeight:1, marginBottom:3 }}>
                 {cnt}
               </div>
-              <div style={{ fontSize: isMobile ? 11 : 13, fontWeight:700, color: active ? v.color : '#374151', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{v.label}</div>
-              {active && !isMobile && (
-                <div style={{ position:'absolute', bottom:10, right:14, fontSize:18, opacity:0.2 }}>{v.icon}</div>
-              )}
+              <div style={{ fontSize: isMobile ? 10 : 11, fontWeight:700, color: active ? v.color : '#6B7280', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{v.label}</div>
             </button>
           );
         })}
       </div>
 
       {/* ══════════════════════════════════════════════════════════
-          FILTROS MOBILE
+          BARRA DE FILTROS — mobile: botón toggle; desktop: línea compacta
       ══════════════════════════════════════════════════════════ */}
-      {isMobile && (
-        <div style={{ marginBottom:14, display:'flex', flexDirection:'column', gap:8 }}>
-          <div style={{ position:'relative' }}>
-            <Ic.search size={14} color="#9CA3AF" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)' }}/>
-            <input value={search} onChange={e=>setSearch(e.target.value)}
-              placeholder="Buscar marca, modelo, chasis..."
-              style={{ ...S.inp, paddingLeft:32, width:'100%', height:40, borderRadius:10, fontSize:13 }}/>
-          </div>
-          <div style={{ display:'flex', gap:6 }}>
-            <select value={brF} onChange={e=>setBrF(e.target.value)}
-              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
-              <option value="">Todas las sucs.</option>
-              {brs.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-            <select value={brandF} onChange={e=>setBrandF(e.target.value)}
-              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
-              <option value="">Todas las marcas</option>
-              {brands.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <select value={stF} onChange={e=>setStF(e.target.value)}
-              style={{ flex:1, height:36, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:12, color:'#374151', padding:'0 6px', fontFamily:'inherit' }}>
-              <option value="">Todos</option>
-              {Object.entries(ST_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </div>
-          {hasFilters && (
-            <button onClick={clearFilters} style={{ alignSelf:'flex-start', padding:'4px 12px', borderRadius:7, border:'1px solid #E5E7EB', background:'#F9FAFB', fontSize:11, cursor:'pointer', color:'#6B7280', fontFamily:'inherit' }}>
-              ✕ Limpiar · {f.length} resultado{f.length!==1?'s':''}
+      {isMobile ? (
+        <div style={{ marginBottom:14 }}>
+          {/* Fila: buscador + botón Filtros */}
+          <div style={{ display:'flex', gap:8, marginBottom: showFilters ? 8 : 0 }}>
+            <div style={{ position:'relative', flex:1 }}>
+              <Ic.search size={13} color="#9CA3AF" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}/>
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Buscar modelo, chasis..."
+                style={{ ...S.inp, paddingLeft:30, width:'100%', height:36, borderRadius:8, fontSize:12, boxSizing:'border-box' }}/>
+            </div>
+            <button onClick={()=>setShowFilters(p=>!p)}
+              style={{
+                height:36, padding:'0 14px', borderRadius:8, border:`1.5px solid ${showFilters||hasFilters?'#4F46E5':'#E5E7EB'}`,
+                background: showFilters||hasFilters ? '#EEF2FF' : '#F9FAFB',
+                color: showFilters||hasFilters ? '#4F46E5' : '#6B7280',
+                fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+                display:'flex', alignItems:'center', gap:5, flexShrink:0,
+              }}>
+              <Ic.gear size={13}/> Filtros{hasFilters ? ` (${[brF,brandF,stF].filter(Boolean).length})` : ''}
             </button>
+          </div>
+          {/* Panel expandible */}
+          {showFilters && (
+            <div style={{ display:'flex', flexDirection:'column', gap:7, padding:'12px 14px', background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10 }}>
+              <div style={{ display:'flex', gap:7 }}>
+                <select value={brF} onChange={e=>setBrF(e.target.value)}
+                  style={{ flex:1, ...selectCtrl }}>
+                  <option value="">Todas las sucs.</option>
+                  {brs.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <select value={brandF} onChange={e=>setBrandF(e.target.value)}
+                  style={{ flex:1, ...selectCtrl }}>
+                  <option value="">Todas las marcas</option>
+                  {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+              {/* Chips de estado */}
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {Object.entries(ST_CFG).map(([k,v]) => (
+                  <button key={k} onClick={()=>setStF(stF===k?'':k)}
+                    style={{
+                      padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600,
+                      cursor:'pointer', border:'none', fontFamily:'inherit',
+                      background: stF===k ? v.color : '#F3F4F6',
+                      color: stF===k ? '#fff' : '#6B7280',
+                      transition:'all 0.15s',
+                    }}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              {hasFilters && (
+                <button onClick={clearFilters}
+                  style={{ alignSelf:'flex-start', padding:'4px 12px', borderRadius:7, border:'1px solid #E5E7EB', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'#6B7280', fontFamily:'inherit' }}>
+                  Limpiar · {f.length} resultado{f.length!==1?'s':''}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── BARRA DESKTOP — una sola línea compacta ── */
+        <div style={{
+          display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
+          background:'#F9FAFB', border:'1px solid #E5E7EB',
+          borderRadius:10, padding:'8px 14px', marginBottom:16,
+        }}>
+          {/* Buscador */}
+          <div style={{ position:'relative', flex:'1 1 160px', minWidth:140 }}>
+            <Ic.search size={13} color="#9CA3AF" style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder="Buscar modelo, chasis, color..."
+              style={{ ...selectCtrl, paddingLeft:28, width:'100%', boxSizing:'border-box', background:'#fff' }}/>
+          </div>
+          <div style={{ width:1, height:22, background:'#E5E7EB', flexShrink:0 }}/>
+          {/* Sucursal */}
+          <select value={brF} onChange={e=>setBrF(e.target.value)} style={{ ...selectCtrl, width:130 }}>
+            <option value="">Todas las sucs.</option>
+            {brs.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          {/* Marca */}
+          <select value={brandF} onChange={e=>setBrandF(e.target.value)} style={{ ...selectCtrl, width:120 }}>
+            <option value="">Todas las marcas</option>
+            {brands.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+          <div style={{ width:1, height:22, background:'#E5E7EB', flexShrink:0 }}/>
+          {/* Chips de estado */}
+          {Object.entries(ST_CFG).map(([k,v]) => (
+            <button key={k} onClick={()=>setStF(stF===k?'':k)}
+              style={{
+                padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600,
+                cursor:'pointer', border:'none', fontFamily:'inherit',
+                background: stF===k ? v.color : '#F3F4F6',
+                color: stF===k ? '#fff' : '#6B7280',
+                transition:'all 0.15s',
+              }}>
+              {v.label}
+            </button>
+          ))}
+          {/* Limpiar */}
+          {hasFilters && (
+            <>
+              <div style={{ width:1, height:22, background:'#E5E7EB', flexShrink:0 }}/>
+              <button onClick={clearFilters}
+                style={{ padding:'4px 10px', height:32, borderRadius:7, border:'1px solid #E5E7EB', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'#6B7280', display:'flex', alignItems:'center', gap:5, fontWeight:500, fontFamily:'inherit' }}>
+                <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
+              </button>
+            </>
           )}
         </div>
       )}
-
-      {/* ══════════════════════════════════════════════════════════
-          BARRA DE CONTROL
-      ══════════════════════════════════════════════════════════ */}
-      <div style={{
-        background:'#FFFFFF', border:'1px solid #E5E7EB', borderRadius:12,
-        padding:'14px 18px', marginBottom:20,
-        display: isMobile ? 'none' : 'flex', gap:12, flexWrap:'wrap', alignItems:'center',
-        boxShadow:'0 1px 4px rgba(0,0,0,0.04)',
-      }}>
-        {/* Búsqueda */}
-        <div style={{ position:'relative', flex:'1 1 220px', minWidth:180 }}>
-          <Ic.search size={14} color="#9CA3AF" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)' }}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)}
-            placeholder="Buscar por marca, modelo, chasis, color..."
-            style={{ ...S.inp, paddingLeft:34, width:'100%', height:36, borderRadius:8, fontSize:12 }}/>
-        </div>
-
-        <div style={{ width:1, height:28, background:'#E5E7EB', flexShrink:0 }}/>
-
-        {/* Sucursal */}
-        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          <label style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>Sucursal</label>
-          <select value={brF} onChange={e=>setBrF(e.target.value)} style={selectCtrl}>
-            <option value="">Todas</option>
-            {brs.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        </div>
-
-        {/* Marca */}
-        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          <label style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>Marca</label>
-          <select value={brandF} onChange={e=>setBrandF(e.target.value)} style={selectCtrl}>
-            <option value="">Todas</option>
-            {brands.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
-        </div>
-
-        <div style={{ width:1, height:28, background:'#E5E7EB', flexShrink:0 }}/>
-
-        {/* Estado */}
-        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-          <label style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em' }}>Estado</label>
-          <div style={{ display:'flex', gap:4 }}>
-            {Object.entries(ST_CFG).map(([k,v]) => (
-              <button key={k} onClick={()=>setStF(stF===k?'':k)}
-                style={{
-                  padding:'5px 11px', borderRadius:20, fontSize:11, fontWeight:600,
-                  cursor:'pointer', fontFamily:'inherit',
-                  background: stF===k ? v.color : 'transparent',
-                  color: stF===k ? '#FFFFFF' : '#6B7280',
-                  border: `1.5px solid ${stF===k ? v.color : '#E5E7EB'}`,
-                  transition:'all 0.12s',
-                }}>
-                {v.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Limpiar + contador */}
-        {hasFilters && (
-          <>
-            <div style={{ width:1, height:28, background:'#E5E7EB', flexShrink:0 }}/>
-            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-              <label style={{ fontSize:9, fontWeight:700, color:'transparent', textTransform:'uppercase' }}>·</label>
-              <button onClick={clearFilters}
-                style={{ padding:'5px 12px', height:32, borderRadius:8, border:'1px solid #E5E7EB', background:'#F9FAFB', fontSize:11, cursor:'pointer', color:'#6B7280', display:'flex', alignItems:'center', gap:5, fontWeight:500 }}>
-                <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
 
       {/* ══════════════════════════════════════════════════════════
           LISTA DE UNIDADES — Cards horizontales
@@ -636,39 +641,72 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             const brPhoto= branchPhotos[id] || brData?.photo_url;
             const cnt    = inv.filter(x => x.branch_id === id && x.status !== 'vendida').length;
             const vend   = inv.filter(x => x.branch_id === id && x.status === 'vendida').length;
+            const disp   = inv.filter(x => x.branch_id === id && x.status === 'disponible').length;
+            const res    = inv.filter(x => x.branch_id === id && x.status === 'reservada').length;
             return (
               <button key={code} onClick={() => id && setBrF(id)}
                 style={{
-                  background:'#FFFFFF', border:`2px solid ${cfg.color}22`,
-                  borderRadius:18, padding:'28px 20px 24px',
+                  background:'#FFFFFF', border:`1.5px solid ${cfg.color}28`,
+                  borderRadius:16, padding:0,
                   cursor: id ? 'pointer' : 'default',
                   textAlign:'left', fontFamily:'inherit',
-                  boxShadow:`0 2px 12px ${cfg.color}18`,
-                  transition:'box-shadow 0.15s, transform 0.1s',
+                  boxShadow:`0 2px 10px ${cfg.color}14`,
+                  transition:'box-shadow 0.15s, transform 0.12s',
                   position:'relative', overflow:'hidden',
                 }}
-                onMouseEnter={e=>{ e.currentTarget.style.boxShadow=`0 6px 24px ${cfg.color}30`; e.currentTarget.style.transform='translateY(-2px)'; }}
-                onMouseLeave={e=>{ e.currentTarget.style.boxShadow=`0 2px 12px ${cfg.color}18`; e.currentTarget.style.transform='translateY(0)'; }}
+                onMouseEnter={e=>{ e.currentTarget.style.boxShadow=`0 6px 24px ${cfg.color}2a`; e.currentTarget.style.transform='translateY(-2px)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.boxShadow=`0 2px 10px ${cfg.color}14`; e.currentTarget.style.transform='translateY(0)'; }}
               >
-                <div style={{ position:'absolute', top:0, left:0, right:0, height:5, background:cfg.color, borderRadius:'18px 18px 0 0' }}/>
-                {/* Foto sucursal */}
-                <div onClick={e=>e.stopPropagation()} style={{ width:'100%', aspectRatio:'16/9', borderRadius:10, overflow:'hidden', marginBottom:14, position:'relative', background:`${cfg.color}12`, border:`1px dashed ${cfg.color}40`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {/* Zona foto — aspectRatio fijo con overlay gradiente */}
+                <div onClick={e=>e.stopPropagation()}
+                  style={{ width:'100%', aspectRatio:'16/9', position:'relative', background:`${cfg.color}12`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
                   {brPhoto
-                    ? <img src={brPhoto} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} alt={cfg.label}/>
-                    : isAdmin
-                      ? <button onClick={()=>id && handleBranchPhoto(id)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:cfg.color, fontWeight:700, opacity:0.7 }}>+ Agregar foto</button>
-                      : <span style={{ fontSize:11, color:cfg.color, fontWeight:600, opacity:0.4 }}>Sin foto</span>
+                    ? <>
+                        <img src={brPhoto} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} alt={cfg.label}/>
+                        {/* Overlay gradiente para legibilidad */}
+                        <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.12) 55%, transparent 100%)' }}/>
+                        {/* Nombre sobre la foto */}
+                        <div style={{ position:'absolute', bottom:10, left:12, right:40 }}>
+                          <div style={{ fontSize:16, fontWeight:700, color:'#FFFFFF', textShadow:'0 1px 4px rgba(0,0,0,0.4)', lineHeight:1.2 }}>{cfg.label}</div>
+                        </div>
+                        {isAdmin && (
+                          <button onClick={()=>id && handleBranchPhoto(id)} title="Cambiar foto"
+                            style={{ position:'absolute', bottom:7, right:8, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'#ffffff', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
+                            ✎
+                          </button>
+                        )}
+                      </>
+                    : <>
+                        {/* Sin foto — placeholder con color */}
+                        <div style={{ position:'absolute', inset:0, background:`linear-gradient(135deg, ${cfg.color}18 0%, ${cfg.color}06 100%)` }}/>
+                        <div style={{ position:'relative', textAlign:'center' }}>
+                          {isAdmin
+                            ? <button onClick={()=>id && handleBranchPhoto(id)} style={{ background:'none', border:`1px dashed ${cfg.color}60`, borderRadius:8, cursor:'pointer', fontSize:11, color:cfg.color, fontWeight:700, padding:'6px 12px' }}>+ Agregar foto</button>
+                            : <span style={{ fontSize:11, color:cfg.color, fontWeight:600, opacity:0.4 }}>Sin foto</span>
+                          }
+                        </div>
+                      </>
                   }
-                  {brPhoto && isAdmin && (
-                    <button onClick={()=>id && handleBranchPhoto(id)} title="Cambiar foto"
-                      style={{ position:'absolute', bottom:5, right:5, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'#ffffff', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
-                      ✎ Cambiar
-                    </button>
-                  )}
                 </div>
-                <div style={{ fontSize:16, fontWeight:900, color:'#111827', marginBottom:4 }}>{cfg.label}</div>
-                <div style={{ fontSize:12, color:'#6B7280' }}>
-                  <span style={{ fontWeight:700, color:cfg.color }}>{cnt}</span> disponibles · <span style={{ color:'#6D28D9', fontWeight:600 }}>{vend}</span> vendidas
+                {/* Cuerpo info */}
+                <div style={{ padding: isMobile ? '10px 12px' : '12px 16px' }}>
+                  {!brPhoto && (
+                    <div style={{ fontSize:16, fontWeight:700, color:'#111827', marginBottom:8 }}>{cfg.label}</div>
+                  )}
+                  {brPhoto && <div style={{ marginBottom:8 }}/>}
+                  {/* Contadores de estado */}
+                  <div style={{ display:'flex', gap: isMobile ? 6 : 10 }}>
+                    {[
+                      { label:'Disp.', val:disp, color:ST_CFG.disponible.color },
+                      { label:'Res.', val:res, color:ST_CFG.reservada.color },
+                      { label:'Vend.', val:vend, color:ST_CFG.vendida.color },
+                    ].map(({ label, val, color }) => (
+                      <div key={label} style={{ textAlign:'center', flex:1 }}>
+                        <div style={{ fontSize: isMobile ? 20 : 26, fontWeight:900, color, lineHeight:1 }}>{val}</div>
+                        <div style={{ fontSize: isMobile ? 9 : 10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.05em', marginTop:2 }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </button>
             );
@@ -686,21 +724,20 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           )}
 
           {f.length === 0 ? (
-            <div style={{ background:'#FFFFFF', borderRadius:14, border:'1px dashed #E5E7EB', padding:'60px 0', textAlign:'center' }}>
-              <div style={{ fontSize:36, marginBottom:12 }}>📦</div>
-              <div style={{ fontSize:14, fontWeight:700, color:'#374151', marginBottom:4 }}>
-                {hasFilters ? 'Sin resultados con estos filtros' : 'Sin unidades en el inventario'}
-              </div>
-              <div style={{ fontSize:12, color:'#9CA3AF' }}>
-                {hasFilters
+            <div style={{ background:'#FFFFFF', borderRadius:14, border:'1px dashed #E5E7EB' }}>
+              <Empty
+                icon={Ic.box}
+                title={hasFilters ? 'Sin resultados con estos filtros' : 'Sin unidades en el inventario'}
+                hint={hasFilters ? undefined : 'Agrega unidades manualmente o impórtalas desde Excel.'}
+                action={hasFilters
                   ? <button onClick={clearFilters} style={{ background:'none', border:'none', color:'#F28100', fontSize:12, cursor:'pointer', textDecoration:'underline', padding:0, fontFamily:'inherit' }}>Limpiar filtros</button>
-                  : 'Agrega unidades manualmente o impórtalas desde Excel.'}
-              </div>
+                  : undefined}
+              />
             </div>
           ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {/* Contador + hint de orden */}
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingLeft:2, marginBottom:4 }}>
+            <div style={{ display:'grid', gridTemplateColumns: gridCols, gap:8 }}>
+              {/* Contador + hint de orden — ocupa todo el ancho */}
+              <div style={{ gridColumn:'1 / -1', display:'flex', justifyContent:'space-between', alignItems:'center', paddingLeft:2, marginBottom:2 }}>
                 <div style={{ fontSize:11, color:'#9CA3AF', fontWeight:500 }}>
                   {f.length} unidad{f.length!==1?'es':''}{hasFilters&&` (filtradas de ${inv.length})`}
                 </div>
@@ -898,196 +935,156 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 onDrop={canDrag ? e => handleDrop(e, x.id) : undefined}
                 style={{ cursor: canDrag ? 'grab' : 'default' }}
               >
-                {/* ── CARD ── */}
+                {/* ── CARD — nueva estructura con franja de estado izquierda ── */}
                 <div className="crm-inv-card" style={{
                   display:'flex', alignItems:'stretch',
                   background:'#FFFFFF',
-                  borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
-                  border:`1px solid ${isSold ? '#E5E7EB' : '#E5E7EB'}`,
+                  borderRadius: isHistOpen ? '12px 12px 0 0' : 12,
+                  border:'1px solid #E5E7EB',
                   overflow:'hidden',
-                  boxShadow: isSold ? 'none' : '0 1px 6px rgba(0,0,0,0.06)',
-                  opacity: isSold ? 0.75 : 1,
+                  boxShadow: isSold ? 'none' : '0 1px 4px rgba(0,0,0,0.05)',
+                  opacity: isSold ? 0.72 : 1,
                   transition:'box-shadow 0.15s, opacity 0.15s',
                   cursor: isAdmin ? 'pointer' : 'default',
                 }}
                   onClick={isAdmin ? ()=>openEdit(x) : undefined}
-                  onMouseEnter={e=>{ if(!isSold) e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)'; }}
-                  onMouseLeave={e=>{ if(!isSold) e.currentTarget.style.boxShadow='0 1px 6px rgba(0,0,0,0.06)'; }}
+                  onMouseEnter={e=>{ if(!isSold) e.currentTarget.style.boxShadow='0 4px 14px rgba(0,0,0,0.09)'; }}
+                  onMouseLeave={e=>{ if(!isSold) e.currentTarget.style.boxShadow=isSold?'none':'0 1px 4px rgba(0,0,0,0.05)'; }}
                 >
 
-                  {/* ── SUCURSAL — strip izquierdo de color ── */}
-                  <div className="crm-inv-strip" style={{
-                    width:88, flexShrink:0,
-                    background: bCode ? bCfg.color : '#E5E7EB',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    padding:'6px 7px',
-                  }}>
-                    <span style={{ fontSize:8.5, fontWeight:800, color:'#FFFFFF', letterSpacing:'0.01em', textAlign:'center', lineHeight:1.35, wordBreak:'break-word', whiteSpace:'normal' }}>
-                      {bCfg.label}
-                    </span>
+                  {/* ── FRANJA de color de estado (izquierda, 4px) ── */}
+                  <div style={{ width:4, flexShrink:0, background: stCfg.color }}/>
+
+                  {/* ── FOTO ── */}
+                  <div style={{ flexShrink:0, position:'relative', width:84, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', background:'#F9FAFB', borderRight:'1px solid #F3F4F6' }} onClick={e=>e.stopPropagation()}>
+                    {x.unit_photo
+                      ? <>
+                          <img
+                            src={x.unit_photo}
+                            onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
+                            style={{ width:84, height:80, objectFit:'cover', cursor:'pointer', display:'block' }}
+                          />
+                          <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
+                            style={{ position:'absolute', bottom:4, right:4, width:20, height:20, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:11, padding:0 }}>✎</button>
+                        </>
+                      : <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Agregar foto"
+                          style={{ width:84, height:80, border:'none', background:'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, padding:0 }}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                          </svg>
+                          <span style={{ fontSize:8, color:'#D1D5DB', fontWeight:700, letterSpacing:'0.08em' }}>FOTO</span>
+                        </button>
+                    }
                   </div>
 
-                  {/* ── UNIDAD — foto · marca · modelo · año · color ── */}
-                  <div className="crm-inv-unit" style={{
-                    flex:'0 0 290px', minWidth:0, padding:'10px 16px',
-                    borderRight:'1px solid #F3F4F6',
-                    display:'flex', alignItems:'center', gap:14,
-                    overflow:'hidden',
-                  }}>
-                    {/* Foto de la moto */}
-                    <div style={{ flexShrink:0, position:'relative' }} onClick={e=>e.stopPropagation()}>
-                      {x.unit_photo
-                        ? <>
-                            <img
-                              src={x.unit_photo}
-                              onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
-                              className="crm-inv-photo"
-                              style={{ width:92, height:92, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E5E7EB', display:'block' }}
-                            />
-                            <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
-                              style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:12, padding:0 }}>✎</button>
-                          </>
-                        : <button
-                            onClick={()=>handlePhoto(x.id,'unit_photo')}
-                            title="Agregar foto de la moto"
-                            className="crm-inv-photo"
-                            style={{
-                              width:92, height:92, borderRadius:10,
-                              border:'1.5px dashed #D1D5DB', background:'#F9FAFB',
-                              cursor:'pointer', display:'flex', flexDirection:'column',
-                              alignItems:'center', justifyContent:'center', gap:5, padding:0,
-                            }}>
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                              <circle cx="12" cy="13" r="4"/>
-                            </svg>
-                            <span style={{ fontSize:9, color:'#C9D0D8', fontWeight:700, letterSpacing:'0.08em' }}>FOTO</span>
-                          </button>
+                  {/* ── INFO PRINCIPAL ── */}
+                  <div style={{ flex:1, minWidth:0, padding:'10px 14px', display:'flex', flexDirection:'column', justifyContent:'center', borderRight:'1px solid #F3F4F6', overflow:'hidden' }}>
+                    {/* Fila 1: Marca + Modelo + Año */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                      <span style={{ fontSize:14, fontWeight:700, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        {x.brand} {x.model}
+                      </span>
+                      {x.year && (
+                        <span style={{ fontSize:11, color:'#4F46E5', background:'#EEF2FF', padding:'1px 7px', borderRadius:99, fontWeight:700, flexShrink:0, border:'1px solid #C7D2FE' }}>
+                          {x.year}
+                        </span>
+                      )}
+                    </div>
+                    {/* Fila 2: Chasis + Color */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6, flexWrap:'wrap' }}>
+                      {x.chassis && (
+                        <span style={{ fontSize:11, color:'#6B7280', fontFamily:"'SF Mono',Consolas,monospace", background:'#F3F4F6', padding:'1px 6px', borderRadius:5, border:'1px solid #E5E7EB' }}>
+                          #{x.chassis}
+                        </span>
+                      )}
+                      {x.color && (
+                        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                          <span style={{ width:12, height:12, borderRadius:3, background:cDot||'#E5E7EB', border: !cDot||cDot==='#FFFFFF'?'1px solid #D1D5DB':'1px solid rgba(0,0,0,0.1)', flexShrink:0, display:'inline-block' }}/>
+                          <span style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>{x.color}</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Fila 3: Badge estado + sucursal + precio */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                      <span style={{
+                        fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:99,
+                        background: stCfg.bg, color: stCfg.color, border:`1px solid ${stCfg.border}`,
+                      }}>
+                        {stCfg.icon} {stCfg.label}
+                        {isSold && x.sold_at ? ` · ${fD(x.sold_at)}` : ''}
+                      </span>
+                      {bCode && (
+                        <span style={{ fontSize:10, fontWeight:600, color:bCfg.color, background:bCfg.light, padding:'2px 7px', borderRadius:99, border:`1px solid ${bCfg.color}30` }}>
+                          {bCfg.label}
+                        </span>
+                      )}
+                      {x.sale_price > 0 && (
+                        <span style={{ fontSize:12, fontWeight:700, color:'#374151', marginLeft:'auto' }}>
+                          ${Number(x.sale_price).toLocaleString('es-CL')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── IDENTIFICADORES — chasis foto + motor (compacto) ── */}
+                  <div style={{ flexShrink:0, padding:'10px 14px', borderRight:'1px solid #F3F4F6', display:'flex', flexDirection:'column', justifyContent:'center', gap:8, minWidth:0 }} onClick={e=>e.stopPropagation()}>
+                    {/* Chasis foto */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', width:32, flexShrink:0 }}>Chasis</span>
+                      {x.chassis_photo
+                        ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
+                            style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
+                        : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'chassis_photo');}} title="Foto chasis"
+                            style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                       }
                     </div>
-                    {/* Info */}
-                    <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center' }}>
-                      {/* Marca */}
-                      <div style={{ fontSize:18, fontWeight:900, color:'#111827', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                        {x.brand}
-                      </div>
-                      {/* Modelo */}
-                      <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                        {x.model}
-                      </div>
-                      {/* Año */}
-                      {x.year && (
-                        <div style={{ marginBottom:7 }}>
-                          <span style={{
-                            fontSize:13, fontWeight:800, color:'#4F46E5',
-                            background:'#EEF2FF', padding:'2px 10px', borderRadius:6,
-                            border:'1px solid #C7D2FE', letterSpacing:'0.02em',
-                          }}>
-                            {x.year}
-                          </span>
-                        </div>
-                      )}
-                      {/* Color */}
-                      {x.color && (
-                        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                          <span style={{
-                            display:'inline-block', width:22, height:14, borderRadius:4, flexShrink:0,
-                            background: cDot || '#E5E7EB',
-                            border: !cDot || cDot==='#FFFFFF' ? '1px solid #D1D5DB' : '1px solid rgba(0,0,0,0.12)',
-                            boxShadow: cDot ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
-                          }}/>
-                          <span style={{ fontSize:11, color:'#6B7280', fontWeight:600 }}>{x.color}</span>
-                        </div>
+                    {/* Motor foto */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', width:32, flexShrink:0 }}>Motor</span>
+                      {x.motor_num ? (
+                        x.motor_photo
+                          ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
+                              style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
+                          : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'motor_photo');}} title="Foto motor"
+                              style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
+                      ) : (
+                        <span style={{ fontSize:11, color:'#D1D5DB' }}>—</span>
                       )}
                     </div>
                   </div>
 
-                  {/* ── IDENTIFICADORES — chasis · motor ── */}
-                  <div className="crm-inv-id" style={{
-                    flex:1, minWidth:0, padding:'14px 20px',
+                  {/* ── ESTADO — select rápido ── */}
+                  <div className="crm-inv-status" onClick={e=>e.stopPropagation()} style={{
+                    flexShrink:0, padding:'10px 12px',
                     borderRight:'1px solid #F3F4F6',
-                    display:'flex', flexDirection:'column', justifyContent:'center', gap:12,
-                    overflow:'hidden',
+                    display:'flex', flexDirection:'column', justifyContent:'center', gap:6, minWidth:110,
                   }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>
-                      Identificación
-                    </div>
-                    {/* Chasis */}
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Chasis</span>
-                      <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
-                        <span style={{
-                          fontSize:12, fontWeight:700, color:'#1F2937',
-                          background:'#F3F4F6', padding:'4px 11px', borderRadius:7,
-                          border:'1px solid #E5E7EB', letterSpacing:'0.03em',
-                          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0,
-                        }}>
-                          {x.chassis}
-                        </span>
-                        {x.chassis_photo
-                          ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
-                              style={{ width:26,height:26,borderRadius:6,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB',flexShrink:0 }}/>
-                          : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'chassis_photo');}} title="Agregar foto de chasis"
-                              style={{ width:24,height:24,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,padding:0 }}>+</button>
-                        }
-                      </div>
-                    </div>
-                    {/* Motor */}
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.1em', textTransform:'uppercase', width:36, flexShrink:0 }}>Motor</span>
-                      <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                        {x.motor_num
-                          ? <>
-                              <span style={{
-                                fontSize:12, fontWeight:600, color:'#4B5563',
-                                background:'#F9FAFB', padding:'3px 10px', borderRadius:6,
-                                border:'1px solid #E5E7EB', letterSpacing:'0.02em',
-                              }}>{x.motor_num}</span>
-                              {x.motor_photo
-                                ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
-                                    style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
-                                : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'motor_photo');}} title="Agregar foto de motor"
-                                    style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
-                              }
-                            </>
-                          : <span style={{ fontSize:12, color:'#D1D5DB', fontWeight:400 }}>—</span>
-                        }
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── ESTADO ── */}
-                  <div className="crm-inv-status" style={{
-                    flex:'0 0 148px', padding:'16px 18px',
-                    borderRight:'1px solid #F3F4F6',
-                    display:'flex', flexDirection:'column', justifyContent:'center', gap:8,
-                  }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>
-                      Estado
-                    </div>
                     {isSold ? (
-                      <div>
+                      <>
                         <div style={{
-                          display:'inline-flex', alignItems:'center', gap:6,
-                          padding:'6px 14px', borderRadius:20,
+                          display:'inline-flex', alignItems:'center', gap:5,
+                          padding:'5px 10px', borderRadius:20,
                           background:ST_CFG.vendida.bg, border:`1.5px solid ${ST_CFG.vendida.border}`,
                         }}>
-                          <span style={{ fontSize:14, color:ST_CFG.vendida.color }}>✓</span>
-                          <span style={{ fontSize:12, fontWeight:800, color:ST_CFG.vendida.color }}>Vendida</span>
+                          <span style={{ fontSize:12, color:ST_CFG.vendida.color }}>✓</span>
+                          <span style={{ fontSize:11, fontWeight:800, color:ST_CFG.vendida.color }}>Vendida</span>
                         </div>
-                        {x.sold_at && <div style={{ fontSize:10, color:'#9CA3AF', marginTop:6, paddingLeft:2 }}>{fD(x.sold_at)}</div>}
-                      </div>
+                        {x.sold_at && <div style={{ fontSize:9, color:'#9CA3AF', paddingLeft:2 }}>{fD(x.sold_at)}</div>}
+                      </>
                     ) : (
                       <div style={{
-                        display:'inline-flex', alignItems:'center', gap:6,
-                        padding:'6px 12px', borderRadius:20,
+                        display:'inline-flex', alignItems:'center', gap:5,
+                        padding:'5px 9px', borderRadius:20,
                         background:stCfg.bg, border:`1.5px solid ${stCfg.border}`,
                       }}>
-                        <span style={{ fontSize:14, color:stCfg.color }}>{stCfg.icon}</span>
-                        <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
+                        <span style={{ fontSize:12, color:stCfg.color }}>{stCfg.icon}</span>
+                        <select value={x.status}
+                          onClick={e=>e.stopPropagation()}
+                          onChange={e=>handleStatus(x.id,e.target.value)}
                           style={{
                             background:'transparent', border:'none',
-                            fontSize:12, fontWeight:800, color:stCfg.color,
+                            fontSize:11, fontWeight:800, color:stCfg.color,
                             cursor:'pointer', padding:0, outline:'none', fontFamily:'inherit',
                           }}>
                           {Object.entries(INV_ST).filter(([k])=>k!=='vendida').map(([k,v])=>(
@@ -1098,37 +1095,34 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     )}
                   </div>
 
-                  {/* ── PRECIO oculto en el row (sigue disponible vía export a Excel) ── */}
-
                   {/* ── ACCIONES ── */}
                   <div className="crm-inv-actions" onClick={e=>e.stopPropagation()} style={{
-                    flex:'0 0 160px', padding:'14px 16px',
-                    display:'flex', flexDirection:'column', justifyContent:'center', gap:7,
+                    flexShrink:0, padding:'10px 12px',
+                    display:'flex', flexDirection:'column', justifyContent:'center', gap:6, minWidth:100,
                   }}>
                     {!isSold ? (
-                      <>
-                        <div style={{ display:'flex', gap:5 }}>
-                          <button onClick={()=>toggleHist(x.id)}
-                            style={{
-                              ...miniBtn,
-                              flex:1,
-                              background: isHistOpen ? '#EEF2FF' : '#F9FAFB',
-                              color: isHistOpen ? '#4F46E5' : '#6B7280',
-                              border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}`,
-                            }}>
-                            {histLoading[x.id]?'…':'Historial'}
-                          </button>
-                          {brs.filter(b=>b.id!==x.branch_id).length > 0 && (
-                            <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
-                              style={{ ...miniBtn, flex:1, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer' }}>
-                              <option value="" disabled>Mover</option>
-                              {brs.filter(b=>b.id!==x.branch_id).map(b=>(
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      </>
+                      <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                        <button onClick={()=>toggleHist(x.id)}
+                          style={{
+                            ...miniBtn,
+                            background: isHistOpen ? '#EEF2FF' : '#F9FAFB',
+                            color: isHistOpen ? '#4F46E5' : '#6B7280',
+                            border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}`,
+                          }}>
+                          {histLoading[x.id]?'…':'Historial'}
+                        </button>
+                        {brs.filter(b=>b.id!==x.branch_id).length > 0 && (
+                          <select defaultValue=""
+                            onClick={e=>e.stopPropagation()}
+                            onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
+                            style={{ ...miniBtn, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer' }}>
+                            <option value="" disabled>Mover</option>
+                            {brs.filter(b=>b.id!==x.branch_id).map(b=>(
+                              <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     ) : (
                       <button onClick={()=>toggleHist(x.id)}
                         style={{
@@ -1362,7 +1356,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </div>
             )}
 
-            {eErr && <div style={{ marginTop:10,padding:'8px 12px',background:'#FEF2F2',borderRadius:8,fontSize:12,color:'#DC2626',border:'1px solid #FECACA' }}>{eErr}</div>}
+            <div style={{ marginTop:10 }}><ErrorMsg msg={eErr}/></div>
 
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:18 }}>
               {/* Eliminar */}
@@ -1448,7 +1442,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <Field label="Observaciones" value={nw.sale_notes} onChange={v=>setNw({...nw,sale_notes:v})} rows={2} ph="Ej: Venta registrada con retraso..."/>
               </div>
             )}
-            {addErr && <div style={{ marginBottom:12, padding:'8px 12px', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, fontSize:12, color:'#DC2626' }}>{addErr}</div>}
+            <ErrorMsg msg={addErr}/>
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
               <div style={{ fontSize:11,color:'#6B7280' }}>
                 {nw.added_as_sold&&<span style={{ color:'#EF4444',fontWeight:600 }}>Se creará como vendida</span>}
@@ -1599,11 +1593,6 @@ const btnGhost = {
   background:'#FFFFFF', border:'1.5px solid #E5E7EB', color:'#374151',
   borderRadius:9, fontSize:12, fontWeight:500, cursor:'pointer',
   padding:'8px 14px', fontFamily:'inherit',
-};
-const selectCtrl = {
-  height:32, borderRadius:7, border:'1.5px solid #E5E7EB',
-  background:'#FFFFFF', color:'#374151', fontSize:12,
-  padding:'0 8px', cursor:'pointer', fontFamily:'inherit', outline:'none',
 };
 const miniBtn = {
   padding:'5px 10px', borderRadius:7, fontSize:10, fontWeight:600,

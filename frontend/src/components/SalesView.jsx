@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg } from '../ui.jsx';
+import { Ic, S, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg, selectCtrl, useIsMobile } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -82,18 +82,19 @@ function DistributorBadge({ paid }) {
 }
 
 // ─── KPI card ─────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, color = '#374151', bg = '#F9FAFB', border = '#E5E7EB', alert = false, icon }) {
+function KpiCard({ label, value, color = '#374151', bg = '#F9FAFB', border = '#E5E7EB', alert = false }) {
   return (
     <div style={{
-      background: alert ? `${bg}` : '#FFFFFF',
+      background: alert ? bg : '#FFFFFF',
       border: `1px solid ${alert ? border : '#E5E7EB'}`,
-      borderRadius: 12, padding: '14px 18px',
-      display: 'flex', flexDirection: 'column', gap: 4,
+      borderRadius: 10, padding: '10px 16px',
+      flex: '1 1 110px',
+      display: 'flex', flexDirection: 'column', gap: 3,
       boxShadow: alert ? `0 2px 8px ${border}44` : '0 1px 3px rgba(0,0,0,0.04)',
     }}>
-      <div style={{ fontSize: 24, fontWeight: 900, color, letterSpacing: '-1px', lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 10, fontWeight: 600, color: alert ? color : '#9CA3AF',
-                    textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 900, color, letterSpacing: '-0.8px', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: alert ? color : '#9CA3AF',
+                    textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</div>
     </div>
   );
 }
@@ -246,32 +247,32 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       {/* Cabecera: unidad */}
       <div style={{
         background: isRes ? 'linear-gradient(135deg, #78350F 0%, #92400E 100%)' : 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
-        borderRadius: 12, padding: '16px 20px', marginBottom: 18, color: '#FFFFFF',
+        borderRadius: 12, padding: '18px 22px', marginBottom: 18, color: '#FFFFFF',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap',
       }}>
         <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
             {isRes ? (
-              <span style={{ fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:6,
-                background:'rgba(255,255,255,0.2)', color:'#FEF3C7', letterSpacing:'0.08em' }}>◐ RESERVA</span>
+              <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
+                background:'rgba(255,255,255,0.18)', color:'#FEF3C7', letterSpacing:'0.08em', border:'1px solid rgba(255,255,255,0.2)' }}>◐ RESERVA</span>
             ) : (
-              <span style={{ fontSize:9, fontWeight:800, padding:'2px 8px', borderRadius:6,
-                background:'rgba(255,255,255,0.2)', color:'#A7F3D0', letterSpacing:'0.08em' }}>✓ VENTA</span>
+              <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
+                background:'rgba(16,185,129,0.25)', color:'#A7F3D0', letterSpacing:'0.08em', border:'1px solid rgba(16,185,129,0.35)' }}>✓ VENTA</span>
             )}
           </div>
-          <div style={{ fontSize: 10, color: isRes?'#FDE68A':'#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+          <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
             {sale.brand}
           </div>
-          <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 2 }}>
+          <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 3 }}>
             {sale.model} {sale.year ? `· ${sale.year}` : ''}
           </div>
           <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#9CA3AF', letterSpacing: '0.04em' }}>
             {sale.chassis}{sale.color ? ` · ${sale.color}` : ''}
           </div>
         </div>
-        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 7 }}>
           {sale.sale_price > 0 && (
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#F28100', letterSpacing: '-1px' }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#F28100', letterSpacing: '-1px' }}>
               {fmt(sale.sale_price)}
             </div>
           )}
@@ -313,7 +314,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       )}
 
       {/* Info principal — grilla */}
-      <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px', marginBottom: 16 }}>
+      <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 16 }}>
         {[
           ['Vendedor',    sellerName],
           ['Sucursal',    sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega directa' : (sale.branch_name || '—')],
@@ -487,8 +488,7 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
             </>
           )}
           <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
-          {err && <div style={{ color: '#EF4444', fontSize: 12, padding: '6px 10px',
-                                background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
+          <ErrorMsg msg={err} />
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={handleSave} disabled={saving} style={{ ...S.btn, flex: 1 }}>
               {saving ? 'Guardando…' : 'Guardar cambios'}
@@ -1459,7 +1459,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             </div>
           </div>
 
-          {err && <div style={{ color: '#EF4444', fontSize: 12, marginTop: 10, padding: '6px 10px', background: '#FEF2F2', borderRadius: 6 }}>{err}</div>}
+          <ErrorMsg msg={err} />
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button onClick={handleCreate} disabled={saving} style={{ ...S.btn, flex: 1 }}>
               {saving ? 'Registrando…' : isReserva ? 'Registrar reserva' : 'Registrar venta'}
@@ -1562,6 +1562,7 @@ export function SalesView({ user, realBranches }) {
   const isAdmin      = CAN_ADMIN.includes(user.role);
   const canCreate    = CAN_CREATE.includes(user.role);
   const isSuperAdmin = user.role === 'super_admin';
+  const isMobile     = useIsMobile();
 
   const [sales,    setSales]    = useState([]);
   const [stats,    setStats]    = useState(null);
@@ -1571,6 +1572,7 @@ export function SalesView({ user, realBranches }) {
   const [showNew,  setShowNew]  = useState(null);
 
   const [q,              setQ]              = useState('');
+  const [debouncedQ,     setDebouncedQ]     = useState('');
   const [fromDate,       setFromDate]       = useState('');
   const [toDate,         setToDate]         = useState('');
   const [fBranch,        setFBranch]        = useState('');
@@ -1581,17 +1583,23 @@ export function SalesView({ user, realBranches }) {
   const [deleteMsg,      setDeleteMsg]      = useState('');  // mensaje tras eliminar (éxito o error)
   const [deleteErr,      setDeleteErr]      = useState('');
 
+  // Debounce búsqueda — 350ms para no disparar una llamada por tecla
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 350);
+    return () => clearTimeout(t);
+  }, [q]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       // limit explícito para no depender del default del backend (que ahora pagina).
       const params = { limit: 500 };
-      if (q)        params.q         = q;
-      if (fromDate) params.from      = fromDate;
-      if (toDate)   params.to        = toDate;
-      if (fBranch)  params.branch_id = fBranch;
+      if (debouncedQ) params.q        = debouncedQ;
+      if (fromDate)   params.from     = fromDate;
+      if (toDate)     params.to       = toDate;
+      if (fBranch)    params.branch_id= fBranch;
       if (fSeller && isAdmin) params.seller_id = fSeller;
-      if (fType)    params.status    = fType;
+      if (fType)      params.status   = fType;
 
       const [salesRes, statsRes] = await Promise.all([
         api.getSales(params),
@@ -1602,7 +1610,7 @@ export function SalesView({ user, realBranches }) {
       setStats(statsRes);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [q, fromDate, toDate, fBranch, fSeller, fType, isAdmin]);
+  }, [debouncedQ, fromDate, toDate, fBranch, fSeller, fType, isAdmin]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -1615,7 +1623,7 @@ export function SalesView({ user, realBranches }) {
   }, [isAdmin, user.id]);
 
   const hasFilters = q || fromDate || toDate || fBranch || fSeller || fType;
-  const clearFilters = () => { setQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); setFType(''); };
+  const clearFilters = () => { setQ(''); setDebouncedQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); setFType(''); };
 
   const handleDeleted = (deletedId, ticketIdWas) => {
     setSales(prev => prev.filter(s => s.id !== deletedId));
@@ -1675,7 +1683,7 @@ export function SalesView({ user, realBranches }) {
 
       {/* ── KPIs ── */}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           <KpiCard label="Ventas" value={stats.total} color="#111827" />
           {isAdmin && <KpiCard label="Pend. distribuidor" value={stats.pendiente_distribuidor}
             color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} />}
@@ -1693,72 +1701,125 @@ export function SalesView({ user, realBranches }) {
         </div>
       )}
 
-      {/* ── Filtro tipo (Todas / Reservas / Ventas) ── */}
-      <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-        {[['','Todas','#6B7280'],['reservada','Reservas','#B45309'],['vendida','Ventas','#065F46']].map(([v,l,c])=>(
-          <button key={v} onClick={()=>setFType(v)}
-            style={{ padding:'7px 18px', borderRadius:8, border:`1.5px solid ${fType===v?c:'#E5E7EB'}`,
-              background: fType===v ? (v==='reservada'?'#FFFBEB':v==='vendida'?'#ECFDF5':'#F3F4F6') : '#ffffff',
-              color: fType===v?c:'#6B7280', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit',
-              transition:'all 0.12s' }}>
-            {l}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Filtros ── */}
+      {/* ── Barra de filtros unificada ── */}
       <div style={{
-        background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
-        padding: '12px 16px', marginBottom: 16,
-        display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        background: '#F9FAFB', border: '1px solid #E5E7EB',
+        borderRadius: 10, padding: '8px 14px', marginBottom: 14,
       }}>
-        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 170 }}>
+        {/* Búsqueda */}
+        <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 140 }}>
           <Ic.search size={13} color="#9CA3AF" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           <input value={q} onChange={e => setQ(e.target.value)}
             placeholder="Buscar cliente, chasis, ticket…"
-            style={{ ...S.inp, paddingLeft: 28, width: '100%', height: 34, fontSize: 12 }} />
+            style={{ ...selectCtrl, width: '100%', paddingLeft: 28, boxSizing: 'border-box' }} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Desde</span>
-          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-            style={{ ...S.inp, height: 32, fontSize: 12 }} />
+
+        {/* Chips tipo */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[{v:'',l:'Todas'},{v:'reservada',l:'Reservas'},{v:'vendida',l:'Ventas'}].map(t => (
+            <button key={t.v} onClick={() => setFType(t.v)} style={{
+              padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s',
+              background: fType === t.v ? '#F28100' : '#EAECF0',
+              color: fType === t.v ? '#fff' : '#6B7280',
+            }}>{t.l}</button>
+          ))}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Hasta</span>
-          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-            style={{ ...S.inp, height: 32, fontSize: 12 }} />
-        </div>
+
+        {/* Fechas */}
+        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+          style={{ ...selectCtrl, width: 130 }} title="Desde" />
+        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+          style={{ ...selectCtrl, width: 130 }} title="Hasta" />
+
+        {/* Sucursal */}
         {isAdmin && realBranches.length > 0 && (
           <select value={fBranch} onChange={e => setFBranch(e.target.value)}
-            style={{ ...S.inp, height: 34, fontSize: 12 }}>
+            style={{ ...selectCtrl }}>
             <option value="">Todas las sucursales</option>
             {realBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
+
+        {/* Vendedor */}
         {isAdmin && sellers.length > 0 && (
           <select value={fSeller} onChange={e => setFSeller(e.target.value)}
-            style={{ ...S.inp, height: 34, fontSize: 12 }}>
+            style={{ ...selectCtrl }}>
             <option value="">Todos los vendedores</option>
             {sellers.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
           </select>
         )}
+
+        {/* Limpiar */}
         {hasFilters && (
           <button onClick={clearFilters}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, height: 34, padding: '0 12px',
-                     borderRadius: 8, border: '1px solid #E5E7EB', background: '#F9FAFB',
-                     fontSize: 11, cursor: 'pointer', color: '#6B7280', fontFamily: 'inherit' }}>
-            <Ic.x size={10} /> Limpiar · {sales.length}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, height: 32, padding: '0 10px',
+                     borderRadius: 7, border: '1px solid #E5E7EB', background: '#fff',
+                     fontSize: 11, cursor: 'pointer', color: '#6B7280', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            <Ic.x size={10} /> Limpiar
           </button>
         )}
       </div>
 
-      {/* ── Tabla ── */}
+      {/* ── Contenido: mobile cards / desktop tabla ── */}
+      {isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {loading && (
+            <div style={{ textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 }}>Cargando…</div>
+          )}
+          {!loading && sales.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
+              <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba otros filtros' : 'No hay ventas registradas aún'}</div>
+            </div>
+          )}
+          {!loading && sales.map(s => {
+            const isRes = s.status === 'reservada';
+            const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
+            return (
+              <div key={s.id}
+                style={{
+                  ...S.card, padding: '12px 14px', cursor: 'pointer',
+                  borderLeft: `4px solid ${isRes ? '#F59E0B' : '#10B981'}`,
+                  background: isRes ? 'rgba(245,158,11,0.03)' : '#fff',
+                }}
+                onClick={() => setSelSale(s)}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{s.brand} {s.model}{s.year ? ` ${s.year}` : ''}</span>
+                  <span style={{ fontSize: 11, color: '#9CA3AF' }}>{fD(s.sold_at)}</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 6 }}>{s.client_name || '—'}{s.client_rut ? ` · ${s.client_rut}` : ''}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#111827' }}>
+                    {s.sale_price ? fmt(s.sale_price) : '—'}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                    background: isRes ? '#FFFBEB' : '#F0FDF4',
+                    color: isRes ? '#B45309' : '#15803D',
+                    border: `1px solid ${isRes ? '#FCD34D' : '#86EFAC'}`,
+                  }}>
+                    {isRes ? 'Reserva' : 'Venta'}
+                  </span>
+                </div>
+                {isRes && s.sale_price > 0 && (
+                  <div style={{ fontSize: 11, marginTop: 4, color: saldo > 0 ? '#B45309' : '#059669', fontWeight: 600 }}>
+                    {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+
       <div className="crm-sales-table" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
                     overflow: 'auto', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 760 }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #F3F4F6', background: '#F9FAFB' }}>
+            <tr>
               {[
                 ['Tipo',        'center', 'nowrap'],
                 ['Fecha',       'left',   'nowrap'],
@@ -1773,9 +1834,13 @@ export function SalesView({ user, realBranches }) {
                 ['Docs',        'center', 'nowrap'],
                 ['',            'center', 'nowrap'],
               ].map(([h, align, ws]) => (
-                <th key={h} style={{ textAlign: align, padding: '10px 12px', fontSize: 9,
-                                     fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
-                                     letterSpacing: '0.1em', whiteSpace: ws }}>
+                <th key={h} style={{
+                  textAlign: align, padding: '8px 12px', fontSize: 10,
+                  fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
+                  letterSpacing: '0.08em', whiteSpace: ws,
+                  borderBottom: '2px solid #F3F4F6', background: '#F9FAFB',
+                  position: 'sticky', top: 0, zIndex: 1,
+                }}>
                   {h}
                 </th>
               ))}
@@ -1800,13 +1865,16 @@ export function SalesView({ user, realBranches }) {
               const docsOk = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
               const docCount = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
               const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
-              const bgRow = isRes ? '#FFFDF5' : 'transparent';
+              const blLeft = isRes ? '3px solid #F59E0B' : '3px solid #10B981';
+              const bgRow  = isRes ? 'rgba(245,158,11,0.04)' : 'transparent';
               return (
                 <tr key={s.id}
                   onClick={() => setSelSale(s)}
-                  style={{ borderBottom: `1px solid ${isRes ? '#FEF3C7' : '#F3F4F6'}`, background: bgRow, transition: 'background 0.1s', cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.background = isRes ? '#FEF9EC' : '#FAFBFF'}
-                  onMouseLeave={e => e.currentTarget.style.background = bgRow}>
+                  style={{ borderBottom: `1px solid ${isRes ? '#FEF3C7' : '#F3F4F6'}`,
+                           borderLeft: blLeft, background: bgRow,
+                           transition: 'background 0.1s', cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = isRes ? '#FEF3C7' : '#F5F6FF'; e.currentTarget.style.borderLeft = '3px solid #F28100'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = bgRow; e.currentTarget.style.borderLeft = blLeft; }}>
 
                   {/* Tipo */}
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
@@ -1834,7 +1902,7 @@ export function SalesView({ user, realBranches }) {
                   {/* Cliente */}
                   <td style={{ padding: '10px 12px', maxWidth: 150, overflow: 'hidden',
                                textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontWeight: 600, color: '#1F2937' }}>{s.client_name || '—'}</span>
+                    <span style={{ fontWeight: 700, color: '#111827' }}>{s.client_name || '—'}</span>
                     {s.client_rut && (
                       <div style={{ fontSize: 10, color: '#9CA3AF' }}>{s.client_rut}</div>
                     )}
@@ -1878,7 +1946,7 @@ export function SalesView({ user, realBranches }) {
 
                   {/* Precio / Abono */}
                   <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <div style={{ fontWeight: 700, color: s.sale_price ? '#111827' : '#D1D5DB' }}>
+                    <div style={{ fontWeight: 800, color: s.sale_price ? '#111827' : '#D1D5DB', fontSize: 13 }}>
                       {s.sale_price ? fmt(s.sale_price) : '—'}
                     </div>
                     {isRes && s.sale_price > 0 && (
@@ -1961,6 +2029,7 @@ export function SalesView({ user, realBranches }) {
           </tbody>
         </table>
       </div>
+      )} {/* fin isMobile ternario */}
 
       {/* Contador */}
       {!loading && sales.length > 0 && (

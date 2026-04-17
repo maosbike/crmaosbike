@@ -171,7 +171,7 @@ export const T = {
   z: {
     base:       1,
     sticky:    10,
-    modal:     60,
+    modal:     80,
     bottomNav: 70,
     drawer:    89,
     header:    90,

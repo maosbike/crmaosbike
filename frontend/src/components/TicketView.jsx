@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
@@ -55,6 +55,10 @@ export function TicketView({lead,user,nav,updLead}){
   const[realModels,setRealModels]=useState([]);
   const[assignHistory,setAssignHistory]=useState([]);
   const[assignHistoryErr,setAssignHistoryErr]=useState(null);
+  // Ref para detectar cuándo el lead cambió de ID (navegación a otro ticket)
+  const leadIdRef=useRef(lead.id);
+  // Helper que construye el snapshot de campos sucios
+  const buildSnapshot=useCallback((l)=>({fn:l.fn,ln:l.ln,rut:l.rut,bday:l.bday,email:l.email,phone:l.phone,comuna:l.comuna,source:l.source,sitLab:l.sitLab,continuidad:l.continuidad,renta:l.renta,pie:l.pie,wantsFin:l.wantsFin,finStatus:l.finStatus,rechazoMotivo:l.rechazoMotivo,motoId:l.motoId}),[]);
   useEffect(()=>{
     if(isAdmin){
       api.getSellers().then(d=>setRealSellers(Array.isArray(d)?d:[])).catch(()=>{});
@@ -69,9 +73,22 @@ export function TicketView({lead,user,nav,updLead}){
         .then(()=>updLead(lead.id,{status:'abierto'}))
         .catch(()=>{/* silencioso: si falla, seguirá mostrándose como 'nuevo' */});
     }
-    // Capturar estado inicial para detectar qué campos cambian al guardar
-    savedRef.current={fn:lead.fn,ln:lead.ln,rut:lead.rut,bday:lead.bday,email:lead.email,phone:lead.phone,comuna:lead.comuna,source:lead.source,sitLab:lead.sitLab,continuidad:lead.continuidad,renta:lead.renta,pie:lead.pie,wantsFin:lead.wantsFin,finStatus:lead.finStatus,rechazoMotivo:lead.rechazoMotivo,motoId:lead.motoId};
+    // Capturar estado inicial — también resetea al cambiar de ticket (nuevo lead.id)
+    leadIdRef.current=lead.id;
+    savedRef.current=buildSnapshot(lead);
   },[isAdmin,lead.id]);// eslint-disable-line
+  // Sincronizar savedRef cuando llega un updLead externo (mismo id, datos distintos)
+  // pero solo si el usuario NO tiene cambios pendientes — para no pisar edición activa.
+  useEffect(()=>{
+    if(lead.id!==leadIdRef.current)return;// cambio de ID ya lo maneja el effect de arriba
+    if(!savedRef.current)return;
+    const DIRTY_KEYS=['fn','ln','rut','bday','email','phone','comuna','source','sitLab','continuidad','renta','pie','wantsFin','finStatus','rechazoMotivo','motoId'];
+    const userIsDirty=DIRTY_KEYS.some(k=>String(lead[k]??'')!==String(savedRef.current[k]??''));
+    if(!userIsDirty){
+      // No hay cambios pendientes del usuario: resincronizar el baseline con el lead actualizado
+      savedRef.current=buildSnapshot(lead);
+    }
+  },[lead,buildSnapshot]);
   const sellers=realSellers;
 
   const created=new Date(lead.createdAt).getTime();const now=Date.now();
@@ -639,7 +656,7 @@ export function TicketView({lead,user,nav,updLead}){
             const DIRTY_KEYS=['fn','ln','rut','bday','email','phone','comuna','source','sitLab','continuidad','renta','pie','wantsFin','finStatus','rechazoMotivo','motoId'];
             const isDirty=!!savedRef.current&&DIRTY_KEYS.some(k=>String(lead[k]??'')!==String(savedRef.current[k]??''));
             return(
-              <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between', alignItems:'center', position: isDirty?'sticky':'static', bottom:0, background:'#FFFFFF', zIndex:10, paddingBottom: isDirty?10:0 }}>
+              <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between', alignItems:'center', position: isDirty?'sticky':'static', bottom:0, background:'var(--surface)', zIndex:10, paddingBottom: isDirty?10:0, boxShadow: isDirty?'0 -2px 8px rgba(0,0,0,0.08)':'none' }}>
                 {isDirty?(
                   <span style={{ fontSize:11, fontWeight:700, color:'#F28100', background:'#FFF7ED', padding:'3px 10px', borderRadius:6, border:'1px solid #FDBA74' }}>Cambios sin guardar</span>
                 ):<span/>}
@@ -995,173 +1012,168 @@ export function TicketView({lead,user,nav,updLead}){
       </Modal>}
 
       {/* ══ MODAL REGISTRAR CONTACTO ══════════════════════════════ */}
-      {showContact&&(
-        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
-          onClick={e=>{if(e.target===e.currentTarget)closeContact();}}>
-          <div style={{ background:'#ffffff',borderRadius:16,width:'100%',maxWidth:520,boxShadow:'0 20px 60px rgba(0,0,0,0.18)',overflow:'hidden' }}>
+      {showContact&&<Modal
+        onClose={!cfSaving?closeContact:undefined}
+        headerContent={
+          <div style={{ margin:'-24px -24px 0',padding:'18px 22px',borderBottom:'1px solid #E5E7EB',background:'#F9FAFB',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
+            <div>
+              <div style={{ fontSize:15,fontWeight:800,color:'#111827' }}>Registrar contacto</div>
+              <div style={{ fontSize:11,color:'#9CA3AF',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
+            </div>
+            {!cfSaving&&<button onClick={closeContact} style={{ background:'none',border:'none',cursor:'pointer',padding:4,borderRadius:6,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+          </div>
+        }
+      >
+        {cfDone?(
+          /* ── Estado de éxito ── */
+          <div style={{ padding:'40px 24px',textAlign:'center' }}>
+            <div style={{ fontSize:44,marginBottom:12 }}>✅</div>
+            <div style={{ fontSize:16,fontWeight:800,color:'#111827',marginBottom:6 }}>Contacto guardado</div>
+            <div style={{ fontSize:13,color:'#6B7280' }}>Ticket <strong>#{lead.num}</strong> actualizado correctamente.</div>
+          </div>
+        ):(
+          <div style={{ display:'flex',flexDirection:'column',gap:16,marginTop:20 }}>
 
-            {/* Header */}
-            <div style={{ padding:'18px 22px',borderBottom:'1px solid #E5E7EB',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#F9FAFB' }}>
-              <div>
-                <div style={{ fontSize:15,fontWeight:800,color:'#111827' }}>Registrar contacto</div>
-                <div style={{ fontSize:11,color:'#9CA3AF',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
+            {/* Canal */}
+            <div>
+              <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Canal de contacto</div>
+              <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
+                {["whatsapp","llamada","email","presencial","sms"].map(mt=>(
+                  <button key={mt} type="button" onClick={()=>setCf(p=>({...p,method:mt}))}
+                    style={{ padding:'6px 12px',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:6,
+                      background:cf.method===mt?'#2563EB':'#F3F4F6',
+                      color:cf.method===mt?'#ffffff':'#6B7280',
+                      border:cf.method===mt?'none':'1px solid #E5E7EB' }}>
+                    {mt.charAt(0).toUpperCase()+mt.slice(1)}
+                  </button>
+                ))}
               </div>
-              <button onClick={closeContact} style={{ background:'none',border:'none',cursor:'pointer',padding:4,borderRadius:6,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>
             </div>
 
-            {/* Contenido */}
-            {cfDone?(
-              /* ── Estado de éxito ── */
-              <div style={{ padding:'40px 24px',textAlign:'center' }}>
-                <div style={{ fontSize:44,marginBottom:12 }}>✅</div>
-                <div style={{ fontSize:16,fontWeight:800,color:'#111827',marginBottom:6 }}>Contacto guardado</div>
-                <div style={{ fontSize:13,color:'#6B7280' }}>Ticket <strong>#{lead.num}</strong> actualizado correctamente.</div>
-              </div>
-            ):(
-              <div style={{ padding:'20px 22px',display:'flex',flexDirection:'column',gap:16 }}>
+            {/* Resultado */}
+            <div>
+              <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Resultado del contacto</div>
+              <select value={cf.result} onChange={e=>setCf(p=>({...p,result:e.target.value,note:'',evMode:'file'}))}
+                style={{ ...S.inp,width:'100%',fontSize:12 }}>
+                <option value="">Seleccionar resultado...</option>
+                <optgroup label="— Contacto real">
+                  <option value="Contactado">Contactado</option>
+                  <option value="Interesado">Interesado</option>
+                  <option value="Agendó visita">Agendó visita</option>
+                  <option value="Cotización entregada">Cotización entregada</option>
+                  <option value="Envió documentos">Envió documentos</option>
+                  <option value="No interesado">No interesado</option>
+                </optgroup>
+                <optgroup label="— Intento fallido">
+                  <option value="No contesta">No contesta</option>
+                  <option value="Buzón de voz">Buzón de voz</option>
+                  <option value="Número equivocado">Número equivocado</option>
+                </optgroup>
+              </select>
+            </div>
 
-                {/* Canal */}
-                <div>
-                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Canal de contacto</div>
-                  <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
-                    {["whatsapp","llamada","email","presencial","sms"].map(mt=>(
-                      <button key={mt} type="button" onClick={()=>setCf(p=>({...p,method:mt}))}
-                        style={{ padding:'6px 12px',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:6,
-                          background:cf.method===mt?'#2563EB':'#F3F4F6',
-                          color:cf.method===mt?'#ffffff':'#6B7280',
-                          border:cf.method===mt?'none':'1px solid #E5E7EB' }}>
-                        {mt.charAt(0).toUpperCase()+mt.slice(1)}
-                      </button>
-                    ))}
-                  </div>
+            {/* EVIDENCIA — solo si result requiere evidencia */}
+            {needsEvidence&&(
+              <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'14px 16px' }}>
+                <div style={{ fontSize:11,fontWeight:700,color:'#92400E',marginBottom:10 }}>
+                  ⚠️ Este resultado exige evidencia de contacto real
+                </div>
+                {/* Toggle file/note */}
+                <div style={{ display:'flex',gap:6,marginBottom:12 }}>
+                  {[{v:'file',l:'📎 Subir captura'},{v:'note',l:'✏️ Nota detallada'}].map(o=>(
+                    <button key={o.v} type="button" onClick={()=>setCf(p=>({...p,evMode:o.v}))}
+                      style={{ flex:1,padding:'7px',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:7,
+                        background:cf.evMode===o.v?'#2563EB':'#ffffff',
+                        color:cf.evMode===o.v?'#ffffff':'#374151',
+                        border:`1.5px solid ${cf.evMode===o.v?'#2563EB':'#E5E7EB'}` }}>
+                      {o.l}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Resultado */}
-                <div>
-                  <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Resultado del contacto</div>
-                  <select value={cf.result} onChange={e=>setCf(p=>({...p,result:e.target.value,note:'',evMode:'file'}))}
-                    style={{ ...S.inp,width:'100%',fontSize:12 }}>
-                    <option value="">Seleccionar resultado...</option>
-                    <optgroup label="— Contacto real">
-                      <option value="Contactado">Contactado</option>
-                      <option value="Interesado">Interesado</option>
-                      <option value="Agendó visita">Agendó visita</option>
-                      <option value="Cotización entregada">Cotización entregada</option>
-                      <option value="Envió documentos">Envió documentos</option>
-                      <option value="No interesado">No interesado</option>
-                    </optgroup>
-                    <optgroup label="— Intento fallido">
-                      <option value="No contesta">No contesta</option>
-                      <option value="Buzón de voz">Buzón de voz</option>
-                      <option value="Número equivocado">Número equivocado</option>
-                    </optgroup>
-                  </select>
-                </div>
-
-                {/* EVIDENCIA — solo si result requiere evidencia */}
-                {needsEvidence&&(
-                  <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'14px 16px' }}>
-                    <div style={{ fontSize:11,fontWeight:700,color:'#92400E',marginBottom:10 }}>
-                      ⚠️ Este resultado exige evidencia de contacto real
-                    </div>
-                    {/* Toggle file/note */}
-                    <div style={{ display:'flex',gap:6,marginBottom:12 }}>
-                      {[{v:'file',l:'📎 Subir captura'},{v:'note',l:'✏️ Nota detallada'}].map(o=>(
-                        <button key={o.v} type="button" onClick={()=>setCf(p=>({...p,evMode:o.v}))}
-                          style={{ flex:1,padding:'7px',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:7,
-                            background:cf.evMode===o.v?'#2563EB':'#ffffff',
-                            color:cf.evMode===o.v?'#ffffff':'#374151',
-                            border:`1.5px solid ${cf.evMode===o.v?'#2563EB':'#E5E7EB'}` }}>
-                          {o.l}
+                {cf.evMode==='file'?(
+                  <div>
+                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Tipo de captura</div>
+                    <div style={{ display:'flex',gap:5,marginBottom:10 }}>
+                      {EV_TYPES.map(t=>(
+                        <button key={t.v} type="button" onClick={()=>setCf(p=>({...p,evType:t.v}))}
+                          style={{ padding:'4px 10px',fontSize:10,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:5,
+                            background:cf.evType===t.v?'#1D4ED8':'#F3F4F6',
+                            color:cf.evType===t.v?'#ffffff':'#374151',border:'none' }}>
+                          {t.l}
                         </button>
                       ))}
                     </div>
-
-                    {cf.evMode==='file'?(
-                      <div>
-                        <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Tipo de captura</div>
-                        <div style={{ display:'flex',gap:5,marginBottom:10 }}>
-                          {EV_TYPES.map(t=>(
-                            <button key={t.v} type="button" onClick={()=>setCf(p=>({...p,evType:t.v}))}
-                              style={{ padding:'4px 10px',fontSize:10,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:5,
-                                background:cf.evType===t.v?'#1D4ED8':'#F3F4F6',
-                                color:cf.evType===t.v?'#ffffff':'#374151',border:'none' }}>
-                              {t.l}
-                            </button>
-                          ))}
-                        </div>
-                        {evPreview?(
-                          <div style={{ position:'relative',marginBottom:6 }}>
-                            <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:140,objectFit:'cover',borderRadius:8,border:'1px solid #E5E7EB' }}/>
-                            <button onClick={()=>{setEvFile(null);setEvPreview(null);}}
-                              style={{ position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.5)',color:'#ffffff',border:'none',borderRadius:4,padding:'2px 7px',fontSize:11,cursor:'pointer' }}>✕</button>
-                          </div>
-                        ):(
-                          <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,padding:'18px',borderRadius:8,border:'2px dashed #D1D5DB',background:'#F9FAFB',cursor:'pointer',fontSize:12,color:'#6B7280' }}>
-                            <span style={{ fontSize:22 }}>📎</span>
-                            <span>Hacer clic para seleccionar imagen</span>
-                            <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{
-                              const f=e.target.files[0];if(!f)return;
-                              setEvFile(f);setEvPreview(URL.createObjectURL(f));
-                            }}/>
-                          </label>
-                        )}
+                    {evPreview?(
+                      <div style={{ position:'relative',marginBottom:6 }}>
+                        <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:140,objectFit:'cover',borderRadius:8,border:'1px solid #E5E7EB' }}/>
+                        <button onClick={()=>{setEvFile(null);setEvPreview(null);}}
+                          style={{ position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.5)',color:'#ffffff',border:'none',borderRadius:4,padding:'2px 7px',fontSize:11,cursor:'pointer' }}>✕</button>
                       </div>
                     ):(
-                      <div>
-                        <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Nota detallada <span style={{ color:'#EF4444' }}>*</span> (mín. 50 caracteres)</div>
-                        <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                          rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
-                          placeholder="Describe el contacto en detalle: qué se habló, qué se acordó, próximos pasos..."/>
-                        <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=50?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/50</div>
-                      </div>
+                      <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,padding:'18px',borderRadius:8,border:'2px dashed #D1D5DB',background:'#F9FAFB',cursor:'pointer',fontSize:12,color:'#6B7280' }}>
+                        <span style={{ fontSize:22 }}>📎</span>
+                        <span>Hacer clic para seleccionar imagen</span>
+                        <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{
+                          const f=e.target.files[0];if(!f)return;
+                          setEvFile(f);setEvPreview(URL.createObjectURL(f));
+                        }}/>
+                      </label>
                     )}
                   </div>
-                )}
-
-                {/* NOTA OBLIGATORIA — para intentos fallidos */}
-                {needsNote&&(
+                ):(
                   <div>
-                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>
-                      Nota obligatoria <span style={{ color:'#EF4444' }}>*</span> (mín. 40 caracteres)
-                    </div>
+                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Nota detallada <span style={{ color:'#EF4444' }}>*</span> (mín. 50 caracteres)</div>
                     <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                      rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
-                      placeholder="Ej: Llamé a las 14:30, entró al buzón. Volver a intentar mañana a las 11:00..."/>
-                    <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=40?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/40</div>
+                      rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                      placeholder="Describe el contacto en detalle: qué se habló, qué se acordó, próximos pasos..."/>
+                    <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=50?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/50</div>
                   </div>
                 )}
-
-                {/* NOTA OPCIONAL — otros resultados */}
-                {!needsEvidence&&!needsNote&&cf.result&&(
-                  <div>
-                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Nota adicional (opcional)</div>
-                    <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                      rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
-                      placeholder="Comentario adicional..."/>
-                  </div>
-                )}
-
-                {/* Error */}
-                {cfErr&&(
-                  <div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>
-                    ⚠ {cfErr}
-                  </div>
-                )}
-
-                {/* Acciones */}
-                <div style={{ display:'flex',gap:8,justifyContent:'flex-end',paddingTop:4 }}>
-                  <button onClick={closeContact} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>
-                  <button onClick={submitContact} disabled={cfSaving||!cf.result}
-                    style={{ ...S.btn,padding:'9px 20px',fontSize:12,fontWeight:700,opacity:(cfSaving||!cf.result)?0.6:1 }}>
-                    {cfSaving?'Guardando...':'Guardar contacto'}
-                  </button>
-                </div>
               </div>
             )}
+
+            {/* NOTA OBLIGATORIA — para intentos fallidos */}
+            {needsNote&&(
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>
+                  Nota obligatoria <span style={{ color:'#EF4444' }}>*</span> (mín. 40 caracteres)
+                </div>
+                <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
+                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                  placeholder="Ej: Llamé a las 14:30, entró al buzón. Volver a intentar mañana a las 11:00..."/>
+                <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=40?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/40</div>
+              </div>
+            )}
+
+            {/* NOTA OPCIONAL — otros resultados */}
+            {!needsEvidence&&!needsNote&&cf.result&&(
+              <div>
+                <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Nota adicional (opcional)</div>
+                <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
+                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                  placeholder="Comentario adicional..."/>
+              </div>
+            )}
+
+            {/* Error */}
+            {cfErr&&(
+              <div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>
+                ⚠ {cfErr}
+              </div>
+            )}
+
+            {/* Acciones */}
+            <div style={{ display:'flex',gap:8,justifyContent:'flex-end',paddingTop:4 }}>
+              <button onClick={closeContact} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>
+              <button onClick={submitContact} disabled={cfSaving||!cf.result}
+                style={{ ...S.btn,padding:'9px 20px',fontSize:12,fontWeight:700,opacity:(cfSaving||!cf.result)?0.6:1 }}>
+                {cfSaving?'Guardando...':'Guardar contacto'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fD, ViewHeader, Loader } from '../ui.jsx';
+import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile } from '../ui.jsx';
 
 const EVENT_TYPES={
   follow_up:'Seguimiento',call:'Llamada',meeting:'Reunión',
@@ -16,6 +16,7 @@ const BLANK_FORM=(userId,date)=>({
 });
 
 export function CalendarView({user,nav}){
+  const isMobile=useIsMobile();
   const[date,setDate]=useState(new Date());
   const[events,setEvents]=useState([]);
   const[loading,setLoading]=useState(true);
@@ -163,6 +164,26 @@ export function CalendarView({user,nav}){
     .sort((a,b)=>((a.start||'')>(b.start||''))?1:-1)
     .slice(0,12);
 
+  // Agenda mobile: agrupa eventos del mes por día ordenados por fecha
+  const getDaysWithEvents=(evs)=>{
+    if(!evs?.length)return[];
+    const byDay={};
+    evs.forEach(ev=>{
+      const d=ev.date||ev.start||'';
+      if(!d)return;
+      const key=d.slice(0,10);
+      if(!byDay[key])byDay[key]=[];
+      byDay[key].push(ev);
+    });
+    return Object.entries(byDay)
+      .sort(([a],[b])=>a.localeCompare(b))
+      .map(([date,dayEvents])=>({date,dayEvents}));
+  };
+  const formatDay=(dateStr)=>{
+    const d=new Date(dateStr+'T12:00:00');
+    return d.toLocaleDateString('es-CL',{weekday:'short',day:'numeric',month:'short'});
+  };
+
   return(
     <div>
       {/* Header */}
@@ -197,46 +218,85 @@ export function CalendarView({user,nav}){
         ))}
       </div>
 
-      {/* Grid del calendario */}
-      <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid #E5E7EB'}}>
-          {DIAS.map(d=><div key={d} style={{padding:'9px 4px',textAlign:'center',fontSize:10,fontWeight:600,color:'#6B7280',textTransform:'uppercase'}}>{d}</div>)}
-        </div>
-        {loading
-          ?<Loader label="Cargando eventos…" />
-          :<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
-            {cells.map((day,i)=>{
-              const evs=eventsForDay(day);
-              const isToday=day&&today.getDate()===day&&today.getMonth()===mo&&today.getFullYear()===yr;
-              return(
-                <div key={i}
-                  onClick={()=>day&&openNew(day)}
-                  style={{minHeight:88,padding:5,borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',background:isToday?'rgba(242,129,0,0.04)':'transparent',cursor:day?'pointer':'default'}}
-                >
-                  {day&&(
-                    <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'#F28100':'#9CA3AF',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'rgba(242,129,0,0.15)':'transparent',marginBottom:3}}>
-                      {day}
-                    </div>
-                  )}
-                  {evs.slice(0,3).map((ev,ei)=>{
+      {/* Grid del calendario (desktop) / Vista agenda (mobile) */}
+      {isMobile ? (
+        <div style={{...S.card,marginBottom:14}}>
+          {loading
+            ?<Loader label="Cargando eventos…" />
+            :<div style={{display:'flex',flexDirection:'column',gap:0}}>
+              {getDaysWithEvents(events).map(({date:dayKey,dayEvents})=>(
+                <div key={dayKey} style={{marginBottom:12}}>
+                  {/* Header del día */}
+                  <div style={{fontSize:11,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',padding:'6px 0 4px',borderBottom:'1px solid #F3F4F6',marginBottom:6}}>
+                    {formatDay(dayKey)}
+                  </div>
+                  {/* Eventos del día */}
+                  {dayEvents.map((ev,ei)=>{
                     const c=evColor(ev);
                     return(
                       <div key={ei}
-                        onClick={e=>{e.stopPropagation();openEdit(ev);}}
-                        title={ev.title}
-                        style={{fontSize:9,padding:'2px 5px',borderRadius:3,background:`${c}22`,color:c,marginBottom:2,cursor:'pointer',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontWeight:600}}
+                        style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 0',borderBottom:'1px solid #F9FAFB',cursor:'pointer'}}
+                        onClick={()=>openEdit(ev)}
                       >
-                        {ev.title}
+                        <div style={{width:8,height:8,borderRadius:'50%',marginTop:4,flexShrink:0,background:c}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600,color:'#111827',marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.title}</div>
+                          {ev.time&&<div style={{fontSize:11,color:'#9CA3AF'}}>{ev.time}</div>}
+                          {!ev.time&&ev.meta?.client_name&&<div style={{fontSize:11,color:'#9CA3AF'}}>{ev.meta.client_name}</div>}
+                        </div>
+                        <div style={{fontSize:10,color:c,fontWeight:600,flexShrink:0}}>{evShortLabel(ev)}</div>
                       </div>
                     );
                   })}
-                  {evs.length>3&&<div style={{fontSize:9,color:'#6B7280'}}>+{evs.length-3} más</div>}
                 </div>
-              );
-            })}
+              ))}
+              {getDaysWithEvents(events).length===0&&(
+                <div style={{padding:'32px 0',textAlign:'center',color:'#9CA3AF',fontSize:13}}>Sin eventos este mes</div>
+              )}
+            </div>
+          }
+        </div>
+      ) : (
+        <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid #E5E7EB'}}>
+            {DIAS.map(d=><div key={d} style={{padding:'9px 4px',textAlign:'center',fontSize:10,fontWeight:600,color:'#6B7280',textTransform:'uppercase'}}>{d}</div>)}
           </div>
-        }
-      </div>
+          {loading
+            ?<Loader label="Cargando eventos…" />
+            :<div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+              {cells.map((day,i)=>{
+                const evs=eventsForDay(day);
+                const isToday=day&&today.getDate()===day&&today.getMonth()===mo&&today.getFullYear()===yr;
+                return(
+                  <div key={i}
+                    onClick={()=>day&&openNew(day)}
+                    style={{minHeight:88,padding:5,borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',background:isToday?'rgba(242,129,0,0.04)':'transparent',cursor:day?'pointer':'default'}}
+                  >
+                    {day&&(
+                      <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'#F28100':'#9CA3AF',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'rgba(242,129,0,0.15)':'transparent',marginBottom:3}}>
+                        {day}
+                      </div>
+                    )}
+                    {evs.slice(0,3).map((ev,ei)=>{
+                      const c=evColor(ev);
+                      return(
+                        <div key={ei}
+                          onClick={e=>{e.stopPropagation();openEdit(ev);}}
+                          title={ev.title}
+                          style={{fontSize:9,padding:'2px 5px',borderRadius:3,background:`${c}22`,color:c,marginBottom:2,cursor:'pointer',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontWeight:600}}
+                        >
+                          {ev.title}
+                        </div>
+                      );
+                    })}
+                    {evs.length>3&&<div style={{fontSize:9,color:'#6B7280'}}>+{evs.length-3} más</div>}
+                  </div>
+                );
+              })}
+            </div>
+          }
+        </div>
+      )}
 
       {/* Próximos eventos */}
       {upcoming.length>0&&(

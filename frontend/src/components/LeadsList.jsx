@@ -104,7 +104,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       addLead(mapTicket(created));
       setShowNew(false);
       setTimeout(()=>onRefresh?.(),1000);
-    }catch(ex){setAddErr(ex.message||"Error al crear ticket");}
+    }catch(ex){setAddErr(ex.message||"No se pudo crear la ficha. Revisa los datos e intenta de nuevo.");}
     finally{setAdding(false);}
   };
 

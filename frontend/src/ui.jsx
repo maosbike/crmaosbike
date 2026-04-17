@@ -167,7 +167,7 @@ export const S={
   btn2:{background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
   gh:{background:"transparent",border:"none",cursor:"pointer",borderRadius:8,fontFamily:"inherit"},
   lbl:{display:"block",fontSize:11,color:"#6B7280",marginBottom:4,fontWeight:500},
-  secCard:{background:"#FFFFFF",borderRadius:12,border:"1px solid #E5E7EB",boxShadow:"0 1px 4px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:12},
+  secCard:{background:"#FFFFFF",borderRadius:12,border:"1px solid #E5E7EB",boxShadow:"0 1px 4px rgba(0,0,0,0.05)",marginBottom:12},
 };
 S.btnSec = S.btn2;
 
@@ -188,7 +188,7 @@ export const Stat=({icon:Ico,ic,ib,label,val,sub,sc,al})=>(
   </div>
 );
 export const Modal=({onClose,title,children,wide,headerContent})=>(
-  <div onClick={onClose} className="crm-modal-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:16}}>
+  <div onClick={onClose} className="crm-modal-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:80,padding:16}}>
     <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:16,padding:24,width:"100%",maxWidth:wide?750:480,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
       {headerContent ? headerContent : (
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
