@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ventas — Propuesta Rediseño v1</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: #F3F4F6; color: #111827; }
+
+/* ── Layout ── */
+.page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+.label-top { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px; background: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; padding: 6px 12px; border-radius: 6px; display: inline-block; }
+
+/* ── Header ── */
+.view-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+.header-left .preheader { font-size: 11px; color: #9CA3AF; font-weight: 500; margin-bottom: 4px; }
+.header-left h1 { font-size: 26px; font-weight: 800; color: #111827; letter-spacing: -0.03em; line-height: 1; }
+.header-left .count { font-size: 13px; color: #9CA3AF; margin-top: 4px; font-weight: 500; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.btn-outline { display: flex; align-items: center; gap: 6px; background: #fff; border: 1.5px solid #374151; color: #374151; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; padding: 8px 14px; font-family: inherit; white-space: nowrap; }
+.btn-brand { display: flex; align-items: center; gap: 6px; background: #F28100; border: none; color: #fff; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; padding: 8px 14px; font-family: inherit; white-space: nowrap; box-shadow: 0 2px 6px rgba(242,129,0,0.30); }
+
+/* ── KPIs ── */
+.kpi-section { margin-bottom: 20px; }
+.kpi-hero-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.kpi-pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.kpi-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.kpi-card.accent { border-left: 3px solid #F28100; }
+.kpi-card.green  { border-left: 3px solid #10B981; }
+.kpi-card.amber  { border-left: 3px solid #F59E0B; }
+.kpi-card-val { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin-bottom: 4px; }
+.kpi-card-lbl { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.kpi-pill { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+.kpi-pill-val { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; }
+.kpi-pill-lbl { font-size: 11px; color: #6B7280; font-weight: 500; }
+.kpi-pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-amber { background: #F59E0B; }
+.dot-purple { background: #8B5CF6; }
+.dot-cyan { background: #06B6D4; }
+.dot-orange { background: #F28100; }
+
+/* ── Filtros ── */
+.filters { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.search-wrap { position: relative; flex: 1 1 200px; min-width: 160px; }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9CA3AF; pointer-events: none; }
+.search-inp { width: 100%; height: 34px; border: 1px solid #E5E7EB; border-radius: 8px; padding: 0 10px 0 32px; font-size: 12px; font-family: inherit; color: #111827; outline: none; }
+.search-inp::placeholder { color: #9CA3AF; }
+
+.chip-group { display: flex; gap: 4px; }
+.chip { padding: 5px 12px; border-radius: 99px; border: 1px solid #E5E7EB; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; background: #fff; color: #6B7280; }
+.chip.active { border-color: #F28100; background: rgba(242,129,0,0.07); color: #C2680A; }
+
+.filter-date { height: 34px; border: 1px solid #E5E7EB; border-radius: 8px; padding: 0 10px; font-size: 12px; font-family: inherit; color: #6B7280; background: #fff; }
+.filter-select { height: 34px; border: 1px solid #E5E7EB; border-radius: 8px; padding: 0 10px; font-size: 12px; font-family: inherit; color: #6B7280; background: #fff; min-width: 110px; }
+
+/* ── Tabla ── */
+.table-wrap { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.table-head { display: grid; grid-template-columns: 4px minmax(180px,1.6fr) minmax(150px,1.3fr) minmax(100px,0.9fr) minmax(100px,0.9fr) 130px 120px 90px; background: #F9FAFB; border-bottom: 2px solid #E5E7EB; }
+.table-head > div { padding: 10px 12px; font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+.table-row { display: grid; grid-template-columns: 4px minmax(180px,1.6fr) minmax(150px,1.3fr) minmax(100px,0.9fr) minmax(100px,0.9fr) 130px 120px 90px; align-items: center; border-bottom: 1px solid #F3F4F6; min-height: 60px; cursor: pointer; transition: background 0.1s; }
+.table-row:hover { background: #FAFAFA; }
+.table-row:last-child { border-bottom: none; }
+
+.row-stripe { align-self: stretch; border-radius: 0; }
+.stripe-sale { background: #10B981; }
+.stripe-res  { background: #F59E0B; }
+
+.cell { padding: 10px 12px; min-width: 0; }
+
+/* tipo badge */
+.tipo-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+.tipo-venta { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+.tipo-res   { background: #FFFBEB; color: #B45309; border: 1px solid #FCD34D; }
+
+/* cliente */
+.client-name { font-size: 13px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.client-rut  { font-size: 10px; color: #9CA3AF; margin-top: 1px; }
+
+/* moto */
+.moto-name    { font-size: 12px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+.chassis-badge { font-size: 10px; font-weight: 600; color: #6B7280; background: #F3F4F6; padding: 1px 6px; border-radius: 4px; border: 1px solid #E5E7EB; font-family: monospace; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* vendedor / sucursal */
+.meta-text { font-size: 12px; color: #4B5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bodega-tag { display: inline-block; margin-top: 3px; font-size: 9px; font-weight: 700; color: #7C3AED; background: #EDE9FE; border-radius: 4px; padding: 1px 6px; letter-spacing: 0.05em; }
+
+/* precio */
+.precio-val   { font-size: 14px; font-weight: 800; color: #111827; letter-spacing: -0.02em; white-space: nowrap; text-align: right; }
+.abono-info   { font-size: 10px; color: #059669; text-align: right; }
+.falta-info   { font-size: 10px; font-weight: 700; color: #DC2626; text-align: right; }
+
+/* estado col */
+.estado-col { display: flex; flex-direction: column; gap: 4px; padding: 10px; }
+.estado-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.estado-dot-ok  { width: 7px; height: 7px; border-radius: 50%; background: #10B981; flex-shrink: 0; }
+.estado-dot-no  { width: 7px; height: 7px; border-radius: 50%; background: #E5E7EB; border: 1px solid #D1D5DB; flex-shrink: 0; }
+.estado-dot-warn{ width: 7px; height: 7px; border-radius: 50%; background: #F59E0B; flex-shrink: 0; }
+.estado-lbl     { color: #6B7280; font-weight: 500; }
+.estado-lbl.ok  { color: #059669; }
+.estado-lbl.warn{ color: #B45309; }
+
+/* dist badge */
+.dist-pend { font-size: 10px; font-weight: 700; background: #FFFBEB; color: #B45309; border: 1px solid #FCD34D; border-radius: 99px; padding: 3px 8px; white-space: nowrap; }
+.dist-ok   { font-size: 10px; font-weight: 700; background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; border-radius: 99px; padding: 3px 8px; white-space: nowrap; }
+
+/* acciones */
+.actions-cell { padding: 6px 8px; display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+.action-btn { padding: 5px 7px; border-radius: 6px; border: 1px solid #E5E7EB; background: #fff; color: #6B7280; cursor: pointer; display: inline-flex; align-items: center; }
+.action-btn-del { padding: 5px 7px; border-radius: 6px; border: 1px solid #FECACA; background: #fff; color: #FCA5A5; cursor: pointer; display: inline-flex; align-items: center; }
+
+/* footer */
+.table-footer { text-align: right; font-size: 11px; color: #9CA3AF; margin-top: 8px; }
+
+/* divider */
+.section-divider { border: none; border-top: 2px dashed #D1D5DB; margin: 40px 0; }
+.section-title { font-size: 12px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ────────────────────────────────────────────────── PROPUESTA -->
+  <div class="label-top">🆕 PROPUESTA — Abrir en navegador, NO es tu código real</div>
+
+  <!-- Header -->
+  <div class="view-header">
+    <div class="header-left">
+      <div class="preheader">Operaciones · Comercial</div>
+      <h1>Ventas</h1>
+      <div class="count">3 registros</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline">+ Reserva</button>
+      <button class="btn-brand">+ Nueva venta</button>
+    </div>
+  </div>
+
+  <!-- KPIs → HERO row (3 principales) + pill strip (4 secundarios) -->
+  <div class="kpi-section">
+    <div class="kpi-hero-row">
+
+      <div class="kpi-card accent">
+        <div class="kpi-card-val" style="color:#F28100">$7.079.993</div>
+        <div class="kpi-card-lbl">Monto total ventas</div>
+      </div>
+
+      <div class="kpi-card green">
+        <div class="kpi-card-val" style="color:#111827">2</div>
+        <div class="kpi-card-lbl">Ventas cerradas</div>
+      </div>
+
+      <div class="kpi-card amber">
+        <div class="kpi-card-val" style="color:#B45309">2</div>
+        <div class="kpi-card-lbl">Reservas activas</div>
+      </div>
+
+    </div>
+
+    <!-- Alertas secundarias como pills compactas -->
+    <div class="kpi-pill-row">
+      <div class="kpi-pill">
+        <div class="kpi-pill-dot dot-orange"></div>
+        <div class="kpi-pill-val" style="color:#B45309">2</div>
+        <div class="kpi-pill-lbl">Sin factura cliente</div>
+      </div>
+      <div class="kpi-pill">
+        <div class="kpi-pill-dot dot-purple"></div>
+        <div class="kpi-pill-val" style="color:#7C3AED">2</div>
+        <div class="kpi-pill-lbl">Pend. homologación</div>
+      </div>
+      <div class="kpi-pill">
+        <div class="kpi-pill-dot dot-cyan"></div>
+        <div class="kpi-pill-val" style="color:#0E7490">2</div>
+        <div class="kpi-pill-lbl">Pend. inscripción</div>
+      </div>
+      <div class="kpi-pill">
+        <div class="kpi-pill-dot dot-amber"></div>
+        <div class="kpi-pill-val" style="color:#B45309">2</div>
+        <div class="kpi-pill-lbl">Pend. distribuidor</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros → todo en 1 fila -->
+  <div class="filters">
+    <div class="search-wrap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-inp" placeholder="Buscar cliente, moto, chasis…" />
+    </div>
+    <div class="chip-group">
+      <button class="chip active">Todas</button>
+      <button class="chip">Reservas</button>
+      <button class="chip">Ventas</button>
+    </div>
+    <input type="date" class="filter-date" title="Desde" />
+    <input type="date" class="filter-date" title="Hasta" />
+    <select class="filter-select"><option>Sucursal</option><option>Mall Plaza Norte</option></select>
+    <select class="filter-select"><option>Vendedor</option><option>Javiera</option></select>
+  </div>
+
+  <!-- Tabla -->
+  <div class="table-wrap">
+    <!-- Header -->
+    <div class="table-head">
+      <div></div>
+      <div>Cliente</div>
+      <div>Moto · Chasis</div>
+      <div>Vendedor</div>
+      <div>Sucursal</div>
+      <div style="text-align:right">Precio</div>
+      <div style="text-align:center">Estado docs</div>
+      <div></div>
+    </div>
+
+    <!-- Fila 1: VENTA - Claudia -->
+    <div class="table-row">
+      <div class="row-stripe stripe-sale"></div>
+      <div class="cell">
+        <span class="tipo-badge tipo-venta">Venta</span>
+        <div class="client-name">Claudia Francisca Saez Silva</div>
+        <div class="client-rut">18.528.906-0</div>
+      </div>
+      <div class="cell">
+        <div class="moto-name">YAMAHA R15 2026</div>
+        <span class="chassis-badge">ME1RG67D9S2006743</span>
+      </div>
+      <div class="cell"><div class="meta-text">Javiera</div></div>
+      <div class="cell"><div class="meta-text">Mall Plaza Norte</div></div>
+      <div class="cell" style="text-align:right">
+        <div class="precio-val">$4.289.995</div>
+      </div>
+      <div class="estado-col">
+        <div class="estado-item">
+          <div class="estado-dot-no"></div>
+          <span class="estado-lbl">Entrega</span>
+        </div>
+        <div class="estado-item">
+          <div class="estado-dot-warn"></div>
+          <span class="estado-lbl warn">Pend. dist.</span>
+        </div>
+        <div class="estado-item">
+          <div class="estado-dot-no"></div>
+          <span class="estado-lbl">Docs 0/4</span>
+        </div>
+      </div>
+      <div class="actions-cell">
+        <button class="action-btn" title="Ver nota">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </button>
+        <button class="action-btn-del" title="Eliminar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Fila 2: VENTA - Cesar -->
+    <div class="table-row">
+      <div class="row-stripe stripe-sale"></div>
+      <div class="cell">
+        <span class="tipo-badge tipo-venta">Venta</span>
+        <div class="client-name">Cesar Leonardo Gomez de la Fuente</div>
+        <div class="client-rut">19.423.311-6</div>
+      </div>
+      <div class="cell">
+        <div class="moto-name">SUZUKI GIXXER 150 DI 2026</div>
+        <span class="chassis-badge">MB8ED13EST8100912</span>
+      </div>
+      <div class="cell"><div class="meta-text">Javiera</div></div>
+      <div class="cell"><div class="meta-text">Mall Plaza Norte</div></div>
+      <div class="cell" style="text-align:right">
+        <div class="precio-val">$2.789.998</div>
+      </div>
+      <div class="estado-col">
+        <div class="estado-item">
+          <div class="estado-dot-no"></div>
+          <span class="estado-lbl">Entrega</span>
+        </div>
+        <div class="estado-item">
+          <div class="estado-dot-warn"></div>
+          <span class="estado-lbl warn">Pend. dist.</span>
+        </div>
+        <div class="estado-item">
+          <div class="estado-dot-no"></div>
+          <span class="estado-lbl">Docs 0/4</span>
+        </div>
+      </div>
+      <div class="actions-cell">
+        <button class="action-btn" title="Ver nota">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </button>
+        <button class="action-btn-del" title="Eliminar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Fila 3: RESERVA - Katerina -->
+    <div class="table-row" style="background: rgba(245,158,11,0.03);">
+      <div class="row-stripe stripe-res"></div>
+      <div class="cell">
+        <span class="tipo-badge tipo-res">Reserva</span>
+        <div class="client-name">Katerina Fabiola Shee Quilan</div>
+        <div class="client-rut">18.092.411-6</div>
+      </div>
+      <div class="cell">
+        <div class="moto-name">YAMAHA YZF-R15A 2026</div>
+        <span class="chassis-badge" style="color:#9CA3AF">Sin chasis asignado</span>
+      </div>
+      <div class="cell"><div class="meta-text">Javiera</div></div>
+      <div class="cell">
+        <div class="meta-text">Mall Plaza Norte</div>
+        <span class="bodega-tag">BODEGA</span>
+      </div>
+      <div class="cell" style="text-align:right">
+        <div class="precio-val">$3.990.000</div>
+        <div class="abono-info">Abono: $250.000</div>
+        <div class="falta-info">Falta: $3.740.000</div>
+      </div>
+      <div class="estado-col" style="color:#9CA3AF; font-size:12px; padding:10px 12px; text-align:center;">
+        —
+      </div>
+      <div class="actions-cell">
+        <button class="action-btn" title="Ver nota reserva">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </button>
+        <button class="action-btn-del" title="Eliminar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="table-footer">2 ventas · 1 reserva</div>
+
+  <!-- ── Nota de cambios ── -->
+  <hr class="section-divider">
+  <div class="section-title">Cambios propuestos vs diseño actual</div>
+  <ul style="font-size:13px; color:#374151; line-height:2; padding-left:20px;">
+    <li><strong>KPIs:</strong> 3 cards hero (monto, ventas, reservas) + 4 alertas como pills compactas. Más fácil de escanear.</li>
+    <li><strong>Filtros:</strong> Todo en una sola fila. Más limpio.</li>
+    <li><strong>Columna Estado docs:</strong> Une Entrega + Distribuidor + Docs en una sola columna con puntos de estado. Libera espacio.</li>
+    <li><strong>Precio:</strong> Más grande y prominente. Abono/Falta debajo en la misma celda.</li>
+    <li><strong>Sucursal:</strong> Columna propia limpia, BODEGA tag visible justo debajo.</li>
+    <li><strong>Sin cambio:</strong> Modales de detalle, lógica de filtros, permisos por rol — solo el layout visual.</li>
+  </ul>
+
+</div>
+</body>
+</html>
