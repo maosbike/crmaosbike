@@ -3,7 +3,6 @@ import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile, ViewHeader, selectCtrl, filterLabel, Empty, ErrorMsg } from '../ui.jsx';
 
 // ── Helpers y constantes visuales (mismo lenguaje que InventoryView) ─────────
-const SRC_SHORT={web:"Web",redes_sociales:"RRSS",whatsapp:"WA",presencial:"Pres.",referido:"Ref.",evento:"Ev.",llamada:"Tel."};
 
 // Color + bg por estado ahora viven en TICKET_STATUS (fuente única).
 // Helper thin para mantener el shape legado {color, light} que usaba ST_STRIP.
@@ -222,37 +221,58 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         </div>
       )}
 
-      {/* ── Barra de filtros compacta ── */}
-      <div style={{background:'#F9FAFB',border:'1px solid #E5E7EB',borderRadius:10,padding:'8px 12px',marginBottom:14,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-        <div style={{position:'relative',flex:'1 1 180px',minWidth:150}}>
-          <Ic.search size={13} color="#9CA3AF" style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)'}}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar ficha..." style={{...S.inp,paddingLeft:30,height:32,fontSize:12,borderRadius:7,background:'#FFFFFF'}}/>
+      {/* ── Bloque de filtros ── */}
+      <div style={{
+        background:'#FFFFFF',
+        border:'1px solid #E5E7EB',
+        borderRadius:12,
+        padding:'12px 16px',
+        marginBottom:16,
+        display:'flex',flexDirection:'column',gap:10,
+      }}>
+        {/* Fila 1: Búsqueda */}
+        <div style={{position:'relative',width:'100%'}}>
+          <Ic.search size={14} color="#9CA3AF" style={{
+            position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none',
+          }}/>
+          <input
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            placeholder="Buscar por nombre, RUT, teléfono o N° ficha..."
+            style={{...S.inp,paddingLeft:36,fontSize:13,border:'1px solid #E5E7EB',borderRadius:8}}
+          />
         </div>
-        <select value={prF} onChange={e=>setPrF(e.target.value)} style={{...selectCtrl,height:32}}>
-          <option value="">Prioridad</option>
-          {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-        </select>
-        <select value={srcF} onChange={e=>setSrcF(e.target.value)} style={{...selectCtrl,height:32}}>
-          <option value="">Origen</option>
-          {Object.entries(SRC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-        </select>
-        {brs.length>0&&(
-          <select value={brF} onChange={e=>setBrF(e.target.value)} style={{...selectCtrl,height:32}}>
-            <option value="">Sucursal</option>
-            {brs.filter(b=>b.code!=='MOV').map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+        {/* Fila 2: selects en línea */}
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          <select value={prF} onChange={e=>setPrF(e.target.value)} style={{...selectCtrl,height:34,flex:'1 1 120px',minWidth:110}}>
+            <option value="">Prioridad</option>
+            {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
           </select>
-        )}
-        {sellers.length>0&&(
-          <select value={selF} onChange={e=>setSelF(e.target.value)} style={{...selectCtrl,height:32}}>
-            <option value="">Vendedor</option>
-            {sellers.map(s=><option key={s.id} value={s.id}>{s.fn} {s.ln}</option>)}
+          <select value={srcF} onChange={e=>setSrcF(e.target.value)} style={{...selectCtrl,height:34,flex:'1 1 120px',minWidth:110}}>
+            <option value="">Origen</option>
+            {Object.entries(SRC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
           </select>
-        )}
-        {hasFilters&&(
-          <button onClick={clearFilters} style={{height:32,padding:'0 11px',borderRadius:7,border:'1px solid #E5E7EB',background:'#FFFFFF',fontSize:11,cursor:'pointer',color:'#6B7280',display:'flex',alignItems:'center',gap:5,fontWeight:500,fontFamily:'inherit',flexShrink:0}}>
-            <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
-          </button>
-        )}
+          {brs.length>0&&(
+            <select value={brF} onChange={e=>setBrF(e.target.value)} style={{...selectCtrl,height:34,flex:'1 1 130px',minWidth:110}}>
+              <option value="">Sucursal</option>
+              {brs.filter(b=>b.code!=='MOV').map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          )}
+          {sellers.length>0&&(
+            <select value={selF} onChange={e=>setSelF(e.target.value)} style={{...selectCtrl,height:34,flex:'1 1 140px',minWidth:120}}>
+              <option value="">Vendedor</option>
+              {sellers.map(s=><option key={s.id} value={s.id}>{s.fn} {s.ln}</option>)}
+            </select>
+          )}
+          {hasFilters&&(
+            <button onClick={clearFilters} style={{
+              ...S.gh,height:34,fontSize:12,fontWeight:600,
+              border:'1px solid #E5E7EB',borderRadius:8,padding:'0 14px',flexShrink:0,
+            }}>
+              Limpiar filtros
+            </button>
+          )}
+        </div>
       </div>
 
 
@@ -265,21 +285,21 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           action={hasFilters ? <button onClick={clearFilters} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button> : undefined}
         />
       ):(
-        <div style={{...S.card,padding:0,overflow:'hidden',marginTop:0}}>
+        <div style={{...S.card,padding:0,overflow:'hidden',borderRadius:12}}>
           {/* Header columnas — solo desktop */}
-          {!isMobile&&(
+          {!isMobile&&f.length>0&&(
             <div style={{
-              display:'flex',
-              padding:'6px 16px 6px 108px',
-              background:'#F9FAFB',
-              borderBottom:'1px solid #E5E7EB',
+              display:'grid',gridTemplateColumns:'120px 1fr 150px',
+              padding:'7px 18px 7px 138px',
+              background:'#F9FAFB',borderBottom:'2px solid #E5E7EB',
             }}>
-              <div style={{flex:1,fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em'}}>
-                Lead · Modelo
-              </div>
-              <div style={{width:130,fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em',textAlign:'right',paddingRight:16}}>
-                Estado · Fecha
-              </div>
+              {['Lead · Modelo','Estado · Fecha'].map((col,i)=>(
+                <div key={i} style={{
+                  fontSize:10,fontWeight:700,color:'#9CA3AF',
+                  textTransform:'uppercase',letterSpacing:'0.07em',
+                  textAlign:i===1?'right':'left',
+                }}>{col}</div>
+              ))}
             </div>
           )}
 
@@ -291,178 +311,159 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             // ── Variante MOBILE ──────────────────────────────────────────
             if (isMobile) {
               return (
-                <div
-                  key={x.id}
-                  onClick={()=>nav('ticket',x.id)}
-                  style={{
-                    display:'flex',alignItems:'stretch',
-                    background:'#FFFFFF',
-                    borderBottom:'1px solid #F3F4F6',
-                    cursor:'pointer',minHeight:72,
-                    borderLeft:`4px solid ${stCfg.c}`,
-                  }}
-                >
+                <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
+                  display:'flex',alignItems:'stretch',
+                  background:'#FFFFFF',borderBottom:'1px solid #F3F4F6',
+                  cursor:'pointer',minHeight:72,
+                }}>
                   {/* Foto compacta */}
                   <div style={{
-                    width:64,flexShrink:0,
-                    background:'#F3F4F6',
+                    width:80,flexShrink:0,background:'#F3F4F6',overflow:'hidden',
                     display:'flex',alignItems:'center',justifyContent:'center',
-                    overflow:'hidden',
                   }}>
-                    {x.model_image ? (
-                      <img src={x.model_image} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                    ) : (
-                      <Ic.bike size={22} color="#D1D5DB"/>
-                    )}
+                    {x.model_image
+                      ? <img src={x.model_image} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                      : <Ic.bike size={24} color={stCfg.c||'#D1D5DB'}/>
+                    }
                   </div>
-
                   {/* Info */}
-                  <div style={{flex:1,padding:'10px 12px',minWidth:0}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                      <div style={{fontSize:13,fontWeight:700,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>
+                  <div style={{flex:1,padding:'10px 14px',minWidth:0,display:'flex',flexDirection:'column',gap:3}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:700,color:'#111827',
+                        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>
                         {x.fn} {x.ln}
                       </div>
                       {x.needs_attention&&<span title="Necesita atención" style={{fontSize:9,fontWeight:800,color:'#fff',background:'#DC2626',padding:'1px 5px',borderRadius:4,flexShrink:0}}>!</span>}
                     </div>
-                    <div style={{fontSize:11,color:'#4B5563',marginBottom:4,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                    <div style={{fontSize:12,color:'#4B5563',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                       {(x.model_brand||x.model_name)?[x.model_brand,x.model_name].filter(Boolean).join(' '):'Sin modelo'}
                     </div>
                     <span style={{
-                      fontSize:10,fontWeight:600,
-                      padding:'2px 7px',borderRadius:99,
+                      fontSize:11,fontWeight:700,alignSelf:'flex-start',
+                      padding:'2px 9px',borderRadius:99,
                       background:stCfg.bg,color:stCfg.c,
                     }}>
                       {stCfg.l}
                     </span>
                   </div>
-
-                  {/* Fecha (móvil) */}
-                  <div style={{padding:'10px 12px',display:'flex',alignItems:'center',flexShrink:0}}>
+                  <div style={{padding:'10px 14px',display:'flex',alignItems:'center',flexShrink:0}}>
                     <span style={{fontSize:10,color:'#C4C9D4'}}>{fD(x.createdAt)}</span>
                   </div>
                 </div>
               );
             }
 
-            // ── Variante DESKTOP: tarjeta horizontal ─────────────────────
+            // ── Variante DESKTOP ─────────────────────────────────────────
             return (
-              <div
-                key={x.id}
-                onClick={()=>nav('ticket',x.id)}
-                style={{
-                  display:'flex',alignItems:'stretch',
-                  background:'#FFFFFF',
-                  borderBottom:'1px solid #F3F4F6',
-                  cursor:'pointer',
-                  transition:'background 0.1s',
-                  minHeight:80,
-                }}
+              <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
+                display:'flex',alignItems:'stretch',
+                background:'#FFFFFF',
+                borderBottom:'1px solid #F3F4F6',
+                cursor:'pointer',
+                minHeight:88,
+                transition:'background 0.1s',
+              }}
                 onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
                 onMouseLeave={e=>e.currentTarget.style.background='#FFFFFF'}
               >
-                {/* Franja de color de estado (4px) */}
+                {/* FOTO — 120px protagonista */}
                 <div style={{
-                  width:4,flexShrink:0,
-                  background:stCfg.c,
-                }}/>
-
-                {/* Foto del modelo */}
-                <div style={{
-                  width:88,flexShrink:0,
-                  background:x.model_image?'#F3F4F6':stCfg.bg||'#F9FAFB',
-                  display:'flex',alignItems:'center',justifyContent:'center',
+                  width:120,flexShrink:0,
+                  background:'#F3F4F6',
                   overflow:'hidden',
-                  borderRight:'1px solid #F3F4F6',
+                  display:'flex',alignItems:'center',justifyContent:'center',
                 }}>
                   {x.model_image ? (
-                    <img
-                      src={x.model_image}
-                      alt={x.model_name||'Moto'}
-                      style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
-                    />
+                    <img src={x.model_image} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                   ) : (
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                      <Ic.bike size={24} color={stCfg.c||'#D1D5DB'}/>
+                    <div style={{
+                      width:'100%',height:'100%',
+                      background:stCfg.bg||'#F9FAFB',
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                    }}>
+                      <Ic.bike size={32} color={stCfg.c||'#D1D5DB'}/>
                     </div>
                   )}
                 </div>
 
-                {/* Contenido principal */}
-                <div style={{flex:1,padding:'12px 16px',display:'flex',flexDirection:'column',justifyContent:'center',gap:4,minWidth:0}}>
-                  {/* Nombre del lead */}
+                {/* CONTENIDO PRINCIPAL */}
+                <div style={{
+                  flex:1,padding:'14px 18px',
+                  display:'flex',flexDirection:'column',
+                  justifyContent:'center',gap:4,minWidth:0,
+                }}>
+                  {/* Fila 1: Nombre + indicadores */}
                   <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
                     <div style={{
-                      fontSize:14,fontWeight:700,color:'#111827',
+                      fontSize:15,fontWeight:700,color:'#111827',
                       whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
-                      minWidth:0,flex:1,
+                      flex:1,minWidth:0,
                     }}>
-                      {x.fn} {x.ln}
+                      {x.fn} {x.ln||''}
                     </div>
                     {x.needs_attention&&<span title="Necesita atención · 48h sin gestión" style={{fontSize:9,fontWeight:800,color:'#fff',background:'#DC2626',padding:'1px 5px',borderRadius:4,flexShrink:0}}>!</span>}
                     {x.num&&<span style={{fontSize:10,color:'#9CA3AF',flexShrink:0}}>#{x.num}</span>}
                   </div>
 
-                  {/* Modelo + año */}
-                  <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                    {(x.model_brand||x.model_name) ? (
-                      <span style={{fontSize:12,color:'#4B5563',fontWeight:500}}>
-                        {[x.model_brand,x.model_name].filter(Boolean).join(' ')}
-                      </span>
-                    ) : (
-                      <span style={{fontSize:12,color:'#D1D5DB'}}>Sin modelo asignado</span>
-                    )}
+                  {/* Fila 2: Modelo + año */}
+                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                    <span style={{fontSize:13,color:'#4B5563',fontWeight:500}}>
+                      {x.model_brand&&x.model_name
+                        ? `${x.model_brand} ${x.model_name}`
+                        : <span style={{color:'#C4C9D4'}}>Sin modelo asignado</span>
+                      }
+                    </span>
                     {x.model_year&&(
                       <span style={{
                         fontSize:10,fontWeight:700,
                         color:'#4F46E5',background:'#EEF2FF',
-                        padding:'1px 6px',borderRadius:99,
-                      }}>
-                        {x.model_year}
-                      </span>
+                        padding:'1px 7px',borderRadius:99,
+                      }}>{x.model_year}</span>
                     )}
                   </div>
 
-                  {/* Vendedor · sucursal · origen */}
-                  <div style={{fontSize:11,color:'#9CA3AF',display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-                    {x.seller_fn&&(
-                      <span>{x.seller_fn} {x.seller_ln||''}</span>
-                    )}
-                    {brName&&<span>· {brName}</span>}
-                    {x.source&&<span>· {SRC_SHORT[x.source]||x.source}</span>}
+                  {/* Fila 3: Meta — vendedor, sucursal, origen, próximo seguimiento */}
+                  <div style={{
+                    display:'flex',gap:10,alignItems:'center',
+                    fontSize:11,color:'#9CA3AF',flexWrap:'wrap',
+                  }}>
+                    {x.seller_fn&&<span>{x.seller_fn} {x.seller_ln||''}</span>}
+                    {brName&&<><span style={{color:'#E5E7EB'}}>·</span><span>{brName}</span></>}
+                    {x.source&&<><span style={{color:'#E5E7EB'}}>·</span><span>{SRC[x.source]||x.source}</span></>}
                     {x.followup_next_step&&(()=>{
                       const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
                       const txt=x.followup_next_step.length>38?x.followup_next_step.slice(0,38)+'…':x.followup_next_step;
-                      return<span style={{color:venc?'#EF4444':'#15803D',fontStyle:'italic'}}>· Próximo: {txt}</span>;
+                      return<><span style={{color:'#E5E7EB'}}>·</span><span style={{color:venc?'#EF4444':'#15803D',fontStyle:'italic'}}>Próximo: {txt}</span></>;
                     })()}
                   </div>
                 </div>
 
-                {/* Zona derecha: estado + fecha + precio */}
+                {/* ZONA DERECHA: estado + fecha + precio */}
                 <div style={{
-                  display:'flex',flexDirection:'column',alignItems:'flex-end',
-                  justifyContent:'center',gap:6,
-                  padding:'12px 16px',flexShrink:0,minWidth:130,
+                  display:'flex',flexDirection:'column',
+                  alignItems:'flex-end',justifyContent:'center',
+                  padding:'14px 18px',flexShrink:0,gap:6,minWidth:150,
                 }}>
                   <span style={{
-                    fontSize:11,fontWeight:600,
-                    padding:'3px 9px',borderRadius:99,
-                    background:stCfg.bg,
-                    color:stCfg.c,
+                    fontSize:12,fontWeight:700,
+                    padding:'4px 12px',borderRadius:99,
+                    background:stCfg.bg||'#F3F4F6',
+                    color:stCfg.c||'#6B7280',
                     whiteSpace:'nowrap',
                   }}>
                     {stCfg.l}
                   </span>
-                  <span style={{fontSize:10,color:'#C4C9D4'}}>
+                  <span style={{fontSize:11,color:'#C4C9D4'}}>
                     {fD(x.createdAt)}
                   </span>
                   {x.model_price>0&&(
-                    <span style={{fontSize:11,fontWeight:600,color:'#9CA3AF'}}>
+                    <span style={{fontSize:11,color:'#9CA3AF',fontWeight:500}}>
                       ${Number(x.model_price).toLocaleString('es-CL')}
                     </span>
                   )}
                 </div>
 
-                {/* Zona de reasignación (solo admin) */}
+                {/* ZONA REASIGNACIÓN (solo admin) */}
                 {!hasRole(user,ROLES.VEND)&&allSellers.length>0&&(
                   <div style={{
                     display:'flex',alignItems:'center',
@@ -492,7 +493,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                           onClick={e=>{e.stopPropagation();setReassigningId(null);setReassignTo('');}}
                           style={{...S.gh,padding:'5px 8px',fontSize:11}}
                         >
-                          ×
+                          x
                         </button>
                       </div>
                     ) : (
@@ -500,7 +501,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                         onClick={e=>{e.stopPropagation();setReassigningId(x.id);setReassignTo('');}}
                         style={{fontSize:10,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'none',padding:'3px 9px',borderRadius:5,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}
                       >
-                        ↗ Traspasar
+                        Traspasar
                       </button>
                     )}
                   </div>

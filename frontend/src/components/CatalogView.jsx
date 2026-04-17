@@ -273,10 +273,10 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2}}>
                   <span style={{fontSize:10,fontWeight:700,color:condColor,background:condColor+"18",padding:"2px 8px",borderRadius:10,border:`1px solid ${condColor}33`}}>
-                    {isConditional?"⚠ ":""}{condLabel}
+                    {condLabel}
                   </span>
                 </div>
-                {m.bono_requisitos&&<div style={{marginTop:6,fontSize:11,color:"#6B7280",lineHeight:1.4}}>📋 {m.bono_requisitos}</div>}
+                {m.bono_requisitos&&<div style={{marginTop:6,fontSize:11,color:"#6B7280",lineHeight:1.4}}>{m.bono_requisitos}</div>}
               </div>
             );
           })()}
@@ -438,12 +438,12 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               {m.spec_url&&(
                 <a href={m.spec_url} target="_blank" rel="noreferrer" download
                   style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#F28100",textDecoration:"none",border:"1px solid #FDBA74",borderRadius:8,padding:"6px 12px"}}>
-                  📄 Descargar ficha técnica
+                  Descargar ficha técnica
                 </a>
               )}
               {canEdit&&(
                 <label style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#6B7280",cursor:"pointer",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 11px",background:"#F9FAFB"}}>
-                  {specUploading?"Subiendo…":"📎 "}{!specUploading&&(m.spec_url?"Reemplazar PDF":"Subir PDF")}
+                  {specUploading?"Subiendo…":(m.spec_url?"Reemplazar PDF":"Subir PDF")}
                   <input type="file" accept="application/pdf,.pdf" style={{display:"none"}} onChange={e=>e.target.files[0]&&handleUploadSpec(e.target.files[0])}/>
                 </label>
               )}
@@ -547,11 +547,11 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 <input value={form.spec_url} onChange={e=>setForm(f=>({...f,spec_url:e.target.value}))} placeholder="https://..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 <div style={{marginTop:5,display:"flex",alignItems:"center",gap:8}}>
                   <label style={{fontSize:11,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 10px"}}>
-                    {specUploading?"Subiendo PDF…":"📎 Subir PDF (máx 15 MB)"}
+                    {specUploading?"Subiendo PDF…":"Subir PDF (máx 15 MB)"}
                     <input type="file" accept="application/pdf,.pdf" style={{display:"none"}}
                       onChange={e=>e.target.files[0]&&handleUploadSpec(e.target.files[0])}/>
                   </label>
-                  {m.spec_url&&!specUploading&&<span style={{fontSize:10,color:"#10B981"}}>✓ PDF cargado</span>}
+                  {m.spec_url&&!specUploading&&<span style={{fontSize:10,color:"#10B981"}}>PDF cargado</span>}
                 </div>
               </div>
               {/* Galería de fotos */}

@@ -39,8 +39,11 @@ export function ColorPicker({ value = '#111827', onChange }) {
         {'EyeDropper' in window && (
           <button type="button" onClick={pickScreen}
             title="Cuentagotas — toma un color de cualquier parte de la pantalla"
-            style={{ border:'1px solid #E5E7EB', borderRadius:6, background:'#F9FAFB', cursor:'pointer', fontSize:13, lineHeight:1, padding:'5px 7px' }}>
-            🎯
+            style={{ border:'1px solid #E5E7EB', borderRadius:6, background:'#F9FAFB', cursor:'pointer', lineHeight:1, padding:'5px 7px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L3 14.67V20h5.33l10.06-10.06a5.5 5.5 0 0 0 0-7.78z"/>
+              <line x1="3" y1="20" x2="7.33" y2="20"/>
+            </svg>
           </button>
         )}
       </div>

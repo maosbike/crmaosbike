@@ -55,7 +55,7 @@ function RankTable({ rows, columns }) {
       <thead><tr>{columns.map(c => <th key={c.key} style={thS}>{c.label}</th>)}</tr></thead>
       <tbody>{rows.map((r, i) => <tr key={i} style={{ background: i === 0 ? 'rgba(242,129,0,0.04)' : 'transparent' }}>
         {columns.map(c => <td key={c.key} style={{ ...tdS, fontWeight: c.bold || i === 0 ? 700 : 400, color: c.color && c.color !== '#E5E7EB' ? c.color : i === 0 ? '#111827' : '#374151' }}>
-          {c.medal && i < 3 ? ['🥇','🥈','🥉'][i]+' ' : ''}{c.render ? c.render(r) : r[c.key]}
+          {c.medal && i < 3 ? ['1°','2°','3°'][i]+' ' : ''}{c.render ? c.render(r) : r[c.key]}
         </td>)}
       </tr>)}</tbody>
     </table>
@@ -141,7 +141,7 @@ export function ReportsView({ branches = [] }) {
         <button onClick={()=>presetRange(7)} style={btnF(false)}>7d</button>
         <button onClick={()=>presetRange(30)} style={btnF(false)}>30d</button>
         <button onClick={()=>presetRange(90)} style={btnF(false)}>90d</button>
-        <button onClick={clearFilters} style={{ ...btnF(false), color:'#EF4444', borderColor:'#EF4444' }}>✕</button>
+        <button onClick={clearFilters} style={{ ...btnF(false), color:'#EF4444', borderColor:'#EF4444' }}>×</button>
       </div>
     </div>
 

@@ -229,7 +229,7 @@ export function StagingImportView() {
                             <td/>
                             <td style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>
                               <button onClick={saveEdit} disabled={savingEdit} style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#10B981', color: '#ffffff', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>{savingEdit?'…':'OK'}</button>
-                              <button onClick={()=>setEditingRow(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 11, cursor: 'pointer' }}>✕</button>
+                              <button onClick={()=>setEditingRow(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 11, cursor: 'pointer' }}>×</button>
                             </td>
                           </>
                         ) : (

@@ -390,15 +390,15 @@ export function AdminView() {
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {cleanCatalogDone!==null
             ? <div style={{ display:'flex',alignItems:'center',gap:8,color:'#10B981',fontSize:12,fontWeight:600 }}><Ic.check size={16} color="#10B981"/>{cleanCatalogDone} modelos eliminados. Recarga para ver cambios.</div>
-            : <button onClick={handleCleanCatalog} disabled={cleaningCatalog} style={{ ...S.btn,background:'#8B5CF6',opacity:cleaningCatalog?0.7:1,fontSize:12 }}>{cleaningCatalog?'Limpiando...':'🗑 Borrar catálogo completo'}</button>
+            : <button onClick={handleCleanCatalog} disabled={cleaningCatalog} style={{ ...S.btn,background:'#8B5CF6',opacity:cleaningCatalog?0.7:1,fontSize:12 }}>{cleaningCatalog?'Limpiando...':'Borrar catálogo completo'}</button>
           }
           {cleanImportsDone!==null
             ? <div style={{ display:'flex',alignItems:'center',gap:8,color:'#10B981',fontSize:12,fontWeight:600 }}><Ic.check size={16} color="#10B981"/>{cleanImportsDone} tickets importados eliminados. Recarga para ver cambios.</div>
-            : <button onClick={handleCleanImports} disabled={cleaningImports||cleanDone} style={{ ...S.btn,background:'#F59E0B',opacity:cleaningImports?0.7:1,fontSize:12 }}>{cleaningImports?'Limpiando...':'🗑 Borrar data importada'}</button>
+            : <button onClick={handleCleanImports} disabled={cleaningImports||cleanDone} style={{ ...S.btn,background:'#F59E0B',opacity:cleaningImports?0.7:1,fontSize:12 }}>{cleaningImports?'Limpiando...':'Borrar data importada'}</button>
           }
           {cleanDone
             ? <div style={{ display:'flex',alignItems:'center',gap:8,color:'#10B981',fontSize:12,fontWeight:600 }}><Ic.check size={16} color="#10B981"/>Todo borrado. Recarga la página.</div>
-            : <button onClick={handleCleanData} disabled={cleaning} style={{ ...S.btn,background:'#EF4444',opacity:cleaning?0.7:1,fontSize:12 }}>{cleaning?'Limpiando...':'🗑 Borrar TODO (tickets + inventario)'}</button>
+            : <button onClick={handleCleanData} disabled={cleaning} style={{ ...S.btn,background:'#EF4444',opacity:cleaning?0.7:1,fontSize:12 }}>{cleaning?'Limpiando...':'Borrar TODO (tickets + inventario)'}</button>
           }
         </div>
       </div>
@@ -530,7 +530,7 @@ export function AdminView() {
             : deactivateInfo?.count > 0
               ? <div style={{ padding:'10px 14px',borderRadius:9,background:'#FFFBEB',border:'1px solid #FCD34D',marginBottom:14 }}>
                   <div style={{ fontSize:12,fontWeight:700,color:'#92400E',marginBottom:6 }}>
-                    ⚠ Este usuario tiene {deactivateInfo.count} lead{deactivateInfo.count!==1?'s':''} activo{deactivateInfo.count!==1?'s':''}
+                    Este usuario tiene {deactivateInfo.count} lead{deactivateInfo.count!==1?'s':''} activo{deactivateInfo.count!==1?'s':''}
                   </div>
                   <div style={{ fontSize:11,color:'#78350F' }}>
                     Elige qué hacer con ellos:

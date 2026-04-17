@@ -35,7 +35,7 @@ const branchCfg = (code, brs) => {
 const ST_PALETTE = {
   disponible:  { color:'#15803D', bg:'#F0FDF4', border:'#86EFAC', icon:'●' },
   reservada:   { color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', icon:'◐' },
-  vendida:     { color:'#6D28D9', bg:'#F5F3FF', border:'#C4B5FD', icon:'✓' },
+  vendida:     { color:'#6D28D9', bg:'#F5F3FF', border:'#C4B5FD', icon:'V' },
   preinscrita: { color:'#0E7490', bg:'#ECFEFF', border:'#67E8F9', icon:'◌' },
 };
 const ST_CFG = Object.fromEntries(
@@ -672,7 +672,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         {isAdmin && (
                           <button onClick={()=>id && handleBranchPhoto(id)} title="Cambiar foto"
                             style={{ position:'absolute', bottom:7, right:8, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'#ffffff', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
-                            ✎
+                            Editar
                           </button>
                         )}
                       </>
@@ -783,7 +783,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                                 style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E5E7EB', display:'block' }}
                               />
                               <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'unit_photo');}} title="Cambiar foto"
-                                style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:12, padding:0 }}>✎</button>
+                                style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:12, padding:0 }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              </button>
                             </>
                           : <button
                               onClick={()=>handlePhoto(x.id,'unit_photo')}
@@ -965,7 +967,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             style={{ width:'100%', height:'100%', objectFit:'cover', cursor:'pointer', display:'block', position:'absolute', inset:0 }}
                           />
                           <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
-                            style={{ position:'absolute', bottom:4, right:4, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:11, padding:0, zIndex:1 }}>✎</button>
+                            style={{ position:'absolute', bottom:4, right:4, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:11, padding:0, zIndex:1 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
                         </>
                       : <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Agregar foto"
                           style={{ width:'100%', height:'100%', minHeight:96, border:'none', background:'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, padding:0 }}>
@@ -1359,7 +1363,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 {editTarget?.status === 'reservada' && (
                   <button type="button" onClick={handleConvertToSale} disabled={convSaving || eSaving}
                     style={{ background:'#059669', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 18px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                    {convSaving ? 'Convirtiendo…' : '✓ Convertir a venta'}
+                    {convSaving ? 'Convirtiendo…' : 'Convertir a venta'}
                   </button>
                 )}
                 <button type="submit" disabled={eSaving}

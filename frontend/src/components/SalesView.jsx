@@ -1666,83 +1666,91 @@ export function SalesView({ user, realBranches }) {
 
       {/* ── KPIs ── */}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
-          <Stat label="Ventas" value={stats.total} color="#111827" />
-          {isAdmin && <Stat label="Pend. distribuidor" value={stats.pendiente_distribuidor}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_distribuidor > 0} />}
-          <Stat label="Sin factura cli." value={stats.sin_factura_cli}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.sin_factura_cli > 0} />
-          <Stat label="Pend. homolog." value={stats.sin_homologacion}
-            color="#6D28D9" bg="#F5F3FF" border="#C4B5FD" alert={stats.sin_homologacion > 0} />
-          <Stat label="Pend. inscripción" value={stats.sin_inscripcion}
-            color="#0E7490" bg="#ECFEFF" border="#67E8F9" alert={stats.sin_inscripcion > 0} />
-          <Stat label="Pend. entrega" value={stats.pendiente_entrega}
-            color="#B45309" bg="#FFFBEB" border="#FCD34D" alert={stats.pendiente_entrega > 0} />
-          {isAdmin && stats.total_venta > 0 && (
-            <Stat label="Total vendido" value={fmt(stats.total_venta)} color="#065F46" bg="#ECFDF5" border="#A7F3D0" />
-          )}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+          gap: 12, marginBottom: 20,
+        }}>
+          {[
+            { label: 'Total registros',    val: stats.total ?? '—',                       color: '#111827' },
+            ...(isAdmin && stats.total_venta > 0 ? [{ label: 'Monto total',  val: `$${(stats.total_venta || 0).toLocaleString('es-CL')}`, color: '#065F46' }] : []),
+            { label: 'Reservas activas',   val: stats.pendiente_entrega ?? '—',            color: '#B45309' },
+            { label: 'Sin factura cli.',   val: stats.sin_factura_cli ?? '—',              color: stats.sin_factura_cli > 0 ? '#B45309' : '#6B7280' },
+            { label: 'Pend. homologación', val: stats.sin_homologacion ?? '—',             color: stats.sin_homologacion > 0 ? '#6D28D9' : '#6B7280' },
+            { label: 'Pend. inscripción',  val: stats.sin_inscripcion ?? '—',              color: stats.sin_inscripcion > 0 ? '#0E7490' : '#6B7280' },
+            ...(isAdmin ? [{ label: 'Pend. distribuidor', val: stats.pendiente_distribuidor ?? '—', color: stats.pendiente_distribuidor > 0 ? '#B45309' : '#6B7280' }] : []),
+          ].map(k => (
+            <div key={k.label} style={{
+              background: '#FFFFFF', border: '1px solid #E5E7EB',
+              borderRadius: 12, padding: '16px 18px',
+            }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: k.color, lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 4 }}>
+                {k.val}
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {k.label}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* ── Barra de filtros unificada ── */}
+      {/* ── Bloque de filtros ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-        background: '#F9FAFB', border: '1px solid #E5E7EB',
-        borderRadius: 10, padding: '8px 14px', marginBottom: 14,
+        background: '#FFFFFF', border: '1px solid #E5E7EB',
+        borderRadius: 12, padding: '14px 18px',
+        marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10,
       }}>
-        {/* Búsqueda */}
-        <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 140 }}>
-          <Ic.search size={13} color="#9CA3AF" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          <input value={q} onChange={e => setQ(e.target.value)}
-            placeholder="Buscar cliente, chasis, ticket…"
-            style={{ ...selectCtrl, width: '100%', paddingLeft: 28, boxSizing: 'border-box' }} />
+        {/* Fila 1: búsqueda + chips tipo */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
+            <Ic.search size={14} color="#9CA3AF" style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none',
+            }}/>
+            <input value={q} onChange={e => setQ(e.target.value)}
+              placeholder="Buscar venta, cliente, chasis..."
+              style={{ ...S.inp, paddingLeft: 36, fontSize: 13, border: '1px solid #E5E7EB', borderRadius: 8 }}/>
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {[{v:'',l:'Todas'},{v:'reservada',l:'Reservas'},{v:'vendida',l:'Ventas'}].map(t => (
+              <button key={t.v} onClick={() => setFType(t.v)} style={{
+                padding: '6px 14px', borderRadius: 99, border: '1px solid',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                borderColor: fType === t.v ? '#F28100' : '#E5E7EB',
+                background: fType === t.v ? 'rgba(242,129,0,0.08)' : '#FFFFFF',
+                color: fType === t.v ? '#C2680A' : '#6B7280',
+              }}>{t.l}</button>
+            ))}
+          </div>
         </div>
 
-        {/* Chips tipo */}
-        <div style={{ display: 'flex', gap: 4 }}>
-          {[{v:'',l:'Todas'},{v:'reservada',l:'Reservas'},{v:'vendida',l:'Ventas'}].map(t => (
-            <button key={t.v} onClick={() => setFType(t.v)} style={{
-              padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-              border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s',
-              background: fType === t.v ? '#F28100' : '#EAECF0',
-              color: fType === t.v ? '#fff' : '#6B7280',
-            }}>{t.l}</button>
-          ))}
+        {/* Fila 2: fechas + sucursal + vendedor + limpiar */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+            style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }} title="Desde"/>
+          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+            style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }} title="Hasta"/>
+          {isAdmin && realBranches.length > 0 && (
+            <select value={fBranch} onChange={e => setFBranch(e.target.value)}
+              style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }}>
+              <option value="">Sucursal</option>
+              {realBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          )}
+          {isAdmin && sellers.length > 0 && (
+            <select value={fSeller} onChange={e => setFSeller(e.target.value)}
+              style={{ ...selectCtrl, height: 34, flex: '1 1 130px', minWidth: 110 }}>
+              <option value="">Vendedor</option>
+              {sellers.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
+            </select>
+          )}
+          {hasFilters && (
+            <button onClick={clearFilters} style={{
+              ...S.gh, height: 34, fontSize: 12, fontWeight: 600,
+              border: '1px solid #E5E7EB', borderRadius: 8, padding: '0 14px', flexShrink: 0,
+            }}>Limpiar</button>
+          )}
         </div>
-
-        {/* Fechas */}
-        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-          style={{ ...selectCtrl, width: 130 }} title="Desde" />
-        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-          style={{ ...selectCtrl, width: 130 }} title="Hasta" />
-
-        {/* Sucursal */}
-        {isAdmin && realBranches.length > 0 && (
-          <select value={fBranch} onChange={e => setFBranch(e.target.value)}
-            style={{ ...selectCtrl }}>
-            <option value="">Todas las sucursales</option>
-            {realBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
-
-        {/* Vendedor */}
-        {isAdmin && sellers.length > 0 && (
-          <select value={fSeller} onChange={e => setFSeller(e.target.value)}
-            style={{ ...selectCtrl }}>
-            <option value="">Todos los vendedores</option>
-            {sellers.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
-          </select>
-        )}
-
-        {/* Limpiar */}
-        {hasFilters && (
-          <button onClick={clearFilters}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, height: 32, padding: '0 10px',
-                     borderRadius: 7, border: '1px solid #E5E7EB', background: '#fff',
-                     fontSize: 11, cursor: 'pointer', color: '#6B7280', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-            <Ic.x size={10} /> Limpiar
-          </button>
-        )}
       </div>
 
       {/* ── Contenido: mobile cards / desktop tabla ── */}
@@ -1753,7 +1761,6 @@ export function SalesView({ user, realBranches }) {
           )}
           {!loading && sales.length === 0 && (
             <div style={{ textAlign: 'center', padding: 48, color: '#9CA3AF' }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Sin ventas</div>
               <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba otros filtros' : 'No hay ventas registradas aún'}</div>
             </div>
@@ -1762,36 +1769,34 @@ export function SalesView({ user, realBranches }) {
             const isRes = s.status === 'reservada';
             const saldo = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
             return (
-              <div key={s.id}
-                style={{
-                  ...S.card, padding: '12px 14px', cursor: 'pointer',
-                  borderLeft: `4px solid ${isRes ? '#F59E0B' : '#10B981'}`,
-                  background: isRes ? 'rgba(245,158,11,0.03)' : '#fff',
-                }}
-                onClick={() => setSelSale(s)}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{s.brand} {s.model}{s.year ? ` ${s.year}` : ''}</span>
+              <div key={s.id} onClick={() => setSelSale(s)} style={{
+                ...S.card, padding: 0, overflow: 'hidden',
+                display: 'flex', alignItems: 'stretch',
+                borderLeft: `4px solid ${isRes ? '#F59E0B' : '#10B981'}`,
+                marginBottom: 0, cursor: 'pointer',
+              }}>
+                <div style={{ flex: 1, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                      {s.brand} {s.model}{s.year ? ` ${s.year}` : ''}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: isRes ? '#B45309' : '#15803D' }}>
+                      {isRes ? 'Reserva' : 'Venta'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{s.client_name || '—'}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>
+                    {s.sale_price ? fmt(s.sale_price) : '—'}
+                  </div>
+                  {isRes && s.sale_price > 0 && (
+                    <div style={{ fontSize: 11, marginTop: 3, color: saldo > 0 ? '#B45309' : '#059669', fontWeight: 600 }}>
+                      {saldo > 0 ? `Falta: ${fmt(saldo)}` : 'Saldado'}
+                    </div>
+                  )}
+                </div>
+                <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center' }}>
                   <span style={{ fontSize: 11, color: '#9CA3AF' }}>{fD(s.sold_at)}</span>
                 </div>
-                <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 6 }}>{s.client_name || '—'}{s.client_rut ? ` · ${s.client_rut}` : ''}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#111827' }}>
-                    {s.sale_price ? fmt(s.sale_price) : '—'}
-                  </span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-                    background: isRes ? '#FFFBEB' : '#F0FDF4',
-                    color: isRes ? '#B45309' : '#15803D',
-                    border: `1px solid ${isRes ? '#FCD34D' : '#86EFAC'}`,
-                  }}>
-                    {isRes ? 'Reserva' : 'Venta'}
-                  </span>
-                </div>
-                {isRes && s.sale_price > 0 && (
-                  <div style={{ fontSize: 11, marginTop: 4, color: saldo > 0 ? '#B45309' : '#059669', fontWeight: 600 }}>
-                    {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -1799,15 +1804,15 @@ export function SalesView({ user, realBranches }) {
       ) : (
 
       <div className="crm-sales-table" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 12,
-                    overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                    overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', width: '100%' }}>
 
         {/* ── Header de tabla ── */}
         {(() => {
           const tplCols = isAdmin
-            ? '4px 1fr 160px minmax(120px,160px) minmax(100px,140px) 90px 110px 72px 56px 56px 100px'
-            : '4px 1fr 160px minmax(120px,160px) 90px 110px 72px 56px 56px 100px';
+            ? '4px 1fr 180px 140px 130px 80px 72px 56px 56px 100px'
+            : '4px 1fr 180px 130px 80px 72px 56px 56px 100px';
           const adminCols = isAdmin
-            ? ['Venta / Cliente', 'Moto · Chasis', 'Vendedor', 'Sucursal', 'Precio / Abono', 'Distribuidor', 'Entrega', 'Docs', '']
+            ? ['Venta / Cliente', 'Moto · Chasis', 'Vendedor', 'Sucursal', 'Precio / Abono', 'Dist.', 'Entrega', 'Docs', '']
             : ['Venta / Cliente', 'Moto · Chasis', 'Vendedor', 'Precio / Abono', 'Entrega', 'Docs', ''];
           return (
             <div style={{
@@ -1817,9 +1822,9 @@ export function SalesView({ user, realBranches }) {
               position: 'sticky', top: 0, zIndex: 1,
             }}>
               <div/>{/* franja */}
-              {adminCols.map(col => (
-                <div key={col} style={{
-                  padding: '8px 14px',
+              {adminCols.map((col, i) => (
+                <div key={col + i} style={{
+                  padding: '9px 14px',
                   fontSize: 10, fontWeight: 700, color: '#9CA3AF',
                   textTransform: 'uppercase', letterSpacing: '0.08em',
                   whiteSpace: 'nowrap',
@@ -1850,8 +1855,8 @@ export function SalesView({ user, realBranches }) {
           const accentColor = isRes ? '#F59E0B' : '#10B981';
           const bgRow = isRes ? 'rgba(245,158,11,0.03)' : 'transparent';
           const tplCols = isAdmin
-            ? '4px 1fr 160px minmax(120px,160px) minmax(100px,140px) 90px 110px 72px 56px 56px 100px'
-            : '4px 1fr 160px minmax(120px,160px) 90px 110px 72px 56px 56px 100px';
+            ? '4px 1fr 180px 140px 130px 80px 72px 56px 56px 100px'
+            : '4px 1fr 180px 130px 80px 72px 56px 56px 100px';
           return (
             <div key={s.id}
               onClick={() => setSelSale(s)}
@@ -1863,7 +1868,7 @@ export function SalesView({ user, realBranches }) {
                 cursor: 'pointer', transition: 'background 0.1s',
                 minHeight: 60,
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = isRes ? '#FFFBEB' : '#F5F6FF'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FAFAFA'; }}
               onMouseLeave={e => { e.currentTarget.style.background = bgRow; }}>
 
               {/* Franja de color */}
@@ -1939,7 +1944,7 @@ export function SalesView({ user, realBranches }) {
                     <span style={{ color: '#059669' }}>Abono: {fmt(s.invoice_amount || 0)}</span>
                     <br/>
                     <span style={{ color: saldo > 0 ? '#DC2626' : '#059669', fontWeight: 700 }}>
-                      {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
+                      {saldo > 0 ? `Falta: ${fmt(saldo)}` : 'Saldado'}
                     </span>
                   </div>
                 )}

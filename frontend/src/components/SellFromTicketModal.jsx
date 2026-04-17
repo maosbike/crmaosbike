@@ -157,7 +157,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
         ═══════════════════════════════════════════════════ */}
         <div>
           <div style={sectionLabel}>
-            📋 Producto Cotizado
+            Producto Cotizado
             <span style={{ fontWeight: 400, color: '#9CA3AF', textTransform: 'none', letterSpacing: 0 }}>
               {' '}· historial del ticket, no se modifica
             </span>
@@ -201,13 +201,13 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
                 background: !noStock ? '#1E40AF' : '#F3F4F6', color: !noStock ? '#ffffff' : '#6B7280',
                 border: !noStock ? 'none' : '1px solid #E5E7EB' }}>
-              🏍️ Del inventario real
+              Del inventario real
             </button>
             <button type="button" onClick={() => setNoStock(true)}
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
                 background: noStock ? '#D97706' : '#F3F4F6', color: noStock ? '#ffffff' : '#6B7280',
                 border: noStock ? 'none' : '1px solid #E5E7EB' }}>
-              📋 Nota sin stock
+              Nota sin stock
             </button>
           </div>
 
@@ -262,7 +262,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
                   <span style={{ color: '#166534' }}>· {selectedUnit.color}</span>
                   <span style={{ color: '#4B5563' }}>· Chasis: {selectedUnit.chassis}</span>
                   {selectedUnit.motor_num && <span style={{ color: '#4B5563' }}>· Motor: {selectedUnit.motor_num}</span>}
-                  {selectedUnit.branch_code && <span style={{ color: '#4B5563', marginLeft: 'auto' }}>📍 {selectedUnit.branch_code}</span>}
+                  {selectedUnit.branch_code && <span style={{ color: '#4B5563', marginLeft: 'auto' }}>{selectedUnit.branch_code}</span>}
                 </div>
               )}
             </>
@@ -273,11 +273,11 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             BLOQUE 3 — COMPARACIÓN / ALERTAS
         ═══════════════════════════════════════════════════ */}
 
-        {/* ⚠️  Diferencia detectada */}
+        {/* Diferencia detectada */}
         {isMismatch && (
           <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.4)' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
-              ⚠️ El producto vendido es distinto al cotizado
+              El producto vendido es distinto al cotizado
             </div>
             <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ padding: '8px 10px', borderRadius: 6, background: '#FFF7ED', border: '1px solid #FED7AA' }}>
@@ -296,10 +296,10 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           </div>
         )}
 
-        {/* ✓  Coincidencia confirmada */}
+        {/* Coincidencia confirmada */}
         {isMatch && (
           <div style={{ padding: '7px 12px', borderRadius: 7, background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.3)', fontSize: 11, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6 }}>
-            ✓ La unidad coincide con el modelo cotizado
+            La unidad coincide con el modelo cotizado
           </div>
         )}
 
@@ -307,7 +307,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             BLOQUE 4 — DATOS DE LA VENTA
         ═══════════════════════════════════════════════════ */}
         <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 12 }}>
-          <div style={{ ...sectionLabel, marginBottom: 10 }}>📝 Datos de la Venta</div>
+          <div style={{ ...sectionLabel, marginBottom: 10 }}>Datos de la Venta</div>
 
           {/* Vendedor + Fecha */}
           <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -485,7 +485,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               opacity: saving ? 0.6 : 1,
             }}
           >
-            {saving ? 'Registrando...' : noStock ? '✓ Registrar Nota de Venta' : '✓ Confirmar Venta'}
+            {saving ? 'Registrando...' : noStock ? 'Registrar Nota de Venta' : 'Confirmar Venta'}
           </button>
         </div>
 

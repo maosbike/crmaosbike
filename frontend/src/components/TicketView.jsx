@@ -27,8 +27,6 @@ const slaBox = (bg, border, color) => ({
   padding:'7px 10px', marginBottom:8, fontSize:11, color,
   display:'flex', alignItems:'flex-start', gap:6, lineHeight:1.4,
 });
-const zoneDiv  = { borderRight:'1px solid #E5E7EB' };
-const lbl9     = { display:'block', fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:5 };
 const secCard  = S.secCard;
 const secTitle = (color='#374151') => ({
   fontSize:9, fontWeight:800, color, textTransform:'uppercase', letterSpacing:'0.14em',
@@ -343,7 +341,7 @@ export function TicketView({lead,user,nav,updLead}){
       {/* ── BANNER: Necesita atención ── */}
       {lead.needs_attention&&!isPerdido&&!isGanado&&(
         <div style={{ background:'rgba(239,68,68,0.07)',border:'2px solid rgba(239,68,68,0.3)',borderRadius:12,padding:'14px 18px',marginBottom:12,display:'flex',alignItems:'center',gap:14 }}>
-          <span style={{ fontSize:26 }}>⚠️</span>
+          <Ic.alert size={22} color="#B91C1C"/>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead lleva más de 48h sin contacto</div>
             <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Registra el seguimiento para continuar gestionando este lead.</div>
@@ -360,7 +358,7 @@ export function TicketView({lead,user,nav,updLead}){
         const vencida=lead.next_followup_at&&new Date(lead.next_followup_at)<new Date();
         return(
           <div style={{ background:vencida?'rgba(239,68,68,0.05)':'#F0FDF4',border:`1px solid ${vencida?'rgba(239,68,68,0.25)':'#BBF7D0'}`,borderRadius:10,padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
-            <span style={{ fontSize:18,flexShrink:0,marginTop:1 }}>🎯</span>
+            <Ic.target size={18} color={vencida?'#EF4444':'#15803D'} style={{ flexShrink:0,marginTop:1 }}/>
             <div style={{ flex:1,minWidth:0 }}>
               <div style={{ fontSize:10,fontWeight:700,color:vencida?'#B91C1C':'#15803D',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3 }}>Próximo paso acordado{vencida?' · VENCIDO':''}</div>
               <div style={{ fontSize:12,fontWeight:600,color:'#111827' }}>{lead.followup_next_step}</div>
@@ -373,7 +371,7 @@ export function TicketView({lead,user,nav,updLead}){
       {/* ── CARD: Último contacto real (Historial claro) ── */}
       {lead.last_contact_entry&&(
         <div style={{ background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:10,padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
-          <span style={{ fontSize:18,flexShrink:0,marginTop:1 }}>📞</span>
+          <Ic.phone size={16} color="#0284C7" style={{ flexShrink:0,marginTop:2 }}/>
           <div style={{ flex:1,minWidth:0 }}>
             <div style={{ fontSize:10,fontWeight:700,color:'#0284C7',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3 }}>Último contacto real</div>
             <div style={{ fontSize:12,fontWeight:600,color:'#111827' }}>{lead.last_contact_entry.title}</div>
@@ -387,66 +385,72 @@ export function TicketView({lead,user,nav,updLead}){
       )}
 
       {/* ══════════════════════════════════════════════════════════
-          TOP CARD — CLIENTE | PRODUCTO | CONTACTO | STATUS
+          CABECERA DE FICHA — Foto+Producto | Info cliente+Estado
       ══════════════════════════════════════════════════════════ */}
-      <div className="crm-tv-top-grid" style={{
-        background:'#FFFFFF', borderRadius:12, border:'1px solid #E5E7EB',
-        boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
-        display:'grid', gridTemplateColumns:'minmax(180px,220px) minmax(0,1fr) minmax(210px,260px)',
-        overflow:'hidden', marginBottom:12, minWidth:0,
+      <div style={{
+        ...S.card, padding:0, overflow:'hidden',
+        marginBottom:16, display:'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems:'stretch',
       }}>
 
-        {/* Z1: CLIENTE */}
-        <div style={{ ...zoneDiv, padding:'18px 16px', display:'flex', flexDirection:'column' }}>
-          <div style={lbl9}>Cliente</div>
-          <h1 style={{ margin:'0 0 10px', fontSize:18, fontWeight:900, color:'#111827', letterSpacing:'-0.4px', lineHeight:1.15 }}>
-            {lead.fn} {lead.ln}
-          </h1>
-          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            {lead.phone&&<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'#374151', fontWeight:500 }}><Ic.phone size={11} color="#9CA3AF"/>{formatPhone(lead.phone)}</span>}
-            {lead.email&&<span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#6B7280' }}><Ic.mail size={11} color="#9CA3AF"/>{lead.email}</span>}
-            {lead.rut&&<span style={{ fontSize:11, color:'#6B7280', fontVariantNumeric:'tabular-nums' }}>RUT {displayRut(lead.rut)}</span>}
-            {lead.comuna&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{lead.comuna}</span>}
+        {/* ZONA IZQUIERDA: Foto + producto */}
+        <div style={{
+          width: isMobile ? '100%' : 220,
+          flexShrink:0,
+          background:'#F9FAFB',
+          display:'flex', flexDirection:'column',
+          alignItems:'center', justifyContent:'flex-start',
+          padding: isMobile ? '20px' : '24px 20px',
+          borderRight: isMobile ? 'none' : '1px solid #F3F4F6',
+          borderBottom: isMobile ? '1px solid #F3F4F6' : 'none',
+          gap:12,
+        }}>
+          {/* Foto del modelo */}
+          <div style={{
+            width:'100%', maxWidth:180,
+            aspectRatio:'16/9', borderRadius:10,
+            overflow:'hidden', background:'#E5E7EB',
+            display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
+            {m?.image ? (
+              <img src={m.image} alt={m?.model||''}
+                style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+            ) : (
+              <Ic.bike size={40} color="#D1D5DB"/>
+            )}
           </div>
-          <div style={{ marginTop:12, paddingTop:10, borderTop:'1px solid #F3F4F6', display:'flex', flexDirection:'column', gap:5 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}><span style={{ fontSize:10, color:'#9CA3AF' }}>Prioridad</span><PBdg p={lead.priority}/></div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}><span style={{ fontSize:10, color:'#9CA3AF' }}>Vendedor</span><span style={{ fontSize:11, fontWeight:600, color:'#374151' }}>{s.fn} {s.ln}</span></div>
-            {br.name&&<div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}><span style={{ fontSize:10, color:'#9CA3AF' }}>Sucursal</span><span style={{ fontSize:11, color:'#6B7280' }}>{br.name}</span></div>}
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}><span style={{ fontSize:10, color:'#9CA3AF' }}>Ingresó</span><span style={{ fontSize:11, color:'#9CA3AF' }}>{ago(lead.createdAt)}</span></div>
-          </div>
-        </div>
 
-        {/* Z2: PRODUCTO */}
-        <div style={{ ...zoneDiv, padding:'18px 22px', display:'flex', flexDirection:'column' }}>
-          <div style={{ ...lbl9, color:'#F28100' }}>Producto Cotizado</div>
+          {/* Producto */}
           {m ? (
-            <>
-              <div style={{ display:'flex', gap:20, marginBottom:14, alignItems:'flex-start', flex:1 }}>
-                <div style={{ width:140, height:112, borderRadius:10, background:'#F3F4F6', overflow:'hidden', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid #E5E7EB' }}>
-                  {m.image?<img src={m.image} alt={m.model} style={{ maxWidth:'calc(100% - 20px)', maxHeight:'calc(100% - 20px)', width:'auto', height:'auto', display:'block', objectFit:'contain' }}/>:<span style={{ fontSize:9, color:'#9CA3AF', fontWeight:600 }}>SIN IMG</span>}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:22, fontWeight:900, color:'#111827', letterSpacing:'-0.6px', lineHeight:1.1, marginBottom:4 }}>{m.brand} {m.model}</div>
-                  <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:12, flexWrap:'wrap' }}>
-                    {m.year&&<span style={{ fontSize:12, fontWeight:700, color:'#4F46E5', background:'#EEF2FF', padding:'2px 9px', borderRadius:6, border:'1px solid #C7D2FE' }}>{m.year}</span>}
-                    {m.cc>0&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{m.cc}cc</span>}
-                    {m.cat&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{m.cat}</span>}
-                  </div>
-                  {m.price>0&&(
-                    <div>
-                      <div style={{ fontSize:28, fontWeight:900, color:'#F28100', letterSpacing:'-1px', lineHeight:1 }}>{fmt(m.price)}</div>
-                      {m.bonus>0&&<div style={{ fontSize:11, color:'#9CA3AF', marginTop:3 }}>Desde {fmt(m.price-m.bonus)} · ahorra {fmt(m.bonus)}</div>}
-                    </div>
-                  )}
-                  {lead.colorPref&&<div style={{ marginTop:8 }}><span style={{ fontSize:10, background:'#F3F4F6', borderRadius:5, padding:'3px 9px', color:'#6B7280', fontWeight:500, border:'1px solid #E5E7EB' }}>Color: {lead.colorPref}</span></div>}
-                </div>
+            <div style={{ textAlign:'center', width:'100%' }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:4, lineHeight:1.3 }}>
+                {m.brand} {m.model}
               </div>
-            </>
+              <div style={{ display:'flex', gap:5, justifyContent:'center', flexWrap:'wrap', marginBottom:8 }}>
+                {m.year&&(
+                  <span style={{ fontSize:11, fontWeight:700, color:'#4F46E5', background:'#EEF2FF', padding:'2px 10px', borderRadius:99 }}>{m.year}</span>
+                )}
+                {m.cc>0&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{m.cc}cc</span>}
+                {m.cat&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{m.cat}</span>}
+              </div>
+              {m.price>0&&(
+                <div>
+                  <div style={{ fontSize:16, fontWeight:800, color:'#374151', letterSpacing:'-0.02em' }}>
+                    {fmt(m.price-m.bonus)}
+                  </div>
+                  {m.bonus>0&&<div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>Ahorra {fmt(m.bonus)}</div>}
+                </div>
+              )}
+              {lead.colorPref&&<div style={{ marginTop:8 }}><span style={{ fontSize:10, background:'#F3F4F6', borderRadius:5, padding:'3px 9px', color:'#6B7280', fontWeight:500, border:'1px solid #E5E7EB' }}>Color: {lead.colorPref}</span></div>}
+            </div>
           ) : (
-            <div style={{ flex:1, display:'flex', alignItems:'center', color:'#9CA3AF', fontSize:13 }}>Sin modelo seleccionado</div>
+            <div style={{ fontSize:12, color:'#C4C9D4', textAlign:'center' }}>Sin modelo asignado</div>
           )}
-          <div style={{ marginTop:'auto' }}>
-            <label style={lbl9}>Cambiar modelo</label>
+
+          {/* Selector de modelo */}
+          <div style={{ width:'100%' }}>
+            <label style={{ ...S.lbl }}>Cambiar modelo</label>
             <select value={lead.motoId||""} onChange={e=>upd("motoId",e.target.value)} style={{ ...S.inp, width:'100%', fontSize:11 }}>
               <option value="">Seleccionar...</option>
               {realModels.map(mo=><option key={mo.id} value={mo.id}>{mo.brand} {mo.model}{mo.price?` - ${fmt(mo.price)}`:''}</option>)}
@@ -454,34 +458,53 @@ export function TicketView({lead,user,nav,updLead}){
           </div>
         </div>
 
-        {/* Z3 (Observaciones) eliminado — reemplazado por Comunicación Interna más abajo */}
+        {/* ZONA DERECHA: Info cliente + estado + acciones */}
+        <div style={{ flex:1, padding:'20px 24px', display:'flex', flexDirection:'column', gap:12, minWidth:0 }}>
 
-        {/* Z4: STATUS */}
-        <div className="crm-tv-col-status" style={{ padding:'18px 16px', background:'#F9FAFB', display:'flex', flexDirection:'column' }}>
-          <div style={{ marginBottom:12, paddingBottom:10, borderBottom:'1px solid #E5E7EB' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-              <span style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em' }}>#{lead.num}</span>
+          {/* Fila 1: Nombre + badges */}
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:'#111827', lineHeight:1.2, marginBottom:4 }}>
+                {lead.fn} {lead.ln}
+              </div>
+              <div style={{ fontSize:12, color:'#6B7280', display:'flex', flexWrap:'wrap', gap:12 }}>
+                {lead.rut&&<span>RUT {displayRut(lead.rut)}</span>}
+                {lead.phone&&<span style={{ display:'flex', alignItems:'center', gap:4 }}><Ic.phone size={11} color="#9CA3AF"/>{formatPhone(lead.phone)}</span>}
+                {lead.email&&<span style={{ display:'flex', alignItems:'center', gap:4 }}><Ic.mail size={11} color="#9CA3AF"/>{lead.email}</span>}
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', flexShrink:0, alignItems:'center' }}>
+              <TBdg s={lead.status}/>
+              {lead.priority && PRIORITY[lead.priority] && (
+                <span style={{
+                  fontSize:11, fontWeight:700,
+                  padding:'3px 10px', borderRadius:99,
+                  color:PRIORITY[lead.priority].c,
+                  background:`${PRIORITY[lead.priority].c}18`,
+                  border:`1px solid ${PRIORITY[lead.priority].c}30`,
+                }}>
+                  {PRIORITY[lead.priority].l}
+                </span>
+              )}
               {sinContactoH>0&&<span style={{ fontSize:11, fontWeight:600, color: slaBreach?'#EF4444':slaWarning?'#F97316':'#9CA3AF' }}>{sinContactoH}h</span>}
             </div>
-            <TBdg s={lead.status}/>
-            {/* Autofin badge — visible sin bajar */}
-            {(() => {
-              const fd = lead.fin_data ? (typeof lead.fin_data==='string'?JSON.parse(lead.fin_data):lead.fin_data) : null;
-              const ev = fd?.eval_autofin || fd?.pre_eval_autofin;
-              if (!ev) return null;
-              const color = /aprob/i.test(ev)?'#10B981':/rechaz/i.test(ev)?'#EF4444':'#F59E0B';
-              return <div style={{ marginTop:6, display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:color+'18', border:`1px solid ${color}40`, fontSize:10, fontWeight:700, color }}><span style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>Autofin: {ev}</div>;
-            })()}
           </div>
-          {slaReassigned&&<div style={slaBox("rgba(139,92,246,0.07)","rgba(139,92,246,0.22)","#7C3AED")}><Ic.transfer size={12} color="#7C3AED"/><span><strong>Reasignado</strong> · {s.fn}{s.ln?` ${s.ln}`:''}</span></div>}
-          {slaBreach&&!slaReassigned&&<div style={slaBox("rgba(239,68,68,0.07)","rgba(239,68,68,0.22)","#EF4444")}><Ic.alert size={12} color="#EF4444"/><span><strong>Vencido</strong> · {sinContactoH}h sin gestión</span></div>}
-          {slaWarning&&<div style={slaBox("rgba(249,115,22,0.07)","rgba(249,115,22,0.22)","#F97316")}><Ic.clock size={12} color="#F97316"/><span><strong>Atender ya</strong> · {8-sinContactoH}h restantes</span></div>}
-          {/* ── Estado visual grande ── */}
-          <div style={{ marginBottom:10 }}>
-            <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:7 }}>Estado del Lead</div>
+
+          {/* SLA alerts */}
+          {(slaReassigned||slaBreach||slaWarning)&&(
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              {slaReassigned&&<div style={slaBox("rgba(139,92,246,0.07)","rgba(139,92,246,0.22)","#7C3AED")}><Ic.transfer size={12} color="#7C3AED"/><span><strong>Reasignado</strong> · {s.fn}{s.ln?` ${s.ln}`:''}</span></div>}
+              {slaBreach&&!slaReassigned&&<div style={slaBox("rgba(239,68,68,0.07)","rgba(239,68,68,0.22)","#EF4444")}><Ic.alert size={12} color="#EF4444"/><span><strong>Vencido</strong> · {sinContactoH}h sin gestión</span></div>}
+              {slaWarning&&<div style={slaBox("rgba(249,115,22,0.07)","rgba(249,115,22,0.22)","#F97316")}><Ic.clock size={12} color="#F97316"/><span><strong>Atender ya</strong> · {8-sinContactoH}h restantes</span></div>}
+            </div>
+          )}
+
+          {/* Fila 2: Estado del lead */}
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Estado del lead</div>
             {isPerdido?(
               <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
-                <span style={{ fontSize:18 }}>❌</span>
+                <Ic.x size={16} color="#EF4444"/>
                 <div>
                   <div style={{ fontSize:13,fontWeight:800,color:'#EF4444' }}>Lead Perdido</div>
                   {lead.rechazoMotivo&&<div style={{ fontSize:11,color:'#B91C1C',marginTop:1 }}>{lead.rechazoMotivo}</div>}
@@ -489,105 +512,133 @@ export function TicketView({lead,user,nav,updLead}){
               </div>
             ):isGanado?(
               <div style={{ background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
-                <span style={{ fontSize:18 }}>✅</span>
+                <Ic.check size={16} color="#10B981"/>
                 <div style={{ fontSize:13,fontWeight:800,color:'#10B981' }}>Lead Ganado</div>
               </div>
             ):(
-              <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
                 {Object.entries(TICKET_STATUS).filter(([k])=>!['ganado','perdido'].includes(k)).map(([k,v])=>{
                   const active=lead.status===k;
                   return(
                     <button key={k} onClick={()=>handleStatusChange(k)}
-                      style={{ display:'flex',alignItems:'center',gap:9,padding:'7px 11px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
+                      style={{ display:'flex',alignItems:'center',gap:7,padding:'6px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
                         fontSize:12,fontWeight:active?700:500,textAlign:'left',transition:'all 0.1s',
                         background:active?v.c+'18':'transparent',
                         color:active?v.c:'#6B7280',
                         border:`1.5px solid ${active?v.c+'55':'#E5E7EB'}` }}>
-                      <span style={{ width:8,height:8,borderRadius:'50%',flexShrink:0,background:active?v.c:'#D1D5DB',transition:'background 0.1s' }}/>
+                      <span style={{ width:7,height:7,borderRadius:'50%',flexShrink:0,background:active?v.c:'#D1D5DB',transition:'background 0.1s' }}/>
                       {v.l}
-                      {active&&<Ic.check size={12} color={v.c} style={{ marginLeft:'auto' }}/>}
+                      {active&&<Ic.check size={11} color={v.c}/>}
                     </button>
                   );
                 })}
-                {/* Botón perdido — separado visualmente */}
                 <button onClick={()=>handleStatusChange('perdido')}
-                  style={{ display:'flex',alignItems:'center',gap:9,padding:'7px 11px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
-                    fontSize:12,fontWeight:500,textAlign:'left',marginTop:2,
+                  style={{ display:'flex',alignItems:'center',gap:7,padding:'6px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
+                    fontSize:12,fontWeight:500,textAlign:'left',
                     background:'transparent',color:'#9CA3AF',border:'1px dashed #E5E7EB' }}>
-                  <span style={{ width:8,height:8,borderRadius:'50%',flexShrink:0,background:'#E5E7EB' }}/>
+                  <span style={{ width:7,height:7,borderRadius:'50%',flexShrink:0,background:'#E5E7EB' }}/>
                   Marcar como perdido
                 </button>
               </div>
             )}
           </div>
 
-          {/* ── Prioridad ── */}
-          <div style={{ marginBottom:8 }}>
-            <label style={S.lbl}>Prioridad</label>
-            <div style={{ display:'flex',gap:5 }}>
-              {Object.entries(PRIORITY).map(([k,v])=>{
-                const active=lead.priority===k;
-                return(
-                  <button key={k} onClick={async()=>{
-                    const prev=lead.priority;
-                    updLead(lead.id,{priority:k});
-                    try{await api.updateTicket(lead.id,{priority:k});}
-                    catch(err){updLead(lead.id,{priority:prev});alert('Error al cambiar prioridad');}
-                  }} style={{ flex:1,padding:'5px',fontSize:11,fontWeight:600,fontFamily:'inherit',borderRadius:6,cursor:'pointer',
-                    border:'none',background:active?v.c:'#F3F4F6',color:active?'#ffffff':'#9CA3AF' }}>
-                    {v.l}
+          {/* Autofin badge */}
+          {(() => {
+            const fd = lead.fin_data ? (typeof lead.fin_data==='string'?JSON.parse(lead.fin_data):lead.fin_data) : null;
+            const ev = fd?.eval_autofin || fd?.pre_eval_autofin;
+            if (!ev) return null;
+            const color = /aprob/i.test(ev)?'#10B981':/rechaz/i.test(ev)?'#EF4444':'#F59E0B';
+            return <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:color+'18', border:`1px solid ${color}40`, fontSize:10, fontWeight:700, color, alignSelf:'flex-start' }}><span style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>Autofin: {ev}</div>;
+          })()}
+
+          {/* Fila 3: Meta info */}
+          <div style={{
+            display:'grid',
+            gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)',
+            gap:8, paddingTop:12, borderTop:'1px solid #F3F4F6',
+          }}>
+            {[
+              {label:'Vendedor', val: s.fn ? `${s.fn} ${s.ln||''}`.trim() : 'Sin asignar'},
+              {label:'Sucursal', val: br.name || '—'},
+              {label:'Fuente',   val: SRC[lead.source]||lead.source||'—'},
+              {label:'Creado',   val: fD(lead.createdAt)},
+            ].map(item=>(
+              <div key={item.label} style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                <span style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' }}>{item.label}</span>
+                <span style={{ fontSize:12, color:'#374151', fontWeight:500 }}>{item.val}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Fila 4: Controles secundarios (prioridad, test ride, vendedor) */}
+          <div style={{ display:'flex', flexWrap:'wrap', gap:12, paddingTop:12, borderTop:'1px solid #F3F4F6' }}>
+            {/* Prioridad */}
+            <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:140 }}>
+              <label style={S.lbl}>Prioridad</label>
+              <div style={{ display:'flex', gap:4 }}>
+                {Object.entries(PRIORITY).map(([k,v])=>{
+                  const active=lead.priority===k;
+                  return(
+                    <button key={k} onClick={async()=>{
+                      const prev=lead.priority;
+                      updLead(lead.id,{priority:k});
+                      try{await api.updateTicket(lead.id,{priority:k});}
+                      catch(err){updLead(lead.id,{priority:prev});alert('Error al cambiar prioridad');}
+                    }} style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, fontFamily:'inherit', borderRadius:6, cursor:'pointer',
+                      border:'none', background:active?v.c:'#F3F4F6', color:active?'#ffffff':'#9CA3AF' }}>
+                      {v.l}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Test Ride */}
+            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+              <label style={S.lbl}>Test Ride</label>
+              <div style={{ display:'flex', gap:4 }}>
+                {[true,false].map(v=>(
+                  <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});alert('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
+                    style={{ padding:'5px 12px', fontSize:11, fontWeight:600, fontFamily:'inherit', borderRadius:6, cursor:'pointer', border:'none',
+                      background: lead.testRide===v?(v?'#10B981':'#374151'):'#F3F4F6', color: lead.testRide===v?'#ffffff':'#9CA3AF' }}>
+                    {v?'Sí':'No'}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div style={{ marginBottom:8 }}>
-            <label style={S.lbl}>Test Ride</label>
-            <div style={{ display:'flex', gap:5 }}>
-              {[true,false].map(v=>(
-                <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});alert('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
-                  style={{ flex:1, padding:'5px', fontSize:11, fontWeight:600, fontFamily:'inherit', borderRadius:6, cursor:'pointer', border:'none',
-                    background: lead.testRide===v?(v?'#10B981':'#374151'):'#F3F4F6', color: lead.testRide===v?'#ffffff':'#9CA3AF' }}>
-                  {v?"✓ Sí":"✗ No"}
-                </button>
-              ))}
-            </div>
-          </div>
-          {isAdmin&&(
-            <div style={{ marginBottom:8 }}>
-              <label style={S.lbl}>Vendedor asignado</label>
-              <select value={lead.seller_id||lead.seller||""}
-                onChange={async e=>{
-                  const newId=e.target.value;
-                  if(!newId||newId===lead.seller_id)return;
-                  const prevId=lead.seller_id;
-                  const sl=sellers.find(s=>s.id===newId);
-                  const slFn=sl?.first_name||sl?.fn||'';
-                  const slLn=sl?.last_name||sl?.ln||'';
-                  // Optimista: actualizamos UI; si falla, revertimos.
-                  updLead(lead.id,{seller:newId,seller_id:newId,seller_fn:slFn,seller_ln:slLn});
-                  try{
-                    await api.manualReassign({ticket_id:lead.id,to_user_id:newId});
-                    // Recargamos entrada real del timeline desde backend.
+            {/* Vendedor asignado (solo admin) */}
+            {isAdmin&&(
+              <div style={{ display:'flex', flexDirection:'column', gap:5, flex:'1 1 180px' }}>
+                <label style={S.lbl}>Vendedor asignado</label>
+                <select value={lead.seller_id||lead.seller||""}
+                  onChange={async e=>{
+                    const newId=e.target.value;
+                    if(!newId||newId===lead.seller_id)return;
+                    const prevId=lead.seller_id;
+                    const sl=sellers.find(s=>s.id===newId);
+                    const slFn=sl?.first_name||sl?.fn||'';
+                    const slLn=sl?.last_name||sl?.ln||'';
+                    updLead(lead.id,{seller:newId,seller_id:newId,seller_fn:slFn,seller_ln:slLn});
                     try{
-                      const full=await api.getTicket(lead.id);
-                      if(full?.timeline)updLead(lead.id,{timeline:full.timeline});
-                    }catch{}
-                  }catch(ex){
-                    updLead(lead.id,{seller:prevId,seller_id:prevId});
-                    alert('No se pudo reasignar: '+(ex.message||'Error'));
-                  }
-                }}
-                style={{ ...S.inp, width:'100%', fontSize:11 }}>
-                <option value="">Seleccionar...</option>
-                {sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}
-              </select>
-            </div>
-          )}
+                      await api.manualReassign({ticket_id:lead.id,to_user_id:newId});
+                      try{
+                        const full=await api.getTicket(lead.id);
+                        if(full?.timeline)updLead(lead.id,{timeline:full.timeline});
+                      }catch{}
+                    }catch(ex){
+                      updLead(lead.id,{seller:prevId,seller_id:prevId});
+                      alert('No se pudo reasignar: '+(ex.message||'Error'));
+                    }
+                  }}
+                  style={{ ...S.inp, width:'100%', fontSize:11 }}>
+                  <option value="">Seleccionar...</option>
+                  {sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
-
-      </div>{/* /top card */}
+      </div>{/* /cabecera ficha */}
 
       {/* ══════════════════════════════════════════════════════════
           DATOS CLIENTE + FINANCIAMIENTO — sección principal
@@ -598,7 +649,7 @@ export function TicketView({lead,user,nav,updLead}){
         </div>
         <div style={{ padding:'14px 20px' }}>
 
-          <AccordionSection title="Identificación Personal" icon="👤" isOpen={openSections.identificacion} onToggle={()=>toggleSection('identificacion')}>
+          <AccordionSection title="Identificación Personal" icon={<Ic.user size={13} color="#9CA3AF"/>} isOpen={openSections.identificacion} onToggle={()=>toggleSection('identificacion')}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
               <Field label="RUT" value={displayRut(lead.rut)} onChange={v=>upd("rut",v)}/>
               <Field label="Nombre" value={lead.fn} onChange={v=>upd("fn",v)}/>
@@ -607,7 +658,7 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </AccordionSection>
 
-          <AccordionSection title="Contacto" icon="📞" isOpen={openSections.contacto} onToggle={()=>toggleSection('contacto')}>
+          <AccordionSection title="Contacto" icon={<Ic.phone size={13} color="#9CA3AF"/>} isOpen={openSections.contacto} onToggle={()=>toggleSection('contacto')}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
               <Field label="Email" value={lead.email} onChange={v=>upd("email",v)} type="email"/>
               <Field label="Celular" value={lead.phone} onChange={v=>upd("phone",v)}/>
@@ -616,7 +667,7 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </AccordionSection>
 
-          <AccordionSection title="Perfil Financiero" icon="💼" isOpen={openSections.perfil} onToggle={()=>toggleSection('perfil')}>
+          <AccordionSection title="Perfil Financiero" icon={<Ic.chart size={13} color="#9CA3AF"/>} isOpen={openSections.perfil} onToggle={()=>toggleSection('perfil')}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
               <Field label="Situación Laboral" value={lead.sitLab} onChange={v=>upd("sitLab",v)} opts={[{v:"",l:"Seleccionar..."},...SIT_LABORAL.map(s=>({v:s,l:s}))]}/>
               <Field label="Continuidad Laboral" value={lead.continuidad} onChange={v=>upd("continuidad",v)} opts={[{v:"",l:"Seleccionar..."},...CONTINUIDAD.map(c=>({v:c,l:c}))]}/>
@@ -625,7 +676,7 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </AccordionSection>
 
-          <AccordionSection title="Financiamiento" icon="🏦" isOpen={openSections.financiamiento} onToggle={()=>toggleSection('financiamiento')}>
+          <AccordionSection title="Financiamiento" icon={<Ic.invoice size={13} color="#9CA3AF"/>} isOpen={openSections.financiamiento} onToggle={()=>toggleSection('financiamiento')}>
             {/* Toggle — siempre visible primero */}
             <div style={{ padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB', marginBottom:12 }}>
               <label style={{ ...S.lbl, marginBottom:5 }}>Solicita financiamiento</label>
@@ -942,7 +993,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>Registrar seguimiento</div>
               <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
             </div>
-            {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+            {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',lineHeight:1,borderRadius:6 }}><Ic.x size={18}/></button>}
           </div>
         }
       >
@@ -981,7 +1032,7 @@ export function TicketView({lead,user,nav,updLead}){
               min={new Date().toISOString().split('T')[0]}
               style={{ ...S.inp,width:'100%',fontSize:12 }}/>
           </div>
-          {fqErr&&<div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>⚠ {fqErr}</div>}
+          {fqErr&&<div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600,display:'flex',alignItems:'flex-start',gap:6 }}><Ic.alert size={14} color="#DC2626" style={{ flexShrink:0,marginTop:1 }}/>{fqErr}</div>}
           <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
             {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>}
             <button onClick={submitFollowup} disabled={fqSaving}
@@ -1001,7 +1052,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>Marcar como perdido</div>
               <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
             </div>
-            {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+            {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',lineHeight:1,borderRadius:6 }}><Ic.x size={18}/></button>}
           </div>
         }
       >
@@ -1045,14 +1096,14 @@ export function TicketView({lead,user,nav,updLead}){
               <div style={{ fontSize:15,fontWeight:800,color:'#111827' }}>Registrar contacto</div>
               <div style={{ fontSize:11,color:'#9CA3AF',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
             </div>
-            {!cfSaving&&<button onClick={closeContact} style={{ background:'none',border:'none',cursor:'pointer',padding:4,borderRadius:6,color:'#9CA3AF',fontSize:18,lineHeight:1 }}>✕</button>}
+            {!cfSaving&&<button onClick={closeContact} style={{ background:'none',border:'none',cursor:'pointer',padding:4,borderRadius:6,color:'#9CA3AF',lineHeight:1 }}><Ic.x size={18}/></button>}
           </div>
         }
       >
         {cfDone?(
           /* ── Estado de éxito ── */
           <div style={{ padding:'40px 24px',textAlign:'center' }}>
-            <div style={{ fontSize:44,marginBottom:12 }}>✅</div>
+            <div style={{ display:'flex',justifyContent:'center',marginBottom:12 }}><Ic.check size={44} color="#10B981"/></div>
             <div style={{ fontSize:16,fontWeight:800,color:'#111827',marginBottom:6 }}>Contacto guardado</div>
             <div style={{ fontSize:13,color:'#6B7280' }}>Ticket <strong>#{lead.num}</strong> actualizado correctamente.</div>
           </div>
@@ -1100,12 +1151,12 @@ export function TicketView({lead,user,nav,updLead}){
             {/* EVIDENCIA — solo si result requiere evidencia */}
             {needsEvidence&&(
               <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'14px 16px' }}>
-                <div style={{ fontSize:11,fontWeight:700,color:'#92400E',marginBottom:10 }}>
-                  ⚠️ Este resultado exige evidencia de contacto real
+                <div style={{ fontSize:11,fontWeight:700,color:'#92400E',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
+                  <Ic.alert size={13} color="#92400E"/> Este resultado exige evidencia de contacto real
                 </div>
                 {/* Toggle file/note */}
                 <div style={{ display:'flex',gap:6,marginBottom:12 }}>
-                  {[{v:'file',l:'📎 Subir captura'},{v:'note',l:'✏️ Nota detallada'}].map(o=>(
+                  {[{v:'file',l:'Subir captura'},{v:'note',l:'Nota detallada'}].map(o=>(
                     <button key={o.v} type="button" onClick={()=>setCf(p=>({...p,evMode:o.v}))}
                       style={{ flex:1,padding:'7px',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:7,
                         background:cf.evMode===o.v?'#2563EB':'#ffffff',
@@ -1133,11 +1184,11 @@ export function TicketView({lead,user,nav,updLead}){
                       <div style={{ position:'relative',marginBottom:6 }}>
                         <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:140,objectFit:'cover',borderRadius:8,border:'1px solid #E5E7EB' }}/>
                         <button onClick={()=>{setEvFile(null);setEvPreview(null);}}
-                          style={{ position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.5)',color:'#ffffff',border:'none',borderRadius:4,padding:'2px 7px',fontSize:11,cursor:'pointer' }}>✕</button>
+                          style={{ position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.5)',color:'#ffffff',border:'none',borderRadius:4,padding:'4px',display:'flex',alignItems:'center',cursor:'pointer' }}><Ic.x size={12} color="#ffffff"/></button>
                       </div>
                     ):(
                       <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,padding:'18px',borderRadius:8,border:'2px dashed #D1D5DB',background:'#F9FAFB',cursor:'pointer',fontSize:12,color:'#6B7280' }}>
-                        <span style={{ fontSize:22 }}>📎</span>
+                        <Ic.upload size={22} color="#9CA3AF"/>
                         <span>Hacer clic para seleccionar imagen</span>
                         <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{
                           const f=e.target.files[0];if(!f)return;
@@ -1183,8 +1234,8 @@ export function TicketView({lead,user,nav,updLead}){
 
             {/* Error */}
             {cfErr&&(
-              <div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600 }}>
-                ⚠ {cfErr}
+              <div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600,display:'flex',alignItems:'flex-start',gap:6 }}>
+                <Ic.alert size={14} color="#DC2626" style={{ flexShrink:0,marginTop:1 }}/>{cfErr}
               </div>
             )}
 

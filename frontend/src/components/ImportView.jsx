@@ -326,7 +326,11 @@ export function ImportView() {
               </div>
               {result.no_seller>0&&(
                 <div style={{background:'rgba(245,158,11,0.07)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:10,padding:'12px 16px',display:'flex',alignItems:'flex-start',gap:10,fontSize:12,color:'#92400E'}}>
-                  <span style={{fontSize:16,flexShrink:0}}>⚠️</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
                   <span><strong>{result.no_seller} lead{result.no_seller!==1?'s':''} quedaron sin vendedor asignado.</strong> Revisalos en el panel de admin para reasignar manualmente.</span>
                 </div>
               )}
