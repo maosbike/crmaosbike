@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, Bdg, Empty, Loader, ROLES as ROLE_KEYS, ViewHeader } from '../ui.jsx';
+import { Ic, S, Modal, Field, Bdg, Empty, Loader, ErrorMsg, ROLES as ROLE_KEYS, ViewHeader } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -267,34 +267,36 @@ export function AdminView() {
       />
 
       {/* ── TABLA USUARIOS ── */}
-      <div style={{ ...S.card, marginBottom:14 }}>
-        <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 14px' }}>
-          Usuarios{' '}
-          <span style={{ color:'#9CA3AF', fontWeight:400, fontSize:12 }}>({users.length})</span>
-        </h3>
+      <div style={{ ...S.card, marginBottom:14, padding:0, overflow:'hidden' }}>
+        <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid #F3F4F6' }}>
+          <h3 style={{ fontSize:13, fontWeight:700, margin:0 }}>
+            Usuarios{' '}
+            <span style={{ color:'#9CA3AF', fontWeight:400, fontSize:12 }}>({users.length})</span>
+          </h3>
+        </div>
         {loading
-          ? <Loader label="Cargando usuarios…" />
+          ? <div style={{ padding:16 }}><Loader label="Cargando usuarios…" /></div>
           : users.length === 0
             ? <Empty title="Sin usuarios" hint="Usa «Nuevo usuario» para agregar uno." />
             : (
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
-                  <tr>
+                  <tr style={{ background:'#F9FAFB', borderBottom:'2px solid #E5E7EB' }}>
                     {['Usuario','Email','Rol','Sucursal','Estado','Acciones'].map(h => (
-                      <th key={h} style={{ ...sectionLbl, textAlign:'left', padding:'6px 10px', borderBottom:'2px solid #F3F4F6' }}>{h}</th>
+                      <th key={h} style={{ ...sectionLbl, textAlign:'left', padding:'10px 14px' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id}
-                      style={{ borderBottom:'1px solid #F9FAFB', transition:'background 0.1s' }}
+                      style={{ borderBottom:'1px solid #F3F4F6', transition:'background 0.1s' }}
                       onMouseEnter={e => e.currentTarget.style.background='#F9FAFB'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}
                     >
                       {/* Nombre */}
-                      <td style={{ padding:'11px 10px' }}>
+                      <td style={{ padding:'12px 14px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{
                             width:30, height:30, borderRadius:'50%', flexShrink:0,
@@ -311,19 +313,19 @@ export function AdminView() {
                         </div>
                       </td>
                       {/* Email */}
-                      <td style={{ padding:'11px 10px', fontSize:11, color:'#6B7280' }}>
+                      <td style={{ padding:'12px 14px', fontSize:11, color:'#6B7280' }}>
                         {u.email || u.username || '—'}
                       </td>
                       {/* Rol */}
-                      <td style={{ padding:'11px 10px' }}>
+                      <td style={{ padding:'12px 14px' }}>
                         <Bdg l={(ROLES.find(x=>x.v===u.role)||{l:u.role,c:'#6B7280'}).l} c={(ROLES.find(x=>x.v===u.role)||{c:'#6B7280'}).c} />
                       </td>
                       {/* Sucursal */}
-                      <td style={{ padding:'11px 10px', fontSize:11, color:'#6B7280' }}>
+                      <td style={{ padding:'12px 14px', fontSize:12, color:'#4B5563' }}>
                         {u.branch_name || '—'}
                       </td>
                       {/* Estado */}
-                      <td style={{ padding:'11px 10px' }}>
+                      <td style={{ padding:'12px 14px' }}>
                         <span style={{
                           fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:20,
                           background: u.active ? '#F0FDF4' : '#F9FAFB',
@@ -334,7 +336,7 @@ export function AdminView() {
                         </span>
                       </td>
                       {/* Acciones */}
-                      <td style={{ padding:'11px 10px' }}>
+                      <td style={{ padding:'12px 14px' }}>
                         <div style={{ display:'flex', gap:5 }}>
                           <button onClick={() => openEdit(u)} title="Editar usuario"
                             style={{ ...S.gh, padding:'4px 9px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E5E7EB', color:'#374151' }}>
@@ -382,9 +384,9 @@ export function AdminView() {
       </div>
 
       {/* ── DANGER ZONE ── */}
-      <div style={{ ...S.card, marginBottom:14, borderColor:'rgba(239,68,68,0.25)' }}>
-        <h3 style={{ fontSize:12, fontWeight:600, margin:'0 0 6px', color:'#EF4444' }}>Zona de peligro</h3>
-        <p style={{ fontSize:11, color:'#6B7280', marginBottom:12 }}>Elimina todos los tickets, leads, importaciones e inventario de prueba. Los usuarios, sucursales y catálogo de motos se conservan.</p>
+      <div style={{ border:'2px solid #FECACA', borderRadius:12, padding:'16px 20px', marginBottom:14, background:'#FFF5F5' }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#DC2626', marginBottom:4 }}>Zona restringida</div>
+        <p style={{ fontSize:12, color:'#6B7280', marginBottom:14 }}>Las acciones de esta sección son permanentes y no se pueden deshacer.</p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {cleanCatalogDone!==null
             ? <div style={{ display:'flex',alignItems:'center',gap:8,color:'#10B981',fontSize:12,fontWeight:600 }}><Ic.check size={16} color="#10B981"/>{cleanCatalogDone} modelos eliminados. Recarga para ver cambios.</div>
@@ -459,11 +461,7 @@ export function AdminView() {
                 opts={[{v:'',l:'Sin sucursal'},...branches.map(b=>({v:b.id,l:b.name}))]}/>
             </div>
             <ActiveToggle value={cForm.active} onChange={v=>setCForm(p=>({...p,active:v}))}/>
-            {cErr && (
-              <div style={{ marginBottom:12,padding:'8px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',fontSize:11,color:'#DC2626' }}>
-                {cErr}
-              </div>
-            )}
+            <ErrorMsg msg={cErr}/>
             <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
               <button type="button" onClick={()=>setShowCreate(false)} style={S.btn2}>Cancelar</button>
               <button type="submit" disabled={cSaving} style={{ ...S.btn,opacity:cSaving?0.7:1 }}>
@@ -501,11 +499,7 @@ export function AdminView() {
                 opts={[{v:'',l:'Sin sucursal'},...branches.map(b=>({v:b.id,l:b.name}))]}/>
             </div>
             <ActiveToggle value={eForm.active} onChange={v=>setEForm(p=>({...p,active:v}))}/>
-            {eErr && (
-              <div style={{ marginBottom:12,padding:'8px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',fontSize:11,color:'#DC2626' }}>
-                {eErr}
-              </div>
-            )}
+            <ErrorMsg msg={eErr}/>
             <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
               <button type="button" onClick={()=>setEditTarget(null)} style={S.btn2}>Cancelar</button>
               <button type="submit" disabled={eSaving} style={{ ...S.btn,opacity:eSaving?0.7:1 }}>
@@ -574,11 +568,7 @@ export function AdminView() {
             El usuario <strong>no podrá iniciar sesión</strong> ni aparecerá en selectores de vendedores ni en la rotación de asignaciones. El historial y trazabilidad se mantienen íntegros.
           </div>
 
-          {deactivateErr && (
-            <div style={{ marginBottom:12,padding:'8px 12px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',fontSize:11,color:'#DC2626' }}>
-              {deactivateErr}
-            </div>
-          )}
+          <ErrorMsg msg={deactivateErr}/>
           <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
             <button type="button" onClick={() => { setDeactivateTarget(null); setDeactivateInfo(null); }} style={S.btn2}>Cancelar</button>
             <button

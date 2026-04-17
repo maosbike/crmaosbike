@@ -18,7 +18,7 @@ export function BottomNav({ page, nav, user, onMenuOpen }) {
   const isActive = (id) => page === id || (id === 'leads' && page === 'ticket');
 
   return (
-    <nav className="crm-bottom-nav">
+    <nav className="crm-bottom-nav" style={{alignItems:'stretch'}}>
       {items.map(it => {
         const active = id => id === 'more' ? false : isActive(id);
         const act = active(it.id);
@@ -26,18 +26,19 @@ export function BottomNav({ page, nav, user, onMenuOpen }) {
           if (it.id === 'more') { onMenuOpen && onMenuOpen(); return; }
           nav && nav(it.id);
         };
-        const color = act ? '#F28100' : '#6B7280';
+        const color = act ? '#F28100' : '#9CA3AF';
         return (
           <button key={it.id} onClick={onClick}
             style={{
               flex: 1,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               gap: 3, border: 'none', background: 'transparent', cursor: 'pointer',
-              fontFamily: 'inherit', padding: '6px 2px',
+              fontFamily: 'inherit', padding: '6px 4px',
               color,
+              borderTop: act ? '2px solid #F28100' : '2px solid transparent',
             }}>
             <it.icon size={20} color={color}/>
-            <span style={{ fontSize: 10, fontWeight: act ? 700 : 500 }}>{it.label}</span>
+            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em' }}>{it.label}</span>
           </button>
         );
       })}

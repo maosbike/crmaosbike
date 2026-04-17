@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
@@ -46,7 +46,30 @@ const EV_TYPES=[
 ];
 
 export function TicketView({lead,user,nav,updLead}){
+  const isMobile=useIsMobile();
   const[histOpen,setHistOpen]=useState(false);
+  // ── Acordeón "Datos del Cliente" ──
+  const[openSections,setOpenSections]=useState({identificacion:true,contacto:false,perfil:false,financiamiento:false});
+  const toggleSection=(key)=>setOpenSections(prev=>({...prev,[key]:!prev[key]}));
+  const AccordionSection=({sectionKey,title,icon,children})=>{
+    const isOpen=openSections[sectionKey];
+    return(
+      <div style={{border:'1px solid #F3F4F6',borderRadius:10,marginBottom:8,overflow:'hidden'}}>
+        <button onClick={()=>toggleSection(sectionKey)} type="button"
+          style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',
+            padding:'10px 14px',background:isOpen?'#F9FAFB':'#FFFFFF',
+            border:'none',cursor:'pointer',textAlign:'left',fontFamily:'inherit',
+            borderBottom:isOpen?'1px solid #F3F4F6':'none'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            {icon&&<span style={{fontSize:13}}>{icon}</span>}
+            <span style={{fontSize:13,fontWeight:600,color:'#374151'}}>{title}</span>
+          </div>
+          <span style={{fontSize:12,color:'#9CA3AF',display:'inline-block',transform:isOpen?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▾</span>
+        </button>
+        {isOpen&&<div style={{padding:'14px'}}>{children}</div>}
+      </div>
+    );
+  };
   const m=lead.model_brand?{brand:lead.model_brand,model:lead.model_name,price:lead.model_price||0,bonus:lead.model_bonus||0,year:lead.model_year||2025,cc:lead.model_cc||0,cat:lead.model_category||'',colors:[],image:lead.model_image||null}:null;
   const s={fn:lead.seller_fn||'',ln:lead.seller_ln||''};
   const br={name:lead.branch_name||'',code:lead.branch_code||'',addr:lead.branch_addr||''};
@@ -310,6 +333,32 @@ export function TicketView({lead,user,nav,updLead}){
         })()}
       </div>
 
+      {/* ── ACCIONES EN MOBILE — barra fija debajo del breadcrumb ── */}
+      {isMobile&&!isPerdido&&(
+        <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+          {!isGanado&&(
+            <button onClick={()=>{resetContact();setShowContact(true);}}
+              style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                padding:'10px 14px', background:'#2563EB', color:'#ffffff', border:'none',
+                borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
+              <Ic.phone size={14} color="#ffffff"/>Registrar contacto
+            </button>
+          )}
+          <button onClick={()=>setShowSell(true)}
+            style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+              padding:'10px 14px',
+              background:isGanado?'transparent':'#10B981',
+              color:isGanado?'#10B981':'#ffffff',
+              border:isGanado?'1.5px solid #6EE7B7':'none',
+              borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+              boxShadow:isGanado?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
+            <Ic.sale size={14} color={isGanado?"#10B981":"#ffffff"}/>
+            {isGanado?'Registrar otra unidad':'Registrar venta'}
+          </button>
+        </div>
+      )}
+
       {/* ── BANNER: Necesita atención ── */}
       {lead.needs_attention&&!isPerdido&&!isGanado&&(
         <div style={{ background:'rgba(239,68,68,0.07)',border:'2px solid rgba(239,68,68,0.3)',borderRadius:12,padding:'14px 18px',marginBottom:12,display:'flex',alignItems:'center',gap:14 }}>
@@ -360,9 +409,9 @@ export function TicketView({lead,user,nav,updLead}){
           TOP CARD — CLIENTE | PRODUCTO | CONTACTO | STATUS
       ══════════════════════════════════════════════════════════ */}
       <div className="crm-tv-top-grid" style={{
-        background:'#FFFFFF', borderRadius:14, border:'1px solid #E5E7EB',
-        boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
-        display:'grid', gridTemplateColumns:'minmax(180px,200px) minmax(0,1fr) minmax(200px,252px)',
+        background:'#FFFFFF', borderRadius:12, border:'1px solid #E5E7EB',
+        boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
+        display:'grid', gridTemplateColumns:'minmax(180px,220px) minmax(0,1fr) minmax(210px,260px)',
         overflow:'hidden', marginBottom:12, minWidth:0,
       }}>
 
@@ -566,91 +615,85 @@ export function TicketView({lead,user,nav,updLead}){
         <div style={{ padding:'16px 20px 0', borderBottom:'1px solid #F3F4F6', marginBottom:0 }}>
           <span style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Datos del Cliente</span>
         </div>
-        <div style={{ padding:'18px 20px' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:28 }}>
+        <div style={{ padding:'14px 20px' }}>
 
-            {/* Columna izq: Identificación + Contacto */}
-            <div>
-              <div style={secTitle('#F28100')}>Identificación Personal</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:20 }}>
-                <Field label="RUT" value={displayRut(lead.rut)} onChange={v=>upd("rut",v)}/>
-                <Field label="Nombre" value={lead.fn} onChange={v=>upd("fn",v)}/>
-                <Field label="Apellido" value={lead.ln} onChange={v=>upd("ln",v)}/>
-                <Field label="Fecha Nacimiento" value={lead.bday} onChange={v=>upd("bday",v)} ph="DD/MM/AAAA"/>
-              </div>
+          <AccordionSection sectionKey="identificacion" title="Identificación Personal" icon="👤">
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
+              <Field label="RUT" value={displayRut(lead.rut)} onChange={v=>upd("rut",v)}/>
+              <Field label="Nombre" value={lead.fn} onChange={v=>upd("fn",v)}/>
+              <Field label="Apellido" value={lead.ln} onChange={v=>upd("ln",v)}/>
+              <Field label="Fecha Nacimiento" value={lead.bday} onChange={v=>upd("bday",v)} ph="DD/MM/AAAA"/>
+            </div>
+          </AccordionSection>
 
-              <div style={secTitle('#3B82F6')}>Contacto</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
-                <Field label="Email" value={lead.email} onChange={v=>upd("email",v)} type="email"/>
-                <Field label="Celular" value={lead.phone} onChange={v=>upd("phone",v)}/>
-                <Field label="Comuna" value={lead.comuna} onChange={v=>upd("comuna",v)} opts={COMUNAS.map(c=>({v:c,l:c}))}/>
-                <Field label="Origen" value={lead.source} onChange={v=>upd("source",v)} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/>
+          <AccordionSection sectionKey="contacto" title="Contacto" icon="📞">
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
+              <Field label="Email" value={lead.email} onChange={v=>upd("email",v)} type="email"/>
+              <Field label="Celular" value={lead.phone} onChange={v=>upd("phone",v)}/>
+              <Field label="Comuna" value={lead.comuna} onChange={v=>upd("comuna",v)} opts={COMUNAS.map(c=>({v:c,l:c}))}/>
+              <Field label="Origen" value={lead.source} onChange={v=>upd("source",v)} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/>
+            </div>
+          </AccordionSection>
+
+          <AccordionSection sectionKey="perfil" title="Perfil Financiero" icon="💼">
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
+              <Field label="Situación Laboral" value={lead.sitLab} onChange={v=>upd("sitLab",v)} opts={[{v:"",l:"Seleccionar..."},...SIT_LABORAL.map(s=>({v:s,l:s}))]}/>
+              <Field label="Continuidad Laboral" value={lead.continuidad} onChange={v=>upd("continuidad",v)} opts={[{v:"",l:"Seleccionar..."},...CONTINUIDAD.map(c=>({v:c,l:c}))]}/>
+              <Field label="Renta Líquida" value={lead.renta} onChange={v=>upd("renta",Number(v))} type="number"/>
+              <Field label="Pie" value={lead.pie} onChange={v=>upd("pie",Number(v))} type="number"/>
+            </div>
+          </AccordionSection>
+
+          <AccordionSection sectionKey="financiamiento" title="Financiamiento" icon="🏦">
+            {/* Toggle — siempre visible primero */}
+            <div style={{ padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB', marginBottom:12 }}>
+              <label style={{ ...S.lbl, marginBottom:5 }}>Solicita financiamiento</label>
+              <div style={{ display:'flex', gap:6 }}>
+                {[true,false].map(v=>(
+                  <button key={String(v)} type="button" onClick={()=>upd("wantsFin",v)}
+                    style={{ ...S.btn2, padding:'4px 14px', fontSize:12,
+                      background:lead.wantsFin===v?(v?"#F28100":"#374151"):"transparent",
+                      color:lead.wantsFin===v?"#ffffff":"#9CA3AF",
+                      border:lead.wantsFin===v?"none":"1px solid #D1D5DB" }}>
+                    {v?"Sí":"No"}
+                  </button>
+                ))}
               </div>
             </div>
-
-            {/* Columna der: Perfil Financiero + Financiamiento */}
-            <div>
-              <div style={secTitle('#10B981')}>Perfil Financiero</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:14 }}>
-                <Field label="Situación Laboral" value={lead.sitLab} onChange={v=>upd("sitLab",v)} opts={[{v:"",l:"Seleccionar..."},...SIT_LABORAL.map(s=>({v:s,l:s}))]}/>
-                <Field label="Continuidad Laboral" value={lead.continuidad} onChange={v=>upd("continuidad",v)} opts={[{v:"",l:"Seleccionar..."},...CONTINUIDAD.map(c=>({v:c,l:c}))]}/>
-                <Field label="Renta Líquida" value={lead.renta} onChange={v=>upd("renta",Number(v))} type="number"/>
-                <Field label="Pie" value={lead.pie} onChange={v=>upd("pie",Number(v))} type="number"/>
-              </div>
-
-              {/* Financiamiento */}
-              <div style={secTitle('#8B5CF6')}>Financiamiento</div>
-              {/* 1. Toggle — siempre visible primero */}
-              <div style={{ padding:'10px 12px', background:'#F9FAFB', borderRadius:8, border:'1px solid #E5E7EB', marginBottom:12 }}>
-                <label style={{ ...S.lbl, marginBottom:5 }}>Solicita financiamiento</label>
-                <div style={{ display:'flex', gap:6 }}>
-                  {[true,false].map(v=>(
-                    <button key={String(v)} type="button" onClick={()=>upd("wantsFin",v)}
-                      style={{ ...S.btn2, padding:'4px 14px', fontSize:12,
-                        background:lead.wantsFin===v?(v?"#F28100":"#374151"):"transparent",
-                        color:lead.wantsFin===v?"#ffffff":"#9CA3AF",
-                        border:lead.wantsFin===v?"none":"1px solid #D1D5DB" }}>
-                      {v?"Sí":"No"}
-                    </button>
-                  ))}
+            {/* Estado y detalle — solo si solicita financiamiento */}
+            {lead.wantsFin&&(<>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:12 }}>
+                <div>
+                  <label style={S.lbl}>Estado</label>
+                  <select value={lead.finStatus} onChange={e=>upd("finStatus",e.target.value)} style={{ ...S.inp, width:'100%' }}>
+                    {Object.entries(FIN_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={S.lbl}>Motivo de rechazo</label>
+                  <select value={lead.rechazoMotivo||""} onChange={e=>upd("rechazoMotivo",e.target.value)}
+                    style={{ ...S.inp, width:'100%' }} disabled={lead.finStatus!=="rechazado"}>
+                    <option value="">Seleccionar...</option>
+                    {RECHAZO_MOTIVOS.map(mo=><option key={mo} value={mo}>{mo}</option>)}
+                  </select>
                 </div>
               </div>
-              {/* 2. Estado y detalle — solo si solicita financiamiento */}
-              {lead.wantsFin&&(<>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9, marginBottom:12 }}>
-                  <div>
-                    <label style={S.lbl}>Estado</label>
-                    <select value={lead.finStatus} onChange={e=>upd("finStatus",e.target.value)} style={{ ...S.inp, width:'100%' }}>
-                      {Object.entries(FIN_STATUS).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={S.lbl}>Motivo de rechazo</label>
-                    <select value={lead.rechazoMotivo||""} onChange={e=>upd("rechazoMotivo",e.target.value)}
-                      style={{ ...S.inp, width:'100%' }} disabled={lead.finStatus!=="rechazado"}>
-                      <option value="">Seleccionar...</option>
-                      {RECHAZO_MOTIVOS.map(mo=><option key={mo} value={mo}>{mo}</option>)}
-                    </select>
-                  </div>
+              {lead.finStatus==="rechazado"&&lead.rechazoMotivo&&(
+                <div style={{ background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#EF4444' }}>
+                  Rechazado: {lead.rechazoMotivo}
                 </div>
-                {lead.finStatus==="rechazado"&&lead.rechazoMotivo&&(
-                  <div style={{ background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#EF4444' }}>
-                    Rechazado: {lead.rechazoMotivo}
-                  </div>
-                )}
-                {lead.finStatus==="aprobado"&&(
-                  <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#10B981' }}>
-                    Financiamiento aprobado
-                  </div>
-                )}
-              </>)}
-              {/* 3. Sin financiamiento — mensaje neutro */}
-              {lead.wantsFin===false&&(
-                <div style={{ fontSize:12, color:'#9CA3AF', paddingLeft:2 }}>No solicita financiamiento</div>
               )}
-            </div>
-
-          </div>
+              {lead.finStatus==="aprobado"&&(
+                <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#10B981' }}>
+                  Financiamiento aprobado
+                </div>
+              )}
+            </>)}
+            {/* Sin financiamiento — mensaje neutro */}
+            {lead.wantsFin===false&&(
+              <div style={{ fontSize:12, color:'#9CA3AF', paddingLeft:2 }}>No solicita financiamiento</div>
+            )}
+          </AccordionSection>
           {/* Barra Guardar datos del cliente — sticky en mobile para que siempre sea visible */}
           {(()=>{
             const DIRTY_KEYS=['fn','ln','rut','bday','email','phone','comuna','source','sitLab','continuidad','renta','pie','wantsFin','finStatus','rechazoMotivo','motoId'];
@@ -794,39 +837,40 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </form>
           {/* Entradas */}
-          <div style={{ position:'relative', paddingLeft:20 }}>
-            <div style={{ position:'absolute', left:7, top:0, bottom:0, width:2, background:'#E5E7EB' }}/>
+          <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
             {(lead.timeline||[]).filter(t=>t.type!=='internal_comment').map((t,i)=>{
               const isEvidence=t.type==="contact_evidence";
-              const dotColor=isEvidence?"#0D9488":t.type==="contact_registered"||t.type==="contact"?"#3B82F6":t.type==="note_added"?"#10B981":t.type==="status"?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#374151";
-              const userName=t.user||(t.user_fn?`${t.user_fn} ${t.user_ln}`:"Sistema");
+              const isContact=t.type==="contact_registered"||t.type==="contact";
+              const isNote=t.type==="note_added";
+              const isSystem=t.type==="system"||t.type==="status";
+              const dotColor=isEvidence?"#0D9488":isContact?"#3B82F6":isNote?"#10B981":isSystem?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#9CA3AF";
+              const userName=t.user||(t.user_fn?`${t.user_fn} ${t.user_ln||''}`.trim():"Sistema");
               const evTypeLabel={screenshot_whatsapp:'WhatsApp',screenshot_llamada:'Llamada',archivo:'Archivo adjunto',nota:'Nota detallada'};
+              const meta=[userName,t.method?`vía ${t.method}`:null,isEvidence&&t.evidence_type?(evTypeLabel[t.evidence_type]||t.evidence_type):null].filter(Boolean).join(' · ');
               return(
-                <div key={t.id||i} style={{ position:'relative', paddingBottom:14, paddingLeft:16 }}>
-                  <div style={{ position:'absolute', left:-2, top:4, width:12, height:12, borderRadius:'50%', background:dotColor, border:'2px solid #F9FAFB' }}/>
-                  <div style={{ background: isEvidence?'#F0FDFA':'#F9FAFB', borderRadius:10, padding:12, border: isEvidence?'1px solid #99F6E4':'1px solid transparent' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <span style={{ fontSize:13, fontWeight:600 }}>{t.title}</span>
-                      <span style={{ fontSize:10, color:'#9CA3AF' }}>{fDT(t.date||t.created_at)}</span>
+                <div key={t.id||i} style={{ display:'flex', gap:12, paddingBottom:12, borderBottom:'1px solid #F9FAFB', marginBottom:0 }}>
+                  {/* Punto */}
+                  <div style={{ width:8, height:8, borderRadius:'50%', background:dotColor, marginTop:5, flexShrink:0 }}/>
+                  {/* Contenido */}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:2 }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:'#111827', lineHeight:1.3 }}>{t.title}</span>
+                      <span style={{ fontSize:10, color:'#9CA3AF', whiteSpace:'nowrap', flexShrink:0 }}>{fDT(t.date||t.created_at)}</span>
                     </div>
-                    {t.note&&<div style={{ fontSize:12, color:'#6B7280', marginTop:4, lineHeight:1.4 }}>{t.note}</div>}
+                    {meta&&<div style={{ fontSize:11, color:'#9CA3AF', marginBottom:t.note?4:0 }}>{meta}</div>}
+                    {t.note&&<div style={{ fontSize:13, color:'#374151', lineHeight:1.5 }}>{t.note}</div>}
                     {isEvidence&&t.evidence_url&&(
                       <a href={t.evidence_url} target="_blank" rel="noopener noreferrer"
-                        style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:8, fontSize:12, fontWeight:600, color:'#0D9488', textDecoration:'none', background:'#CCFBF1', padding:'4px 10px', borderRadius:6 }}>
+                        style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:6, fontSize:12, fontWeight:600, color:'#0D9488', textDecoration:'none', background:'#CCFBF1', padding:'4px 10px', borderRadius:6 }}>
                         <Ic.file size={12} color="#0D9488"/> Ver evidencia adjunta
                       </a>
                     )}
-                    <div style={{ fontSize:10, color:'#9CA3AF', marginTop:6 }}>
-                      {userName}
-                      {t.method?` · vía ${t.method}`:""}
-                      {isEvidence&&t.evidence_type?` · ${evTypeLabel[t.evidence_type]||t.evidence_type}`:""}
-                    </div>
                   </div>
                 </div>
               );
             })}
-            {!(lead.timeline||[]).length&&(
-              <div style={{ fontSize:12, color:'#9CA3AF', paddingLeft:16 }}>Sin actividad registrada aún.</div>
+            {!(lead.timeline||[]).filter(t=>t.type!=='internal_comment').length&&(
+              <div style={{ fontSize:12, color:'#9CA3AF', paddingLeft:4 }}>Sin actividad registrada aún.</div>
             )}
           </div>
         </div>

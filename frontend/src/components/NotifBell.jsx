@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, ago } from '../ui.jsx';
 
 export function NotifBell({nav}){
   const[open,setOpen]=useState(false);
@@ -29,21 +29,23 @@ export function NotifBell({nav}){
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,zIndex:50}} onClick={()=>setOpen(false)}>
-          <div onClick={e=>e.stopPropagation()} className="crm-notif-dropdown" style={{position:"fixed",top:50,right:18,width:320,background:"#FFFFFF",border:"1px solid #D1D5DB",borderRadius:14,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.7)",zIndex:51}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",borderBottom:"1px solid #E5E7EB"}}>
+          <div onClick={e=>e.stopPropagation()} className="crm-notif-dropdown" style={{position:"fixed",top:52,right:12,width:340,maxWidth:"calc(100vw - 24px)",maxHeight:400,background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:"var(--z-overlay-ui, 200)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"12px 16px",borderBottom:"1px solid #F3F4F6",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,fontSize:13}}>Notificaciones{unread>0&&<span style={{color:"#F28100"}}> ({unread})</span>}</span>
-              {unread>0&&<button onClick={markAll} style={{...S.gh,fontSize:11,color:"#F28100",padding:"2px 6px"}}>Marcar todas como leídas</button>}
+              {unread>0&&<button onClick={markAll} style={{...S.gh,fontSize:11,color:"#F28100",padding:"2px 6px"}}>Marcar todo leído</button>}
             </div>
-            <div style={{maxHeight:380,overflowY:"auto"}}>
+            <div style={{overflowY:"auto",flex:1}}>
               {notifs.length===0&&<div style={{padding:24,textAlign:"center",color:"#6B7280",fontSize:12}}>Sin notificaciones pendientes</div>}
               {notifs.map(n=>(
-                <div key={n.id} onClick={()=>goTicket(n)} style={{padding:"10px 14px",borderBottom:"1px solid #F3F4F6",cursor:"pointer",background:n.is_read?"transparent":"rgba(242,129,0,0.04)"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                    <div style={{fontSize:12,fontWeight:n.is_read?400:600,color:n.is_read?"#9CA3AF":"#111827",flex:1}}>{n.title}</div>
-                    {!n.is_read&&<div style={{width:7,height:7,borderRadius:"50%",background:"#F28100",flexShrink:0,marginTop:4}}/>}
+                <div key={n.id} onClick={()=>goTicket(n)} style={{padding:"10px 16px",borderBottom:"1px solid #F9FAFB",cursor:"pointer",background:n.is_read?"#FFFFFF":"rgba(242,129,0,0.04)",transition:"background 0.1s"}} onMouseEnter={e=>e.currentTarget.style.background=n.is_read?"#F9FAFB":"rgba(242,129,0,0.07)"} onMouseLeave={e=>e.currentTarget.style.background=n.is_read?"#FFFFFF":"rgba(242,129,0,0.04)"}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                    {!n.is_read&&<div style={{width:6,height:6,borderRadius:"50%",background:"#F28100",flexShrink:0,marginTop:5}}/>}
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:n.is_read?400:600,color:n.is_read?"#9CA3AF":"#111827"}}>{n.title}</div>
+                      {n.body&&<div style={{fontSize:11,color:"#6B7280",marginTop:2,lineHeight:1.4}}>{n.body}</div>}
+                      <div style={{fontSize:10,color:"#9CA3AF",marginTop:4}}>{ago(n.created_at)}</div>
+                    </div>
                   </div>
-                  {n.body&&<div style={{fontSize:11,color:"#6B7280",marginTop:2,lineHeight:1.4}}>{n.body}</div>}
-                  <div style={{fontSize:10,color:"#4B5563",marginTop:4}}>{ago(n.created_at)}</div>
                 </div>
               ))}
             </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
+import { Ic, S, Modal, Field, ErrorMsg } from '../ui.jsx';
 
 export function ChangePasswordModal({onClose}){
   const[form,setForm]=useState({current:"",next:"",confirm:""});
@@ -33,7 +33,7 @@ export function ChangePasswordModal({onClose}){
             <Field label="Nueva contraseña *" value={form.next} onChange={v=>setForm({...form,next:v})} type="password" ph="Mínimo 8 caracteres" req/>
             <Field label="Confirmar nueva contraseña *" value={form.confirm} onChange={v=>setForm({...form,confirm:v})} type="password" ph="Repite la nueva contraseña" req/>
           </div>
-          {err&&<div style={{background:"rgba(239,68,68,0.1)",borderRadius:8,padding:"7px 12px",color:"#EF4444",fontSize:12,marginBottom:12}}>{err}</div>}
+          <ErrorMsg msg={err}/>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
             <button type="button" onClick={onClose} style={S.btn2}>Cancelar</button>
             <button type="submit" disabled={loading} style={{...S.btn,opacity:loading?0.7:1}}>{loading?"Guardando...":"Cambiar Contraseña"}</button>

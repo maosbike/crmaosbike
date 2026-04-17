@@ -169,25 +169,31 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         );
       })()}
 
-      {/* ── KPI rápidos por estado ── */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:18}}>
+      {/* ── KPI tabs por estado ── */}
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,paddingBottom:2,overflowX:'auto',scrollbarWidth:'none'}}>
         {Object.entries(TICKET_STATUS).filter(([k])=>hasRole(user,ROLES.VEND)?!['ganado','perdido'].includes(k):true).map(([k,v])=>{
           const cnt=effectiveLeads.filter(l=>l.status===k&&(!hasRole(user, ROLES.VEND)||l.seller_id===user.id)).length;
-          const strip=stripFor(k);
           const active=stF===k;
           return(
             <button key={k} onClick={()=>setStF(stF===k?'':k)} style={{
-              position:'relative',overflow:'hidden',padding:'14px 16px',borderRadius:12,border:'none',cursor:'pointer',
-              textAlign:'left',fontFamily:'inherit',
-              background:active?strip.light:'#FFFFFF',
-              outline:active?`2px solid ${strip.color}`:'1px solid #E5E7EB',
-              outlineOffset:active?1:0,
-              boxShadow:active?`0 3px 14px ${strip.color}22`:'0 1px 3px rgba(0,0,0,0.04)',
-              transition:'all 0.13s',
+              padding:'5px 12px',borderRadius:99,
+              border:active?`1.5px solid ${v.c}`:'1.5px solid transparent',
+              background:active?v.bg:'#F3F4F6',
+              color:active?v.c:'#6B7280',
+              fontSize:12,fontWeight:active?700:500,
+              cursor:'pointer',flexShrink:0,
+              display:'inline-flex',alignItems:'center',gap:5,
+              fontFamily:'inherit',transition:'all 0.12s',
             }}>
-              <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:strip.color,borderRadius:'12px 12px 0 0'}}/>
-              <div style={{fontSize:28,fontWeight:900,color:active?strip.color:'#111827',letterSpacing:'-1px',lineHeight:1,marginBottom:4}}>{cnt}</div>
-              <div style={{fontSize:11,fontWeight:700,color:active?strip.color:'#374151'}}>{v.l}</div>
+              {v.l}
+              <span style={{
+                fontSize:10,fontWeight:700,
+                background:active?'rgba(255,255,255,0.5)':'#E5E7EB',
+                color:active?v.c:'#9CA3AF',
+                padding:'1px 5px',borderRadius:99,
+              }}>
+                {cnt}
+              </span>
             </button>
           );
         })}
@@ -213,53 +219,41 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         </div>
       )}
 
-      {/* ── Barra de filtros — mismo estilo que Inventario ── */}
-      <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:12,padding:'14px 18px',marginBottom:20,display:'flex',gap:12,flexWrap:'wrap',alignItems:'center',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}}>
-        <div style={{position:'relative',flex:'1 1 200px',minWidth:160}}>
-          <Ic.search size={14} color="#9CA3AF" style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)'}}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nombre, RUT, teléfono, ticket..." style={{...S.inp,paddingLeft:34,width:'100%',height:36,borderRadius:8,fontSize:12}}/>
+      {/* ── Barra de filtros compacta ── */}
+      <div style={{background:'#F9FAFB',border:'1px solid #E5E7EB',borderRadius:10,padding:'8px 12px',marginBottom:14,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <div style={{position:'relative',flex:'1 1 180px',minWidth:150}}>
+          <Ic.search size={13} color="#9CA3AF" style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)'}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar ficha..." style={{...S.inp,paddingLeft:30,height:32,fontSize:12,borderRadius:7,background:'#FFFFFF'}}/>
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:2}}>
-          <label style={filterLabel}>Prioridad</label>
-          <select value={prF} onChange={e=>setPrF(e.target.value)} style={selectCtrl}>
-            <option value="">Todas</option>
-            {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-          </select>
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:2}}>
-          <label style={filterLabel}>Origen</label>
-          <select value={srcF} onChange={e=>setSrcF(e.target.value)} style={selectCtrl}>
-            <option value="">Todos</option>
-            {Object.entries(SRC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-          </select>
-        </div>
-        {brs.length>0&&<div style={{display:'flex',flexDirection:'column',gap:2}}>
-          <label style={filterLabel}>Sucursal</label>
-          <select value={brF} onChange={e=>setBrF(e.target.value)} style={selectCtrl}>
-            <option value="">Todas</option>
+        <select value={prF} onChange={e=>setPrF(e.target.value)} style={{...selectCtrl,height:32}}>
+          <option value="">Prioridad</option>
+          {Object.entries(PRIORITY).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
+        </select>
+        <select value={srcF} onChange={e=>setSrcF(e.target.value)} style={{...selectCtrl,height:32}}>
+          <option value="">Origen</option>
+          {Object.entries(SRC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+        </select>
+        {brs.length>0&&(
+          <select value={brF} onChange={e=>setBrF(e.target.value)} style={{...selectCtrl,height:32}}>
+            <option value="">Sucursal</option>
             {brs.filter(b=>b.code!=='MOV').map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
-        </div>}
-        {sellers.length>0&&<div style={{display:'flex',flexDirection:'column',gap:2}}>
-          <label style={filterLabel}>Vendedor</label>
-          <select value={selF} onChange={e=>setSelF(e.target.value)} style={selectCtrl}>
-            <option value="">Todos</option>
+        )}
+        {sellers.length>0&&(
+          <select value={selF} onChange={e=>setSelF(e.target.value)} style={{...selectCtrl,height:32}}>
+            <option value="">Vendedor</option>
             {sellers.map(s=><option key={s.id} value={s.id}>{s.fn} {s.ln}</option>)}
           </select>
-        </div>}
-        {hasFilters&&<>
-          {divider}
-          <div style={{display:'flex',flexDirection:'column',gap:2}}>
-            <label style={{...filterLabel,color:'transparent'}}>·</label>
-            <button onClick={()=>{clearFilters();}} style={{height:32,padding:'0 12px',borderRadius:8,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:11,cursor:'pointer',color:'#6B7280',display:'flex',alignItems:'center',gap:5,fontWeight:500,fontFamily:'inherit'}}>
-              <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
-            </button>
-          </div>
-        </>}
+        )}
+        {hasFilters&&(
+          <button onClick={clearFilters} style={{height:32,padding:'0 11px',borderRadius:7,border:'1px solid #E5E7EB',background:'#FFFFFF',fontSize:11,cursor:'pointer',color:'#6B7280',display:'flex',alignItems:'center',gap:5,fontWeight:500,fontFamily:'inherit',flexShrink:0}}>
+            <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
+          </button>
+        )}
       </div>
 
 
-      {/* ── Lista de registros — mismo patrón visual que Inventario ── */}
+      {/* ── Lista de registros ── */}
       {f.length>0&&!stF&&<div style={{fontSize:10,fontWeight:600,color:'#9CA3AF',paddingLeft:2,marginBottom:6,letterSpacing:'0.04em'}}>Ordenado por estado</div>}
       {f.length===0?(
         <Empty
@@ -268,214 +262,174 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           action={hasFilters ? <button onClick={clearFilters} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button> : undefined}
         />
       ):(
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {(stF?f:[...f].sort((a,b)=>{const ai=STATUS_ORDER.indexOf(a.status);const bi=STATUS_ORDER.indexOf(b.status);return(ai===-1?99:ai)-(bi===-1?99:bi);})).map(x=>{
-            const stStrip=stripFor(x.status);
-            const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280'};
-            const prCfg=PRIORITY[x.priority]||{l:'—',c:'#9CA3AF'};
-            const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_code||null;
-            // ── Variante MOBILE: card apilada, simple, táctil ─────────────
-            if (isMobile) {
-              return (
-                <div key={x.id} onClick={()=>nav("ticket",x.id)}
-                  style={{ background:'#FFFFFF', borderRadius:12, border:'1px solid #E5E7EB', padding:'10px 12px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:6, cursor:'pointer', position:'relative' }}>
-                  {/* Barra superior de color de estado */}
-                  <div style={{ position:'absolute', left:0, top:0, bottom:0, width:4, background:stStrip.color, borderRadius:'12px 0 0 12px' }}/>
-                  {/* L1: nombre + priority + needs_attention */}
-                  <div style={{ display:'flex', alignItems:'center', gap:8, paddingLeft:6 }}>
-                    <div style={{ flex:1, minWidth:0, fontSize:14, fontWeight:700, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {x.fn} {x.ln}
+        <>
+          {/* Header columnas — solo desktop */}
+          {!isMobile&&(
+            <div style={{display:'grid',gridTemplateColumns:'1fr 150px 130px 90px 90px',padding:'6px 16px 6px 19px',background:'#F9FAFB',borderBottom:'1px solid #E5E7EB',borderTop:'1px solid #E5E7EB',borderRadius:'10px 10px 0 0',border:'1px solid #E5E7EB'}}>
+              {['Lead / Modelo','Estado','Vendedor','Origen','Fecha'].map(col=>(
+                <div key={col} style={{fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em'}}>{col}</div>
+              ))}
+            </div>
+          )}
+          <div style={{display:'flex',flexDirection:'column',gap:isMobile?8:0,background:isMobile?'transparent':'#FFFFFF',border:isMobile?'none':'1px solid #E5E7EB',borderTop:'none',borderRadius:isMobile?0:'0 0 10px 10px',overflow:isMobile?'visible':'hidden'}}>
+            {(stF?f:[...f].sort((a,b)=>{const ai=STATUS_ORDER.indexOf(a.status);const bi=STATUS_ORDER.indexOf(b.status);return(ai===-1?99:ai)-(bi===-1?99:bi);})).map(x=>{
+              const stStrip=stripFor(x.status);
+              const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280',bg:'#F9FAFB'};
+              const prCfg=PRIORITY[x.priority]||{l:'—',c:'#9CA3AF'};
+              const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_code||null;
+
+              // ── Variante MOBILE ──────────────────────────────────────────
+              if (isMobile) {
+                return (
+                  <div key={x.id} onClick={()=>nav("ticket",x.id)}
+                    style={{background:'#FFFFFF',borderRadius:12,border:'1px solid #E5E7EB',padding:'10px 12px',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',display:'flex',flexDirection:'column',gap:6,cursor:'pointer',position:'relative',borderLeft:`3px solid ${stCfg.c}`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,paddingLeft:4}}>
+                      <div style={{flex:1,minWidth:0,fontSize:14,fontWeight:700,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                        {x.fn} {x.ln}
+                      </div>
+                      {x.needs_attention&&<span title="Necesita atención" style={{fontSize:10,fontWeight:800,color:'#ffffff',background:'#DC2626',padding:'2px 6px',borderRadius:6}}>!</span>}
+                      <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:10,fontWeight:700,color:prCfg.c}}>
+                        <span style={{width:6,height:6,borderRadius:'50%',background:prCfg.c}}/>{prCfg.l}
+                      </span>
                     </div>
-                    {x.needs_attention && <span title="Necesita atención" style={{ fontSize:10, fontWeight:800, color:'#ffffff', background:'#DC2626', padding:'2px 6px', borderRadius:6 }}>!</span>}
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:prCfg.c }}>
-                      <span style={{ width:6, height:6, borderRadius:'50%', background:prCfg.c }}/>{prCfg.l}
-                    </span>
-                  </div>
-                  {/* L2: modelo + estado badge */}
-                  <div style={{ display:'flex', alignItems:'center', gap:8, paddingLeft:6 }}>
-                    <div style={{ flex:1, minWidth:0, fontSize:12, color:'#4B5563', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {x.model_brand ? `${x.model_brand} ${x.model_name||''}` : <span style={{color:'#D1D5DB',fontStyle:'italic'}}>Sin moto</span>}
-                      {x.comuna ? ` · ${x.comuna}` : ''}
+                    <div style={{display:'flex',alignItems:'center',gap:8,paddingLeft:4}}>
+                      <div style={{flex:1,minWidth:0,fontSize:12,color:'#4B5563',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                        {x.model_brand?`${x.model_brand} ${x.model_name||''}`:<span style={{color:'#D1D5DB',fontStyle:'italic'}}>Sin moto</span>}
+                        {x.comuna?` · ${x.comuna}`:''}
+                      </div>
+                      <span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:99,background:stCfg.bg,color:stCfg.c,flexShrink:0}}>{stCfg.l}</span>
                     </div>
-                    <Bdg l={stCfg.l} c={stCfg.c}/>
-                  </div>
-                  {/* L3: vendedor + ticket# + ago */}
-                  <div style={{ display:'flex', alignItems:'center', gap:8, paddingLeft:6, fontSize:11, color:'#6B7280' }}>
-                    <span style={{ flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {x.seller_fn ? `${x.seller_fn} ${x.seller_ln||''}` : 'Sin asignar'}
-                      {brName ? ` · ${brName}` : ''}
-                    </span>
-                    {x.num && <span style={{ fontSize:10, color:'#9CA3AF' }}>#{x.num}</span>}
-                    {(()=>{
-                      const hasC=!!x.lastContact;
-                      const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
-                      const urgente=refH>=24;
-                      return<span style={{ fontSize:10, color:urgente?'#EF4444':'#9CA3AF', fontWeight:urgente?700:400 }}>
-                        {hasC?ago(x.lastContact):`sin contacto · ${ago(x.createdAt)}`}
-                      </span>;
+                    <div style={{display:'flex',alignItems:'center',gap:8,paddingLeft:4,fontSize:11,color:'#6B7280'}}>
+                      <span style={{flex:1,minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                        {x.seller_fn?`${x.seller_fn} ${x.seller_ln||''}`:'Sin asignar'}{brName?` · ${brName}`:''}
+                      </span>
+                      {x.num&&<span style={{fontSize:10,color:'#9CA3AF'}}>#{x.num}</span>}
+                      {(()=>{
+                        const hasC=!!x.lastContact;
+                        const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
+                        const urgente=refH>=24;
+                        return<span style={{fontSize:10,color:urgente?'#EF4444':'#9CA3AF',fontWeight:urgente?700:400}}>
+                          {hasC?ago(x.lastContact):`sin contacto · ${ago(x.createdAt)}`}
+                        </span>;
+                      })()}
+                    </div>
+                    {x.followup_next_step&&(()=>{
+                      const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
+                      const txt=x.followup_next_step.length>40?x.followup_next_step.slice(0,40)+'…':x.followup_next_step;
+                      return<div style={{paddingLeft:4,fontSize:10,color:venc?'#EF4444':'#6B7280',fontStyle:'italic',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Próximo: {txt}</div>;
                     })()}
                   </div>
-                  {/* L4: próximo paso (opcional) */}
-                  {x.followup_next_step&&(()=>{
-                    const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
-                    const txt=x.followup_next_step.length>40?x.followup_next_step.slice(0,40)+'…':x.followup_next_step;
-                    return<div style={{ paddingLeft:6, fontSize:10, color:venc?'#EF4444':'#6B7280', fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>🎯 {txt}</div>;
-                  })()}
-                </div>
-              );
-            }
-            return(
-              <div key={x.id}
-                onClick={()=>nav("ticket",x.id)}
-                onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)'}
-                onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 6px rgba(0,0,0,0.06)'}
-                className="crm-lead-row"
-                style={{display:'flex',alignItems:'stretch',background:'#FFFFFF',borderRadius:14,border:'1px solid #E5E7EB',overflow:'hidden',boxShadow:'0 1px 6px rgba(0,0,0,0.06)',cursor:'pointer',transition:'box-shadow 0.15s',minWidth:0}}
-              >
-                {/* Strip izquierdo — color de estado */}
-                <div className="crm-lead-strip" style={{width:72,flexShrink:0,background:stStrip.color,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,padding:'10px 4px',position:'relative'}}>
-                  <span style={{fontSize:10,fontWeight:900,color:'#FFFFFF',letterSpacing:'0.04em',textAlign:'center',lineHeight:1.2,textTransform:'uppercase'}}>{stCfg.l}</span>
-                  {x.num&&<span style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,0.7)',letterSpacing:'0.03em'}}>{x.num}</span>}
-                  {x.needs_attention&&<span title="Necesita atención · 48h sin gestión" style={{position:'absolute',top:6,right:6,fontSize:11,lineHeight:1,background:'#DC2626',color:'#ffffff',padding:'2px 5px',borderRadius:6,fontWeight:800,boxShadow:'0 0 0 2px #ffffff'}}>!</span>}
-                </div>
+                );
+              }
 
-                {/* Zona Moto */}
-                <div className="crm-lead-moto" style={{flex:'0 0 220px',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10}}>
-                  {x.model_image
-                    ?<img src={x.model_image} alt="" className="crm-lead-img" style={{width:80,height:56,padding:4,boxSizing:'border-box',objectFit:'contain',objectPosition:'center',borderRadius:8,border:'1.5px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>
-                    :<div className="crm-lead-img" style={{width:80,height:56,borderRadius:8,border:'1.5px dashed #D1D5DB',background:'#F9FAFB',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
+              // ── Variante DESKTOP: grid 5 columnas ───────────────────────
+              const hasC=!!x.lastContact;
+              const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
+              const urgente=refH>=24;
+              return(
+                <div key={x.id}
+                  onClick={()=>nav("ticket",x.id)}
+                  onMouseEnter={e=>{e.currentTarget.style.background='#FAFAFA';e.currentTarget.querySelector('.crm-row-accent').style.opacity='1';}}
+                  onMouseLeave={e=>{e.currentTarget.style.background='#FFFFFF';e.currentTarget.querySelector('.crm-row-accent').style.opacity='0';}}
+                  className="crm-lead-row"
+                  style={{display:'grid',gridTemplateColumns:'1fr 150px 130px 90px 90px',alignItems:'center',padding:'11px 16px',background:'#FFFFFF',borderBottom:'1px solid #F3F4F6',cursor:'pointer',transition:'background 0.1s',position:'relative',minWidth:0}}
+                >
+                  {/* Acento izquierdo (aparece en hover) */}
+                  <div className="crm-row-accent" style={{position:'absolute',left:0,top:0,bottom:0,width:3,background:stCfg.c,opacity:0,transition:'opacity 0.1s'}}/>
+
+                  {/* Col 1: Cliente + modelo */}
+                  <div style={{minWidth:0,paddingLeft:6}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                      <span style={{fontSize:13,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</span>
+                      {x.needs_attention&&<span title="Necesita atención · 48h sin gestión" style={{fontSize:9,fontWeight:800,color:'#fff',background:'#DC2626',padding:'1px 5px',borderRadius:4,flexShrink:0}}>!</span>}
+                      {x.num&&<span style={{fontSize:10,color:'#9CA3AF',flexShrink:0}}>#{x.num}</span>}
                     </div>
-                  }
-                  <div style={{flex:1,minWidth:0}}>
                     {x.model_brand?(
-                      <>
-                        <div style={{fontSize:14,fontWeight:900,color:'#111827',letterSpacing:'-0.3px',lineHeight:1.1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_brand}</div>
-                        <div style={{fontSize:11,fontWeight:600,color:'#4B5563',marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.model_name}</div>
-                        <div style={{display:'flex',gap:6,marginTop:5,alignItems:'center',flexWrap:'wrap'}}>
-                          {x.model_year&&<span style={{fontSize:12,fontWeight:800,color:'#4F46E5',background:'#EEF2FF',padding:'2px 8px',borderRadius:6,border:'1px solid #C7D2FE'}}>{x.model_year}</span>}
-                          {x.model_cc&&<span style={{fontSize:10,color:'#9CA3AF'}}>{x.model_cc}cc</span>}
-                          {x.model_price>0&&<span style={{fontSize:11,fontWeight:800,color:'#15803D',background:'#F0FDF4',padding:'2px 7px',borderRadius:5,border:'1px solid #86EFAC'}}>{fmt(x.model_price)}</span>}
-                        </div>
-                      </>
+                      <div style={{fontSize:11,color:'#6B7280',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                        {x.model_brand} {x.model_name||''}
+                        {x.model_year?` · ${x.model_year}`:''}
+                        {x.model_price>0?` · ${fmt(x.model_price)}`:''}
+                      </div>
                     ):(
-                      <div style={{fontSize:12,color:'#D1D5DB',fontStyle:'italic',marginTop:4}}>Sin moto asignada</div>
+                      <div style={{fontSize:11,color:'#D1D5DB',fontStyle:'italic'}}>Sin moto</div>
                     )}
+                    {x.followup_next_step&&(()=>{
+                      const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
+                      const txt=x.followup_next_step.length>42?x.followup_next_step.slice(0,42)+'…':x.followup_next_step;
+                      return<div style={{fontSize:10,color:venc?'#EF4444':'#15803D',marginTop:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Próximo: {txt}</div>;
+                    })()}
                   </div>
-                </div>
 
-                {/* Zona Cliente */}
-                <div className="crm-lead-client" style={{flex:'0 0 210px',minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
-                  <div style={{...sectionLbl,marginBottom:7}}>Cliente</div>
-                  <div style={{fontSize:14,fontWeight:700,color:'#111827',lineHeight:1.2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.fn} {x.ln}</div>
-                  {x.followup_next_step&&(()=>{
-                    const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
-                    const txt=x.followup_next_step.length>38?x.followup_next_step.slice(0,38)+'…':x.followup_next_step;
-                    return<div style={{marginTop:4,fontSize:11,fontWeight:600,color:venc?'#EF4444':'#15803D',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',background:venc?'rgba(239,68,68,0.07)':'rgba(21,128,61,0.07)',borderRadius:5,padding:'2px 6px'}} title={x.followup_next_step}>🎯 {txt}</div>;
-                  })()}
-                  {x.phone&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:4}}><a href={`tel:${x.phone}`} onClick={e=>e.stopPropagation()} style={{color:'inherit',textDecoration:'none'}}>{x.phone}</a></div>}
-                  {x.rut&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2,fontVariantNumeric:'tabular-nums'}}>{x.rut}</div>}
-                  {x.source&&<div style={{marginTop:6}}>
-                    <span style={{fontSize:9,fontWeight:700,color:'#6B7280',background:'#F3F4F6',padding:'2px 8px',borderRadius:5,border:'1px solid #E5E7EB',textTransform:'uppercase',letterSpacing:'0.06em'}}>{SRC_SHORT[x.source]||x.source}</span>
-                  </div>}
-                </div>
-
-                {/* Zona Estado / Prioridad */}
-                <div className="crm-lead-status" style={{flex:'0 0 145px',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
-                  <div style={{...sectionLbl,marginBottom:7}}>Estado</div>
-                  <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'5px 11px',borderRadius:20,fontSize:11,fontWeight:700,color:stCfg.c,background:`${stCfg.c}18`,border:`1px solid ${stCfg.c}40`,whiteSpace:'nowrap',alignSelf:'flex-start'}}>
-                    <span style={{width:6,height:6,borderRadius:'50%',background:stCfg.c,flexShrink:0}}/>
-                    {stCfg.l}
-                  </span>
-                  <div style={{marginTop:8}}>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:6,fontSize:10,fontWeight:700,color:prCfg.c,background:`${prCfg.c}12`,border:`1px solid ${prCfg.c}30`,textTransform:'uppercase',letterSpacing:'0.04em'}}>
-                      <span style={{width:5,height:5,borderRadius:'50%',background:prCfg.c}}/>
-                      {prCfg.l}
+                  {/* Col 2: Estado + prioridad */}
+                  <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:99,background:stCfg.bg,color:stCfg.c,alignSelf:'flex-start',whiteSpace:'nowrap'}}>
+                      <span style={{width:5,height:5,borderRadius:'50%',background:stCfg.c,flexShrink:0}}/>
+                      {stCfg.l}
+                    </span>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:3,fontSize:10,fontWeight:600,color:prCfg.c,alignSelf:'flex-start'}}>
+                      <span style={{width:5,height:5,borderRadius:'50%',background:prCfg.c}}/>{prCfg.l}
                     </span>
                   </div>
-                  {(()=>{
-                    const fd=x.fin_data?(typeof x.fin_data==='string'?JSON.parse(x.fin_data):x.fin_data):null;
-                    const ev=fd?.eval_autofin||fd?.pre_eval_autofin;
-                    if(!ev)return null;
-                    const c=/aprob/i.test(ev)?'#10B981':/rechaz/i.test(ev)?'#EF4444':'#F59E0B';
-                    return<div style={{marginTop:6}}>
-                      <span style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 8px',borderRadius:6,fontSize:9,fontWeight:700,color:c,background:c+'15',border:`1px solid ${c}35`,whiteSpace:'nowrap'}}>
-                        <span style={{width:5,height:5,borderRadius:'50%',background:c,flexShrink:0}}/>Autofin: {ev}
-                      </span>
-                    </div>;
-                  })()}
-                </div>
 
-                {/* Zona Vendedor */}
-                <div className="crm-lead-seller" style={{flex:1,minWidth:0,overflow:'hidden',padding:'12px 16px',borderRight:'1px solid #F3F4F6',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
-                  <div style={{...sectionLbl,marginBottom:7}}>Vendedor</div>
-                  {x.seller_fn?(
-                    <>
+                  {/* Col 3: Vendedor + traspaso */}
+                  <div style={{minWidth:0,overflow:'hidden'}} onClick={e=>e.stopPropagation()}>
+                    {x.seller_fn?(
                       <div style={{fontSize:12,fontWeight:600,color:'#1F2937',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.seller_fn} {x.seller_ln}</div>
-                      {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:3}}>{brName}</div>}
-                    </>
-                  ):(
-                    <>
+                    ):(
                       <div style={{fontSize:11,color:'#D1D5DB'}}>Sin asignar</div>
-                      {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:3}}>{brName}</div>}
-                    </>
-                  )}
-                  {!hasRole(user, ROLES.VEND)&&allSellers.length>0&&(
-                    <div style={{marginTop:8}} onClick={e=>e.stopPropagation()}>
-                      {reassigningId===x.id?(
-                        <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                          <select value={reassignTo} onChange={e=>setReassignTo(e.target.value)}
-                            style={{fontSize:11,borderRadius:6,border:'1px solid #D1D5DB',padding:'4px 6px',background:'#F9FAFB',fontFamily:'inherit',width:'100%'}}>
-                            <option value="">Seleccionar...</option>
-                            {allSellers.filter(s=>s.id!==x.seller_id).map(s=>(
-                              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                            ))}
-                          </select>
-                          <div style={{display:'flex',gap:4}}>
-                            <button onClick={e=>handleReassign(e,x.id)} disabled={!reassignTo||reassigningBusy}
-                              style={{flex:1,fontSize:10,fontWeight:700,padding:'4px 0',borderRadius:5,border:'none',background:'#3B82F6',color:'#ffffff',cursor:'pointer',fontFamily:'inherit',opacity:!reassignTo||reassigningBusy?0.5:1}}>
-                              {reassigningBusy?'…':'Reasignar'}
-                            </button>
-                            <button onClick={()=>{setReassigningId(null);setReassignTo('');}}
-                              style={{fontSize:10,padding:'4px 8px',borderRadius:5,border:'1px solid #E5E7EB',background:'#F9FAFB',cursor:'pointer',fontFamily:'inherit'}}>
-                              ✕
-                            </button>
+                    )}
+                    {brName&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:1}}>{brName}</div>}
+                    {!hasRole(user,ROLES.VEND)&&allSellers.length>0&&(
+                      <div style={{marginTop:6}}>
+                        {reassigningId===x.id?(
+                          <div style={{display:'flex',flexDirection:'column',gap:4}} onClick={e=>e.stopPropagation()}>
+                            <select value={reassignTo} onChange={e=>setReassignTo(e.target.value)}
+                              style={{fontSize:11,borderRadius:6,border:'1px solid #D1D5DB',padding:'4px 6px',background:'#F9FAFB',fontFamily:'inherit',width:'100%'}}>
+                              <option value="">Seleccionar...</option>
+                              {allSellers.filter(s=>s.id!==x.seller_id).map(s=>(
+                                <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                              ))}
+                            </select>
+                            <div style={{display:'flex',gap:4}}>
+                              <button onClick={e=>handleReassign(e,x.id)} disabled={!reassignTo||reassigningBusy}
+                                style={{flex:1,fontSize:10,fontWeight:700,padding:'4px 0',borderRadius:5,border:'none',background:'#3B82F6',color:'#ffffff',cursor:'pointer',fontFamily:'inherit',opacity:!reassignTo||reassigningBusy?0.5:1}}>
+                                {reassigningBusy?'…':'Reasignar'}
+                              </button>
+                              <button onClick={()=>{setReassigningId(null);setReassignTo('');}}
+                                style={{fontSize:10,padding:'4px 8px',borderRadius:5,border:'1px solid #E5E7EB',background:'#F9FAFB',cursor:'pointer',fontFamily:'inherit'}}>
+                                ✕
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ):(
-                        <button onClick={()=>{setReassigningId(x.id);setReassignTo('');}}
-                          style={{fontSize:10,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'none',padding:'3px 9px',borderRadius:5,cursor:'pointer',fontFamily:'inherit'}}>
-                          ↗ Traspasar
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Zona Fecha */}
-                <div className="crm-lead-date" style={{flex:'0 0 108px',padding:'12px 14px',display:'flex',flexDirection:'column',justifyContent:'flex-start'}}>
-                  {(()=>{
-                    const hasC=!!x.lastContact;
-                    const refH=Math.floor((Date.now()-new Date(hasC?x.lastContact:x.createdAt).getTime())/3.6e6);
-                    const urgente=refH>=24;
-                    const bc=urgente?'#EF4444':'#6B7280';
-                    const bb=urgente?'#FEF2F2':'#F3F4F6';
-                    const bbd=urgente?'#FECACA':'#E5E7EB';
-                    return(<>
-                      <div style={{...sectionLbl,marginBottom:7}}>{hasC?'Último contacto':'Sin contacto'}</div>
-                      <div style={{fontSize:13,fontWeight:700,color:'#1F2937',lineHeight:1.2}}>{fD(hasC?x.lastContact:x.createdAt)}</div>
-                      <div style={{display:'inline-flex',alignItems:'center',marginTop:6}}>
-                        <span style={{fontSize:10,fontWeight:700,color:bc,background:bb,padding:'2px 8px',borderRadius:5,border:`1px solid ${bbd}`,whiteSpace:'nowrap'}}>
-                          {hasC?ago(x.lastContact):`sin contacto · ${ago(x.createdAt)}`}
-                        </span>
+                        ):(
+                          <button onClick={e=>{e.stopPropagation();setReassigningId(x.id);setReassignTo('');}}
+                            style={{fontSize:10,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'none',padding:'3px 9px',borderRadius:5,cursor:'pointer',fontFamily:'inherit'}}>
+                            ↗ Traspasar
+                          </button>
+                        )}
                       </div>
-                    </>);
-                  })()}
+                    )}
+                  </div>
+
+                  {/* Col 4: Fuente */}
+                  <div style={{fontSize:11,color:'#6B7280'}}>
+                    {SRC_SHORT[x.source]||x.source||'—'}
+                  </div>
+
+                  {/* Col 5: Fecha + badge urgencia */}
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:11,color:'#374151',fontWeight:500}}>{fD(hasC?x.lastContact:x.createdAt)}</div>
+                    <div style={{marginTop:3}}>
+                      <span style={{fontSize:10,fontWeight:700,color:urgente?'#EF4444':'#9CA3AF'}}>
+                        {hasC?ago(x.lastContact):`${ago(x.createdAt)}`}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {showNew&&<Modal onClose={()=>setShowNew(false)} title="Nueva ficha" wide><form onSubmit={handleAdd}><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Nombre *" value={nw.fn} onChange={v=>setNw({...nw,fn:v})} req/><Field label="Apellido *" value={nw.ln} onChange={v=>setNw({...nw,ln:v})} req/><Field label="RUT" value={nw.rut} onChange={v=>setNw({...nw,rut:v})} ph="12.345.678-9"/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Celular" value={nw.phone} onChange={v=>setNw({...nw,phone:v})} ph="9XXXXXXXX"/><Field label="Email" value={nw.email} onChange={v=>setNw({...nw,email:v})} type="email"/><Field label="Comuna" value={nw.comuna} onChange={v=>setNw({...nw,comuna:v})} opts={["",..."Huechuraba,Providencia,Las Condes,La Florida,Maipú,Santiago Centro,Ñuñoa,Puente Alto,Otra".split(",")].map(c=>({v:c,l:c||"Seleccionar..."}))}/></div><div className="grid-3col" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}><Field label="Origen" value={nw.source} onChange={v=>setNw({...nw,source:v})} opts={Object.entries(SRC).map(([k,v])=>({v:k,l:v}))}/><Field label="Sucursal" value={nw.branch_id} onChange={v=>setNw({...nw,branch_id:v})} opts={[{v:"",l:"Seleccionar..."},...brs.filter(b=>b.code!=='MPSY'&&b.code!=='MOV').map(b=>({v:b.id,l:b.name}))]}/><Field label="Prioridad" value={nw.priority} onChange={v=>setNw({...nw,priority:v})} opts={Object.entries(PRIORITY).map(([k,v])=>({v:k,l:v.l}))}/></div><div style={{display:"grid",gridTemplateColumns:!hasRole(user, ROLES.VEND)&&allSellers.length>0?"1fr 1fr":"1fr",gap:10,marginBottom:16}}><Field label="Moto de interés" value={nw.motoId} onChange={v=>setNw({...nw,motoId:v})} opts={[{v:"",l:"Seleccionar modelo..."},...catalogModels.map(m=>({v:m.id,l:`${m.brand} ${m.model}${m.price?` - ${fmt(m.price)}`:''}`}))]}/>{!hasRole(user, ROLES.VEND)&&allSellers.length>0&&<Field label="Asignar vendedor" value={nw.seller_id} onChange={v=>setNw({...nw,seller_id:v})} opts={[{v:"",l:"Auto-asignar"},...allSellers.map(s=>({v:s.id,l:`${s.first_name} ${s.last_name}`}))]}/>}</div><ErrorMsg msg={addErr} /><div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" onClick={()=>{setShowNew(false);setAddErr('');}} style={S.btn2}>Cancelar</button><button type="submit" disabled={adding} style={{...S.btn,opacity:adding?0.7:1}}>{adding?"Creando...":"Crear ficha"}</button></div></form></Modal>}

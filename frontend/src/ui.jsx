@@ -161,13 +161,89 @@ export const Ic={
 
 // Styles
 export const S={
-  card:{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:12,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,0.05)"},
-  inp:{background:"#F9FAFB",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 12px",color:"#111827",fontSize:13,outline:"none",fontFamily:"inherit",boxSizing:"border-box"},
-  btn:{background:"#F28100",color:"#ffffff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
-  btn2:{background:"#F9FAFB",color:"#374151",border:"1px solid #D1D5DB",borderRadius:8,padding:"8px 16px",fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
-  gh:{background:"transparent",border:"none",cursor:"pointer",borderRadius:8,fontFamily:"inherit"},
-  lbl:{display:"block",fontSize:11,color:"#6B7280",marginBottom:4,fontWeight:500},
-  secCard:{background:"#FFFFFF",borderRadius:12,border:"1px solid #E5E7EB",boxShadow:"0 1px 4px rgba(0,0,0,0.05)",marginBottom:12},
+  card:{
+    background:'#FFFFFF',
+    border:'1px solid #E5E7EB',
+    borderRadius:12,
+    padding:16,
+    boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
+  },
+  secCard:{
+    background:'#F9FAFB',
+    border:'1px solid #F3F4F6',
+    borderRadius:10,
+    padding:14,
+  },
+  btn:{
+    background:'#F28100',
+    color:'#FFFFFF',
+    border:'none',
+    borderRadius:8,
+    padding:'8px 16px',
+    fontSize:13,
+    fontWeight:600,
+    cursor:'pointer',
+    display:'inline-flex',
+    alignItems:'center',
+    gap:6,
+    userSelect:'none',
+    whiteSpace:'nowrap',
+    lineHeight:'1.4',
+    fontFamily:'inherit',
+  },
+  btn2:{
+    background:'#FFFFFF',
+    color:'#374151',
+    border:'1px solid #D1D5DB',
+    borderRadius:8,
+    padding:'8px 16px',
+    fontSize:13,
+    fontWeight:500,
+    cursor:'pointer',
+    display:'inline-flex',
+    alignItems:'center',
+    gap:6,
+    userSelect:'none',
+    whiteSpace:'nowrap',
+    lineHeight:'1.4',
+    fontFamily:'inherit',
+  },
+  gh:{
+    background:'transparent',
+    color:'#6B7280',
+    border:'none',
+    borderRadius:8,
+    padding:'6px 10px',
+    fontSize:13,
+    fontWeight:500,
+    cursor:'pointer',
+    display:'inline-flex',
+    alignItems:'center',
+    gap:6,
+    userSelect:'none',
+    fontFamily:'inherit',
+  },
+  inp:{
+    border:'1px solid #D1D5DB',
+    borderRadius:8,
+    padding:'8px 12px',
+    fontSize:13,
+    color:'#111827',
+    background:'#FFFFFF',
+    outline:'none',
+    width:'100%',
+    boxSizing:'border-box',
+    lineHeight:'1.4',
+    fontFamily:'inherit',
+  },
+  lbl:{
+    fontSize:11,
+    fontWeight:600,
+    color:'#4B5563',
+    display:'block',
+    marginBottom:5,
+    letterSpacing:'0.01em',
+  },
 };
 S.btnSec = S.btn2;
 
@@ -188,15 +264,15 @@ export const Stat=({icon:Ico,ic,ib,label,val,sub,sc,al})=>(
   </div>
 );
 export const Modal=({onClose,title,children,wide,headerContent})=>(
-  <div onClick={onClose} className="crm-modal-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:80,padding:16}}>
-    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:16,padding:24,width:"100%",maxWidth:wide?750:480,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
+  <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
+    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'#FFFFFF',borderRadius:16,width:'100%',maxWidth:wide?680:480,maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
       {headerContent ? headerContent : (
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-          <h2 style={{fontSize:16,fontWeight:700,margin:0}}>{title}</h2>
-          {onClose&&<button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18}/></button>}
+        <div style={{padding:'18px 20px 14px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h2 style={{fontSize:15,fontWeight:700,color:'#111827',margin:0}}>{title}</h2>
+          {onClose&&<button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>}
         </div>
       )}
-      {children}
+      <div style={{padding:'20px'}}>{children}</div>
     </div>
   </div>
 );
@@ -218,32 +294,32 @@ export const CAT_COLOR={"Commuter":"#3B82F6","Naked":"#8B5CF6","Sport":"#EF4444"
 export function ViewHeader({ preheader, title, subtitle, count, itemLabel='registro', filtered=false, actions, size='md' }) {
   const isMobile = useIsMobile();
   const autoSub = count != null
-    ? <>{count} {itemLabel}{count === 1 ? '' : 's'}{filtered && <span style={{ color: T.color.brand, fontWeight: T.fw.bold, marginLeft: 4 }}>· filtrado</span>}</>
+    ? <>{count} {itemLabel}{count === 1 ? '' : 's'}{filtered && <span style={{ color: '#F28100', fontWeight: 700, marginLeft: 4 }}>· filtrado</span>}</>
     : null;
   const sub = subtitle ?? autoSub;
   const titleSize = size === 'md'
-    ? (isMobile ? T.fs.lg : T.fs['2xl'])
-    : T.fs.xl;
-  const titleWeight = size === 'md' ? T.fw.xbold : T.fw.bold;
-  const titleLetter = size === 'md' ? '-0.6px' : '-0.3px';
+    ? (isMobile ? 16 : 20)
+    : 18;
+  const titleWeight = size === 'md' ? 700 : 700;
+  const titleLetter = size === 'md' ? '-0.4px' : '-0.2px';
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: T.space[3], flexWrap: 'wrap', marginBottom: isMobile ? T.space[4] : T.space[6] }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: isMobile ? 16 : 24 }}>
       <div style={{ minWidth: 0, flex: '1 1 auto' }}>
         {preheader && (
-          <p style={{ margin: `0 0 ${T.space[0.5]}px`, fontSize: T.fs.xs, fontWeight: T.fw.bold, color: T.color.textDisabled, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
             {preheader}
           </p>
         )}
-        <h1 style={{ margin: 0, color: T.color.text, lineHeight: T.lh.tight, fontSize: titleSize, fontWeight: titleWeight, letterSpacing: titleLetter }}>
+        <h1 style={{ margin: 0, color: '#111827', lineHeight: 1.2, fontSize: titleSize, fontWeight: titleWeight, letterSpacing: titleLetter }}>
           {title}
         </h1>
         {sub && (
-          <p style={{ margin: `${T.space[0.5]}px 0 0`, fontSize: T.fs.sm, fontWeight: T.fw.medium, color: T.color.textSubtle }}>
+          <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 500, color: '#6B7280' }}>
             {sub}
           </p>
         )}
       </div>
-      {actions && <div className="crm-vh-actions" style={{ display: 'flex', gap: T.space[2], flexWrap: 'wrap', justifyContent: 'flex-end' }}>{actions}</div>}
+      {actions && <div className="crm-vh-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{actions}</div>}
     </div>
   );
 }

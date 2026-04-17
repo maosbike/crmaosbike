@@ -5,14 +5,14 @@ import { S, TICKET_STATUS, FIN_STATUS, fmt, ViewHeader, Loader } from '../ui.jsx
 const TABS = ['General','Marca','Modelo','Sucursal','Vendedor','Financiamiento','Color','Estado','Tiempo'];
 
 const card = { ...S.card, padding: 16 };
-const kpiBox = { background:'#F9FAFB', borderRadius:10, padding:'14px 16px', textAlign:'center', minWidth:120, flex:1, border:'1px solid #E5E7EB' };
-const kpiVal = { fontSize:26, fontWeight:800, lineHeight:1.1 };
-const kpiLbl = { fontSize:10, color:'#6B7280', marginTop:4, textTransform:'uppercase' };
-const thS = { textAlign:'left', padding:'6px 8px', color:'#6B7280', fontSize:10, textTransform:'uppercase', borderBottom:'1px solid #E5E7EB', whiteSpace:'nowrap' };
-const tdS = { padding:'6px 8px', fontSize:12, borderBottom:'1px solid #F3F4F6' };
+const kpiBox = { background:'#FFFFFF', border:'1px solid #E5E7EB', borderRadius:10, padding:'12px 16px', display:'flex', flexDirection:'column', gap:2, minWidth:120, flex:1 };
+const kpiVal = { fontSize:22, fontWeight:800, lineHeight:1 };
+const kpiLbl = { fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' };
+const thS = { textAlign:'left', padding:'10px 14px', color:'#9CA3AF', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', background:'#F9FAFB', borderBottom:'2px solid #E5E7EB', whiteSpace:'nowrap' };
+const tdS = { padding:'10px 14px', fontSize:12, borderBottom:'1px solid #F3F4F6' };
 const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'#F28100':'#D1D5DB'), background:active?'#F28100':'#FFFFFF', color:active?'#FFFFFF':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' });
-const selectS = { background:'#F9FAFB', border:'1px solid #D1D5DB', borderRadius:8, color:'#374151', padding:'6px 10px', fontSize:11 };
-const inputS = { ...selectS };
+const selectS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
+const inputS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
 
 const pct = (a,b) => b > 0 ? ((a/b)*100).toFixed(1)+'%' : '0%';
 const n = (v) => parseInt(v) || 0;
@@ -53,8 +53,8 @@ function RankTable({ rows, columns }) {
   return <div style={{ overflowX:'auto' }}>
     <table style={{ width:'100%', borderCollapse:'collapse' }}>
       <thead><tr>{columns.map(c => <th key={c.key} style={thS}>{c.label}</th>)}</tr></thead>
-      <tbody>{rows.map((r, i) => <tr key={i}>
-        {columns.map(c => <td key={c.key} style={{ ...tdS, fontWeight:c.bold?700:400, color:c.color||'#E5E7EB' }}>
+      <tbody>{rows.map((r, i) => <tr key={i} style={{ background: i === 0 ? 'rgba(242,129,0,0.04)' : 'transparent' }}>
+        {columns.map(c => <td key={c.key} style={{ ...tdS, fontWeight: c.bold || i === 0 ? 700 : 400, color: c.color && c.color !== '#E5E7EB' ? c.color : i === 0 ? '#111827' : '#374151' }}>
           {c.medal && i < 3 ? ['🥇','🥈','🥉'][i]+' ' : ''}{c.render ? c.render(r) : r[c.key]}
         </td>)}
       </tr>)}</tbody>
@@ -112,8 +112,8 @@ export function ReportsView({ branches = [] }) {
     <ViewHeader size="sm" title="Reportes" />
 
     {/* ── Filtros ── */}
-    <div style={{ ...card, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:12 }}>
-      <span style={{ fontSize:10, color:'#6B7280', fontWeight:600 }}>FILTROS:</span>
+    <div style={{ background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:'10px 14px' }}>
+      <span style={{ fontSize:9, color:'#9CA3AF', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>Filtros</span>
       <input type="date" value={filters.from} onChange={e=>applyFilter('from',e.target.value)} style={inputS} title="Desde"/>
       <input type="date" value={filters.to} onChange={e=>applyFilter('to',e.target.value)} style={inputS} title="Hasta"/>
       <select value={filters.branch_id} onChange={e=>applyFilter('branch_id',e.target.value)} style={selectS}>
@@ -158,8 +158,22 @@ export function ReportsView({ branches = [] }) {
     </div>
 
     {/* ── Tabs ── */}
-    <div style={{ display:'flex', gap:4, marginBottom:14, overflowX:'auto', WebkitOverflowScrolling:'touch', flexWrap:'nowrap', paddingBottom:2 }}>
-      {TABS.map(t => <button key={t} onClick={()=>setTab(t)} style={{...btnF(tab===t),flexShrink:0}}>{t}</button>)}
+    <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:12, marginBottom:8, scrollbarWidth:'none', borderBottom:'2px solid #F3F4F6', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>
+      {TABS.map(t => (
+        <button key={t} onClick={()=>setTab(t)} style={{
+          padding:'7px 14px',
+          borderRadius:'8px 8px 0 0',
+          border:'none',
+          fontSize:12, fontWeight: tab===t ? 700 : 500,
+          cursor:'pointer', flexShrink:0,
+          background: tab===t ? '#FFFFFF' : 'transparent',
+          color: tab===t ? '#F28100' : '#6B7280',
+          borderBottom: tab===t ? '2px solid #F28100' : '2px solid transparent',
+          marginBottom:'-2px',
+          transition:'all 0.15s',
+          fontFamily:'inherit',
+        }}>{t}</button>
+      ))}
     </div>
 
     {/* ── Tab content ── */}

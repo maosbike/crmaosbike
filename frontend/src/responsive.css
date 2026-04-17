@@ -287,8 +287,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
     display: flex !important;
     position: fixed; left: 0; right: 0; bottom: 0;
     height: 60px;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
+    background: #FFFFFF;
+    border-top: 1px solid #E5E7EB;
     z-index: var(--z-bottom-nav);
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
@@ -330,3 +330,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
 @media (max-width: 767px) {
   .crm-mobile-hdr { height: 48px !important; padding: 0 12px !important; }
 }
+
+/* Scrollbar global — más discreta */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+* { scrollbar-width: thin; scrollbar-color: #D1D5DB transparent; }

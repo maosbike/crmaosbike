@@ -19,14 +19,14 @@ export function Login({onLogin}){
     }finally{setLoading(false);}
   };
   return(
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F9FAFB",fontFamily:"'Inter',system-ui,sans-serif"}}>
-      <div style={{width:"100%",maxWidth:380,padding:"0 20px"}}>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 50%, #F3F4F6 100%)",fontFamily:"'Inter',system-ui,sans-serif",padding:"24px"}}>
+      <div style={{width:"100%",maxWidth:380}}>
         <div style={{textAlign:"center",marginBottom:28}}><img src="/logo.png" alt="MaosBike" style={{height:80,marginBottom:14}}/><p style={{color:"#6B7280",fontSize:12,marginTop:4}}>Sistema de gestión comercial</p></div>
-        <form onSubmit={go} style={{background:"#FFFFFF",border:"1px solid #D1D5DB",borderRadius:14,padding:22}}>
+        <form onSubmit={go} style={{background:"#FFFFFF",border:"1px solid #F3F4F6",borderRadius:16,padding:"36px 32px",boxShadow:"0 4px 24px rgba(0,0,0,0.10)"}}>
           <div style={{marginBottom:14}}><label style={S.lbl}>Usuario o Email</label><input value={identifier} onChange={e=>setIdentifier(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go(e)} placeholder="nombre de usuario" autoComplete="username" style={{...S.inp,width:"100%"}}/></div>
           <div style={{marginBottom:18}}><label style={S.lbl}>Contraseña</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go(e)} autoComplete="current-password" style={{...S.inp,width:"100%"}}/></div>
-          {err&&<div style={{background:"rgba(239,68,68,0.1)",borderRadius:8,padding:"7px 12px",color:"#EF4444",fontSize:12,marginBottom:14}}>{err}</div>}
-          <button type="submit" disabled={loading} style={{...S.btn,width:"100%",padding:11,opacity:loading?0.7:1}}>{loading?"Ingresando...":"Ingresar"}</button>
+          {err&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.20)",borderRadius:8,padding:"9px 13px",color:"#DC2626",fontSize:12,fontWeight:500,marginBottom:14}}>{err}</div>}
+          <button type="submit" disabled={loading} style={{...S.btn,width:"100%",justifyContent:"center",height:42,fontSize:14,opacity:loading?0.7:1}}>{loading?"Ingresando...":"Ingresar"}</button>
         </form>
       </div>
     </div>
