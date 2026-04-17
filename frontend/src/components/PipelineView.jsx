@@ -155,8 +155,12 @@ export function PipelineView({leads,user,nav,updLead}){
                 }}>
                   {/* Foto */}
                   {l.model_image && (
-                    <div style={{width:72, flexShrink:0, background:'#F3F4F6', overflow:'hidden'}}>
-                      <img src={l.model_image} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
+                    <div style={{flexShrink:0, padding:'12px 0 12px 12px'}}>
+                      <img src={l.model_image} alt="" style={{
+                        width:96, height:96, borderRadius:10,
+                        objectFit:'cover', display:'block',
+                        border:'1.5px solid #E5E7EB',
+                      }}/>
                     </div>
                   )}
                   {/* Contenido */}
@@ -370,6 +374,7 @@ export function PipelineView({leads,user,nav,updLead}){
                         background:'#FFFFFF',
                         borderRadius:10,
                         border:'1px solid #E5E7EB',
+                        borderLeft:`4px solid ${slaColor}`,
                         overflow:'visible',
                         cursor:'grab',
                         transition:'box-shadow 0.12s',
@@ -380,25 +385,21 @@ export function PipelineView({leads,user,nav,updLead}){
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.10)'; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
                     >
-                      {/* Zona visual izquierda: foto si hay, franja SLA si no */}
-                      {l.model_image ? (
+                      {/* Foto */}
+                      {l.model_image && (
                         <div style={{
-                          width:68, flexShrink:0,
-                          background:'#F3F4F6',
-                          overflow:'hidden',
-                          borderRadius:'10px 0 0 10px',
+                          flexShrink:0,
+                          padding:'12px 0 12px 12px',
                         }}>
                           <img
                             src={l.model_image} alt=""
-                            style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}
+                            style={{
+                              width:96, height:96, borderRadius:10,
+                              objectFit:'cover', display:'block',
+                              border:'1.5px solid #E5E7EB',
+                            }}
                           />
                         </div>
-                      ) : (
-                        <div style={{
-                          width:4, flexShrink:0,
-                          background:slaColor,
-                          borderRadius:'10px 0 0 10px',
-                        }}/>
                       )}
 
                       {/* Contenido */}
