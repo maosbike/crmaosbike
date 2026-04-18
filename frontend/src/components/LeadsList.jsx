@@ -332,11 +332,6 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       <div style={{fontSize:12,color:'#4B5563',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                         {(x.model_brand||x.model_name)?[x.model_brand,x.model_name].filter(Boolean).join(' '):'Sin modelo'}
                       </div>
-                      {x.model_price>0&&(
-                        <div style={{fontSize:13,color:'#111827',fontWeight:700}}>
-                          ${Number(x.model_price).toLocaleString('es-CL')}
-                        </div>
-                      )}
                     </div>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
                       <span style={{
@@ -459,24 +454,49 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   {/* Fila 4: Próximo seguimiento (si existe) */}
                   {x.followup_next_step&&(()=>{
                     const venc=x.next_followup_at&&new Date(x.next_followup_at)<new Date();
-                    const txt=x.followup_next_step.length>60?x.followup_next_step.slice(0,60)+'…':x.followup_next_step;
+                    const txt=x.followup_next_step.length>70?x.followup_next_step.slice(0,70)+'…':x.followup_next_step;
+                    const fecha=x.next_followup_at?fD(x.next_followup_at):null;
                     return(
                       <div style={{
-                        fontSize:11,color:venc?'#EF4444':'#15803D',
-                        fontStyle:'italic',display:'flex',alignItems:'center',gap:4,
+                        marginTop:2,
+                        display:'inline-flex',alignItems:'center',gap:8,
+                        padding:'6px 10px 6px 8px',borderRadius:8,
+                        background:venc?'#FEF2F2':'#F0FDF4',
+                        border:`1px solid ${venc?'#FECACA':'#BBF7D0'}`,
+                        alignSelf:'flex-start',maxWidth:'100%',
                       }}>
-                        <Ic.clock size={11}/>
-                        Próximo: {txt}
+                        <div style={{
+                          width:22,height:22,borderRadius:6,flexShrink:0,
+                          background:venc?'#FEE2E2':'#DCFCE7',
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                        }}>
+                          <Ic.clock size={12} color={venc?'#DC2626':'#15803D'}/>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',minWidth:0,gap:1}}>
+                          <div style={{
+                            fontSize:9,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase',
+                            color:venc?'#B91C1C':'#15803D',lineHeight:1,
+                          }}>
+                            {venc?'Seguimiento vencido':'Próximo seguimiento'}{fecha?` · ${fecha}`:''}
+                          </div>
+                          <div style={{
+                            fontSize:12,fontWeight:600,
+                            color:venc?'#7F1D1D':'#14532D',
+                            whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+                          }}>
+                            {txt}
+                          </div>
+                        </div>
                       </div>
                     );
                   })()}
                 </div>
 
-                {/* ZONA DERECHA: estado + precio + fecha */}
+                {/* ZONA DERECHA: estado + fecha */}
                 <div style={{
                   display:'flex',flexDirection:'column',
-                  alignItems:'flex-end',justifyContent:'space-between',
-                  padding:'16px 20px',flexShrink:0,gap:8,minWidth:170,
+                  alignItems:'flex-end',justifyContent:'center',
+                  padding:'16px 20px',flexShrink:0,gap:8,minWidth:150,
                   borderLeft:'1px dashed #F3F4F6',
                 }}>
                   <span style={{
@@ -489,11 +509,6 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   }}>
                     {stCfg.l}
                   </span>
-                  {x.model_price>0&&(
-                    <span style={{fontSize:18,color:'#111827',fontWeight:800,letterSpacing:'-0.3px'}}>
-                      ${Number(x.model_price).toLocaleString('es-CL')}
-                    </span>
-                  )}
                   <span style={{fontSize:11,color:'#9CA3AF',fontWeight:500}}>
                     {fD(x.createdAt)}
                   </span>
