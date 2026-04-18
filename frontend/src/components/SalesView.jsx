@@ -1627,8 +1627,8 @@ export function SalesView({ user, realBranches }) {
   // ── Columnas de la tabla desktop ──
   // cliente+fecha | moto+chasis | vendedor+sucursal | precio+saldo | estado (chips) | acciones
   const tplCols = isAdmin
-    ? 'minmax(180px,1.5fr) minmax(150px,1.3fr) minmax(130px,1fr) 130px minmax(180px,auto) 78px'
-    : 'minmax(180px,1.5fr) minmax(150px,1.3fr) minmax(120px,0.9fr) 130px minmax(140px,auto) 78px';
+    ? 'minmax(220px,1.3fr) minmax(160px,1.1fr) minmax(130px,0.9fr) 120px minmax(260px,1fr) 68px'
+    : 'minmax(220px,1.3fr) minmax(160px,1.1fr) minmax(120px,0.9fr) 120px minmax(220px,1fr) 68px';
   const tplHeaders = isAdmin
     ? ['Cliente', 'Moto', 'Vendedor · Sucursal', 'Precio', 'Estado', '']
     : ['Cliente', 'Moto', 'Vendedor', 'Precio', 'Estado', ''];
@@ -2046,11 +2046,22 @@ export function SalesView({ user, realBranches }) {
                 onMouseEnter={e => { e.currentTarget.style.background = bgHover; }}
                 onMouseLeave={e => { e.currentTarget.style.background = bgRow; }}
               >
-                {/* Cliente + pill Reserva/Venta + fecha */}
-                <div style={{ padding: '14px 16px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5, justifyContent: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {/* Cliente (nombre prominente, meta debajo) */}
+                <div style={{ padding: '14px 16px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
+                  <div style={{
+                    fontSize: 14, fontWeight: 700, color: s.client_name ? '#0F172A' : '#9CA3AF',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    fontFamily: 'inherit', letterSpacing: '-0.01em',
+                  }}>
+                    {s.client_name || 'Sin cliente'}
+                  </div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontSize: 11, color: '#9CA3AF', fontFamily: 'inherit',
+                    whiteSpace: 'nowrap', overflow: 'hidden',
+                  }}>
                     <span style={{
-                      fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 99,
+                      fontSize: 9, fontWeight: 800, padding: '1px 7px', borderRadius: 99,
                       background: isRes ? '#FEF3C7' : '#D1FAE5',
                       color: isRes ? '#92400E' : '#065F46',
                       textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
@@ -2058,27 +2069,19 @@ export function SalesView({ user, realBranches }) {
                     }}>
                       {isRes ? 'Reserva' : 'Venta'}
                     </span>
-                    <span style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                      {fD(s.sold_at)}
-                    </span>
+                    <span style={{ flexShrink: 0 }}>{fD(s.sold_at)}</span>
+                    {s.client_rut && (
+                      <>
+                        <span style={{ color: '#D1D5DB' }}>·</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.client_rut}</span>
+                      </>
+                    )}
                     {s.ticket_num && (
-                      <span style={{ fontSize: 10, color: '#F28100', fontWeight: 700, flexShrink: 0 }}>
+                      <span style={{ color: '#F28100', fontWeight: 700, flexShrink: 0 }}>
                         #{s.ticket_num}
                       </span>
                     )}
                   </div>
-                  <div style={{
-                    fontSize: 14, fontWeight: 700, color: '#0F172A',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    fontFamily: 'inherit', letterSpacing: '-0.01em',
-                  }}>
-                    {s.client_name || '—'}
-                  </div>
-                  {s.client_rut && (
-                    <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'inherit' }}>
-                      {s.client_rut}
-                    </div>
-                  )}
                 </div>
 
                 {/* Moto + Chasis */}
@@ -2166,39 +2169,39 @@ export function SalesView({ user, realBranches }) {
                 </div>
 
                 {/* Estado: chips consolidadas (entrega, docs, distribuidor) */}
-                <div style={{ padding: '14px 12px', display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ padding: '14px 12px', display: 'flex', gap: 4, flexWrap: 'nowrap', alignItems: 'center', minWidth: 0, overflow: 'hidden' }}>
                   {isRes ? (
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
                       background: '#FEF3C7', color: '#92400E',
-                      fontFamily: 'inherit', whiteSpace: 'nowrap',
+                      fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                     }}>
                       Pend. entrega
                     </span>
                   ) : (
                     <>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
+                        fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 99,
                         background: s.delivered ? '#D1FAE5' : '#FEF3C7',
                         color: s.delivered ? '#065F46' : '#92400E',
-                        fontFamily: 'inherit', whiteSpace: 'nowrap',
+                        fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                       }}>
-                        {s.delivered ? '✓ Entregada' : 'Sin entregar'}
+                        {s.delivered ? '✓ Entreg.' : 'Sin entreg.'}
                       </span>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
+                        fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 99,
                         background: docsOk ? '#D1FAE5' : docCount > 0 ? '#FEF3C7' : '#F3F4F6',
                         color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
-                        fontFamily: 'inherit', whiteSpace: 'nowrap',
+                        fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                       }}>
                         Docs {docCount}/4
                       </span>
                       {isAdmin && (
                         <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
+                          fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 99,
                           background: s.distributor_paid ? '#D1FAE5' : '#FEF3C7',
                           color: s.distributor_paid ? '#065F46' : '#92400E',
-                          fontFamily: 'inherit', whiteSpace: 'nowrap',
+                          fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                         }}>
                           {s.distributor_paid ? '✓ Dist.' : 'Pend. dist.'}
                         </span>
