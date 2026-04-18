@@ -101,7 +101,7 @@ router.get('/counts', async (req, res) => {
 router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   try {
     const {
-      branch_id, year, brand, model, model_id, color, chassis, motor_num,
+      branch_id, year, brand, model, model_id, color, color_hex, chassis, motor_num,
       // Sale fields (optional — only when added_as_sold = true)
       added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type
     } = req.body;
@@ -114,12 +114,12 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
 
     const { rows } = await db.query(
       `INSERT INTO inventory
-         (branch_id, year, brand, model, model_id, color, chassis, motor_num, status, price,
+         (branch_id, year, brand, model, model_id, color, color_hex, chassis, motor_num, status, price,
           added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [
-        branch_id, year, brand, model, model_id || null, color, chassis, motor_num || null,
+        branch_id, year, brand, model, model_id || null, color, color_hex || null, chassis, motor_num || null,
         finalStatus, 0,
         isSold, finalSoldAt,
         sold_by || null, ticket_id || null, sale_notes || null,
@@ -185,7 +185,7 @@ router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
 // Update inventory unit (edición completa para admin; vendedor acotado a reserva)
 router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
-    let { branch_id, status, color, price, notes, brand, model, year, chassis, motor_num,
+    let { branch_id, status, color, color_hex, price, notes, brand, model, year, chassis, motor_num,
           sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method } = req.body;
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
@@ -199,7 +199,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
         return res.status(403).json({ error: 'Un vendedor solo puede marcar unidades como reservadas.' });
       }
       // Ignorar campos admin (no tira error, simplemente los descarta)
-      branch_id = undefined; color = undefined; price = undefined; notes = undefined;
+      branch_id = undefined; color = undefined; color_hex = undefined; price = undefined; notes = undefined;
       brand = undefined; model = undefined; year = undefined; chassis = undefined; motor_num = undefined;
       // Forzar ownership
       sold_by = req.user.id;
@@ -228,6 +228,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     if (branch_id  !== undefined) { sets.push(`branch_id = $${idx++}`);  params.push(branch_id); }
     if (status     !== undefined) { sets.push(`status = $${idx++}`);     params.push(status); }
     if (color      !== undefined) { sets.push(`color = $${idx++}`);      params.push(normalizeColor(color)); }
+    if (color_hex  !== undefined) { sets.push(`color_hex = $${idx++}`);  params.push(color_hex || null); }
     if (price      !== undefined) { sets.push(`price = $${idx++}`);      params.push(Number(price) || 0); }
     if (notes      !== undefined) { sets.push(`notes = $${idx++}`);      params.push(notes); }
     if (brand      !== undefined) { sets.push(`brand = $${idx++}`);      params.push(normalizeModel(brand)); }
