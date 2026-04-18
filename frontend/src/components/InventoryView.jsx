@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
+import { ColorPicker } from './ColorPicker.jsx';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, normalizeText, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, useIsMobile, colorNameToCss, selectCtrl, Empty, ErrorMsg } from '../ui.jsx';
 
 // ─── Datos de configuración ────────────────────────────────────────────────────
@@ -82,64 +83,306 @@ const getColorCss = c => {
 // Heurística para saber si el fondo es claro y el texto debe ser oscuro
 const _LIGHT_BGS = ['#F9FAFB','#F0EDE8','#E8E0D0','#FEF3C7','#E5E7EB','#D1D5DB','#D4B896','#FFFFFF'];
 const isLightBg = css => !!css && _LIGHT_BGS.includes(css);
+const normColor = c => (c||'').toLowerCase().trim();
 
-// ─── ColorPalettePicker — mismo look que el catálogo ──────────────────────────
-// Round swatches 44×44 con nombre debajo, selección con aro naranja.
-// Si no hay paleta del catálogo, igual muestra un input y un preview.
-function ColorPalettePicker({ value, onChange, palette }) {
-  const hasPalette = palette && palette.length > 0;
-  const selectedCp = hasPalette ? palette.find(p => p.color?.toLowerCase().trim() === value?.toLowerCase().trim()) : null;
-  const previewCss = selectedCp?.hex || getColorCss(value);
+// ─── CatalogColorEditor ──────────────────────────────────────────────────────
+// Editor completo de colores del catálogo embebido en el form de la unidad.
+// Replica la UX del modal del catálogo: agregar colores, elegir tono (hex),
+// subir/quitar foto por color, y quitar colores. Además deja seleccionar cuál
+// aplica a esta unidad específica.
+//
+// Props:
+//   brand, model      → para ubicar el modelo en catálogo
+//   value, onChange   → color name (string) seleccionado para esta unidad
+//   canEdit           → si el usuario puede modificar la paleta del catálogo
+function CatalogColorEditor({ brand, model, value, onChange, canEdit = true }) {
+  const [modelId, setModelId]       = useState(null);
+  const [colors, setColors]         = useState([]);
+  const [colorPhotos, setColorPhotos]= useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [err, setErr]               = useState('');
+
+  // UI state
+  const [colorInput, setColorInput]       = useState('');
+  const [newColorHex, setNewColorHex]     = useState('#111827');
+  const [showNewPicker, setShowNewPicker] = useState(false);
+  const [activeColor, setActiveColor]     = useState(null);
+  const [activeColorHex, setActiveColorHex] = useState('#111827');
+  const [savingHex, setSavingHex]         = useState(false);
+  const [busy, setBusy]                   = useState(false);
+  const [colorPhotoUploading, setColorPhotoUploading] = useState(null);
+
+  // Lookup del modelo
+  useEffect(() => {
+    if (!brand || !model) {
+      setModelId(null); setColors([]); setColorPhotos([]); return;
+    }
+    let cancelled = false;
+    setLoading(true); setErr('');
+    api.getModels({ brand, q: model, limit: 5 })
+      .then(mods => {
+        if (cancelled) return;
+        const mod = mods.find(x => x.model?.toUpperCase() === model?.toUpperCase()) || mods[0];
+        if (!mod) { setModelId(null); setColors([]); setColorPhotos([]); return; }
+        applyModel(mod);
+      })
+      .catch(e => { if (!cancelled) setErr(e?.message || 'Error al cargar catálogo'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [brand, model]);
+
+  const applyModel = (mod) => {
+    setModelId(mod.id);
+    const cs = Array.isArray(mod.colors) ? mod.colors : (mod.colors ? JSON.parse(mod.colors) : []);
+    const cps = Array.isArray(mod.color_photos) ? mod.color_photos : (mod.color_photos ? JSON.parse(mod.color_photos) : []);
+    setColors(cs);
+    setColorPhotos(cps);
+  };
+
+  // Helpers de lookup
+  const getColorData = (c) => colorPhotos.find(p => normColor(p.color) === normColor(c)) || null;
+  const getColorCssFor = (c) => getColorData(c)?.hex || getColorCss(c) || null;
+  const getColorPhoto = (c) => getColorData(c)?.url || null;
+
+  // Sync hex cuando cambia el color activo
+  useEffect(() => {
+    if (activeColor) {
+      setActiveColorHex(getColorData(activeColor)?.hex || getColorCss(activeColor) || '#111827');
+    }
+  }, [activeColor, colorPhotos]);
+
+  // ── Acciones ───────────────────────────────────────────────
+  const addColor = async () => {
+    const c = colorInput.trim();
+    if (!c || !modelId) { setColorInput(''); return; }
+    if (colors.some(x => normColor(x) === normColor(c))) { setColorInput(''); return; }
+    setColorInput('');
+    const newColors = [...colors, c];
+    const existing = colorPhotos.find(p => normColor(p.color) === normColor(c));
+    const newPhotos = existing
+      ? colorPhotos.map(p => normColor(p.color) === normColor(c) ? { ...p, hex: newColorHex } : p)
+      : [...colorPhotos, { color: c, hex: newColorHex, url: null }];
+    setBusy(true); setErr('');
+    try {
+      const updated = await api.updateModel(modelId, { colors: newColors, color_photos: newPhotos });
+      applyModel(updated);
+      onChange?.(c);
+    } catch (e) { setErr(e?.message || 'Error al agregar color'); }
+    finally { setBusy(false); }
+  };
+
+  const removeColor = async (c) => {
+    if (!modelId) return;
+    if (activeColor === c) setActiveColor(null);
+    setBusy(true); setErr('');
+    try {
+      const updated = await api.updateModel(modelId, { colors: colors.filter(x => x !== c) });
+      applyModel(updated);
+      if (normColor(value) === normColor(c)) onChange?.('');
+    } catch (e) { setErr(e?.message || 'Error al quitar color'); }
+    finally { setBusy(false); }
+  };
+
+  const saveActiveHex = async () => {
+    if (!activeColor || !modelId) return;
+    setSavingHex(true); setErr('');
+    const existing = colorPhotos.find(p => normColor(p.color) === normColor(activeColor));
+    const newPhotos = existing
+      ? colorPhotos.map(p => normColor(p.color) === normColor(activeColor) ? { ...p, hex: activeColorHex } : p)
+      : [...colorPhotos, { color: activeColor, hex: activeColorHex, url: null }];
+    try {
+      const updated = await api.updateModel(modelId, { color_photos: newPhotos });
+      applyModel(updated);
+    } catch (e) { setErr(e?.message || 'Error al guardar tono'); }
+    finally { setSavingHex(false); }
+  };
+
+  const uploadPhoto = async (color, file) => {
+    if (!modelId) return;
+    setColorPhotoUploading(color); setErr('');
+    try {
+      const res = await api.uploadColorPhoto(modelId, color, file);
+      setColorPhotos(res.color_photos || []);
+    } catch (e) { setErr(e?.message || 'Error al subir foto'); }
+    finally { setColorPhotoUploading(null); }
+  };
+
+  const removePhoto = async (color) => {
+    if (!modelId) return;
+    setColorPhotoUploading(color); setErr('');
+    try {
+      const res = await api.removeColorPhoto(modelId, color);
+      setColorPhotos(res.color_photos || []);
+    } catch (e) { setErr(e?.message || 'Error al quitar foto'); }
+    finally { setColorPhotoUploading(null); }
+  };
+
+  // ── Render ────────────────────────────────────────────────
+  const selectedCss = getColorCssFor(value);
+  const isModelInCatalog = !!modelId;
+
   return (
     <div>
       <label style={{ fontSize:11, fontWeight:600, color:'#374151', marginBottom:6, display:'block' }}>Color</label>
-      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom: hasPalette?12:8 }}>
+
+      {/* Input + preview */}
+      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:10 }}>
         <input
           type="text"
           value={value || ''}
-          onChange={e=>onChange(e.target.value)}
-          placeholder="Ej: Negro, Azul metálico..."
+          onChange={e => onChange(e.target.value)}
+          placeholder={isModelInCatalog ? 'Elegí de la paleta o escribí uno nuevo' : 'Ej: Negro, Azul metálico...'}
           style={{ ...S.inp, flex:1, fontSize:12, fontFamily:'inherit' }}
         />
-        {previewCss && (
-          <span style={{ width:28, height:28, borderRadius:8, background:previewCss, border:`1.5px solid ${isLightBg(previewCss)?'#D1D5DB':'rgba(0,0,0,0.15)'}`, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,0.08)' }}/>
+        {selectedCss && (
+          <span style={{ width:28, height:28, borderRadius:8, background:selectedCss, border:`1.5px solid ${isLightBg(selectedCss)?'#D1D5DB':'rgba(0,0,0,0.15)'}`, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,0.08)' }}/>
         )}
       </div>
-      {hasPalette ? (
-        <div style={{ background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10, padding:'12px 14px' }}>
-          <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
-            Paleta del catálogo · {palette.length}
-          </div>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            {palette.map(cp => {
-              const css = cp.hex || getColorCss(cp.color);
-              const active = value?.toLowerCase().trim() === cp.color?.toLowerCase().trim();
-              const light = isLightBg(css);
-              return (
-                <div key={cp.color} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-                  <button
-                    type="button"
-                    onClick={()=>onChange(cp.color)}
-                    title={cp.color}
-                    style={{
-                      width:44, height:44, borderRadius:22, padding:0, cursor:'pointer',
-                      background: css || '#E5E7EB',
-                      border: active ? '3px solid #F28100' : `2px solid ${!css ? '#D1D5DB' : light ? '#D1D5DB' : 'rgba(0,0,0,0.18)'}`,
-                      boxShadow: active ? '0 0 0 2px #FFFFFF, 0 0 0 4px #F28100' : '0 1px 4px rgba(0,0,0,0.15)',
-                      transition:'all 0.12s',
-                    }}
-                  />
-                  <span style={{ fontSize:9, fontWeight: active?700:500, color: active?'#F28100':'#6B7280', textAlign:'center', maxWidth:56, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {cp.color}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+
+      {err && (
+        <div style={{ fontSize:11, color:'#B91C1C', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>
+          {err}
+        </div>
+      )}
+
+      {!isModelInCatalog ? (
+        <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic', padding:'8px 12px', background:'#F9FAFB', border:'1px dashed #E5E7EB', borderRadius:8 }}>
+          {loading ? 'Buscando modelo en catálogo…'
+            : (!brand || !model) ? 'Completá marca y modelo para ver la paleta del catálogo'
+            : 'Este modelo no está en el catálogo · se guardará el texto que escribas'}
         </div>
       ) : (
-        <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic', padding:'8px 12px', background:'#F9FAFB', border:'1px dashed #E5E7EB', borderRadius:8 }}>
-          Sin colores en catálogo para este modelo · se guardará el texto que escribas
+        <div style={{ background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:12, padding:'12px 14px' }}>
+          {/* Header: título + agregar */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:10, flexWrap:'wrap' }}>
+            <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+              Paleta del catálogo{colors.length>0 && ` · ${colors.length}`}
+            </div>
+            {canEdit && (
+              <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
+                <div style={{ display:'flex', gap:5 }}>
+                  <button type="button" onClick={()=>setShowNewPicker(p=>!p)} title="Elegir tono"
+                    style={{ width:26, height:26, borderRadius:6, background:newColorHex, border:'1.5px solid #E5E7EB', cursor:'pointer', flexShrink:0 }}/>
+                  <input value={colorInput} onChange={e=>setColorInput(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addColor())}
+                    placeholder="+ nuevo color"
+                    style={{ ...S.inp, width:130, fontSize:11, height:26, padding:'0 8px', fontFamily:'inherit' }}/>
+                  <button type="button" onClick={addColor} disabled={busy||!colorInput.trim()}
+                    style={{ height:26, padding:'0 10px', borderRadius:6, border:'none', background:'#F28100', color:'#ffffff', fontSize:12, fontWeight:700, cursor:busy?'default':'pointer', opacity:busy||!colorInput.trim()?0.5:1, fontFamily:'inherit' }}>
+                    +
+                  </button>
+                </div>
+                {showNewPicker && (
+                  <div style={{ background:'#FFFFFF', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 12px' }}>
+                    <div style={{ fontSize:10, color:'#6B7280', marginBottom:7, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>Tono del nuevo color</div>
+                    <ColorPicker value={newColorHex} onChange={setNewColorHex}/>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Paleta de swatches */}
+          {colors.length > 0 ? (
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom: activeColor?12:0 }}>
+              {colors.map(c => {
+                const css = getColorCssFor(c);
+                const active = normColor(activeColor) === normColor(c);
+                const selected = normColor(value) === normColor(c);
+                const hasPhoto = !!getColorPhoto(c);
+                const light = isLightBg(css);
+                return (
+                  <div key={c} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, position:'relative' }}>
+                    <button type="button"
+                      onClick={() => { onChange(c); setActiveColor(active ? null : c); }}
+                      title={c}
+                      style={{
+                        width:44, height:44, borderRadius:22, padding:0, cursor:'pointer',
+                        background: css || '#E5E7EB',
+                        border: selected ? '3px solid #F28100' : `2px solid ${!css ? '#D1D5DB' : light ? '#D1D5DB' : 'rgba(0,0,0,0.18)'}`,
+                        boxShadow: selected ? '0 0 0 2px #FFFFFF, 0 0 0 4px #F28100' : '0 1px 4px rgba(0,0,0,0.15)',
+                        transition:'all 0.12s',
+                        position:'relative',
+                      }}>
+                      {hasPhoto && (
+                        <span style={{ position:'absolute', bottom:1, right:1, width:10, height:10, borderRadius:5, background:'#10B981', border:'2px solid #ffffff', display:'block' }}/>
+                      )}
+                    </button>
+                    <span style={{ fontSize:9, fontWeight: selected?700:500, color: selected?'#F28100':'#6B7280', textAlign:'center', maxWidth:56, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {c}
+                    </span>
+                    {canEdit && (
+                      <button type="button" onClick={()=>removeColor(c)} title="Quitar color del catálogo"
+                        style={{ position:'absolute', top:-4, right:-4, width:15, height:15, borderRadius:'50%', background:'#374151', border:'2px solid #ffffff', color:'#ffffff', cursor:'pointer', fontSize:9, lineHeight:'11px', textAlign:'center', padding:0, opacity:0.8 }}>
+                        ×
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic' }}>Sin colores en el catálogo · agregá el primero arriba.</div>
+          )}
+
+          {/* Panel del color activo */}
+          {activeColor && (() => {
+            const photoUrl = getColorPhoto(activeColor);
+            const css = getColorCssFor(activeColor);
+            const hexVal = getColorData(activeColor)?.hex || null;
+            const light = isLightBg(css);
+            return (
+              <div style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'12px 14px', display:'flex', flexDirection:'column', gap:12 }}>
+                <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+                  <div style={{ flexShrink:0 }}>
+                    {photoUrl
+                      ? <img src={photoUrl} alt={activeColor}
+                          style={{ width:90, height:66, objectFit:'cover', borderRadius:10, border:'1.5px solid #E5E7EB', display:'block', cursor:'pointer' }}
+                          onClick={()=>window.open(photoUrl,'_blank')}/>
+                      : <div style={{ width:90, height:66, borderRadius:10, background: css||'#F3F4F6', border:`1.5px dashed ${css?'rgba(0,0,0,0.15)':'#D1D5DB'}`, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.6 }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?'#ffffff':'#9CA3AF'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        </div>
+                    }
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3 }}>
+                      {css && <span style={{ width:14, height:14, borderRadius:7, background:css, border:`1.5px solid ${light?'#D1D5DB':'rgba(0,0,0,0.15)'}`, display:'inline-block', flexShrink:0 }}/>}
+                      <span style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{activeColor}</span>
+                      {hexVal && <span style={{ fontSize:10, color:'#9CA3AF', fontFamily:'inherit' }}>{hexVal}</span>}
+                    </div>
+                    <div style={{ fontSize:10, color:'#9CA3AF', marginBottom: canEdit?8:0 }}>
+                      {photoUrl ? 'Foto específica de este color' : 'Sin foto · se usará la imagen general del modelo'}
+                    </div>
+                    {canEdit && (
+                      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                        <label style={{ fontSize:11, fontWeight:600, color:'#F28100', cursor:'pointer', border:'1px solid #FDBA74', borderRadius:7, padding:'5px 12px', background:'#FFFBF0', whiteSpace:'nowrap' }}>
+                          {colorPhotoUploading===activeColor ? 'Subiendo…' : (photoUrl ? '↺ Cambiar foto' : '+ Subir foto')}
+                          <input type="file" accept="image/*" style={{ display:'none' }} disabled={!!colorPhotoUploading}
+                            onChange={e => e.target.files[0] && uploadPhoto(activeColor, e.target.files[0])}/>
+                        </label>
+                        {photoUrl && colorPhotoUploading !== activeColor && (
+                          <button type="button" onClick={()=>removePhoto(activeColor)}
+                            style={{ fontSize:11, color:'#9CA3AF', cursor:'pointer', border:'1px solid #E5E7EB', borderRadius:7, padding:'5px 10px', background:'transparent', fontFamily:'inherit' }}>
+                            Quitar foto
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {canEdit && (
+                  <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:10 }}>
+                    <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Tono visual</div>
+                    <ColorPicker value={activeColorHex} onChange={setActiveColorHex}/>
+                    <button type="button" onClick={saveActiveHex} disabled={savingHex}
+                      style={{ marginTop:8, height:28, padding:'0 14px', borderRadius:7, border:'none', background:'#111827', color:'#ffffff', fontSize:11, fontWeight:700, cursor:savingHex?'default':'pointer', opacity:savingHex?0.6:1, fontFamily:'inherit' }}>
+                      {savingHex ? 'Guardando…' : 'Guardar tono'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -193,7 +436,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   const [eForm,            setEForm]            = useState({});
   const [eSaving,          setESaving]          = useState(false);
   const [eErr,             setEErr]             = useState('');
-  const [modelColorPhotos, setModelColorPhotos] = useState([]);
   const [convSaving, setConvSaving] = useState(false);
   const [addErr,     setAddErr]     = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -255,26 +497,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       } catch {}
     })();
   }, [showAdd]);
-
-  // Cargar paleta de colores del catálogo cuando en el form de "Nueva unidad"
-  // se llena marca+modelo — mismo patrón que el form de edición.
-  useEffect(() => {
-    if (!showAdd) return;
-    if (!nw.brand || !nw.model) { setModelColorPhotos([]); return; }
-    let cancelled = false;
-    api.getModels({ brand: nw.brand, q: nw.model, limit: 5 })
-      .then(mods => {
-        if (cancelled) return;
-        const mod = mods.find(x => x.model?.toUpperCase() === nw.model?.toUpperCase()) || mods[0];
-        const cps = mod
-          ? (Array.isArray(mod.color_photos) ? mod.color_photos
-              : (mod.color_photos ? JSON.parse(mod.color_photos) : []))
-          : [];
-        setModelColorPhotos(cps.filter(cp => cp.color));
-      })
-      .catch(() => { if (!cancelled) setModelColorPhotos([]); });
-    return () => { cancelled = true; };
-  }, [showAdd, nw.brand, nw.model]);
 
   // ── Handlers (sin cambios de lógica) ────────────────────────────────────────
 
@@ -363,19 +585,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       sale_notes:     unit.sale_notes     || '',
     });
     setEditTarget(unit);
-    // Cargar colores del modelo desde catálogo para mostrar swatches
-    setModelColorPhotos([]);
-    if (unit.brand && unit.model) {
-      api.getModels({ brand: unit.brand, q: unit.model, limit: 5 })
-        .then(mods => {
-          const mod = mods.find(x => x.model?.toUpperCase() === unit.model?.toUpperCase()) || mods[0];
-          if (mod) {
-            const cps = Array.isArray(mod.color_photos) ? mod.color_photos
-                      : (mod.color_photos ? JSON.parse(mod.color_photos) : []);
-            setModelColorPhotos(cps.filter(cp => cp.color));
-          }
-        }).catch(() => {});
-    }
   };
   const handleEditSave = async e => {
     e.preventDefault();
@@ -1313,12 +1522,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               <Field label="Modelo *" value={eForm.model} onChange={v=>setEForm({...eForm,model:v})} req/>
               <Field label="Año" value={eForm.year} onChange={v=>setEForm({...eForm,year:v})} type="number"/>
             </div>
-            {/* Color — paleta estilo catálogo */}
+            {/* Color — editor completo del catálogo embebido */}
             <div style={{ marginBottom:10 }}>
-              <ColorPalettePicker
+              <CatalogColorEditor
+                brand={eForm.brand}
+                model={eForm.model}
                 value={eForm.color}
                 onChange={v=>setEForm({...eForm,color:v})}
-                palette={modelColorPhotos}
+                canEdit={isAdmin}
               />
             </div>
             {/* Chasis + Motor */}
@@ -1456,12 +1667,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <div style={{ marginBottom:10 }}>
               <Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/>
             </div>
-            {/* Color — paleta estilo catálogo */}
+            {/* Color — editor completo del catálogo embebido */}
             <div style={{ marginBottom:10 }}>
-              <ColorPalettePicker
+              <CatalogColorEditor
+                brand={nw.brand}
+                model={nw.model}
                 value={nw.color}
                 onChange={v=>setNw({...nw,color:v})}
-                palette={modelColorPhotos}
+                canEdit={isAdmin}
               />
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14 }}>
