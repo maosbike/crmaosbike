@@ -218,173 +218,175 @@ function CatalogColorEditor({ brand, model, value, onChange, canEdit = true }) {
   };
 
   // ── Render ────────────────────────────────────────────────
-  const selectedCss = getColorCssFor(value);
   const isModelInCatalog = !!modelId;
+
+  // Sin modelo del catálogo: fallback a input simple
+  if (!isModelInCatalog) {
+    const fallbackCss = getColorCss(value);
+    return (
+      <div>
+        <label style={{ fontSize:11, fontWeight:600, color:'#374151', marginBottom:6, display:'block' }}>Color</label>
+        <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+          <input
+            type="text"
+            value={value || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder="Ej: Negro, Azul metálico..."
+            style={{ ...S.inp, flex:1, fontSize:12, fontFamily:'inherit' }}
+          />
+          {fallbackCss && (
+            <span style={{ width:28, height:28, borderRadius:8, background:fallbackCss, border:`1.5px solid ${isLightBg(fallbackCss)?'#D1D5DB':'rgba(0,0,0,0.15)'}`, flexShrink:0 }}/>
+          )}
+        </div>
+        <div style={{ fontSize:10, color:'#9CA3AF', fontStyle:'italic' }}>
+          {loading ? 'Buscando modelo en catálogo…'
+            : (!brand || !model) ? 'Completá marca y modelo para ver la paleta del catálogo'
+            : 'Este modelo no está en el catálogo · se guardará el texto que escribas'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <label style={{ fontSize:11, fontWeight:600, color:'#374151', marginBottom:6, display:'block' }}>Color</label>
-
-      {/* Input + preview */}
-      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:10 }}>
-        <input
-          type="text"
-          value={value || ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={isModelInCatalog ? 'Elegí de la paleta o escribí uno nuevo' : 'Ej: Negro, Azul metálico...'}
-          style={{ ...S.inp, flex:1, fontSize:12, fontFamily:'inherit' }}
-        />
-        {selectedCss && (
-          <span style={{ width:28, height:28, borderRadius:8, background:selectedCss, border:`1.5px solid ${isLightBg(selectedCss)?'#D1D5DB':'rgba(0,0,0,0.15)'}`, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,0.08)' }}/>
-        )}
-      </div>
-
       {err && (
         <div style={{ fontSize:11, color:'#B91C1C', background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>
           {err}
         </div>
       )}
 
-      {!isModelInCatalog ? (
-        <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic', padding:'8px 12px', background:'#F9FAFB', border:'1px dashed #E5E7EB', borderRadius:8 }}>
-          {loading ? 'Buscando modelo en catálogo…'
-            : (!brand || !model) ? 'Completá marca y modelo para ver la paleta del catálogo'
-            : 'Este modelo no está en el catálogo · se guardará el texto que escribas'}
+      {/* Header: título + agregar color */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:10, flexWrap:'wrap' }}>
+        <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+          Colores{colors.length>0 && ` · ${colors.length}`}
         </div>
-      ) : (
-        <div style={{ background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:12, padding:'12px 14px' }}>
-          {/* Header: título + agregar */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, gap:10, flexWrap:'wrap' }}>
-            <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>
-              Paleta del catálogo{colors.length>0 && ` · ${colors.length}`}
+        {canEdit && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
+            <div style={{ display:'flex', gap:5 }}>
+              <button type="button" onClick={()=>setShowNewPicker(p=>!p)} title="Elegir tono"
+                style={{ width:26, height:26, borderRadius:6, background:newColorHex, border:'1.5px solid #E5E7EB', cursor:'pointer', flexShrink:0 }}/>
+              <input value={colorInput} onChange={e=>setColorInput(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addColor())}
+                placeholder="+ nuevo color"
+                style={{ ...S.inp, width:130, fontSize:11, height:26, padding:'0 8px', fontFamily:'inherit' }}/>
+              <button type="button" onClick={addColor} disabled={busy||!colorInput.trim()}
+                style={{ height:26, padding:'0 10px', borderRadius:6, border:'none', background:'#F28100', color:'#ffffff', fontSize:12, fontWeight:700, cursor:busy?'default':'pointer', opacity:busy||!colorInput.trim()?0.5:1, fontFamily:'inherit' }}>
+                +
+              </button>
             </div>
-            {canEdit && (
-              <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
-                <div style={{ display:'flex', gap:5 }}>
-                  <button type="button" onClick={()=>setShowNewPicker(p=>!p)} title="Elegir tono"
-                    style={{ width:26, height:26, borderRadius:6, background:newColorHex, border:'1.5px solid #E5E7EB', cursor:'pointer', flexShrink:0 }}/>
-                  <input value={colorInput} onChange={e=>setColorInput(e.target.value)}
-                    onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addColor())}
-                    placeholder="+ nuevo color"
-                    style={{ ...S.inp, width:130, fontSize:11, height:26, padding:'0 8px', fontFamily:'inherit' }}/>
-                  <button type="button" onClick={addColor} disabled={busy||!colorInput.trim()}
-                    style={{ height:26, padding:'0 10px', borderRadius:6, border:'none', background:'#F28100', color:'#ffffff', fontSize:12, fontWeight:700, cursor:busy?'default':'pointer', opacity:busy||!colorInput.trim()?0.5:1, fontFamily:'inherit' }}>
-                    +
-                  </button>
-                </div>
-                {showNewPicker && (
-                  <div style={{ background:'#FFFFFF', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 12px' }}>
-                    <div style={{ fontSize:10, color:'#6B7280', marginBottom:7, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>Tono del nuevo color</div>
-                    <ColorPicker value={newColorHex} onChange={setNewColorHex}/>
-                  </div>
-                )}
+            {showNewPicker && (
+              <div style={{ background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 12px' }}>
+                <div style={{ fontSize:10, color:'#6B7280', marginBottom:7, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>Tono del color</div>
+                <ColorPicker value={newColorHex} onChange={setNewColorHex}/>
               </div>
             )}
           </div>
+        )}
+      </div>
 
-          {/* Paleta de swatches */}
-          {colors.length > 0 ? (
-            <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom: activeColor?12:0 }}>
-              {colors.map(c => {
-                const css = getColorCssFor(c);
-                const active = normColor(activeColor) === normColor(c);
-                const selected = normColor(value) === normColor(c);
-                const hasPhoto = !!getColorPhoto(c);
-                const light = isLightBg(css);
-                return (
-                  <div key={c} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, position:'relative' }}>
-                    <button type="button"
-                      onClick={() => { onChange(c); setActiveColor(active ? null : c); }}
-                      title={c}
-                      style={{
-                        width:44, height:44, borderRadius:22, padding:0, cursor:'pointer',
-                        background: css || '#E5E7EB',
-                        border: selected ? '3px solid #F28100' : `2px solid ${!css ? '#D1D5DB' : light ? '#D1D5DB' : 'rgba(0,0,0,0.18)'}`,
-                        boxShadow: selected ? '0 0 0 2px #FFFFFF, 0 0 0 4px #F28100' : '0 1px 4px rgba(0,0,0,0.15)',
-                        transition:'all 0.12s',
-                        position:'relative',
-                      }}>
-                      {hasPhoto && (
-                        <span style={{ position:'absolute', bottom:1, right:1, width:10, height:10, borderRadius:5, background:'#10B981', border:'2px solid #ffffff', display:'block' }}/>
-                      )}
-                    </button>
-                    <span style={{ fontSize:9, fontWeight: selected?700:500, color: selected?'#F28100':'#6B7280', textAlign:'center', maxWidth:56, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {c}
-                    </span>
-                    {canEdit && (
-                      <button type="button" onClick={()=>removeColor(c)} title="Quitar color del catálogo"
-                        style={{ position:'absolute', top:-4, right:-4, width:15, height:15, borderRadius:'50%', background:'#374151', border:'2px solid #ffffff', color:'#ffffff', cursor:'pointer', fontSize:9, lineHeight:'11px', textAlign:'center', padding:0, opacity:0.8 }}>
-                        ×
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic' }}>Sin colores en el catálogo · agregá el primero arriba.</div>
-          )}
-
-          {/* Panel del color activo */}
-          {activeColor && (() => {
-            const photoUrl = getColorPhoto(activeColor);
-            const css = getColorCssFor(activeColor);
-            const hexVal = getColorData(activeColor)?.hex || null;
+      {/* Paleta de swatches — click = selecciona para esta unidad + abre panel */}
+      {colors.length > 0 && (
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom: activeColor?12:0 }}>
+          {colors.map(c => {
+            const css = getColorCssFor(c);
+            const isActive = normColor(activeColor) === normColor(c);
+            const isSelected = normColor(value) === normColor(c);
+            const hasPhoto = !!getColorPhoto(c);
             const light = isLightBg(css);
             return (
-              <div style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'12px 14px', display:'flex', flexDirection:'column', gap:12 }}>
-                <div style={{ display:'flex', gap:14, alignItems:'center' }}>
-                  <div style={{ flexShrink:0 }}>
-                    {photoUrl
-                      ? <img src={photoUrl} alt={activeColor}
-                          style={{ width:90, height:66, objectFit:'cover', borderRadius:10, border:'1.5px solid #E5E7EB', display:'block', cursor:'pointer' }}
-                          onClick={()=>window.open(photoUrl,'_blank')}/>
-                      : <div style={{ width:90, height:66, borderRadius:10, background: css||'#F3F4F6', border:`1.5px dashed ${css?'rgba(0,0,0,0.15)':'#D1D5DB'}`, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.6 }}>
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?'#ffffff':'#9CA3AF'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                        </div>
-                    }
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3 }}>
-                      {css && <span style={{ width:14, height:14, borderRadius:7, background:css, border:`1.5px solid ${light?'#D1D5DB':'rgba(0,0,0,0.15)'}`, display:'inline-block', flexShrink:0 }}/>}
-                      <span style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{activeColor}</span>
-                      {hexVal && <span style={{ fontSize:10, color:'#9CA3AF', fontFamily:'inherit' }}>{hexVal}</span>}
-                    </div>
-                    <div style={{ fontSize:10, color:'#9CA3AF', marginBottom: canEdit?8:0 }}>
-                      {photoUrl ? 'Foto específica de este color' : 'Sin foto · se usará la imagen general del modelo'}
-                    </div>
-                    {canEdit && (
-                      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                        <label style={{ fontSize:11, fontWeight:600, color:'#F28100', cursor:'pointer', border:'1px solid #FDBA74', borderRadius:7, padding:'5px 12px', background:'#FFFBF0', whiteSpace:'nowrap' }}>
-                          {colorPhotoUploading===activeColor ? 'Subiendo…' : (photoUrl ? '↺ Cambiar foto' : '+ Subir foto')}
-                          <input type="file" accept="image/*" style={{ display:'none' }} disabled={!!colorPhotoUploading}
-                            onChange={e => e.target.files[0] && uploadPhoto(activeColor, e.target.files[0])}/>
-                        </label>
-                        {photoUrl && colorPhotoUploading !== activeColor && (
-                          <button type="button" onClick={()=>removePhoto(activeColor)}
-                            style={{ fontSize:11, color:'#9CA3AF', cursor:'pointer', border:'1px solid #E5E7EB', borderRadius:7, padding:'5px 10px', background:'transparent', fontFamily:'inherit' }}>
-                            Quitar foto
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div key={c} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, position:'relative' }}>
+                <button type="button"
+                  onClick={() => { onChange(c); setActiveColor(isActive ? null : c); }}
+                  title={c}
+                  style={{
+                    width:44, height:44, borderRadius:22, padding:0, cursor:'pointer',
+                    background: css || '#E5E7EB',
+                    border: isSelected ? '3px solid #F28100' : `2px solid ${!css ? '#D1D5DB' : light ? '#D1D5DB' : 'rgba(0,0,0,0.18)'}`,
+                    boxShadow: isSelected ? '0 0 0 2px #FFFFFF, 0 0 0 4px #F28100' : '0 1px 4px rgba(0,0,0,0.15)',
+                    transition:'all 0.12s',
+                    position:'relative',
+                  }}>
+                  {hasPhoto && (
+                    <span style={{ position:'absolute', bottom:1, right:1, width:10, height:10, borderRadius:5, background:'#10B981', border:'2px solid #ffffff', display:'block' }}/>
+                  )}
+                </button>
+                <span style={{ fontSize:9, fontWeight: isSelected?700:500, color: isSelected?'#F28100':'#6B7280', textAlign:'center', maxWidth:56, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {c}
+                </span>
                 {canEdit && (
-                  <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:10 }}>
-                    <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Tono visual</div>
-                    <ColorPicker value={activeColorHex} onChange={setActiveColorHex}/>
-                    <button type="button" onClick={saveActiveHex} disabled={savingHex}
-                      style={{ marginTop:8, height:28, padding:'0 14px', borderRadius:7, border:'none', background:'#111827', color:'#ffffff', fontSize:11, fontWeight:700, cursor:savingHex?'default':'pointer', opacity:savingHex?0.6:1, fontFamily:'inherit' }}>
-                      {savingHex ? 'Guardando…' : 'Guardar tono'}
-                    </button>
-                  </div>
+                  <button type="button" onClick={()=>removeColor(c)} title="Quitar color del catálogo"
+                    style={{ position:'absolute', top:-4, right:-4, width:15, height:15, borderRadius:'50%', background:'#374151', border:'2px solid #ffffff', color:'#ffffff', cursor:'pointer', fontSize:9, lineHeight:'11px', textAlign:'center', padding:0, opacity:0.8 }}>
+                    ×
+                  </button>
                 )}
               </div>
             );
-          })()}
+          })}
         </div>
       )}
+
+      {colors.length === 0 && canEdit && (
+        <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic' }}>Sin colores. Agregá el primero arriba.</div>
+      )}
+
+      {/* Panel del color activo */}
+      {activeColor && (() => {
+        const photoUrl = getColorPhoto(activeColor);
+        const css = getColorCssFor(activeColor);
+        const hexVal = getColorData(activeColor)?.hex || null;
+        const light = isLightBg(css);
+        return (
+          <div style={{ background:'#F9FAFB', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'12px 14px', display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+              <div style={{ flexShrink:0 }}>
+                {photoUrl
+                  ? <img src={photoUrl} alt={activeColor}
+                      style={{ width:90, height:66, objectFit:'cover', borderRadius:10, border:'1.5px solid #E5E7EB', display:'block', cursor:'pointer' }}
+                      onClick={()=>window.open(photoUrl,'_blank')}/>
+                  : <div style={{ width:90, height:66, borderRadius:10, background: css||'#F3F4F6', border:`1.5px dashed ${css?'rgba(0,0,0,0.15)':'#D1D5DB'}`, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.6 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?'#ffffff':'#9CA3AF'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </div>
+                }
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3 }}>
+                  {css && <span style={{ width:14, height:14, borderRadius:7, background:css, border:`1.5px solid ${light?'#D1D5DB':'rgba(0,0,0,0.15)'}`, display:'inline-block', flexShrink:0 }}/>}
+                  <span style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{activeColor}</span>
+                  {hexVal && <span style={{ fontSize:10, color:'#9CA3AF', fontFamily:'inherit' }}>{hexVal}</span>}
+                </div>
+                <div style={{ fontSize:10, color:'#9CA3AF', marginBottom: canEdit?8:0 }}>
+                  {photoUrl ? 'Foto específica de este color' : 'Sin foto — muestra la imagen general del modelo'}
+                </div>
+                {canEdit && (
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                    <label style={{ fontSize:11, fontWeight:600, color:'#F28100', cursor:'pointer', border:'1px solid #FDBA74', borderRadius:7, padding:'5px 12px', background:'#FFFBF0', whiteSpace:'nowrap' }}>
+                      {colorPhotoUploading===activeColor ? 'Subiendo…' : (photoUrl ? '↺ Cambiar foto' : '+ Subir foto')}
+                      <input type="file" accept="image/*" style={{ display:'none' }} disabled={!!colorPhotoUploading}
+                        onChange={e => e.target.files[0] && uploadPhoto(activeColor, e.target.files[0])}/>
+                    </label>
+                    {photoUrl && colorPhotoUploading !== activeColor && (
+                      <button type="button" onClick={()=>removePhoto(activeColor)}
+                        style={{ fontSize:11, color:'#9CA3AF', cursor:'pointer', border:'1px solid #E5E7EB', borderRadius:7, padding:'5px 10px', background:'transparent', fontFamily:'inherit' }}>
+                        Quitar foto
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {canEdit && (
+              <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:10 }}>
+                <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Tono visual</div>
+                <ColorPicker value={activeColorHex} onChange={setActiveColorHex}/>
+                <button type="button" onClick={saveActiveHex} disabled={savingHex}
+                  style={{ marginTop:8, height:28, padding:'0 14px', borderRadius:7, border:'none', background:'#111827', color:'#ffffff', fontSize:11, fontWeight:700, cursor:savingHex?'default':'pointer', opacity:savingHex?0.6:1, fontFamily:'inherit' }}>
+                  {savingHex ? 'Guardando…' : 'Guardar tono'}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
