@@ -103,6 +103,28 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
   const [savingItems,       setSavingItems]       = useState(false);
   const [showConfirmConvert,setShowConfirmConvert]= useState(false);
 
+  // Catálogo para edición admin/nota comercial
+  const [editBrands,  setEditBrands]  = useState([]);
+  const [editCatMods, setEditCatMods] = useState([]);
+  const [editSelMod,  setEditSelMod]  = useState(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    api.getBrands().then(b => setEditBrands(Array.isArray(b) ? b : [])).catch(() => {});
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editing || !form.brand) { setEditCatMods([]); return; }
+    api.getModels({ brand: form.brand }).then(mods => {
+      const list = Array.isArray(mods) ? mods : [];
+      setEditCatMods(list);
+      const m = list.find(x => x.model?.toUpperCase() === (form.model || '').toUpperCase());
+      setEditSelMod(m || null);
+    }).catch(() => {});
+  }, [editing, form.brand]);
+
+  const editColors = Array.isArray(editSelMod?.colors) ? editSelMod.colors : [];
+
   useEffect(() => {
     setForm({
       sale_price:       sale.sale_price       || '',
@@ -587,10 +609,28 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
                 Vehículo
               </div>
               <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Field label="Marca" value={form.brand} onChange={set('brand')} />
-                <Field label="Modelo" value={form.model} onChange={set('model')} />
+                <Field label="Marca"
+                  value={form.brand}
+                  opts={[{ v: '', l: '— Seleccionar marca —' }, ...editBrands.map(b => ({ v: b, l: b }))]}
+                  onChange={(v) => { setEditSelMod(null); setForm(f => ({ ...f, brand: v, model: '', color: '' })); }} />
+                <Field label="Modelo"
+                  value={editSelMod?.id || ''}
+                  opts={[{ v: '', l: form.brand ? (editCatMods.length ? '— Seleccionar modelo —' : 'Sin modelos en catálogo') : '— Primero seleccione una marca —' },
+                         ...editCatMods.map(m => ({ v: m.id, l: `${m.model}${m.year ? ' ' + m.year : ''}` }))]}
+                  onChange={(id) => {
+                    const m = editCatMods.find(x => String(x.id) === String(id));
+                    if (!m) { setEditSelMod(null); setForm(f => ({ ...f, model: '', color: '' })); return; }
+                    setEditSelMod(m);
+                    setForm(f => ({ ...f, model: m.model, year: m.year || f.year, color: '' }));
+                  }}
+                  disabled={!form.brand} />
                 <Field label="Año" value={form.year} onChange={set('year')} type="number" />
-                <Field label="Color" value={form.color} onChange={set('color')} />
+                <Field label="Color"
+                  value={form.color}
+                  opts={[{ v: '', l: editSelMod ? (editColors.length ? '— Seleccionar color —' : 'Sin colores en catálogo') : '— Primero seleccione un modelo —' },
+                         ...editColors.map(c => ({ v: c, l: c }))]}
+                  onChange={set('color')}
+                  disabled={!editSelMod} />
                 <Field label="Chasis" value={form.chassis} onChange={set('chassis')} />
               </div>
             </>
