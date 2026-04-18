@@ -112,7 +112,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
   // Mobile detection — usa hook centralizado de ui.jsx (alineado con responsive.css ≤767px).
   const isMobile = useIsMobile();
   const isTablet = useIsMobile(1024);
-  const gridCols = isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(480px, 1fr))';
+  const gridCols = isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))';
   const [showFilters, setShowFilters] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
   // Banner de error de recarga — cuando la sincronización con el backend falla.
@@ -458,6 +458,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         title="Inventario"
         count={f.length}
         itemLabel="unidad"
+        itemLabelPlural="unidades"
         filtered={hasFilters}
         actions={
           <>
@@ -811,7 +812,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           </div>}
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>
-                          {bCode && <span style={{ fontSize:9, fontWeight:700, color:bCfg.color, background:bCfg.light, padding:'2px 7px', borderRadius:10, border:`1px solid ${bCfg.color}33` }}>{bCfg.label||x.branch_name||bCode}</span>}
                           <span style={{ fontSize:10, fontWeight:700, color:stCfg.color, background:stCfg.bg, padding:'2px 8px', borderRadius:10, border:`1px solid ${stCfg.border}` }}>{stCfg.icon} {stCfg.label}</span>
                         </div>
                       </div>
@@ -977,12 +977,6 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           <span style={{ fontSize:9, color:'#94A3B8', fontWeight:800, letterSpacing:'0.12em' }}>FOTO</span>
                         </button>
                     }
-                    {/* Branch chip overlay — arriba izquierda */}
-                    {bCode && (
-                      <span style={{ position:'absolute', top:8, left:8, fontSize:9.5, fontWeight:800, color:'#FFFFFF', background:bCfg.color, padding:'3px 8px', borderRadius:6, letterSpacing:'0.02em', boxShadow:'0 1px 4px rgba(0,0,0,0.25)', zIndex:1 }}>
-                        {bCfg.label}
-                      </span>
-                    )}
                   </div>
 
                   {/* ── INFO PRINCIPAL ── */}
@@ -1018,7 +1012,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       {x.chassis && (
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           <span style={{ fontSize:9, fontWeight:800, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Chasis</span>
-                          <span style={{ fontSize:10.5, fontWeight:600, color:'#334155', fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace' }}>{x.chassis}</span>
+                          <span style={{ fontSize:10.5, fontWeight:600, color:'#334155', fontFamily:'inherit' }}>{x.chassis}</span>
                           {x.chassis_photo
                             ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
                                 style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1px solid #E2E8F0' }}/>
@@ -1030,7 +1024,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       {x.motor_num && (
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           <span style={{ fontSize:9, fontWeight:800, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Motor</span>
-                          <span style={{ fontSize:10.5, fontWeight:600, color:'#334155', fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace' }}>{x.motor_num}</span>
+                          <span style={{ fontSize:10.5, fontWeight:600, color:'#334155', fontFamily:'inherit' }}>{x.motor_num}</span>
                           {x.motor_photo
                             ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
                                 style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1px solid #E2E8F0' }}/>

@@ -318,10 +318,11 @@ export const CAT_COLOR={"Commuter":"#3B82F6","Naked":"#8B5CF6","Sport":"#EF4444"
 // size="md" → Inventory/Sales/Leads/Supplier/Catalog (vistas comerciales con CTA).
 // size="sm" → Admin/Reports/Calendar/Pipeline/Dashboard (utilidad/consulta).
 // Props: preheader, title, subtitle, count+itemLabel+filtered (auto-subtitle), actions.
-export function ViewHeader({ preheader, title, subtitle, count, itemLabel='registro', filtered=false, actions, size='md' }) {
+export function ViewHeader({ preheader, title, subtitle, count, itemLabel='registro', itemLabelPlural, filtered=false, actions, size='md' }) {
   const isMobile = useIsMobile();
+  const plural = itemLabelPlural ?? `${itemLabel}s`;
   const autoSub = count != null
-    ? <>{count} {itemLabel}{count === 1 ? '' : 's'}{filtered && <span style={{ color: '#F28100', fontWeight: 700, marginLeft: 4 }}>· filtrado</span>}</>
+    ? <>{count} {count === 1 ? itemLabel : plural}{filtered && <span style={{ color: '#F28100', fontWeight: 700, marginLeft: 4 }}>· filtrado</span>}</>
     : null;
   const sub = subtitle ?? autoSub;
   // size='md': TY.h1 en desktop, 16px en mobile. size='sm': 18px fijo.
@@ -432,9 +433,10 @@ export function Loader({ label='Cargando…' }) {
 // selectCtrl / filterLabel — estilos de controles de filtro centralizados.
 // Importar en LeadsList, InventoryView, SupplierPaymentsView en lugar de definir local.
 export const selectCtrl = {
-  height:32, border:'1.5px solid #E5E7EB', borderRadius:7,
-  fontSize:12, padding:'0 8px', background:'#fff',
-  color:'#374151', outline:'none', cursor:'pointer',
+  height:34, border:'1px solid #E2E8F0', borderRadius:8,
+  fontSize:12.5, fontWeight:500, padding:'0 10px', background:'#fff',
+  color:'#0F172A', outline:'none', cursor:'pointer',
+  fontFamily:'inherit',
 };
 
 export const filterLabel = {
