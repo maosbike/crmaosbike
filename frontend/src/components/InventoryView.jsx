@@ -79,6 +79,73 @@ const getColorCss = c => {
   return fromCentral !== '#9CA3AF' ? fromCentral : null;
 };
 
+// Heurística para saber si el fondo es claro y el texto debe ser oscuro
+const _LIGHT_BGS = ['#F9FAFB','#F0EDE8','#E8E0D0','#FEF3C7','#E5E7EB','#D1D5DB','#D4B896','#FFFFFF'];
+const isLightBg = css => !!css && _LIGHT_BGS.includes(css);
+
+// ─── ColorPalettePicker — mismo look que el catálogo ──────────────────────────
+// Round swatches 44×44 con nombre debajo, selección con aro naranja.
+// Si no hay paleta del catálogo, igual muestra un input y un preview.
+function ColorPalettePicker({ value, onChange, palette }) {
+  const hasPalette = palette && palette.length > 0;
+  const selectedCp = hasPalette ? palette.find(p => p.color?.toLowerCase().trim() === value?.toLowerCase().trim()) : null;
+  const previewCss = selectedCp?.hex || getColorCss(value);
+  return (
+    <div>
+      <label style={{ fontSize:11, fontWeight:600, color:'#374151', marginBottom:6, display:'block' }}>Color</label>
+      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom: hasPalette?12:8 }}>
+        <input
+          type="text"
+          value={value || ''}
+          onChange={e=>onChange(e.target.value)}
+          placeholder="Ej: Negro, Azul metálico..."
+          style={{ ...S.inp, flex:1, fontSize:12, fontFamily:'inherit' }}
+        />
+        {previewCss && (
+          <span style={{ width:28, height:28, borderRadius:8, background:previewCss, border:`1.5px solid ${isLightBg(previewCss)?'#D1D5DB':'rgba(0,0,0,0.15)'}`, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,0.08)' }}/>
+        )}
+      </div>
+      {hasPalette ? (
+        <div style={{ background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10, padding:'12px 14px' }}>
+          <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+            Paleta del catálogo · {palette.length}
+          </div>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+            {palette.map(cp => {
+              const css = cp.hex || getColorCss(cp.color);
+              const active = value?.toLowerCase().trim() === cp.color?.toLowerCase().trim();
+              const light = isLightBg(css);
+              return (
+                <div key={cp.color} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                  <button
+                    type="button"
+                    onClick={()=>onChange(cp.color)}
+                    title={cp.color}
+                    style={{
+                      width:44, height:44, borderRadius:22, padding:0, cursor:'pointer',
+                      background: css || '#E5E7EB',
+                      border: active ? '3px solid #F28100' : `2px solid ${!css ? '#D1D5DB' : light ? '#D1D5DB' : 'rgba(0,0,0,0.18)'}`,
+                      boxShadow: active ? '0 0 0 2px #FFFFFF, 0 0 0 4px #F28100' : '0 1px 4px rgba(0,0,0,0.15)',
+                      transition:'all 0.12s',
+                    }}
+                  />
+                  <span style={{ fontSize:9, fontWeight: active?700:500, color: active?'#F28100':'#6B7280', textAlign:'center', maxWidth:56, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {cp.color}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic', padding:'8px 12px', background:'#F9FAFB', border:'1px dashed #E5E7EB', borderRadius:8 }}>
+          Sin colores en catálogo para este modelo · se guardará el texto que escribas
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Componente principal ──────────────────────────────────────────────────────
 
 export function InventoryView({ inv, setInv, user, realBranches, nav }) {
@@ -1246,37 +1313,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               <Field label="Modelo *" value={eForm.model} onChange={v=>setEForm({...eForm,model:v})} req/>
               <Field label="Año" value={eForm.year} onChange={v=>setEForm({...eForm,year:v})} type="number"/>
             </div>
-            {/* Color */}
+            {/* Color — paleta estilo catálogo */}
             <div style={{ marginBottom:10 }}>
-              <Field label="Color" value={eForm.color} onChange={v=>setEForm({...eForm,color:v})}/>
-              {/* Swatches del catálogo para este modelo */}
-              {modelColorPhotos.length > 0 && (
-                <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:7 }}>
-                  {modelColorPhotos.map(cp => {
-                    const isSelected = eForm.color?.toLowerCase().trim() === cp.color?.toLowerCase().trim();
-                    return (
-                      <button key={cp.color} type="button"
-                        onClick={() => setEForm(f => ({...f, color: cp.color}))}
-                        title={cp.color}
-                        style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 7px 3px 4px',
-                          borderRadius:20, border: isSelected ? '2px solid #F28100' : '1.5px solid #E5E7EB',
-                          background: isSelected ? '#FFFBF0' : '#F9FAFB', cursor:'pointer' }}>
-                        <span style={{ width:14, height:14, borderRadius:7, background: cp.hex || getColorCss(cp.color) || '#E5E7EB',
-                          border:'1px solid rgba(0,0,0,0.1)', display:'inline-block', flexShrink:0 }}/>
-                        <span style={{ fontSize:10, fontWeight: isSelected?700:400, color: isSelected?'#F28100':'#6B7280', whiteSpace:'nowrap' }}>{cp.color}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {eForm.color && (()=>{
-                const cp = modelColorPhotos.find(p => p.color?.toLowerCase().trim() === eForm.color?.toLowerCase().trim());
-                const cc = cp?.hex || getColorCss(eForm.color);
-                return <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5 }}>
-                  <span style={{ width:20,height:14,borderRadius:3,background:cc||'#E5E7EB',border:'1px solid #D1D5DB',display:'inline-block'}}/>
-                  {cc&&<span style={{ fontSize:10,color:'#9CA3AF',fontFamily:'inherit' }}>{cc}</span>}
-                </div>;
-              })()}
+              <ColorPalettePicker
+                value={eForm.color}
+                onChange={v=>setEForm({...eForm,color:v})}
+                palette={modelColorPhotos}
+              />
             </div>
             {/* Chasis + Motor */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
@@ -1413,36 +1456,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <div style={{ marginBottom:10 }}>
               <Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/>
             </div>
-            {/* Color con paleta del catálogo — mismo patrón que edición */}
+            {/* Color — paleta estilo catálogo */}
             <div style={{ marginBottom:10 }}>
-              <Field label="Color" value={nw.color} onChange={v=>setNw({...nw,color:v})}/>
-              {modelColorPhotos.length > 0 && (
-                <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:7 }}>
-                  {modelColorPhotos.map(cp => {
-                    const isSelected = nw.color?.toLowerCase().trim() === cp.color?.toLowerCase().trim();
-                    return (
-                      <button key={cp.color} type="button"
-                        onClick={() => setNw(f => ({...f, color: cp.color}))}
-                        title={cp.color}
-                        style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 7px 3px 4px',
-                          borderRadius:20, border: isSelected ? '2px solid #F28100' : '1.5px solid #E5E7EB',
-                          background: isSelected ? '#FFFBF0' : '#F9FAFB', cursor:'pointer', fontFamily:'inherit' }}>
-                        <span style={{ width:14, height:14, borderRadius:7, background: cp.hex || getColorCss(cp.color) || '#E5E7EB',
-                          border:'1px solid rgba(0,0,0,0.1)', display:'inline-block', flexShrink:0 }}/>
-                        <span style={{ fontSize:10, fontWeight: isSelected?700:400, color: isSelected?'#F28100':'#6B7280', whiteSpace:'nowrap' }}>{cp.color}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {nw.color && (()=>{
-                const cp = modelColorPhotos.find(p => p.color?.toLowerCase().trim() === nw.color?.toLowerCase().trim());
-                const cc = cp?.hex || getColorCss(nw.color);
-                return <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5 }}>
-                  <span style={{ width:20,height:14,borderRadius:3,background:cc||'#E5E7EB',border:'1px solid #D1D5DB',display:'inline-block'}}/>
-                  {cc&&<span style={{ fontSize:10,color:'#9CA3AF',fontFamily:'inherit' }}>{cc}</span>}
-                </div>;
-              })()}
+              <ColorPalettePicker
+                value={nw.color}
+                onChange={v=>setNw({...nw,color:v})}
+                palette={modelColorPhotos}
+              />
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14 }}>
               <Field label="N° Chasis" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})}/>
