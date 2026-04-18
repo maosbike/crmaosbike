@@ -142,6 +142,7 @@ function CatalogColorPicker({ modelRow, value, onChange }) {
 
 /* ── Shared inline tokens ───────────────────────────────────────────────── */
 const lbl9 = { display:'block', fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:5 };
+const lblField = { display:'block', fontSize:11, fontWeight:600, color:'#6B7280', marginBottom:3 };
 const secTitle = (color='#374151') => ({ fontSize:9, fontWeight:800, color, textTransform:'uppercase', letterSpacing:'0.14em', paddingBottom:7, marginBottom:10, borderBottom:`2px solid ${color}22` });
 const secCard = S.secCard;
 
@@ -328,6 +329,172 @@ function NewModal({ onClose, onCreated }) {
   );
 }
 
+/* ── Detail view (lectura) ──────────────────────────────────────────────── */
+function DetailView({ p, dv, overdue }) {
+  const img = motoImg(p);
+  const st  = pagoStatus(p);
+  const saldo = Math.max(0, (parseInt(p.total_amount)||0) - (parseInt(p.paid_amount)||0));
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+      {/* Hero: foto + factura + estado + totales */}
+      <div style={{
+        display:'flex', alignItems:'stretch', minHeight:120,
+        background:'#FFFFFF', border:'1px solid #E5E7EB',
+        borderLeft:`4px solid ${st.c}`,
+        borderRadius:12, overflow:'hidden',
+        boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
+      }}>
+        <div style={{
+          width:150, flexShrink:0,
+          background: STATUS_BG[st.l] || '#F3F4F6',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          overflow:'hidden',
+        }}>
+          {img
+            ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+            : <Ic.bike size={48} color={STATUS_ICON[st.l] || '#9CA3AF'}/>}
+        </div>
+        <div style={{ flex:1, padding:'14px 18px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', marginBottom:2 }}>Factura</div>
+            <div style={{ fontSize:20, fontWeight:800, color:'#0F172A', letterSpacing:'-0.4px', marginBottom:4 }}>
+              #{p.invoice_number || '—'}
+            </div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>
+              {p.catalog_name || p.model || '—'}
+            </div>
+            {(p.color || p.commercial_year) && (
+              <div style={{ fontSize:11, color:'#6B7280', marginTop:2 }}>
+                {[p.color, p.commercial_year].filter(Boolean).join(' · ')}
+              </div>
+            )}
+          </div>
+          <div style={{ textAlign:'right', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
+            <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
+            <div style={{ fontSize:22, fontWeight:800, color:'#0F172A', letterSpacing:'-0.5px' }}>
+              {$(p.total_amount)}
+            </div>
+            {p.paid_amount ? (
+              <div style={{ fontSize:12, fontWeight:700, color:'#15803D' }}>
+                ✓ Pagado {$(p.paid_amount)}
+              </div>
+            ) : saldo > 0 ? (
+              <div style={{ fontSize:12, fontWeight:700, color: overdue?'#DC2626':'#D97706' }}>
+                Saldo {$(saldo)}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* Factura */}
+      <DetailCard title="Factura" accent="#F28100">
+        <DetailRow label="Fecha emisión" value={fd(p.invoice_date)}/>
+        <DetailRow label="Vencimiento" value={fd(dv)} danger={overdue}/>
+        <DetailRow label="Neto" value={$(p.neto)}/>
+        <DetailRow label="IVA" value={$(p.iva)}/>
+      </DetailCard>
+
+      {/* Comprobante */}
+      {(p.receipt_number || p.payment_date || p.banco || p.payment_method || p.payer_name) && (
+        <DetailCard title="Comprobante" accent="#2563EB">
+          <DetailRow label="N° Comprobante" value={p.receipt_number} bold/>
+          <DetailRow label="Fecha pago" value={fd(p.payment_date)}/>
+          <DetailRow label="Medio pago" value={p.payment_method}/>
+          <DetailRow label="Banco" value={p.banco} span/>
+          <DetailRow label="Pagador" value={p.payer_name} span/>
+        </DetailCard>
+      )}
+
+      {/* Vehículo */}
+      <DetailCard title="Vehículo" accent="#374151">
+        <DetailRow label="Marca" value={p.brand}/>
+        <DetailRow label="Modelo" value={p.model} bold/>
+        <DetailRow label="Color" value={p.color}/>
+        <DetailRow label="Año" value={p.commercial_year}/>
+        <DetailRow label="N° Motor" value={p.motor_num}/>
+        <DetailRow label="N° Chasis" value={p.chassis}/>
+      </DetailCard>
+
+      {p.notes && (
+        <div style={{
+          padding:'12px 14px', borderRadius:10, fontSize:13, color:'#374151',
+          background:'#FFFBEB', border:'1px solid #FDE68A', borderLeft:'3px solid #D97706',
+        }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#B45309', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>
+            Notas
+          </div>
+          {p.notes}
+        </div>
+      )}
+
+      {(p.invoice_url || p.receipt_url) && (
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+          {p.invoice_url && (
+            <a href={p.invoice_url} target="_blank" rel="noreferrer"
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px',
+                       background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:8,
+                       textDecoration:'none', fontSize:12, fontWeight:600, color:'#C2410C', fontFamily:'inherit' }}>
+              <Ic.file size={13}/> Ver factura
+            </a>
+          )}
+          {p.receipt_url && (
+            <a href={p.receipt_url} target="_blank" rel="noreferrer"
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px',
+                       background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8,
+                       textDecoration:'none', fontSize:12, fontWeight:600, color:'#1D4ED8', fontFamily:'inherit' }}>
+              <Ic.file size={13}/> Ver comprobante
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailCard({ title, accent='#374151', children }) {
+  return (
+    <div style={{
+      background:'#FFFFFF', border:'1px solid #E5E7EB',
+      borderRadius:12, overflow:'hidden',
+    }}>
+      <div style={{
+        padding:'10px 16px', background:'#F9FAFB',
+        borderBottom:`1px solid #F3F4F6`,
+        display:'flex', alignItems:'center', gap:8,
+      }}>
+        <span style={{ width:3, height:14, background:accent, borderRadius:2 }}/>
+        <span style={{ fontSize:12, fontWeight:700, color:'#111827', letterSpacing:'0.01em' }}>
+          {title}
+        </span>
+      </div>
+      <div style={{ padding:'12px 16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 20px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value, bold, danger, span }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div style={{ gridColumn: span ? '1/-1' : 'auto' }}>
+      <div style={{ fontSize:11, fontWeight:600, color:'#6B7280', marginBottom:2 }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize:14, fontWeight: bold ? 700 : 500,
+        color: danger ? '#DC2626' : '#111827',
+        fontFamily:'inherit', letterSpacing:'-0.1px',
+      }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 /* ── Detail / edit modal ────────────────────────────────────────────────── */
 function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startInEdit }) {
   const [p,setP]=useState(p0);
@@ -487,63 +654,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
             </div>
           </div>
         ) : (
-          <div>
-            <div style={secCard}>
-              <div style={{padding:'14px 16px'}}>
-                <div style={secTitle('#F28100')}>Factura</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-                  <DR label="N° Factura" value={p.invoice_number} bold/>
-                  <DR label="Fecha emision" value={fd(p.invoice_date)}/>
-                  <DR label="Vencimiento" value={fd(dv)} bold={overdue}/>
-                  <DR label="Neto" value={$(p.neto)}/>
-                  <DR label="IVA" value={$(p.iva)}/>
-                  <DR label="Total factura" value={$(p.total_amount)} bold/>
-                  <DR label="Monto pagado" value={$(p.paid_amount)} bold/>
-                </div>
-              </div>
-            </div>
-            <div style={secCard}>
-              <div style={{padding:'14px 16px'}}>
-                <div style={secTitle('#2563EB')}>Comprobante</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-                  <DR label="N° Comprobante" value={p.receipt_number} bold/>
-                  <DR label="Fecha pago" value={fd(p.payment_date)}/>
-                  <DR label="Banco" value={p.banco} span/>
-                  <DR label="Medio pago" value={p.payment_method}/>
-                  <DR label="Pagador" value={p.payer_name} span/>
-                </div>
-              </div>
-            </div>
-            <div style={secCard}>
-              <div style={{padding:'14px 16px'}}>
-                <div style={secTitle('#374151')}>Vehículo</div>
-                {motoImg(p)&&(
-                  <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12,padding:'10px 14px',background:'#F9FAFB',borderRadius:10,border:'1px solid #E5E7EB'}}>
-                    <img src={motoImg(p)} alt="" style={{width:80,height:60,objectFit:'contain',borderRadius:8,border:'1px solid #E5E7EB',background:'#ffffff'}}/>
-                    <div>
-                      <div style={{fontSize:14,fontWeight:800,color:'#111827'}}>{p.catalog_name||p.model}</div>
-                      {p.color&&<div style={{fontSize:11,color:'#6B7280'}}>{p.color} {p.commercial_year?`- ${p.commercial_year}`:''}</div>}
-                    </div>
-                  </div>
-                )}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-                  <DR label="Marca" value={p.brand}/>
-                  <DR label="Modelo" value={p.model} bold/>
-                  <DR label="Color" value={p.color}/>
-                  <DR label="Año" value={p.commercial_year}/>
-                  <DR label="N° Motor" value={p.motor_num}/>
-                  <DR label="N° Chasis" value={p.chassis}/>
-                </div>
-              </div>
-            </div>
-            {p.notes&&<div style={{...S.card,fontSize:12,color:'#374151',marginBottom:12}}>{p.notes}</div>}
-            {(p.invoice_url||p.receipt_url)&&(
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {p.invoice_url&&<a href={p.invoice_url} target="_blank" rel="noreferrer" style={{display:'flex',alignItems:'center',gap:6,padding:'8px 16px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:8,textDecoration:'none',fontSize:12,fontWeight:600,color:'#C2410C',fontFamily:'inherit'}}><Ic.file size={13}/> Factura</a>}
-                {p.receipt_url&&<a href={p.receipt_url} target="_blank" rel="noreferrer" style={{display:'flex',alignItems:'center',gap:6,padding:'8px 16px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:8,textDecoration:'none',fontSize:12,fontWeight:600,color:'#1D4ED8',fontFamily:'inherit'}}><Ic.file size={13}/> Comprobante</a>}
-              </div>
-            )}
-          </div>
+          <DetailView p={p} dv={dv} overdue={overdue}/>
         )}
       </div>
     </Modal>
@@ -681,13 +792,13 @@ function RowCard({ p, onClick }) {
             {p.chassis && (
               <span style={{ fontSize:10, fontWeight:600, color:'#6B7280',
                              background:'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>
-                ◆ {p.chassis}
+                {p.chassis}
               </span>
             )}
             {p.motor_num && (
               <span style={{ fontSize:10, fontWeight:600, color:'#6B7280',
                              background:'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>
-                ⚙ {p.motor_num}
+                {p.motor_num}
               </span>
             )}
           </div>
@@ -722,6 +833,32 @@ function RowCard({ p, onClick }) {
             ? <>Pagado: <strong style={{color:'#374151'}}>{fd(p.payment_date)}</strong></>
             : dv ? <>Vence: <strong style={{color: ov?'#DC2626':'#374151'}}>{fd(dv)}</strong></> : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Helpers de filtro (labels legibles) ─────────────────────────────────── */
+const FILT_LBL = {
+  fontSize: 11, fontWeight: 600, color: '#6B7280',
+  marginBottom: 5, letterSpacing: '0.01em',
+};
+
+function FiltCol({ label, children }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column' }}>
+      <label style={FILT_LBL}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function FiltGroup({ title, children }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column' }}>
+      <label style={FILT_LBL}>{title}</label>
+      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        {children}
       </div>
     </div>
   );
@@ -835,14 +972,19 @@ export function SupplierPaymentsView({ user }) {
   const hasFilters = q||stF||fromF||toF||payFromF||payToF||brF;
   const clearFilters = ()=>{ setQ('');setStF('');setFromF('');setToF('');setPayFromF('');setPayToF('');setBrF(''); };
 
-  // Estilo compartido para controles de filtro compactos
+  // Estilo compartido para controles de filtro
   const fc = {
-    ...S.inp,
-    height:34,
-    padding:'0 10px',
-    fontSize:12,
-    width:'auto',
-    lineHeight:'34px',
+    height:36,
+    padding:'0 12px',
+    fontSize:13,
+    fontWeight:500,
+    color:'#111827',
+    background:'#fff',
+    border:'1px solid #E5E7EB',
+    borderRadius:8,
+    fontFamily:'inherit',
+    outline:'none',
+    cursor:'pointer',
   };
 
   return (
@@ -949,79 +1091,95 @@ export function SupplierPaymentsView({ user }) {
           )}
         </div>
       ) : (
-        /* Desktop: barra compacta de una línea */
+        /* Desktop: barra de filtros */
         <div style={{
-          display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
-          background:'#F9FAFB', border:'1px solid #E5E7EB',
-          borderRadius:10, padding:'8px 14px', marginBottom:14,
+          display:'flex', flexDirection:'column', gap:10,
+          background:'#FFFFFF', border:'1px solid #E5E7EB',
+          borderRadius:12, padding:'12px 14px', marginBottom:14,
         }}>
-          {/* Buscador */}
-          <div style={{display:'flex',alignItems:'center',gap:7,flex:'1 1 200px',minWidth:160}}>
-            <Ic.search size={14} color="#9CA3AF"/>
+          {/* Fila 1: buscador + limpiar */}
+          <div style={{
+            display:'flex', alignItems:'center', gap:10,
+            background:'#F9FAFB', border:'1px solid #E5E7EB',
+            borderRadius:10, padding:'8px 12px',
+          }}>
+            <Ic.search size={15} color="#9CA3AF"/>
             <input value={q} onChange={e=>setQ(e.target.value)}
-              placeholder="Factura, modelo, color, chasis, motor…"
-              style={{...S.inp,border:'none',background:'transparent',flex:1,padding:0,height:30,fontSize:13}}/>
-          </div>
-          <div style={{width:1,height:22,background:'#E5E7EB',flexShrink:0}}/>
-          {/* Estado */}
-          <div>
-            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Estado</label>
-            <select value={stF} onChange={e=>setStF(e.target.value)} style={fc}>
-              <option value="">Todos</option>
-              <option value="pagado">Pagado</option>
-              <option value="pendiente">Pendiente</option>
-            </select>
-          </div>
-          {/* Emisión */}
-          <div>
-            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Emisión desde</label>
-            <input type="date" value={fromF} onChange={e=>setFromF(e.target.value)} style={{...fc,minWidth:128}}/>
-          </div>
-          <div>
-            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>hasta</label>
-            <input type="date" value={toF} onChange={e=>setToF(e.target.value)} style={{...fc,minWidth:128}}/>
-          </div>
-          {/* Pago */}
-          <div>
-            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Pago desde</label>
-            <input type="date" value={payFromF} onChange={e=>setPayFromF(e.target.value)} style={{...fc,minWidth:128}}/>
-          </div>
-          <div>
-            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>hasta</label>
-            <input type="date" value={payToF} onChange={e=>setPayToF(e.target.value)} style={{...fc,minWidth:128}}/>
-          </div>
-          {/* Marca */}
-          <div>
-            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Marca</label>
-            <select value={brF} onChange={e=>setBrF(e.target.value)} style={fc}>
-              <option value="">Todas</option>
-              {brands.map(b=><option key={b} value={b}>{b}</option>)}
-            </select>
-          </div>
-          {/* Ordenar */}
-          <div>
-            <label style={{...S.lbl,fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>Ordenar</label>
-            <div style={{display:'flex',gap:5}}>
-              <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={fc}>
-                <option value="payment_date">Fecha pago</option>
-                <option value="due_date">Vencimiento</option>
-                <option value="invoice_date">Emisión</option>
-                <option value="paid_amount">Monto pagado</option>
-                <option value="total_amount">Total</option>
-              </select>
-              <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
-                title={sortDir==='asc'?'Ascendente':'Descendente'}
-                style={{...S.btn2,padding:'0 10px',height:34,fontSize:13,fontWeight:700}}>
-                {sortDir==='asc'?'↑':'↓'}
+              placeholder="Buscar factura, modelo, color, chasis, motor…"
+              style={{
+                border:'none', background:'transparent', outline:'none',
+                flex:1, padding:0, height:26, fontSize:13,
+                fontFamily:'inherit', color:'#111827',
+              }}/>
+            {hasFilters && (
+              <button onClick={clearFilters}
+                style={{
+                  height:28, padding:'0 12px', fontSize:12, fontWeight:600,
+                  color:'#6B7280', background:'#fff', border:'1px solid #E5E7EB',
+                  borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                  display:'flex', alignItems:'center', gap:4,
+                }}>
+                <Ic.x size={12}/> Limpiar filtros
               </button>
-            </div>
+            )}
           </div>
-          {/* Limpiar */}
-          {hasFilters&&(
-            <button onClick={clearFilters} style={{...S.gh,height:34,padding:'0 10px',fontSize:12}}>
-              <Ic.x size={13}/> Limpiar
-            </button>
-          )}
+
+          {/* Fila 2: selects y fechas con labels legibles */}
+          <div style={{
+            display:'flex', alignItems:'flex-end', gap:12, flexWrap:'wrap',
+          }}>
+            <FiltCol label="Estado">
+              <select value={stF} onChange={e=>setStF(e.target.value)} style={fc}>
+                <option value="">Todos</option>
+                <option value="pagado">Pagado</option>
+                <option value="pendiente">Pendiente</option>
+              </select>
+            </FiltCol>
+
+            <FiltGroup title="Emisión">
+              <input type="date" value={fromF} onChange={e=>setFromF(e.target.value)}
+                style={{...fc, minWidth:138}} placeholder="desde"/>
+              <span style={{ color:'#9CA3AF', fontSize:12, fontWeight:600 }}>→</span>
+              <input type="date" value={toF} onChange={e=>setToF(e.target.value)}
+                style={{...fc, minWidth:138}} placeholder="hasta"/>
+            </FiltGroup>
+
+            <FiltGroup title="Pago">
+              <input type="date" value={payFromF} onChange={e=>setPayFromF(e.target.value)}
+                style={{...fc, minWidth:138}} placeholder="desde"/>
+              <span style={{ color:'#9CA3AF', fontSize:12, fontWeight:600 }}>→</span>
+              <input type="date" value={payToF} onChange={e=>setPayToF(e.target.value)}
+                style={{...fc, minWidth:138}} placeholder="hasta"/>
+            </FiltGroup>
+
+            <FiltCol label="Marca">
+              <select value={brF} onChange={e=>setBrF(e.target.value)} style={fc}>
+                <option value="">Todas</option>
+                {brands.map(b=><option key={b} value={b}>{b}</option>)}
+              </select>
+            </FiltCol>
+
+            <FiltCol label="Ordenar por">
+              <div style={{ display:'flex', gap:5 }}>
+                <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={fc}>
+                  <option value="payment_date">Fecha pago</option>
+                  <option value="due_date">Vencimiento</option>
+                  <option value="invoice_date">Emisión</option>
+                  <option value="paid_amount">Monto pagado</option>
+                  <option value="total_amount">Total</option>
+                </select>
+                <button onClick={()=>setSortDir(d=>d==='asc'?'desc':'asc')}
+                  title={sortDir==='asc'?'Ascendente':'Descendente'}
+                  style={{
+                    padding:'0 12px', height:36, fontSize:14, fontWeight:700,
+                    color:'#374151', background:'#fff', border:'1px solid #E5E7EB',
+                    borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                  }}>
+                  {sortDir==='asc'?'↑':'↓'}
+                </button>
+              </div>
+            </FiltCol>
+          </div>
         </div>
       )}
 
