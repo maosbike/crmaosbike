@@ -968,123 +968,6 @@ const SEC = ({ children }) => (
                 paddingBottom: 4, borderBottom: '1px solid #F3F4F6' }}>{children}</div>
 );
 
-// ─── Picker de catálogo: buscador + resultados con foto ──────────────────────
-function CatalogPicker({ value, fallbackBrand, fallbackModel, fallbackYear, onPick, onClear }) {
-  const [q, setQ]       = useState('');
-  const [all, setAll]   = useState([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const boxRef = useRef(null);
-
-  useEffect(() => {
-    api.getModels()
-      .then(d => setAll(Array.isArray(d) ? d.filter(m => m.active !== false) : []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  const filtered = useMemo(() => {
-    const base = !q.trim() ? all : all.filter(m => {
-      const hay = `${m.brand} ${m.model} ${m.year||''}`.toLowerCase();
-      return q.toLowerCase().split(/\s+/).every(tok => hay.includes(tok));
-    });
-    return base.slice(0, 24);
-  }, [q, all]);
-
-  if (value) {
-    return (
-      <div style={{ display:'flex', alignItems:'center', gap:12, padding:10,
-                    borderRadius:10, border:'1px solid #10B981', background:'#F0FDF4' }}>
-        <div style={{ width:56, height:56, borderRadius:8, overflow:'hidden', flexShrink:0,
-                      background:'#ECFDF5', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          {value.image_url
-            ? <img src={value.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-            : <Ic.bike size={26} color="#10B981"/>}
-        </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:10, fontWeight:800, color:'#6B7280', letterSpacing:'0.08em', textTransform:'uppercase' }}>
-            {value.brand}
-          </div>
-          <div style={{ fontSize:15, fontWeight:800, color:'#0F172A' }}>
-            {value.model}{value.year ? ` · ${value.year}` : ''}
-          </div>
-        </div>
-        <button type="button" onClick={onClear}
-          style={{ fontSize:12, fontWeight:600, padding:'6px 12px', borderRadius:8,
-                   background:'#fff', border:'1px solid #E5E7EB', color:'#6B7280',
-                   cursor:'pointer', fontFamily:'inherit' }}>
-          Cambiar
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div ref={boxRef} style={{ position:'relative' }}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#111827', marginBottom:4 }}>
-        Moto del catálogo <span style={{ color:'#F28100' }}>*</span>
-      </div>
-      <input
-        value={q}
-        onChange={e => { setQ(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        placeholder={loading ? 'Cargando catálogo…' : 'Buscar marca o modelo (ej: YBR 125)'}
-        style={{ width:'100%', padding:'10px 12px', borderRadius:10,
-                 border:'1px solid #E5E7EB', fontSize:13, fontFamily:'inherit',
-                 background:'#fff', outline:'none' }}
-      />
-      {open && !loading && (
-        <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:50, marginTop:4,
-                      background:'#fff', border:'1px solid #E5E7EB', borderRadius:10,
-                      boxShadow:'0 8px 24px rgba(0,0,0,0.12)', maxHeight:360, overflowY:'auto',
-                      padding:8 }}>
-          {filtered.length === 0 ? (
-            <div style={{ padding:16, textAlign:'center', color:'#9CA3AF', fontSize:12 }}>
-              Sin resultados
-            </div>
-          ) : (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:6 }}>
-              {filtered.map(m => (
-                <button key={m.id} type="button"
-                  onClick={() => { onPick(m); setOpen(false); setQ(''); }}
-                  style={{ display:'flex', alignItems:'center', gap:8, padding:6,
-                           borderRadius:8, border:'1px solid #F3F4F6', background:'#fff',
-                           cursor:'pointer', fontFamily:'inherit', textAlign:'left',
-                           transition:'all 0.12s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#F28100'; e.currentTarget.style.background='#FFF7ED'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#F3F4F6'; e.currentTarget.style.background='#fff'; }}>
-                  <div style={{ width:36, height:36, borderRadius:6, overflow:'hidden', flexShrink:0,
-                                background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    {m.image_url
-                      ? <img src={m.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                      : <Ic.bike size={16} color="#9CA3AF"/>}
-                  </div>
-                  <div style={{ minWidth:0, flex:1 }}>
-                    <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.05em', textTransform:'uppercase' }}>
-                      {m.brand}
-                    </div>
-                    <div style={{ fontSize:12, fontWeight:700, color:'#0F172A',
-                                  overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {m.model}{m.year ? ` · ${m.year}` : ''}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Modal: nueva venta/reserva ───────────────────────────────────────────────
 
 function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta', user }) {
@@ -1384,28 +1267,23 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             {!selUnit && (
               <>
                 <SEC>Moto</SEC>
-                <div style={{ gridColumn: '1/-1' }}>
-                  <CatalogPicker
-                    value={selMod}
-                    fallbackBrand={form.brand}
-                    fallbackModel={form.model}
-                    fallbackYear={form.year}
-                    onPick={(m) => {
-                      setSelMod(m);
-                      setForm(f => ({ ...f, brand: m.brand, model: m.model, year: m.year || f.year, color: '' }));
-                    }}
-                    onClear={() => {
-                      setSelMod(null);
-                      setForm(f => ({ ...f, brand: '', model: '', color: '' }));
-                    }}
-                  />
-                </div>
+                <Field label="Marca *"
+                  value={form.brand}
+                  opts={[{ v: '', l: '— Seleccionar marca —' }, ...brands.map(b => ({ v: b, l: b }))]}
+                  onChange={pickBrand} />
+                <Field label="Modelo *"
+                  value={selMod?.id || ''}
+                  opts={[{ v: '', l: form.brand ? (catMods.length ? '— Seleccionar modelo —' : 'Sin modelos en catálogo') : '— Primero seleccione una marca —' },
+                         ...catMods.map(m => ({ v: m.id, l: `${m.model}${m.year ? ' ' + m.year : ''}` }))]}
+                  onChange={pickModel}
+                  disabled={!form.brand} />
                 <Field label="Año" value={form.year} onChange={set('year')} type="number" />
                 <Field label="Color *"
                   value={form.color}
-                  opts={colors.length ? [{ v: '', l: '— Seleccionar color —' }, ...colors.map(c => ({ v: c, l: c }))] : undefined}
+                  opts={[{ v: '', l: selMod ? (colors.length ? '— Seleccionar color —' : 'Sin colores en catálogo') : '— Primero seleccione un modelo —' },
+                         ...colors.map(c => ({ v: c, l: c }))]}
                   onChange={set('color')}
-                  ph={colors.length ? undefined : 'Ej. Negro'} />
+                  disabled={!selMod} />
                 <Field label="N° Chasis (opcional)" value={form.chassis} onChange={set('chassis')} ph="9CDKDE0…" />
                 <Field label="N° Motor (opcional)"  value={form.motor_num} onChange={set('motor_num')} />
               </>
