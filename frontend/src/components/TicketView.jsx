@@ -1140,46 +1140,59 @@ export function TicketView({lead,user,nav,updLead}){
       {showContact&&<Modal
         onClose={!cfSaving?closeContact:undefined}
         headerContent={
-          <div style={{ margin:'-24px -24px 0',padding:'18px 22px',borderBottom:'1px solid #E5E7EB',background:'#F9FAFB',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
-            <div>
-              <div style={{ fontSize:15,fontWeight:800,color:'#111827' }}>Registrar contacto</div>
-              <div style={{ fontSize:11,color:'#9CA3AF',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
+          <div style={{ margin:'-24px -24px 0',padding:'18px 22px 16px',borderBottom:'1px solid #E5E7EB',background:'linear-gradient(180deg, #F9FAFB 0%, #F3F4F6 100%)',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
+            <div style={{ display:'flex',alignItems:'center',gap:12 }}>
+              <div style={{ width:36,height:36,borderRadius:10,background:'#2563EB',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
+                <Ic.msg size={16} color="#ffffff"/>
+              </div>
+              <div>
+                <div style={{ fontSize:15,fontWeight:800,color:'#111827',letterSpacing:'-0.2px' }}>Registrar contacto</div>
+                <div style={{ fontSize:11,color:'#6B7280',marginTop:2,fontWeight:500 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
+              </div>
             </div>
-            {!cfSaving&&<button onClick={closeContact} style={{ background:'none',border:'none',cursor:'pointer',padding:4,borderRadius:6,color:'#9CA3AF',lineHeight:1 }}><Ic.x size={18}/></button>}
+            {!cfSaving&&<button onClick={closeContact} style={{ background:'#ffffff',border:'1px solid #E5E7EB',cursor:'pointer',padding:6,borderRadius:8,color:'#6B7280',lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center' }}><Ic.x size={16}/></button>}
           </div>
         }
       >
         {cfDone?(
           /* ── Estado de éxito ── */
-          <div style={{ padding:'40px 24px',textAlign:'center' }}>
-            <div style={{ display:'flex',justifyContent:'center',marginBottom:12 }}><Ic.check size={44} color="#10B981"/></div>
-            <div style={{ fontSize:16,fontWeight:800,color:'#111827',marginBottom:6 }}>Contacto guardado</div>
-            <div style={{ fontSize:13,color:'#6B7280' }}>Ticket <strong>#{lead.num}</strong> actualizado correctamente.</div>
+          <div style={{ padding:'44px 24px',textAlign:'center' }}>
+            <div style={{ display:'flex',justifyContent:'center',marginBottom:14 }}>
+              <div style={{ width:64,height:64,borderRadius:'50%',background:'#DCFCE7',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 14px rgba(16,185,129,0.2)' }}>
+                <Ic.check size={34} color="#10B981"/>
+              </div>
+            </div>
+            <div style={{ fontSize:17,fontWeight:800,color:'#111827',marginBottom:6,letterSpacing:'-0.2px' }}>Contacto guardado</div>
+            <div style={{ fontSize:13,color:'#6B7280' }}>Ticket <strong style={{ color:'#111827' }}>#{lead.num}</strong> actualizado correctamente.</div>
           </div>
         ):(
-          <div style={{ display:'flex',flexDirection:'column',gap:16,marginTop:20 }}>
+          <div style={{ display:'flex',flexDirection:'column',gap:18,marginTop:20 }}>
 
             {/* Canal */}
             <div>
-              <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Canal de contacto</div>
+              <div style={{ fontSize:10,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:9 }}>Canal de contacto</div>
               <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
-                {["whatsapp","llamada","email","presencial","sms"].map(mt=>(
-                  <button key={mt} type="button" onClick={()=>setCf(p=>({...p,method:mt}))}
-                    style={{ padding:'6px 12px',fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:6,
-                      background:cf.method===mt?'#2563EB':'#F3F4F6',
-                      color:cf.method===mt?'#ffffff':'#6B7280',
-                      border:cf.method===mt?'none':'1px solid #E5E7EB' }}>
-                    {mt.charAt(0).toUpperCase()+mt.slice(1)}
-                  </button>
-                ))}
+                {["whatsapp","llamada","email","presencial","sms"].map(mt=>{
+                  const active=cf.method===mt;
+                  return(
+                    <button key={mt} type="button" onClick={()=>setCf(p=>({...p,method:mt}))}
+                      style={{ padding:'8px 16px',fontSize:12,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:8,transition:'all 0.12s',
+                        background:active?'#0F172A':'#FFFFFF',
+                        color:active?'#FFFFFF':'#374151',
+                        border:`1.5px solid ${active?'#0F172A':'#E5E7EB'}`,
+                        boxShadow:active?'0 2px 6px rgba(15,23,42,0.2)':'none' }}>
+                      {mt.charAt(0).toUpperCase()+mt.slice(1)}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Resultado */}
             <div>
-              <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Resultado del contacto</div>
+              <div style={{ fontSize:10,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:9 }}>Resultado del contacto</div>
               <select value={cf.result} onChange={e=>setCf(p=>({...p,result:e.target.value,note:'',evMode:'file'}))}
-                style={{ ...S.inp,width:'100%',fontSize:12 }}>
+                style={{ ...S.inp,width:'100%',fontSize:13,padding:'10px 12px',border:'1.5px solid #E5E7EB',borderRadius:9,fontWeight:cf.result?600:400,color:cf.result?'#111827':'#9CA3AF' }}>
                 <option value="">Seleccionar resultado...</option>
                 <optgroup label="— Contacto real">
                   <option value="Contactado">Contactado</option>
@@ -1199,18 +1212,23 @@ export function TicketView({lead,user,nav,updLead}){
 
             {/* EVIDENCIA — solo si result requiere evidencia */}
             {needsEvidence&&(
-              <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'14px 16px' }}>
-                <div style={{ fontSize:11,fontWeight:700,color:'#92400E',marginBottom:10,display:'flex',alignItems:'center',gap:6 }}>
-                  <Ic.alert size={13} color="#92400E"/> Este resultado exige evidencia de contacto real
+              <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:12,padding:'14px 16px' }}>
+                <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
+                  <div style={{ width:28,height:28,borderRadius:8,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                    <Ic.alert size={14} color="#B45309"/>
+                  </div>
+                  <div style={{ fontSize:12,fontWeight:700,color:'#92400E',lineHeight:1.35 }}>
+                    Este resultado exige evidencia de contacto real
+                  </div>
                 </div>
-                {/* Toggle file/note */}
-                <div style={{ display:'flex',gap:6,marginBottom:12 }}>
+                {/* Toggle file/note — segmentado */}
+                <div style={{ display:'flex',background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:9,padding:3,marginBottom:12 }}>
                   {[{v:'file',l:'Subir captura'},{v:'note',l:'Nota detallada'}].map(o=>(
                     <button key={o.v} type="button" onClick={()=>setCf(p=>({...p,evMode:o.v}))}
-                      style={{ flex:1,padding:'7px',fontSize:11,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:7,
-                        background:cf.evMode===o.v?'#2563EB':'#ffffff',
-                        color:cf.evMode===o.v?'#ffffff':'#374151',
-                        border:`1.5px solid ${cf.evMode===o.v?'#2563EB':'#E5E7EB'}` }}>
+                      style={{ flex:1,padding:'7px 10px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:6,transition:'all 0.12s',
+                        background:cf.evMode===o.v?'#0F172A':'transparent',
+                        color:cf.evMode===o.v?'#FFFFFF':'#6B7280',
+                        border:'none' }}>
                       {o.l}
                     </button>
                   ))}
@@ -1218,27 +1236,35 @@ export function TicketView({lead,user,nav,updLead}){
 
                 {cf.evMode==='file'?(
                   <div>
-                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Tipo de captura</div>
-                    <div style={{ display:'flex',gap:5,marginBottom:10 }}>
-                      {EV_TYPES.map(t=>(
-                        <button key={t.v} type="button" onClick={()=>setCf(p=>({...p,evType:t.v}))}
-                          style={{ padding:'4px 10px',fontSize:10,fontWeight:600,fontFamily:'inherit',cursor:'pointer',borderRadius:5,
-                            background:cf.evType===t.v?'#1D4ED8':'#F3F4F6',
-                            color:cf.evType===t.v?'#ffffff':'#374151',border:'none' }}>
-                          {t.l}
-                        </button>
-                      ))}
+                    <div style={{ fontSize:10,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Tipo de captura</div>
+                    <div style={{ display:'flex',gap:5,marginBottom:12,flexWrap:'wrap' }}>
+                      {EV_TYPES.map(t=>{
+                        const active=cf.evType===t.v;
+                        return(
+                          <button key={t.v} type="button" onClick={()=>setCf(p=>({...p,evType:t.v}))}
+                            style={{ padding:'5px 12px',fontSize:11,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:99,
+                              background:active?'#FFFFFF':'transparent',
+                              color:active?'#92400E':'#78716C',
+                              border:`1.5px solid ${active?'#F59E0B':'#FDE68A'}`,
+                              boxShadow:active?'0 1px 3px rgba(245,158,11,0.2)':'none' }}>
+                            {t.l}
+                          </button>
+                        );
+                      })}
                     </div>
                     {evPreview?(
-                      <div style={{ position:'relative',marginBottom:6 }}>
-                        <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:140,objectFit:'cover',borderRadius:8,border:'1px solid #E5E7EB' }}/>
+                      <div style={{ position:'relative',marginBottom:4 }}>
+                        <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:180,objectFit:'cover',borderRadius:10,border:'1px solid #E5E7EB' }}/>
                         <button onClick={()=>{setEvFile(null);setEvPreview(null);}}
-                          style={{ position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.5)',color:'#ffffff',border:'none',borderRadius:4,padding:'4px',display:'flex',alignItems:'center',cursor:'pointer' }}><Ic.x size={12} color="#ffffff"/></button>
+                          style={{ position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',color:'#ffffff',border:'none',borderRadius:6,padding:'5px',display:'flex',alignItems:'center',cursor:'pointer' }}><Ic.x size={12} color="#ffffff"/></button>
                       </div>
                     ):(
-                      <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,padding:'18px',borderRadius:8,border:'2px dashed #D1D5DB',background:'#F9FAFB',cursor:'pointer',fontSize:12,color:'#6B7280' }}>
-                        <Ic.upload size={22} color="#9CA3AF"/>
-                        <span>Hacer clic para seleccionar imagen</span>
+                      <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:'24px 18px',borderRadius:10,border:'2px dashed #F59E0B',background:'#FFFFFF',cursor:'pointer',fontSize:12,color:'#6B7280',transition:'all 0.12s' }}>
+                        <div style={{ width:40,height:40,borderRadius:'50%',background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                          <Ic.upload size={18} color="#B45309"/>
+                        </div>
+                        <div style={{ fontSize:12,fontWeight:700,color:'#374151' }}>Hacer clic para seleccionar imagen</div>
+                        <div style={{ fontSize:10,color:'#9CA3AF' }}>PNG, JPG o captura de pantalla</div>
                         <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{
                           const f=e.target.files[0];if(!f)return;
                           setEvFile(f);setEvPreview(URL.createObjectURL(f));
@@ -1248,11 +1274,16 @@ export function TicketView({lead,user,nav,updLead}){
                   </div>
                 ):(
                   <div>
-                    <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:6 }}>Nota detallada <span style={{ color:'#EF4444' }}>*</span> (mín. 50 caracteres)</div>
+                    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:7 }}>
+                      <div style={{ fontSize:10,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.1em' }}>
+                        Nota detallada <span style={{ color:'#EF4444' }}>*</span>
+                      </div>
+                      <div style={{ fontSize:10,color:'#9CA3AF' }}>mín. 50 caracteres</div>
+                    </div>
                     <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                      rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                      rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:9 }}
                       placeholder="Describe el contacto en detalle: qué se habló, qué se acordó, próximos pasos..."/>
-                    <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=50?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/50</div>
+                    <div style={{ textAlign:'right',fontSize:10,fontWeight:600,color:cf.note.length>=50?'#10B981':'#9CA3AF',marginTop:4 }}>{cf.note.length}/50</div>
                   </div>
                 )}
               </div>
@@ -1261,38 +1292,41 @@ export function TicketView({lead,user,nav,updLead}){
             {/* NOTA OBLIGATORIA — para intentos fallidos */}
             {needsNote&&(
               <div>
-                <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>
-                  Nota obligatoria <span style={{ color:'#EF4444' }}>*</span> (mín. 40 caracteres)
+                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:9 }}>
+                  <div style={{ fontSize:10,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.12em' }}>
+                    Nota obligatoria <span style={{ color:'#EF4444' }}>*</span>
+                  </div>
+                  <div style={{ fontSize:10,color:'#9CA3AF' }}>mín. 40 caracteres</div>
                 </div>
                 <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:9 }}
                   placeholder="Ej: Llamé a las 14:30, entró al buzón. Volver a intentar mañana a las 11:00..."/>
-                <div style={{ textAlign:'right',fontSize:10,color:cf.note.length>=40?'#10B981':'#9CA3AF',marginTop:3 }}>{cf.note.length}/40</div>
+                <div style={{ textAlign:'right',fontSize:10,fontWeight:600,color:cf.note.length>=40?'#10B981':'#9CA3AF',marginTop:4 }}>{cf.note.length}/40</div>
               </div>
             )}
 
             {/* NOTA OPCIONAL — otros resultados */}
             {!needsEvidence&&!needsNote&&cf.result&&(
               <div>
-                <div style={{ fontSize:9,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:7 }}>Nota adicional (opcional)</div>
+                <div style={{ fontSize:10,fontWeight:800,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:9 }}>Nota adicional <span style={{ fontWeight:500,color:'#9CA3AF',letterSpacing:0,textTransform:'none' }}>(opcional)</span></div>
                 <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12 }}
+                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:9 }}
                   placeholder="Comentario adicional..."/>
               </div>
             )}
 
             {/* Error */}
             {cfErr&&(
-              <div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600,display:'flex',alignItems:'flex-start',gap:6 }}>
+              <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#B91C1C',fontWeight:600,display:'flex',alignItems:'flex-start',gap:8 }}>
                 <Ic.alert size={14} color="#DC2626" style={{ flexShrink:0,marginTop:1 }}/>{cfErr}
               </div>
             )}
 
             {/* Acciones */}
-            <div style={{ display:'flex',gap:8,justifyContent:'flex-end',paddingTop:4 }}>
-              <button onClick={closeContact} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>
+            <div style={{ display:'flex',gap:8,justifyContent:'flex-end',marginTop:4,borderTop:'1px solid #F3F4F6',paddingTop:14 }}>
+              <button onClick={closeContact} style={{ ...S.btn2,padding:'10px 20px',fontSize:12,fontWeight:600,borderRadius:9 }}>Cancelar</button>
               <button onClick={submitContact} disabled={cfSaving||!cf.result}
-                style={{ ...S.btn,padding:'9px 20px',fontSize:12,fontWeight:700,opacity:(cfSaving||!cf.result)?0.6:1 }}>
+                style={{ ...S.btn,padding:'10px 22px',fontSize:12,fontWeight:700,borderRadius:9,opacity:(cfSaving||!cf.result)?0.5:1,boxShadow:(cfSaving||!cf.result)?'none':'0 2px 8px rgba(242,129,0,0.3)' }}>
                 {cfSaving?'Guardando...':'Guardar contacto'}
               </button>
             </div>
