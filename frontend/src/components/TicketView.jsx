@@ -1140,10 +1140,10 @@ export function TicketView({lead,user,nav,updLead}){
       {showContact&&<Modal
         onClose={!cfSaving?closeContact:undefined}
         headerContent={
-          <div style={{ margin:'-24px -24px 0',padding:'18px 22px 16px',borderBottom:'1px solid #E5E7EB',background:'linear-gradient(180deg, #F9FAFB 0%, #F3F4F6 100%)',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
-            <div style={{ display:'flex',alignItems:'center',gap:12 }}>
-              <div style={{ width:36,height:36,borderRadius:10,background:'#2563EB',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
-                <Ic.msg size={16} color="#ffffff"/>
+          <div style={{ padding:'16px 20px 14px',borderBottom:'1px solid #E5E7EB',background:'linear-gradient(180deg, #FFFBF5 0%, #FFF4E6 100%)',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
+            <div style={{ display:'flex',alignItems:'center',gap:11 }}>
+              <div style={{ width:34,height:34,borderRadius:10,background:'#F28100',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(242,129,0,0.3)' }}>
+                <Ic.msg size={15} color="#ffffff"/>
               </div>
               <div>
                 <div style={{ fontSize:15,fontWeight:800,color:'#111827',letterSpacing:'-0.2px' }}>Registrar contacto</div>
@@ -1166,7 +1166,7 @@ export function TicketView({lead,user,nav,updLead}){
             <div style={{ fontSize:13,color:'#6B7280' }}>Ticket <strong style={{ color:'#111827' }}>#{lead.num}</strong> actualizado correctamente.</div>
           </div>
         ):(
-          <div style={{ display:'flex',flexDirection:'column',gap:18,marginTop:20 }}>
+          <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
 
             {/* Canal */}
             <div>
