@@ -189,6 +189,26 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
     })();
   }, [showAdd]);
 
+  // Cargar paleta de colores del catálogo cuando en el form de "Nueva unidad"
+  // se llena marca+modelo — mismo patrón que el form de edición.
+  useEffect(() => {
+    if (!showAdd) return;
+    if (!nw.brand || !nw.model) { setModelColorPhotos([]); return; }
+    let cancelled = false;
+    api.getModels({ brand: nw.brand, q: nw.model, limit: 5 })
+      .then(mods => {
+        if (cancelled) return;
+        const mod = mods.find(x => x.model?.toUpperCase() === nw.model?.toUpperCase()) || mods[0];
+        const cps = mod
+          ? (Array.isArray(mod.color_photos) ? mod.color_photos
+              : (mod.color_photos ? JSON.parse(mod.color_photos) : []))
+          : [];
+        setModelColorPhotos(cps.filter(cp => cp.color));
+      })
+      .catch(() => { if (!cancelled) setModelColorPhotos([]); });
+    return () => { cancelled = true; };
+  }, [showAdd, nw.brand, nw.model]);
+
   // ── Handlers (sin cambios de lógica) ────────────────────────────────────────
 
   const handleAdd = async e => {
@@ -1390,9 +1410,39 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               <Field label="Año" value={nw.year} onChange={v=>setNw({...nw,year:v})} type="number"/>
               <Field label="Marca *" value={nw.brand} onChange={v=>setNw({...nw,brand:v})} req/>
             </div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10 }}>
+            <div style={{ marginBottom:10 }}>
               <Field label="Modelo *" value={nw.model} onChange={v=>setNw({...nw,model:v})} req/>
+            </div>
+            {/* Color con paleta del catálogo — mismo patrón que edición */}
+            <div style={{ marginBottom:10 }}>
               <Field label="Color" value={nw.color} onChange={v=>setNw({...nw,color:v})}/>
+              {modelColorPhotos.length > 0 && (
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:7 }}>
+                  {modelColorPhotos.map(cp => {
+                    const isSelected = nw.color?.toLowerCase().trim() === cp.color?.toLowerCase().trim();
+                    return (
+                      <button key={cp.color} type="button"
+                        onClick={() => setNw(f => ({...f, color: cp.color}))}
+                        title={cp.color}
+                        style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 7px 3px 4px',
+                          borderRadius:20, border: isSelected ? '2px solid #F28100' : '1.5px solid #E5E7EB',
+                          background: isSelected ? '#FFFBF0' : '#F9FAFB', cursor:'pointer', fontFamily:'inherit' }}>
+                        <span style={{ width:14, height:14, borderRadius:7, background: cp.hex || getColorCss(cp.color) || '#E5E7EB',
+                          border:'1px solid rgba(0,0,0,0.1)', display:'inline-block', flexShrink:0 }}/>
+                        <span style={{ fontSize:10, fontWeight: isSelected?700:400, color: isSelected?'#F28100':'#6B7280', whiteSpace:'nowrap' }}>{cp.color}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {nw.color && (()=>{
+                const cp = modelColorPhotos.find(p => p.color?.toLowerCase().trim() === nw.color?.toLowerCase().trim());
+                const cc = cp?.hex || getColorCss(nw.color);
+                return <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5 }}>
+                  <span style={{ width:20,height:14,borderRadius:3,background:cc||'#E5E7EB',border:'1px solid #D1D5DB',display:'inline-block'}}/>
+                  {cc&&<span style={{ fontSize:10,color:'#9CA3AF',fontFamily:'inherit' }}>{cc}</span>}
+                </div>;
+              })()}
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14 }}>
               <Field label="N° Chasis" value={nw.chassis} onChange={v=>setNw({...nw,chassis:v})}/>
