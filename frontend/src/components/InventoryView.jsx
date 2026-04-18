@@ -937,28 +937,25 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 onDrop={canDrag ? e => handleDrop(e, x.id) : undefined}
                 style={{ cursor: canDrag ? 'grab' : 'default' }}
               >
-                {/* ── CARD — nueva estructura con franja de estado izquierda ── */}
+                {/* ── CARD — rediseño limpio: foto grande · info · acciones ── */}
                 <div className="crm-inv-card" style={{
                   display:'flex', alignItems:'stretch',
                   background:'#FFFFFF',
-                  borderRadius: isHistOpen ? '12px 12px 0 0' : 12,
-                  border:'1px solid #E5E7EB',
+                  borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
+                  border:`1px solid ${isSold ? '#E5E7EB' : '#EAECEF'}`,
                   overflow:'hidden',
-                  boxShadow: isSold ? 'none' : '0 1px 4px rgba(0,0,0,0.05)',
-                  opacity: isSold ? 0.72 : 1,
-                  transition:'box-shadow 0.15s, opacity 0.15s',
+                  boxShadow: isSold ? 'none' : '0 1px 3px rgba(16,24,40,0.04), 0 1px 2px rgba(16,24,40,0.02)',
+                  opacity: isSold ? 0.68 : 1,
+                  transition:'box-shadow 0.18s ease, transform 0.12s ease, border-color 0.15s',
                   cursor: isAdmin ? 'pointer' : 'default',
                 }}
                   onClick={isAdmin ? ()=>openEdit(x) : undefined}
-                  onMouseEnter={e=>{ if(!isSold) e.currentTarget.style.boxShadow='0 4px 14px rgba(0,0,0,0.09)'; }}
-                  onMouseLeave={e=>{ if(!isSold) e.currentTarget.style.boxShadow=isSold?'none':'0 1px 4px rgba(0,0,0,0.05)'; }}
+                  onMouseEnter={e=>{ if(!isSold){ e.currentTarget.style.boxShadow='0 6px 20px rgba(16,24,40,0.08)'; e.currentTarget.style.borderColor='#D1D5DB'; e.currentTarget.style.transform='translateY(-1px)'; } }}
+                  onMouseLeave={e=>{ if(!isSold){ e.currentTarget.style.boxShadow='0 1px 3px rgba(16,24,40,0.04), 0 1px 2px rgba(16,24,40,0.02)'; e.currentTarget.style.borderColor='#EAECEF'; e.currentTarget.style.transform='translateY(0)'; } }}
                 >
 
-                  {/* ── FRANJA de color de estado (izquierda, 4px) ── */}
-                  <div style={{ width:4, flexShrink:0, background: stCfg.color }}/>
-
-                  {/* ── FOTO ── */}
-                  <div style={{ flexShrink:0, position:'relative', width:120, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', background:'#F9FAFB', borderRight:'1px solid #F3F4F6', overflow:'hidden', minHeight:96 }} onClick={e=>e.stopPropagation()}>
+                  {/* ── FOTO GRANDE con badge de estado superpuesto ── */}
+                  <div style={{ flexShrink:0, position:'relative', width:180, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)', overflow:'hidden', minHeight:140 }} onClick={e=>e.stopPropagation()}>
                     {x.unit_photo
                       ? <>
                           <img
@@ -967,153 +964,165 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             style={{ width:'100%', height:'100%', objectFit:'cover', cursor:'pointer', display:'block', position:'absolute', inset:0 }}
                           />
                           <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
-                            style={{ position:'absolute', bottom:4, right:4, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:11, padding:0, zIndex:1 }}>
+                            style={{ position:'absolute', bottom:6, right:6, width:24, height:24, borderRadius:6, background:'rgba(15,23,42,0.75)', backdropFilter:'blur(4px)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', padding:0, zIndex:1 }}>
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
                         </>
                       : <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Agregar foto"
-                          style={{ width:'100%', height:'100%', minHeight:96, border:'none', background:'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, padding:0 }}>
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          style={{ width:'100%', height:'100%', minHeight:140, border:'none', background:'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, padding:0 }}>
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                             <circle cx="12" cy="13" r="4"/>
                           </svg>
-                          <span style={{ fontSize:8, color:'#D1D5DB', fontWeight:700, letterSpacing:'0.08em' }}>FOTO</span>
+                          <span style={{ fontSize:9, color:'#94A3B8', fontWeight:800, letterSpacing:'0.12em' }}>FOTO</span>
                         </button>
                     }
+                    {/* Branch chip overlay — arriba izquierda */}
+                    {bCode && (
+                      <span style={{ position:'absolute', top:8, left:8, fontSize:9.5, fontWeight:800, color:'#FFFFFF', background:bCfg.color, padding:'3px 8px', borderRadius:6, letterSpacing:'0.02em', boxShadow:'0 1px 4px rgba(0,0,0,0.25)', zIndex:1 }}>
+                        {bCfg.label}
+                      </span>
+                    )}
                   </div>
 
                   {/* ── INFO PRINCIPAL ── */}
-                  <div style={{ flex:1, minWidth:0, padding:'12px 16px', display:'flex', flexDirection:'column', justifyContent:'center', borderRight:'1px solid #F3F4F6', overflow:'hidden', gap:4 }}>
-                    {/* Fila 1: Marca + Modelo prominentes */}
-                    <div style={{ fontSize:14, fontWeight:700, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {x.brand} {x.model}
+                  <div style={{ flex:1, minWidth:0, padding:'14px 18px', display:'flex', flexDirection:'column', justifyContent:'center', gap:6, overflow:'hidden' }}>
+                    {/* Marca + Modelo */}
+                    <div style={{ fontSize:15, fontWeight:800, color:'#0F172A', letterSpacing:'-0.2px', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {x.brand} <span style={{ fontWeight:600, color:'#475569' }}>{x.model}</span>
                     </div>
-                    {/* Fila 2: Año + Color */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                    {/* Meta chips: año · color */}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                       {x.year && (
-                        <span style={{ fontSize:10, fontWeight:700, color:'#4F46E5', background:'#EEF2FF', padding:'1px 6px', borderRadius:99, border:'1px solid #C7D2FE', flexShrink:0 }}>
+                        <span style={{ fontSize:10.5, fontWeight:700, color:'#475569', background:'#F1F5F9', padding:'2px 8px', borderRadius:5, letterSpacing:'0.02em' }}>
                           {x.year}
                         </span>
                       )}
                       {x.color && (
-                        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                          <span style={{ width:12, height:12, borderRadius:3, background:cDot||'#E5E7EB', border: !cDot||cDot==='#FFFFFF'?'1px solid #D1D5DB':'1px solid rgba(0,0,0,0.1)', flexShrink:0, display:'inline-block' }}/>
-                          <span style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>{x.color}</span>
+                        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                          <span style={{ width:12, height:12, borderRadius:3, background:cDot||'#E5E7EB', border: !cDot||cDot==='#FFFFFF'?'1px solid #D1D5DB':'1px solid rgba(0,0,0,0.08)', flexShrink:0, display:'inline-block' }}/>
+                          <span style={{ fontSize:11, color:'#64748B', fontWeight:600 }}>{x.color}</span>
+                        </div>
+                      )}
+                      {x.sale_price > 0 && (
+                        <>
+                          <span style={{ width:3, height:3, borderRadius:'50%', background:'#CBD5E1' }}/>
+                          <span style={{ fontSize:12, fontWeight:800, color:'#0F172A', letterSpacing:'-0.01em' }}>
+                            ${Number(x.sale_price).toLocaleString('es-CL')}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {/* Identificadores: chasis + motor con mini fotos inline */}
+                    <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', marginTop:2 }} onClick={e=>e.stopPropagation()}>
+                      {x.chassis && (
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontSize:9, fontWeight:800, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Chasis</span>
+                          <span style={{ fontSize:10.5, fontWeight:600, color:'#334155', fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace' }}>{x.chassis}</span>
+                          {x.chassis_photo
+                            ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
+                                style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1px solid #E2E8F0' }}/>
+                            : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'chassis_photo');}} title="Agregar foto chasis"
+                                style={{ width:22,height:22,borderRadius:5,border:'1px dashed #CBD5E1',background:'#FFFFFF',cursor:'pointer',fontSize:13,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
+                          }
+                        </div>
+                      )}
+                      {x.motor_num && (
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontSize:9, fontWeight:800, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Motor</span>
+                          <span style={{ fontSize:10.5, fontWeight:600, color:'#334155', fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace' }}>{x.motor_num}</span>
+                          {x.motor_photo
+                            ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
+                                style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1px solid #E2E8F0' }}/>
+                            : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'motor_photo');}} title="Agregar foto motor"
+                                style={{ width:22,height:22,borderRadius:5,border:'1px dashed #CBD5E1',background:'#FFFFFF',cursor:'pointer',fontSize:13,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
+                          }
                         </div>
                       )}
                     </div>
-                    {/* Fila 3: Chasis en mono */}
-                    {x.chassis && (
-                      <div style={{ fontSize:11, color:'#9CA3AF', fontFamily:'inherit' }}>
-                        {x.chassis}
-                      </div>
-                    )}
-                    {/* Fila 4: Precio si existe */}
-                    {x.sale_price > 0 && (
-                      <div style={{ fontSize:15, fontWeight:800, color:'#374151', letterSpacing:'-0.01em', marginTop:2 }}>
-                        ${Number(x.sale_price).toLocaleString('es-CL')}
-                      </div>
-                    )}
                   </div>
 
-                  {/* ── IDENTIFICADORES — chasis foto + motor (compacto) ── */}
-                  <div style={{ flexShrink:0, padding:'10px 14px', borderRight:'1px solid #F3F4F6', display:'flex', flexDirection:'column', justifyContent:'center', gap:8, minWidth:0 }} onClick={e=>e.stopPropagation()}>
-                    {/* Chasis foto */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', width:32, flexShrink:0 }}>Chasis</span>
-                      {x.chassis_photo
-                        ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
-                            style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
-                        : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'chassis_photo');}} title="Foto chasis"
-                            style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
-                      }
-                    </div>
-                    {/* Motor foto */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', width:32, flexShrink:0 }}>Motor</span>
-                      {x.motor_num ? (
-                        x.motor_photo
-                          ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
-                              style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
-                          : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'motor_photo');}} title="Foto motor"
-                              style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
-                      ) : (
-                        <span style={{ fontSize:11, color:'#D1D5DB' }}>—</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── ZONA DERECHA: estado + sucursal + acciones ── */}
+                  {/* ── ZONA DERECHA: estado + acciones ── */}
                   <div className="crm-inv-actions" onClick={e=>e.stopPropagation()} style={{
-                    flexShrink:0, padding:'12px 14px',
+                    flexShrink:0, padding:'14px 14px',
                     display:'flex', flexDirection:'column',
-                    alignItems:'flex-end', justifyContent:'space-between',
-                    minWidth:128, borderLeft:'1px solid #F3F4F6',
-                    alignSelf:'stretch',
+                    alignItems:'stretch', justifyContent:'center',
+                    gap:8, width:160,
+                    borderLeft:'1px solid #F1F5F9',
+                    background:'#FAFBFC',
                   }}>
-                    {/* Badge de estado arriba */}
+                    {/* Estado — control completo, más visible */}
                     {isSold ? (
-                      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'stretch', gap:4 }}>
                         <span style={{
-                          fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:99,
+                          fontSize:11, fontWeight:800, padding:'6px 10px', borderRadius:8, textAlign:'center',
                           background:ST_CFG.vendida.bg, color:ST_CFG.vendida.color, border:`1px solid ${ST_CFG.vendida.border}`,
+                          letterSpacing:'0.02em',
                         }}>
                           {ST_CFG.vendida.icon} Vendida
                         </span>
-                        {x.sold_at && <div style={{ fontSize:9, color:'#9CA3AF' }}>{fD(x.sold_at)}</div>}
+                        {x.sold_at && <div style={{ fontSize:10, color:'#94A3B8', textAlign:'center' }}>{fD(x.sold_at)}</div>}
                       </div>
                     ) : (
                       <div style={{
-                        display:'inline-flex', alignItems:'center', gap:5,
-                        padding:'4px 9px', borderRadius:99,
-                        background:stCfg.bg, border:`1.5px solid ${stCfg.border}`,
+                        position:'relative',
+                        background:stCfg.bg,
+                        border:`1.5px solid ${stCfg.color}`,
+                        borderRadius:8,
+                        boxShadow:`0 1px 3px ${stCfg.color}22`,
                       }}>
-                        <span style={{ fontSize:11, color:stCfg.color }}>{stCfg.icon}</span>
                         <select value={x.status}
                           onClick={e=>e.stopPropagation()}
                           onChange={e=>handleStatus(x.id,e.target.value)}
                           style={{
+                            width:'100%',
                             background:'transparent', border:'none',
-                            fontSize:10, fontWeight:800, color:stCfg.color,
-                            cursor:'pointer', padding:0, outline:'none', fontFamily:'inherit',
+                            fontSize:11, fontWeight:800, color:stCfg.color,
+                            cursor:'pointer', padding:'7px 26px 7px 28px',
+                            outline:'none', fontFamily:'inherit',
+                            appearance:'none', WebkitAppearance:'none',
+                            letterSpacing:'0.02em',
                           }}>
                           {Object.entries(INV_ST).filter(([k])=>k!=='vendida').map(([k,v])=>(
                             <option key={k} value={k}>{v.l}</option>
                           ))}
                         </select>
+                        <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:11, color:stCfg.color, pointerEvents:'none' }}>{stCfg.icon}</span>
+                        <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:8, color:stCfg.color, pointerEvents:'none' }}>▼</span>
                       </div>
                     )}
 
-                    {/* Sucursal en el medio */}
-                    {bCode && (
-                      <span style={{ fontSize:10, fontWeight:600, color:bCfg.color, background:bCfg.light, padding:'2px 7px', borderRadius:99, border:`1px solid ${bCfg.color}30`, textAlign:'right' }}>
-                        {bCfg.label}
-                      </span>
-                    )}
+                    {/* Historial */}
+                    <button onClick={()=>toggleHist(x.id)}
+                      style={{
+                        padding:'6px 10px', borderRadius:8, fontSize:11, fontWeight:700,
+                        cursor:'pointer', fontFamily:'inherit',
+                        background: isHistOpen ? '#0F172A' : '#FFFFFF',
+                        color: isHistOpen ? '#FFFFFF' : '#475569',
+                        border:`1px solid ${isHistOpen?'#0F172A':'#E2E8F0'}`,
+                        display:'flex', alignItems:'center', justifyContent:'center', gap:5,
+                        transition:'all 0.12s',
+                      }}>
+                      {histLoading[x.id]?'…':'Historial'}
+                    </button>
 
-                    {/* Acciones abajo */}
-                    <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'stretch' }}>
-                      <button onClick={()=>toggleHist(x.id)}
+                    {/* Mover */}
+                    {!isSold && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
+                      <select defaultValue=""
+                        onClick={e=>e.stopPropagation()}
+                        onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
                         style={{
-                          ...miniBtn,
-                          background: isHistOpen ? '#EEF2FF' : '#F9FAFB',
-                          color: isHistOpen ? '#4F46E5' : '#6B7280',
-                          border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}`,
+                          padding:'6px 10px', borderRadius:8, fontSize:11, fontWeight:600,
+                          cursor:'pointer', fontFamily:'inherit',
+                          background:'#FFFFFF', color:'#475569',
+                          border:'1px solid #E2E8F0', width:'100%',
                         }}>
-                        {histLoading[x.id]?'…':'Historial'}
-                      </button>
-                      {!isSold && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
-                        <select defaultValue=""
-                          onClick={e=>e.stopPropagation()}
-                          onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
-                          style={{ ...miniBtn, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer' }}>
-                          <option value="" disabled>Mover</option>
-                          {brs.filter(b=>b.id!==x.branch_id).map(b=>(
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
+                        <option value="" disabled>Mover a...</option>
+                        {brs.filter(b=>b.id!==x.branch_id).map(b=>(
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
