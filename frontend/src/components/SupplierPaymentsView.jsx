@@ -16,6 +16,13 @@ function $(n) {
   if (!n && n !== 0) return '-';
   return '$\u2009' + parseInt(n).toLocaleString('es-CL');
 }
+function $short(n) {
+  if (!n && n !== 0) return '$0';
+  const num = parseInt(n);
+  if (num >= 1_000_000) return '$' + (num/1_000_000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M';
+  if (num >= 1_000)     return '$' + Math.round(num/1_000).toLocaleString('es-CL') + 'K';
+  return '$' + num.toLocaleString('es-CL');
+}
 function fd(s) {
   if (!s) return '-';
   const [y,m,d] = String(s).slice(0,10).split('-');
@@ -579,90 +586,142 @@ function MobileCard({ p, onClick }) {
   );
 }
 
-/* ── Desktop table row ──────────────────────────────────────────────────── */
-const TABLE_COLS = '230px minmax(200px,1fr) 130px 130px 110px 110px 110px';
+/* ── Desktop row card (estilo Leads/Sales) ───────────────────────────────── */
+const STATUS_BG = {
+  Pagado:    'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)',
+  Vencido:   'linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)',
+  Pendiente: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+};
+const STATUS_ICON = {
+  Pagado:    '#059669',
+  Vencido:   '#DC2626',
+  Pendiente: '#D97706',
+};
 
-function TableHeader() {
-  const cols = ['Factura / Fecha','Modelo / Vehículo','Total','Pagado','Venc.','Pago','Estado'];
-  return (
-    <div style={{
-      display:'grid',
-      gridTemplateColumns: TABLE_COLS,
-      padding:'8px 16px',
-      background:'#F9FAFB',
-      borderBottom:'2px solid #E5E7EB',
-      borderRadius:'12px 12px 0 0',
-    }}>
-      {cols.map(col=>(
-        <div key={col} style={{
-          fontSize:10, fontWeight:700, color:'#9CA3AF',
-          textTransform:'uppercase', letterSpacing:'0.08em',
-        }}>{col}</div>
-      ))}
-    </div>
-  );
-}
-
-function TableRow({ p, onClick }) {
-  const [hov,setHov]=useState(false);
+function RowCard({ p, onClick }) {
+  const [hov,setHov] = useState(false);
   const dv = due(p);
   const ov = dv && !p.paid_amount && new Date(dv.slice(0,10)+'T12:00:00') < new Date();
   const st = pagoStatus(p);
   const img = motoImg(p);
+  const saldo = Math.max(0, (parseInt(p.total_amount)||0) - (parseInt(p.paid_amount)||0));
+
   return (
     <div
       onClick={onClick}
       onMouseEnter={()=>setHov(true)}
       onMouseLeave={()=>setHov(false)}
       style={{
-        display:'grid',
-        gridTemplateColumns: TABLE_COLS,
-        padding:'11px 16px',
-        borderBottom:'1px solid #F3F4F6',
-        alignItems:'center',
+        display:'flex', alignItems:'stretch',
+        minHeight:148, marginBottom:10,
+        background:'#FFFFFF',
+        border:'1px solid #E5E7EB',
+        borderLeft:`4px solid ${st.c}`,
+        borderRadius:14, overflow:'hidden',
         cursor:'pointer',
-        background: hov ? '#FAFAFA' : '#FFFFFF',
-        transition:'background 120ms',
-        gap:0,
+        boxShadow: hov ? '0 6px 16px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.04)',
+        transform: hov ? 'translateY(-1px)' : 'translateY(0)',
+        transition: 'all 0.15s ease',
       }}>
 
-      {/* Factura / Fecha */}
-      <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+      {/* Foto */}
+      <div style={{
+        width:220, flexShrink:0,
+        background: STATUS_BG[st.l] || '#F3F4F6',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        overflow:'hidden', position:'relative',
+      }}>
         {img
-          ? <img src={img} alt="" style={{width:40,height:30,objectFit:'contain',borderRadius:6,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>
-          : <div style={{width:40,height:30,borderRadius:6,border:'1px dashed #E5E7EB',background:'#F9FAFB',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ic.bike size={14} color="#D1D5DB"/></div>
+          ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+          : <Ic.bike size={56} color={STATUS_ICON[st.l] || '#9CA3AF'}/>
         }
-        <div style={{minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#F28100',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>#{p.invoice_number||'—'}</div>
-          <div style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{fd(p.invoice_date)}</div>
+        {!p.model_id && (p.brand||p.model) && (
+          <span style={{
+            position:'absolute', top:8, left:8,
+            fontSize:9, fontWeight:800, color:'#92400E',
+            background:'rgba(254,243,199,0.95)', borderRadius:4, padding:'2px 7px',
+            letterSpacing:'0.06em', border:'1px solid #FDE68A',
+          }}>
+            SIN CATÁLOGO
+          </span>
+        )}
+      </div>
+
+      {/* Contenido */}
+      <div style={{
+        flex:1, minWidth:0,
+        padding:'14px 18px',
+        display:'flex', flexDirection:'column', justifyContent:'space-between',
+        gap:8,
+      }}>
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
+            <div style={{ fontSize:17, fontWeight:800, color:'#0F172A', letterSpacing:'-0.3px' }}>
+              #{p.invoice_number||'—'}
+            </div>
+            <span style={{
+              fontSize:10, fontWeight:700, color:'#6B7280',
+              background:'#F9FAFB', padding:'2px 8px', borderRadius:20, border:'1px solid #E5E7EB',
+            }}>
+              {fd(p.invoice_date)}
+            </span>
+          </div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:6,
+                        whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            {p.catalog_name || p.model || '—'}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+            {p.color && <ColorChip color={p.color}/>}
+            {p.commercial_year && (
+              <span style={{ fontSize:10, fontWeight:700, color:'#4F46E5',
+                             background:'#EEF2FF', padding:'2px 8px', borderRadius:20, border:'1px solid #C7D2FE' }}>
+                {p.commercial_year}
+              </span>
+            )}
+            {p.chassis && (
+              <span style={{ fontSize:10, fontWeight:600, color:'#6B7280',
+                             background:'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>
+                ◆ {p.chassis}
+              </span>
+            )}
+            {p.motor_num && (
+              <span style={{ fontSize:10, fontWeight:600, color:'#6B7280',
+                             background:'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>
+                ⚙ {p.motor_num}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Modelo */}
-      <div style={{minWidth:0,paddingRight:12}}>
-        <div style={{fontSize:13,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.catalog_name||p.model||'—'}</div>
-        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3,flexWrap:'wrap'}}>
-          {p.color&&<ColorChip color={p.color}/>}
-          {p.commercial_year&&<span style={{fontSize:10,fontWeight:700,color:'#4F46E5',background:'#EEF2FF',padding:'1px 7px',borderRadius:20,border:'1px solid #C7D2FE'}}>{p.commercial_year}</span>}
-          {!p.model_id&&(p.brand||p.model)&&<span style={{fontSize:9,fontWeight:700,color:'#B45309',background:'#FEF3C7',padding:'1px 6px',borderRadius:20,border:'1px solid #FDE68A',textTransform:'uppercase',letterSpacing:'0.04em'}}>Sin catálogo</span>}
-        </div>
-      </div>
-
-      {/* Total */}
-      <div style={{fontSize:13,fontWeight:700,color:'#111827'}}>{$(p.total_amount)}</div>
-
-      {/* Pagado */}
-      <div style={{fontSize:13,fontWeight:600,color:p.paid_amount?'#15803D':'#D1D5DB'}}>{$(p.paid_amount)}</div>
-
-      {/* Vencimiento */}
-      <div style={{fontSize:12,fontWeight:ov?700:400,color:ov?'#DC2626':'#374151'}}>{fd(dv)}</div>
-
-      {/* Fecha pago */}
-      <div style={{fontSize:12,color:p.payment_date?'#374151':'#D1D5DB'}}>{p.payment_date?fd(p.payment_date):'—'}</div>
-
-      {/* Estado */}
-      <div>
+      {/* Zona derecha: estado + montos + fechas */}
+      <div style={{
+        width:200, flexShrink:0,
+        padding:'14px 18px',
+        borderLeft:'1px dashed #E5E7EB',
+        display:'flex', flexDirection:'column', justifyContent:'space-between',
+        alignItems:'flex-end', textAlign:'right', gap:6,
+      }}>
         <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
+        <div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1 }}>
+            {$(p.total_amount)}
+          </div>
+          {p.paid_amount ? (
+            <div style={{ fontSize:11, fontWeight:700, color:'#15803D', marginTop:3 }}>
+              ✓ Pagado {$(p.paid_amount)}
+            </div>
+          ) : saldo > 0 ? (
+            <div style={{ fontSize:11, fontWeight:700, color: ov?'#DC2626':'#D97706', marginTop:3 }}>
+              Saldo {$(saldo)}
+            </div>
+          ) : null}
+        </div>
+        <div style={{ fontSize:10, color:'#9CA3AF', lineHeight:1.4 }}>
+          {p.payment_date
+            ? <>Pagado: <strong style={{color:'#374151'}}>{fd(p.payment_date)}</strong></>
+            : dv ? <>Vence: <strong style={{color: ov?'#DC2626':'#374151'}}>{fd(dv)}</strong></> : null}
+        </div>
       </div>
     </div>
   );
@@ -832,7 +891,7 @@ export function SupplierPaymentsView({ user }) {
             flex: isMobile ? '1 1 calc(50% - 5px)' : '1 1 100px',
           }}>
             <div style={{fontSize:18, fontWeight:800, color:k.color, lineHeight:1, marginBottom:3}}>
-              {k.isMoney ? $(k.val) : k.val}
+              {k.isMoney ? $short(k.val) : k.val}
             </div>
             <div style={{fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em'}}>
               {k.label}
@@ -997,10 +1056,9 @@ export function SupplierPaymentsView({ user }) {
             </div>
           )}
           {!loading && sorted.length>0 && (
-            <div style={{...S.card,padding:0,overflow:'hidden'}}>
-              <TableHeader/>
+            <div>
               {sorted.map(p=>(
-                <TableRow key={p.id} p={p} onClick={()=>{setEditFromList(false);setSel(p);}}/>
+                <RowCard key={p.id} p={p} onClick={()=>{setEditFromList(false);setSel(p);}}/>
               ))}
             </div>
           )}
