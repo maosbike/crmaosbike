@@ -71,6 +71,8 @@ const COMBINED_FROM = `(
     i.ticket_id,
     i.added_as_sold,
     FALSE AS is_note_only,
+    i.model_id,
+    mm.image_url,
     sv.id          AS seller_id,
     sv.first_name  AS seller_fn,
     sv.last_name   AS seller_ln,
@@ -87,9 +89,10 @@ const COMBINED_FROM = `(
       t.rut
     ) AS client_rut
   FROM inventory i
-  LEFT JOIN users    sv ON i.sold_by   = sv.id
-  LEFT JOIN branches b  ON i.branch_id = b.id
-  LEFT JOIN tickets  t  ON i.ticket_id = t.id
+  LEFT JOIN users       sv ON i.sold_by   = sv.id
+  LEFT JOIN branches    b  ON i.branch_id = b.id
+  LEFT JOIN tickets     t  ON i.ticket_id = t.id
+  LEFT JOIN moto_models mm ON i.model_id  = mm.id
   WHERE i.status IN ('vendida', 'reservada')
 
   UNION ALL
@@ -106,6 +109,8 @@ const COMBINED_FROM = `(
     n.ticket_id,
     TRUE  AS added_as_sold,
     TRUE  AS is_note_only,
+    n.model_id,
+    mm.image_url,
     sv.id          AS seller_id,
     sv.first_name  AS seller_fn,
     sv.last_name   AS seller_ln,
@@ -122,9 +127,10 @@ const COMBINED_FROM = `(
       t.rut
     ) AS client_rut
   FROM sales_notes n
-  LEFT JOIN users    sv ON n.sold_by   = sv.id
-  LEFT JOIN branches b  ON n.branch_id = b.id
-  LEFT JOIN tickets  t  ON n.ticket_id = t.id
+  LEFT JOIN users       sv ON n.sold_by   = sv.id
+  LEFT JOIN branches    b  ON n.branch_id = b.id
+  LEFT JOIN tickets     t  ON n.ticket_id = t.id
+  LEFT JOIN moto_models mm ON n.model_id  = mm.id
 ) c`;
 
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
@@ -289,6 +295,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
       sold_at, ticket_id, payment_method, sale_type, sale_notes,
       sale_price, invoice_amount, delivered,
       client_name, client_rut, status: reqStatus,
+      model_id: reqModelId,
     } = req.body;
 
     // Vendedor: solo puede registrar ventas propias. Forzamos sold_by a su propio id.
@@ -306,19 +313,36 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
 
     await db.query('BEGIN');
 
+    // Auto-asociación al catálogo por match canónico (marca+modelo) si no viene explícito.
+    // Preferimos el de mismo año, luego activos.
+    let finalModelId = reqModelId || null;
+    if (!finalModelId) {
+      const mlu = await db.query(
+        `SELECT id FROM moto_models
+         WHERE UPPER(REGEXP_REPLACE(brand, '[\\s\\-\\.]', '', 'g'))
+             = UPPER(REGEXP_REPLACE($1, '[\\s\\-\\.]', '', 'g'))
+           AND UPPER(REGEXP_REPLACE(model, '[\\s\\-\\.]', '', 'g'))
+             = UPPER(REGEXP_REPLACE($2, '[\\s\\-\\.]', '', 'g'))
+         ORDER BY CASE WHEN year = $3 THEN 0 ELSE 1 END, active DESC
+         LIMIT 1`,
+        [brand, model, year ? parseInt(year) : null]
+      );
+      finalModelId = mlu.rows[0]?.id || null;
+    }
+
     const { rows } = await db.query(
       `INSERT INTO sales_notes (
          status, branch_id, year, brand, model, color, chassis, motor_num, price,
          sold_at, sold_by, ticket_id,
          payment_method, sale_type, sale_notes,
          sale_price, cost_price, invoice_amount, delivered,
-         client_name, client_rut, created_by
+         client_name, client_rut, created_by, model_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9,
          $10, $11, $12,
          $13, $14, $15,
          $16, $17, $18, $19,
-         $20, $21, $22
+         $20, $21, $22, $23
        ) RETURNING *`,
       [
         finalStatus,
@@ -343,6 +367,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
         client_name || null,
         client_rut  || null,
         req.user.id,
+        finalModelId,
       ]
     );
 

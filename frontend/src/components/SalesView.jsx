@@ -1627,11 +1627,11 @@ export function SalesView({ user, realBranches }) {
   // ── Columnas de la tabla desktop ──
   // cliente+fecha | moto+chasis | vendedor+sucursal | precio+saldo | estado (chips) | acciones
   const tplCols = isAdmin
-    ? 'minmax(220px,1.3fr) minmax(160px,1.1fr) minmax(130px,0.9fr) 120px minmax(260px,1fr) 68px'
-    : 'minmax(220px,1.3fr) minmax(160px,1.1fr) minmax(120px,0.9fr) 120px minmax(220px,1fr) 68px';
+    ? '72px minmax(200px,1.2fr) minmax(150px,1fr) minmax(130px,0.9fr) 120px minmax(260px,1fr) 68px'
+    : '72px minmax(200px,1.2fr) minmax(150px,1fr) minmax(120px,0.9fr) 120px minmax(220px,1fr) 68px';
   const tplHeaders = isAdmin
-    ? ['Cliente', 'Moto', 'Vendedor · Sucursal', 'Precio', 'Estado', '']
-    : ['Cliente', 'Moto', 'Vendedor', 'Precio', 'Estado', ''];
+    ? ['', 'Cliente', 'Moto', 'Vendedor · Sucursal', 'Precio', 'Estado', '']
+    : ['', 'Cliente', 'Moto', 'Vendedor', 'Precio', 'Estado', ''];
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
@@ -1705,7 +1705,7 @@ export function SalesView({ user, realBranches }) {
                 label: 'Reservas activas',
                 val: stats.pendiente_entrega ?? 0,
                 sub: stats.pendiente_entrega > 0 ? 'esperando entrega' : 'sin pendientes',
-                color: stats.pendiente_entrega > 0 ? '#B45309' : '#9CA3AF',
+                color: stats.pendiente_entrega > 0 ? '#1E40AF' : '#9CA3AF',
               },
               {
                 label: 'Docs pendientes',
@@ -1716,13 +1716,13 @@ export function SalesView({ user, realBranches }) {
                      stats.sin_inscripcion ? `${stats.sin_inscripcion} inscr.` : null,
                     ].filter(Boolean).join(' · ')
                   : 'todo al día',
-                color: pendDocs > 0 ? '#C2410C' : '#9CA3AF',
+                color: pendDocs > 0 ? '#0F172A' : '#9CA3AF',
               },
               ...(isAdmin ? [{
                 label: 'Pend. distribuidor',
                 val: stats.pendiente_distribuidor ?? 0,
                 sub: stats.pendiente_distribuidor > 0 ? 'sin pagar al distribuidor' : 'todo pagado',
-                color: stats.pendiente_distribuidor > 0 ? '#B45309' : '#9CA3AF',
+                color: stats.pendiente_distribuidor > 0 ? '#0F172A' : '#9CA3AF',
               }] : []),
             ];
             return cards.map(k => (
@@ -1846,134 +1846,121 @@ export function SalesView({ user, realBranches }) {
             const docsOk     = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
             const docCount   = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
             const saldo      = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
-            const accentColor = isRes ? '#F59E0B' : '#10B981';
+            const accentColor = isRes ? '#3B82F6' : '#10B981';
             return (
               <div key={s.id} onClick={() => setSelSale(s)} style={{
-                background: isRes ? '#FFFBF2' : '#FFFFFF',
+                background: '#FFFFFF',
                 border: '1px solid #EAECEF',
                 borderLeft: `3px solid ${accentColor}`,
                 borderRadius: 10, overflow: 'hidden',
-                padding: '12px 14px',
-                display: 'flex', flexDirection: 'column', gap: 8,
+                display: 'flex', alignItems: 'stretch',
                 cursor: 'pointer', boxShadow: '0 1px 3px rgba(16,24,40,0.04)',
               }}>
-                {/* Top row: pill + fecha + ticket + precio */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                    <span style={{
-                      fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 99,
-                      background: isRes ? '#FEF3C7' : '#D1FAE5',
-                      color: isRes ? '#92400E' : '#065F46',
-                      textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
-                      fontFamily: 'inherit',
-                    }}>
-                      {isRes ? 'Reserva' : 'Venta'}
-                    </span>
-                    <span style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                      {fD(s.sold_at)}
-                    </span>
-                    {s.ticket_num && (
-                      <span style={{ fontSize: 10, color: '#F28100', fontWeight: 700, flexShrink: 0 }}>
-                        #{s.ticket_num}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{
-                    fontSize: 14, fontWeight: 800, color: s.sale_price ? '#0F172A' : '#D1D5DB',
-                    letterSpacing: '-0.02em', whiteSpace: 'nowrap', flexShrink: 0,
-                  }}>
-                    {s.sale_price ? fmt(s.sale_price) : '—'}
-                  </div>
+                {/* Foto del modelo */}
+                <div style={{
+                  width: 92, flexShrink: 0,
+                  background: s.image_url ? '#F9FAFB' : 'linear-gradient(135deg, #F3F4F6, #E5E7EB)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {s.image_url ? (
+                    <img src={s.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+                  ) : (
+                    <Ic.bike size={32} color="#D1D5DB"/>
+                  )}
                 </div>
 
-                {/* Cliente */}
-                <div style={{ minWidth: 0 }}>
+                {/* Contenido */}
+                <div style={{
+                  flex: 1, minWidth: 0, padding: '10px 12px',
+                  display: 'flex', flexDirection: 'column', gap: 5,
+                }}>
+                  {/* pill + fecha + precio */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 99,
+                        background: isRes ? '#DBEAFE' : '#D1FAE5',
+                        color: isRes ? '#1E40AF' : '#065F46',
+                        textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
+                      }}>
+                        {isRes ? 'Reserva' : 'Venta'}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#9CA3AF', whiteSpace: 'nowrap' }}>
+                        {fD(s.sold_at)}
+                      </span>
+                      {s.ticket_num && (
+                        <span style={{ fontSize: 10, color: '#F28100', fontWeight: 700, flexShrink: 0 }}>
+                          #{s.ticket_num}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: 14, fontWeight: 800, color: s.sale_price ? '#0F172A' : '#D1D5DB',
+                      letterSpacing: '-0.02em', whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                      {s.sale_price ? fmt(s.sale_price) : '—'}
+                    </div>
+                  </div>
+
+                  {/* Cliente */}
                   <div style={{
-                    fontSize: 14, fontWeight: 700, color: '#0F172A',
+                    fontSize: 13, fontWeight: 700, color: s.client_name ? '#0F172A' : '#9CA3AF',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     letterSpacing: '-0.01em',
                   }}>
-                    {s.client_name || '—'}
+                    {s.client_name || 'Sin cliente'}
                   </div>
-                  {s.client_rut && (
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                      {s.client_rut}
-                    </div>
-                  )}
-                </div>
 
-                {/* Moto */}
-                <div style={{ minWidth: 0 }}>
+                  {/* Moto */}
                   <div style={{
-                    fontSize: 12, fontWeight: 700, color: '#1F2937',
+                    fontSize: 12, color: '#374151',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
-                    {s.brand} {s.model}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>
-                    {[s.year, s.color].filter(Boolean).join(' · ') || '—'}
-                  </div>
-                </div>
-
-                {/* Vendedor + sucursal (admin) */}
-                {isAdmin && (
-                  <div style={{
-                    fontSize: 11, color: '#6B7280',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>
-                    {sellerName}{s.branch_name ? ` · ${s.branch_name}` : ''}
-                  </div>
-                )}
-
-                {/* Saldo pendiente (solo reservas con precio) */}
-                {isRes && s.sale_price > 0 && (
-                  <div style={{
-                    fontSize: 11, fontWeight: 700,
-                    color: saldo > 0 ? '#B45309' : '#059669',
-                  }}>
-                    {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
-                  </div>
-                )}
-
-                {/* Chips de estado */}
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                  {isRes ? (
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
-                      background: '#FEF3C7', color: '#92400E', whiteSpace: 'nowrap',
-                    }}>
-                      Pend. entrega
-                    </span>
-                  ) : (
-                    <>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
-                        background: s.delivered ? '#D1FAE5' : '#FEF3C7',
-                        color: s.delivered ? '#065F46' : '#92400E',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {s.delivered ? '✓ Entregada' : 'Sin entregar'}
+                    <strong style={{ fontWeight: 700 }}>{s.brand} {s.model}</strong>
+                    {(s.year || s.color) && (
+                      <span style={{ color: '#6B7280' }}>
+                        {' · '}{[s.year, s.color].filter(Boolean).join(' · ')}
                       </span>
+                    )}
+                  </div>
+
+                  {/* Saldo + chips */}
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginTop: 1 }}>
+                    {isRes && s.sale_price > 0 && (
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
-                        background: docsOk ? '#D1FAE5' : docCount > 0 ? '#FEF3C7' : '#F3F4F6',
-                        color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
-                        whiteSpace: 'nowrap',
+                        fontSize: 10, fontWeight: 700,
+                        color: saldo > 0 ? '#DC2626' : '#059669',
                       }}>
-                        Docs {docCount}/4
+                        {saldo > 0 ? `Falta ${fmt(saldo)}` : '✓ Saldado'}
                       </span>
-                      {isAdmin && (
+                    )}
+                    {isRes ? (
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                        background: '#DBEAFE', color: '#1E40AF', whiteSpace: 'nowrap',
+                      }}>
+                        Pend. entrega
+                      </span>
+                    ) : (
+                      <>
                         <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
-                          background: s.distributor_paid ? '#D1FAE5' : '#FEF3C7',
-                          color: s.distributor_paid ? '#065F46' : '#92400E',
+                          fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                          background: s.delivered ? '#D1FAE5' : '#F1F5F9',
+                          color: s.delivered ? '#065F46' : '#475569', whiteSpace: 'nowrap',
+                        }}>
+                          {s.delivered ? '✓ Entreg.' : 'Sin entreg.'}
+                        </span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                          background: docsOk ? '#D1FAE5' : docCount > 0 ? '#FEF9C3' : '#F3F4F6',
+                          color: docsOk ? '#065F46' : docCount > 0 ? '#854D0E' : '#9CA3AF',
                           whiteSpace: 'nowrap',
                         }}>
-                          {s.distributor_paid ? '✓ Dist.' : 'Pend. dist.'}
+                          Docs {docCount}/4
                         </span>
-                      )}
-                    </>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -2028,9 +2015,7 @@ export function SalesView({ user, realBranches }) {
             const docsOk     = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
             const docCount   = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
             const saldo      = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
-            const accentColor = isRes ? '#F59E0B' : '#10B981';
-            const bgRow       = isRes ? '#FFFBF2' : '#FFFFFF';
-            const bgHover     = isRes ? '#FEF5E1' : '#F8FAFC';
+            const accentColor = isRes ? '#3B82F6' : '#10B981';
             return (
               <div
                 key={s.id}
@@ -2039,13 +2024,32 @@ export function SalesView({ user, realBranches }) {
                   display: 'grid', gridTemplateColumns: tplCols,
                   alignItems: 'stretch',
                   borderBottom: '1px solid #F1F3F5',
-                  background: bgRow,
+                  background: '#FFFFFF',
                   cursor: 'pointer', transition: 'background 0.12s',
                   borderLeft: `3px solid ${accentColor}`,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = bgHover; }}
-                onMouseLeave={e => { e.currentTarget.style.background = bgRow; }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; }}
               >
+                {/* Foto del modelo */}
+                <div style={{
+                  padding: '10px 8px 10px 12px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 10, overflow: 'hidden',
+                    background: s.image_url ? '#F9FAFB' : 'linear-gradient(135deg, #F3F4F6, #E5E7EB)',
+                    border: '1px solid #EAECEF',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    {s.image_url ? (
+                      <img src={s.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+                    ) : (
+                      <Ic.bike size={26} color="#D1D5DB" />
+                    )}
+                  </div>
+                </div>
                 {/* Cliente (nombre prominente, meta debajo) */}
                 <div style={{ padding: '14px 16px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
                   <div style={{
@@ -2062,8 +2066,8 @@ export function SalesView({ user, realBranches }) {
                   }}>
                     <span style={{
                       fontSize: 9, fontWeight: 800, padding: '1px 7px', borderRadius: 99,
-                      background: isRes ? '#FEF3C7' : '#D1FAE5',
-                      color: isRes ? '#92400E' : '#065F46',
+                      background: isRes ? '#DBEAFE' : '#D1FAE5',
+                      color: isRes ? '#1E40AF' : '#065F46',
                       textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
                       fontFamily: 'inherit',
                     }}>
@@ -2160,7 +2164,7 @@ export function SalesView({ user, realBranches }) {
                   {isRes && s.sale_price > 0 && (
                     <div style={{
                       fontSize: 10, fontWeight: 700, fontFamily: 'inherit',
-                      color: saldo > 0 ? '#B45309' : '#059669',
+                      color: saldo > 0 ? '#DC2626' : '#059669',
                       whiteSpace: 'nowrap',
                     }}>
                       {saldo > 0 ? `Falta ${fmt(saldo)}` : '✓ Saldado'}
@@ -2173,7 +2177,7 @@ export function SalesView({ user, realBranches }) {
                   {isRes ? (
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
-                      background: '#FEF3C7', color: '#92400E',
+                      background: '#DBEAFE', color: '#1E40AF',
                       fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                     }}>
                       Pend. entrega
@@ -2182,16 +2186,16 @@ export function SalesView({ user, realBranches }) {
                     <>
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 99,
-                        background: s.delivered ? '#D1FAE5' : '#FEF3C7',
-                        color: s.delivered ? '#065F46' : '#92400E',
+                        background: s.delivered ? '#D1FAE5' : '#F1F5F9',
+                        color: s.delivered ? '#065F46' : '#475569',
                         fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                       }}>
                         {s.delivered ? '✓ Entreg.' : 'Sin entreg.'}
                       </span>
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 99,
-                        background: docsOk ? '#D1FAE5' : docCount > 0 ? '#FEF3C7' : '#F3F4F6',
-                        color: docsOk ? '#065F46' : docCount > 0 ? '#92400E' : '#9CA3AF',
+                        background: docsOk ? '#D1FAE5' : docCount > 0 ? '#FEF9C3' : '#F3F4F6',
+                        color: docsOk ? '#065F46' : docCount > 0 ? '#854D0E' : '#9CA3AF',
                         fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                       }}>
                         Docs {docCount}/4
@@ -2199,8 +2203,8 @@ export function SalesView({ user, realBranches }) {
                       {isAdmin && (
                         <span style={{
                           fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 99,
-                          background: s.distributor_paid ? '#D1FAE5' : '#FEF3C7',
-                          color: s.distributor_paid ? '#065F46' : '#92400E',
+                          background: s.distributor_paid ? '#D1FAE5' : '#F1F5F9',
+                          color: s.distributor_paid ? '#065F46' : '#475569',
                           fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                         }}>
                           {s.distributor_paid ? '✓ Dist.' : 'Pend. dist.'}
