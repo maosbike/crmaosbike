@@ -84,7 +84,7 @@ function DistributorBadge({ paid }) {
 
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
-function SaleDetailModal({ sale, user, onClose, onUpdated }) {
+function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onUpdated }) {
   const isAdmin    = CAN_ADMIN.includes(user.role);
   const isVendedor = user.role === 'vendedor';
   const isRes      = sale.status === 'reservada';
@@ -116,6 +116,8 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
       client_name:      sale.client_name      || '',
       client_rut:       sale.client_rut       || '',
       sold_by:          sale.seller_id        || '',
+      branch_id:        sale.branch_id        || '',
+      sold_at:          sale.sold_at ? new Date(sale.sold_at).toISOString().slice(0,10) : '',
       brand:            sale.brand            || '',
       model:            sale.model            || '',
       year:             sale.year             || '',
@@ -139,6 +141,15 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
           client_name:    form.client_name    || null,
           client_rut:     form.client_rut     || null,
           sold_by:        form.sold_by        || null,
+          ...(isAdmin ? {
+            branch_id:  form.branch_id  || null,
+            sold_at:    form.sold_at    || null,
+            brand:      form.brand      || null,
+            model:      form.model      || null,
+            year:       form.year ? parseInt(form.year) : null,
+            color:      form.color      || null,
+            chassis:    form.chassis    || null,
+          } : {}),
         });
       } else {
         // Nota comercial (reserva o venta) → PATCH /sales/:id
@@ -229,27 +240,28 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
 
       {/* ── Hero: foto + datos unidad + precio ── */}
       <div style={{
-        background: isRes
-          ? 'linear-gradient(135deg, #713F12 0%, #A16207 100%)'
-          : 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
-        borderRadius: 14, marginBottom: 18, color: '#FFFFFF',
+        background: '#FFFFFF',
+        borderRadius: 14, marginBottom: 18,
         overflow: 'hidden',
         display: 'flex', alignItems: 'stretch',
         minHeight: 150,
+        border: '1px solid #E5E7EB',
+        borderLeft: isRes ? '4px solid #F59E0B' : '4px solid #10B981',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
       }}>
         {/* Foto */}
         <div style={{
           width: 180, flexShrink: 0,
           background: isRes
-            ? 'linear-gradient(135deg, rgba(254,240,138,0.15) 0%, rgba(0,0,0,0.25) 100%)'
-            : 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.25) 100%)',
+            ? 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)'
+            : 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden', position: 'relative',
         }}>
           {sale.image_url ? (
             <img src={sale.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
           ) : (
-            <Ic.bike size={64} color={isRes ? '#FDE68A' : '#9CA3AF'}/>
+            <Ic.bike size={64} color={isRes ? '#D97706' : '#059669'}/>
           )}
           {sale.added_as_sold && (
             <span style={{
@@ -273,25 +285,25 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
               {isRes ? (
                 <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
-                  background:'rgba(254,240,138,0.2)', color:'#FEF08A',
-                  letterSpacing:'0.08em', border:'1px solid rgba(254,240,138,0.3)' }}>
+                  background:'#FEF3C7', color:'#92400E',
+                  letterSpacing:'0.08em', border:'1px solid #FDE68A' }}>
                   ◐ RESERVA
                 </span>
               ) : (
                 <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
-                  background:'rgba(16,185,129,0.25)', color:'#A7F3D0',
-                  letterSpacing:'0.08em', border:'1px solid rgba(16,185,129,0.35)' }}>
+                  background:'#D1FAE5', color:'#065F46',
+                  letterSpacing:'0.08em', border:'1px solid #A7F3D0' }}>
                   ✓ VENTA
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 11, color: isRes?'#FEF08A':'#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
               {sale.brand}
             </div>
-            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 4, color: '#0F172A' }}>
               {sale.model} {sale.year ? `· ${sale.year}` : ''}
             </div>
-            <div style={{ fontSize: 11, color: isRes?'#FEF08A':'#9CA3AF', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: 11, color: '#9CA3AF', letterSpacing: '0.04em' }}>
               {sale.chassis || '—'}{sale.color ? ` · ${sale.color}` : ''}
             </div>
           </div>
@@ -303,14 +315,14 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
             )}
             {isRes && sale.sale_price > 0 && (
               <div style={{ fontSize: 12 }}>
-                <span style={{ color:'#86EFAC' }}>Abonado: {fmt(sale.invoice_amount||0)}</span>
+                <span style={{ color:'#059669' }}>Abonado: {fmt(sale.invoice_amount||0)}</span>
                 {' · '}
-                <span style={{ color: saldo > 0 ? '#FCA5A5' : '#86EFAC', fontWeight:700 }}>
+                <span style={{ color: saldo > 0 ? '#DC2626' : '#059669', fontWeight:700 }}>
                   {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
                 </span>
               </div>
             )}
-            <div style={{ fontSize: 11, color: isRes?'#FEF08A':'#9CA3AF' }}>{fD(sale.sold_at)}</div>
+            <div style={{ fontSize: 11, color: '#9CA3AF' }}>{fD(sale.sold_at)}</div>
             {!isRes && isAdmin && <DistributorBadge paid={sale.distributor_paid} />}
           </div>
         </div>
@@ -550,7 +562,26 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
             <Field label="Nombre cliente" value={form.client_name} onChange={set('client_name')} />
             <Field label="RUT cliente"    value={form.client_rut}  onChange={set('client_rut')} />
           </div>
-          {sale.is_note_only && (
+          {isAdmin && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>
+                ⚠ Admin — edición avanzada
+              </div>
+              <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {sellers.length > 0 && (
+                  <Field label="Vendedor" value={form.sold_by} onChange={set('sold_by')}
+                    opts={[{ v: '', l: '— Seleccionar —' }, ...sellers.map(s => ({ v: s.id, l: `${s.first_name} ${s.last_name}`.trim() }))]} />
+                )}
+                {branches.length > 0 && (
+                  <Field label="Sucursal" value={form.branch_id} onChange={set('branch_id')}
+                    opts={[{ v: '', l: '— Seleccionar —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]} />
+                )}
+                <Field label={isRes ? 'Fecha reserva' : 'Fecha venta'} value={form.sold_at}
+                  onChange={set('sold_at')} type="date" />
+              </div>
+            </>
+          )}
+          {(sale.is_note_only || isAdmin) && (
             <>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Vehículo
@@ -2379,6 +2410,8 @@ export function SalesView({ user, realBranches }) {
         <SaleDetailModal
           sale={selSale}
           user={user}
+          sellers={sellers}
+          branches={realBranches || []}
           onClose={() => setSelSale(null)}
           onUpdated={() => { load(); setSelSale(null); }}
         />

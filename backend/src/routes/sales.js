@@ -415,7 +415,7 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
       'sale_type', 'payment_method', 'sale_notes',
       'delivered', 'distributor_paid',
       'doc_factura_dist', 'doc_factura_cli', 'doc_homologacion', 'doc_inscripcion',
-      'client_name', 'client_rut', 'sold_by',
+      'client_name', 'client_rut', 'sold_by', 'branch_id',
     ];
     // sales_notes admite además cambio de estado, fecha y datos del vehículo
     const UPDATABLE = isNoteOnly
