@@ -291,7 +291,7 @@ export function TicketView({lead,user,nav,updLead}){
                     background:'#2563EB', color:'#ffffff', border:'none', borderRadius:8,
                     fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                     boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
-                  <Ic.phone size={13} color="#ffffff"/>Registrar contacto
+                  <Ic.msg size={13} color="#ffffff"/>Registrar contacto
                 </button>
               )}
               {!isPerdido&&(
@@ -321,7 +321,7 @@ export function TicketView({lead,user,nav,updLead}){
                 padding:'10px 14px', background:'#2563EB', color:'#ffffff', border:'none',
                 borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                 boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
-              <Ic.phone size={14} color="#ffffff"/>Registrar contacto
+              <Ic.msg size={14} color="#ffffff"/>Registrar contacto
             </button>
           )}
           <button onClick={()=>setShowSell(true)}
@@ -371,7 +371,7 @@ export function TicketView({lead,user,nav,updLead}){
       {/* ── CARD: Último contacto real (Historial claro) ── */}
       {lead.last_contact_entry&&(
         <div style={{ background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:10,padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
-          <Ic.phone size={16} color="#0284C7" style={{ flexShrink:0,marginTop:2 }}/>
+          <Ic.check size={16} color="#0284C7" style={{ flexShrink:0,marginTop:2 }}/>
           <div style={{ flex:1,minWidth:0 }}>
             <div style={{ fontSize:10,fontWeight:700,color:'#0284C7',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3 }}>Último contacto real</div>
             <div style={{ fontSize:12,fontWeight:600,color:'#111827' }}>{lead.last_contact_entry.title}</div>
@@ -385,92 +385,116 @@ export function TicketView({lead,user,nav,updLead}){
       )}
 
       {/* ══════════════════════════════════════════════════════════
-          CABECERA DE FICHA — Foto+Producto | Info cliente+Estado
+          HERO DE FICHA — Foto grande + datos del cliente
       ══════════════════════════════════════════════════════════ */}
       <div style={{
         ...S.card, padding:0, overflow:'hidden',
-        marginBottom:16, display:'flex',
+        marginBottom:14, display:'flex',
         flexDirection: isMobile ? 'column' : 'row',
         alignItems:'stretch',
       }}>
 
-        {/* ZONA IZQUIERDA: Foto + producto */}
+        {/* ZONA IZQUIERDA: Foto hero del modelo */}
         <div style={{
-          width: isMobile ? '100%' : 220,
+          width: isMobile ? '100%' : 360,
           flexShrink:0,
-          background:'#F9FAFB',
-          display:'flex', flexDirection:'column',
-          alignItems:'center', justifyContent:'flex-start',
-          padding: isMobile ? '20px' : '24px 20px',
-          borderRight: isMobile ? 'none' : '1px solid #F3F4F6',
-          borderBottom: isMobile ? '1px solid #F3F4F6' : 'none',
-          gap:12,
+          background: m?.image
+            ? '#0F172A'
+            : 'linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)',
+          position:'relative',
+          minHeight: isMobile ? 260 : 'auto',
+          display:'flex', alignItems:'center', justifyContent:'center',
         }}>
-          {/* Foto del modelo */}
-          <div style={{
-            width:'100%', maxWidth:180,
-            aspectRatio:'16/9', borderRadius:10,
-            overflow:'hidden', background:'#E5E7EB',
-            display:'flex', alignItems:'center', justifyContent:'center',
-          }}>
-            {m?.image ? (
-              <img src={m.image} alt={m?.model||''}
-                style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-            ) : (
-              <Ic.bike size={40} color="#D1D5DB"/>
-            )}
-          </div>
-
-          {/* Producto */}
-          {m ? (
-            <div style={{ textAlign:'center', width:'100%' }}>
-              <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:4, lineHeight:1.3 }}>
+          {m?.image ? (
+            <img src={m.image} alt={m?.model||''} style={{
+              width:'100%', height:'100%',
+              objectFit:'cover', display:'block',
+              position: isMobile ? 'static' : 'absolute', inset:0,
+            }}/>
+          ) : (
+            <Ic.bike size={64} color="#9CA3AF"/>
+          )}
+          {/* Overlay con modelo + precio + año */}
+          {m && (
+            <div style={{
+              position:'absolute', left:0, right:0, bottom:0,
+              padding:'18px 18px 16px',
+              background: m?.image
+                ? 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 60%, transparent 100%)'
+                : 'transparent',
+              color:'#FFFFFF',
+            }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4, flexWrap:'wrap' }}>
+                {m.year && (
+                  <span style={{
+                    fontSize:10, fontWeight:800, letterSpacing:'0.06em',
+                    padding:'2px 8px', borderRadius:99,
+                    background:'rgba(255,255,255,0.2)', color:'#FFFFFF',
+                    backdropFilter:'blur(6px)',
+                  }}>{m.year}</span>
+                )}
+                {m.cc>0 && <span style={{ fontSize:11, opacity:0.85 }}>{m.cc}cc</span>}
+                {m.cat && <span style={{ fontSize:11, opacity:0.85 }}>· {m.cat}</span>}
+              </div>
+              <div style={{ fontSize:18, fontWeight:800, letterSpacing:'-0.3px', lineHeight:1.15 }}>
                 {m.brand} {m.model}
               </div>
-              <div style={{ display:'flex', gap:5, justifyContent:'center', flexWrap:'wrap', marginBottom:8 }}>
-                {m.year&&(
-                  <span style={{ fontSize:11, fontWeight:700, color:'#4F46E5', background:'#EEF2FF', padding:'2px 10px', borderRadius:99 }}>{m.year}</span>
-                )}
-                {m.cc>0&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{m.cc}cc</span>}
-                {m.cat&&<span style={{ fontSize:11, color:'#9CA3AF' }}>{m.cat}</span>}
-              </div>
-              {m.price>0&&(
-                <div>
-                  <div style={{ fontSize:16, fontWeight:800, color:'#374151', letterSpacing:'-0.02em' }}>
+              {m.price>0 && (
+                <div style={{ display:'flex', alignItems:'baseline', gap:8, marginTop:6 }}>
+                  <span style={{ fontSize:20, fontWeight:900, letterSpacing:'-0.4px' }}>
                     {fmt(m.price-m.bonus)}
-                  </div>
-                  {m.bonus>0&&<div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>Ahorra {fmt(m.bonus)}</div>}
+                  </span>
+                  {m.bonus>0 && (
+                    <span style={{ fontSize:11, opacity:0.8 }}>
+                      Ahorra {fmt(m.bonus)}
+                    </span>
+                  )}
                 </div>
               )}
-              {lead.colorPref&&<div style={{ marginTop:8 }}><span style={{ fontSize:10, background:'#F3F4F6', borderRadius:5, padding:'3px 9px', color:'#6B7280', fontWeight:500, border:'1px solid #E5E7EB' }}>Color: {lead.colorPref}</span></div>}
+              {lead.colorPref && (
+                <div style={{ marginTop:8 }}>
+                  <span style={{
+                    fontSize:10, fontWeight:600, letterSpacing:'0.03em',
+                    padding:'3px 9px', borderRadius:6,
+                    background:'rgba(255,255,255,0.18)', color:'#FFFFFF',
+                    backdropFilter:'blur(6px)',
+                  }}>Color · {lead.colorPref}</span>
+                </div>
+              )}
             </div>
-          ) : (
-            <div style={{ fontSize:12, color:'#C4C9D4', textAlign:'center' }}>Sin modelo asignado</div>
           )}
-
-          {/* Selector de modelo */}
-          <div style={{ width:'100%' }}>
-            <label style={{ ...S.lbl }}>Cambiar modelo</label>
-            <select value={lead.motoId||""} onChange={e=>upd("motoId",e.target.value)} style={{ ...S.inp, width:'100%', fontSize:11 }}>
-              <option value="">Seleccionar...</option>
-              {realModels.map(mo=><option key={mo.id} value={mo.id}>{mo.brand} {mo.model}{mo.price?` - ${fmt(mo.price)}`:''}</option>)}
-            </select>
-          </div>
+          {!m && (
+            <div style={{
+              position:'absolute', inset:0,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              color:'#9CA3AF', fontSize:13, fontWeight:500,
+            }}>Sin modelo asignado</div>
+          )}
         </div>
 
-        {/* ZONA DERECHA: Info cliente + estado + acciones */}
-        <div style={{ flex:1, padding:'20px 24px', display:'flex', flexDirection:'column', gap:12, minWidth:0 }}>
+        {/* ZONA DERECHA: Info cliente + estado */}
+        <div style={{ flex:1, padding:'22px 26px', display:'flex', flexDirection:'column', gap:14, minWidth:0 }}>
 
-          {/* Fila 1: Nombre + badges */}
-          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-            <div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#111827', lineHeight:1.2, marginBottom:4 }}>
+          {/* Fila superior: Nombre + badges */}
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:14, flexWrap:'wrap' }}>
+            <div style={{ minWidth:0, flex:1 }}>
+              <div style={{ fontSize:22, fontWeight:800, color:'#111827', lineHeight:1.15, letterSpacing:'-0.4px', marginBottom:6 }}>
                 {lead.fn} {lead.ln}
               </div>
-              <div style={{ fontSize:12, color:'#6B7280', display:'flex', flexWrap:'wrap', gap:12 }}>
-                {lead.rut&&<span>RUT {displayRut(lead.rut)}</span>}
-                {lead.phone&&<span style={{ display:'flex', alignItems:'center', gap:4 }}><Ic.phone size={11} color="#9CA3AF"/>{formatPhone(lead.phone)}</span>}
-                {lead.email&&<span style={{ display:'flex', alignItems:'center', gap:4 }}><Ic.mail size={11} color="#9CA3AF"/>{lead.email}</span>}
+              <div style={{ fontSize:12.5, color:'#4B5563', display:'flex', flexWrap:'wrap', alignItems:'center', gap:10 }}>
+                {lead.rut && <span style={{ fontWeight:500 }}>RUT {displayRut(lead.rut)}</span>}
+                {lead.phone && (
+                  <>
+                    <span style={{ color:'#E5E7EB' }}>·</span>
+                    <span style={{ fontWeight:500 }}>{formatPhone(lead.phone)}</span>
+                  </>
+                )}
+                {lead.email && (
+                  <>
+                    <span style={{ color:'#E5E7EB' }}>·</span>
+                    <span style={{ fontWeight:500 }}>{lead.email}</span>
+                  </>
+                )}
               </div>
             </div>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap', flexShrink:0, alignItems:'center' }}>
@@ -486,7 +510,15 @@ export function TicketView({lead,user,nav,updLead}){
                   {PRIORITY[lead.priority].l}
                 </span>
               )}
-              {sinContactoH>0&&<span style={{ fontSize:11, fontWeight:600, color: slaBreach?'#EF4444':slaWarning?'#F97316':'#9CA3AF' }}>{sinContactoH}h</span>}
+              {sinContactoH>0 && (
+                <span style={{
+                  fontSize:11, fontWeight:700,
+                  padding:'3px 10px', borderRadius:99,
+                  color: slaBreach?'#EF4444':slaWarning?'#F97316':'#6B7280',
+                  background: slaBreach?'#FEF2F2':slaWarning?'#FFF7ED':'#F3F4F6',
+                  border: `1px solid ${slaBreach?'#FECACA':slaWarning?'#FED7AA':'#E5E7EB'}`,
+                }}>{sinContactoH}h</span>
+              )}
             </div>
           </div>
 
@@ -499,9 +531,9 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           )}
 
-          {/* Fila 2: Estado del lead */}
+          {/* Estado del lead */}
           <div>
-            <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Estado del lead</div>
+            <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Estado del lead</div>
             {isPerdido?(
               <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
                 <Ic.x size={16} color="#EF4444"/>
@@ -552,93 +584,110 @@ export function TicketView({lead,user,nav,updLead}){
             return <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:color+'18', border:`1px solid ${color}40`, fontSize:10, fontWeight:700, color, alignSelf:'flex-start' }}><span style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>Autofin: {ev}</div>;
           })()}
 
-          {/* Fila 3: Meta info */}
+          {/* Meta info con mini-íconos */}
           <div style={{
             display:'grid',
             gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)',
-            gap:8, paddingTop:12, borderTop:'1px solid #F3F4F6',
+            gap:10, paddingTop:14, borderTop:'1px solid #F3F4F6',
           }}>
             {[
-              {label:'Vendedor', val: s.fn ? `${s.fn} ${s.ln||''}`.trim() : 'Sin asignar'},
-              {label:'Sucursal', val: br.name || '—'},
-              {label:'Fuente',   val: SRC[lead.source]||lead.source||'—'},
-              {label:'Creado',   val: fD(lead.createdAt)},
+              {label:'Vendedor', val: s.fn ? `${s.fn} ${s.ln||''}`.trim() : 'Sin asignar', icon:<Ic.user size={11} color="#9CA3AF"/>},
+              {label:'Sucursal', val: br.name || '—', icon:<Ic.home size={11} color="#9CA3AF"/>},
+              {label:'Fuente',   val: SRC[lead.source]||lead.source||'—', icon:<Ic.tag size={11} color="#9CA3AF"/>},
+              {label:'Creado',   val: fD(lead.createdAt), icon:<Ic.cal size={11} color="#9CA3AF"/>},
             ].map(item=>(
-              <div key={item.label} style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' }}>{item.label}</span>
-                <span style={{ fontSize:12, color:'#374151', fontWeight:500 }}>{item.val}</span>
+              <div key={item.label} style={{ display:'flex', flexDirection:'column', gap:3, minWidth:0 }}>
+                <span style={{ fontSize:9, fontWeight:800, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', display:'flex', alignItems:'center', gap:4 }}>
+                  {item.icon}{item.label}
+                </span>
+                <span style={{ fontSize:13, color:'#111827', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{item.val}</span>
               </div>
             ))}
           </div>
+        </div>
+      </div>{/* /hero ficha */}
 
-          {/* Fila 4: Controles secundarios (prioridad, test ride, vendedor) */}
-          <div style={{ display:'flex', flexWrap:'wrap', gap:12, paddingTop:12, borderTop:'1px solid #F3F4F6' }}>
-            {/* Prioridad */}
-            <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:140 }}>
-              <label style={S.lbl}>Prioridad</label>
-              <div style={{ display:'flex', gap:4 }}>
-                {Object.entries(PRIORITY).map(([k,v])=>{
-                  const active=lead.priority===k;
-                  return(
-                    <button key={k} onClick={async()=>{
-                      const prev=lead.priority;
-                      updLead(lead.id,{priority:k});
-                      try{await api.updateTicket(lead.id,{priority:k});}
-                      catch(err){updLead(lead.id,{priority:prev});alert('Error al cambiar prioridad');}
-                    }} style={{ flex:1, padding:'5px 8px', fontSize:11, fontWeight:600, fontFamily:'inherit', borderRadius:6, cursor:'pointer',
-                      border:'none', background:active?v.c:'#F3F4F6', color:active?'#ffffff':'#9CA3AF' }}>
-                      {v.l}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            {/* Test Ride */}
-            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-              <label style={S.lbl}>Test Ride</label>
-              <div style={{ display:'flex', gap:4 }}>
-                {[true,false].map(v=>(
-                  <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});alert('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
-                    style={{ padding:'5px 12px', fontSize:11, fontWeight:600, fontFamily:'inherit', borderRadius:6, cursor:'pointer', border:'none',
-                      background: lead.testRide===v?(v?'#10B981':'#374151'):'#F3F4F6', color: lead.testRide===v?'#ffffff':'#9CA3AF' }}>
-                    {v?'Sí':'No'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Vendedor asignado (solo admin) */}
-            {isAdmin&&(
-              <div style={{ display:'flex', flexDirection:'column', gap:5, flex:'1 1 180px' }}>
-                <label style={S.lbl}>Vendedor asignado</label>
-                <select value={lead.seller_id||lead.seller||""}
-                  onChange={async e=>{
-                    const newId=e.target.value;
-                    if(!newId||newId===lead.seller_id)return;
-                    const prevId=lead.seller_id;
-                    const sl=sellers.find(s=>s.id===newId);
-                    const slFn=sl?.first_name||sl?.fn||'';
-                    const slLn=sl?.last_name||sl?.ln||'';
-                    updLead(lead.id,{seller:newId,seller_id:newId,seller_fn:slFn,seller_ln:slLn});
-                    try{
-                      await api.manualReassign({ticket_id:lead.id,to_user_id:newId});
-                      try{
-                        const full=await api.getTicket(lead.id);
-                        if(full?.timeline)updLead(lead.id,{timeline:full.timeline});
-                      }catch{}
-                    }catch(ex){
-                      updLead(lead.id,{seller:prevId,seller_id:prevId});
-                      alert('No se pudo reasignar: '+(ex.message||'Error'));
-                    }
-                  }}
-                  style={{ ...S.inp, width:'100%', fontSize:11 }}>
-                  <option value="">Seleccionar...</option>
-                  {sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}
-                </select>
-              </div>
-            )}
+      {/* ══════════════════════════════════════════════════════════
+          STRIP DE CONTROLES — modelo, prioridad, test ride, vendedor
+      ══════════════════════════════════════════════════════════ */}
+      <div style={{
+        ...S.card, padding:'14px 18px', marginBottom:14,
+        display:'grid',
+        gridTemplateColumns: isMobile ? '1fr' : `1fr minmax(180px,auto) minmax(140px,auto)${isAdmin?' 1fr':''}`,
+        gap:16, alignItems:'end',
+      }}>
+        {/* Cambiar modelo */}
+        <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:0 }}>
+          <label style={S.lbl}>Modelo de interés</label>
+          <select value={lead.motoId||""} onChange={e=>upd("motoId",e.target.value)} style={{ ...S.inp, width:'100%', fontSize:12 }}>
+            <option value="">Sin modelo</option>
+            {realModels.map(mo=><option key={mo.id} value={mo.id}>{mo.brand} {mo.model}{mo.price?` - ${fmt(mo.price)}`:''}</option>)}
+          </select>
+        </div>
+        {/* Prioridad */}
+        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          <label style={S.lbl}>Prioridad</label>
+          <div style={{ display:'flex', gap:4 }}>
+            {Object.entries(PRIORITY).map(([k,v])=>{
+              const active=lead.priority===k;
+              return(
+                <button key={k} onClick={async()=>{
+                  const prev=lead.priority;
+                  updLead(lead.id,{priority:k});
+                  try{await api.updateTicket(lead.id,{priority:k});}
+                  catch(err){updLead(lead.id,{priority:prev});alert('Error al cambiar prioridad');}
+                }} style={{ flex:1, padding:'6px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer',
+                  border:'none', background:active?v.c:'#F3F4F6', color:active?'#ffffff':'#9CA3AF' }}>
+                  {v.l}
+                </button>
+              );
+            })}
           </div>
         </div>
-      </div>{/* /cabecera ficha */}
+        {/* Test Ride */}
+        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          <label style={S.lbl}>Test Ride</label>
+          <div style={{ display:'flex', gap:4 }}>
+            {[true,false].map(v=>(
+              <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});alert('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
+                style={{ padding:'6px 14px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer', border:'none',
+                  background: lead.testRide===v?(v?'#10B981':'#374151'):'#F3F4F6', color: lead.testRide===v?'#ffffff':'#9CA3AF' }}>
+                {v?'Sí':'No'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Vendedor asignado (solo admin) */}
+        {isAdmin&&(
+          <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:0 }}>
+            <label style={S.lbl}>Vendedor asignado</label>
+            <select value={lead.seller_id||lead.seller||""}
+              onChange={async e=>{
+                const newId=e.target.value;
+                if(!newId||newId===lead.seller_id)return;
+                const prevId=lead.seller_id;
+                const sl=sellers.find(s=>s.id===newId);
+                const slFn=sl?.first_name||sl?.fn||'';
+                const slLn=sl?.last_name||sl?.ln||'';
+                updLead(lead.id,{seller:newId,seller_id:newId,seller_fn:slFn,seller_ln:slLn});
+                try{
+                  await api.manualReassign({ticket_id:lead.id,to_user_id:newId});
+                  try{
+                    const full=await api.getTicket(lead.id);
+                    if(full?.timeline)updLead(lead.id,{timeline:full.timeline});
+                  }catch{}
+                }catch(ex){
+                  updLead(lead.id,{seller:prevId,seller_id:prevId});
+                  alert('No se pudo reasignar: '+(ex.message||'Error'));
+                }
+              }}
+              style={{ ...S.inp, width:'100%', fontSize:12 }}>
+              <option value="">Seleccionar...</option>
+              {sellers.map(sl=>{const fn=sl.first_name||sl.fn||'';const ln=sl.last_name||sl.ln||'';const bc=sl.branch_code||'';return<option key={sl.id} value={sl.id}>{fn} {ln}{bc?` - ${bc}`:''}</option>;})}
+            </select>
+          </div>
+        )}
+      </div>{/* /strip controles */}
 
       {/* ══════════════════════════════════════════════════════════
           DATOS CLIENTE + FINANCIAMIENTO — sección principal
@@ -658,7 +707,7 @@ export function TicketView({lead,user,nav,updLead}){
             </div>
           </AccordionSection>
 
-          <AccordionSection title="Contacto" icon={<Ic.phone size={13} color="#9CA3AF"/>} isOpen={openSections.contacto} onToggle={()=>toggleSection('contacto')}>
+          <AccordionSection title="Contacto" icon={<Ic.mail size={13} color="#9CA3AF"/>} isOpen={openSections.contacto} onToggle={()=>toggleSection('contacto')}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 }}>
               <Field label="Email" value={lead.email} onChange={v=>upd("email",v)} type="email"/>
               <Field label="Celular" value={lead.phone} onChange={v=>upd("phone",v)}/>
