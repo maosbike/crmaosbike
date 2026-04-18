@@ -112,17 +112,24 @@ function CatalogColorEditor({ brand, model, value, onChange, canEdit = true }) {
   const [busy, setBusy]                   = useState(false);
   const [colorPhotoUploading, setColorPhotoUploading] = useState(null);
 
-  // Lookup del modelo
+  // Lookup del modelo — matching flexible:
+  //   · case-insensitive en brand y model
+  //   · ignora espacios/guiones/puntos (así "FZ 250" matchea "FZ-250")
   useEffect(() => {
     if (!brand || !model) {
       setModelId(null); setColors([]); setColorPhotos([]); return;
     }
     let cancelled = false;
     setLoading(true); setErr('');
-    api.getModels({ brand, q: model, limit: 5 })
+    const canon = s => (s||'').toString().toUpperCase().replace(/[\s\-\.]/g,'');
+    const cBrand = canon(brand), cModel = canon(model);
+    api.getModels()
       .then(mods => {
         if (cancelled) return;
-        const mod = mods.find(x => x.model?.toUpperCase() === model?.toUpperCase()) || mods[0];
+        const list = Array.isArray(mods) ? mods : [];
+        const sameBrand = list.filter(x => canon(x.brand) === cBrand);
+        const mod = sameBrand.find(x => canon(x.model) === cModel)
+                 || sameBrand.find(x => canon(x.model).includes(cModel) || cModel.includes(canon(x.model)));
         if (!mod) { setModelId(null); setColors([]); setColorPhotos([]); return; }
         applyModel(mod);
       })
