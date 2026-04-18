@@ -227,49 +227,92 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
   return (
     <Modal onClose={onClose} title={isRes ? `Reserva · ${sale.brand} ${sale.model}` : `Venta · ${sale.brand} ${sale.model}`} wide>
 
-      {/* Cabecera: unidad */}
+      {/* ── Hero: foto + datos unidad + precio ── */}
       <div style={{
-        background: isRes ? 'linear-gradient(135deg, #78350F 0%, #92400E 100%)' : 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
-        borderRadius: 12, padding: '18px 22px', marginBottom: 18, color: '#FFFFFF',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+        background: isRes
+          ? 'linear-gradient(135deg, #713F12 0%, #A16207 100%)'
+          : 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
+        borderRadius: 14, marginBottom: 18, color: '#FFFFFF',
+        overflow: 'hidden',
+        display: 'flex', alignItems: 'stretch',
+        minHeight: 150,
       }}>
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-            {isRes ? (
-              <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
-                background:'rgba(255,255,255,0.18)', color:'#FEF3C7', letterSpacing:'0.08em', border:'1px solid rgba(255,255,255,0.2)' }}>◐ RESERVA</span>
-            ) : (
-              <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
-                background:'rgba(16,185,129,0.25)', color:'#A7F3D0', letterSpacing:'0.08em', border:'1px solid rgba(16,185,129,0.35)' }}>✓ VENTA</span>
-            )}
-          </div>
-          <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
-            {sale.brand}
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 3 }}>
-            {sale.model} {sale.year ? `· ${sale.year}` : ''}
-          </div>
-          <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#9CA3AF', letterSpacing: '0.04em' }}>
-            {sale.chassis}{sale.color ? ` · ${sale.color}` : ''}
-          </div>
+        {/* Foto */}
+        <div style={{
+          width: 180, flexShrink: 0,
+          background: isRes
+            ? 'linear-gradient(135deg, rgba(254,240,138,0.15) 0%, rgba(0,0,0,0.25) 100%)'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.25) 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden', position: 'relative',
+        }}>
+          {sale.image_url ? (
+            <img src={sale.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+          ) : (
+            <Ic.bike size={64} color={isRes ? '#FDE68A' : '#9CA3AF'}/>
+          )}
+          {sale.added_as_sold && (
+            <span style={{
+              position:'absolute', top:8, left:8,
+              fontSize:9, fontWeight:800, color:'#FFFFFF',
+              background:'rgba(124,58,237,0.9)', borderRadius:4, padding:'2px 7px',
+              letterSpacing:'0.06em',
+            }}>
+              BODEGA
+            </span>
+          )}
         </div>
-        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 7 }}>
-          {sale.sale_price > 0 && (
-            <div style={{ fontSize: 24, fontWeight: 900, color: '#F28100', letterSpacing: '-1px' }}>
-              {fmt(sale.sale_price)}
+
+        {/* Datos */}
+        <div style={{
+          flex: 1, padding: '18px 22px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          gap: 16, flexWrap: 'wrap', minWidth: 0,
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+              {isRes ? (
+                <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
+                  background:'rgba(254,240,138,0.2)', color:'#FEF08A',
+                  letterSpacing:'0.08em', border:'1px solid rgba(254,240,138,0.3)' }}>
+                  ◐ RESERVA
+                </span>
+              ) : (
+                <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
+                  background:'rgba(16,185,129,0.25)', color:'#A7F3D0',
+                  letterSpacing:'0.08em', border:'1px solid rgba(16,185,129,0.35)' }}>
+                  ✓ VENTA
+                </span>
+              )}
             </div>
-          )}
-          {isRes && sale.sale_price > 0 && (
-            <div style={{ fontSize: 12 }}>
-              <span style={{ color:'#86EFAC' }}>Abonado: {fmt(sale.invoice_amount||0)}</span>
-              {' · '}
-              <span style={{ color: saldo > 0 ? '#FCA5A5' : '#86EFAC', fontWeight:700 }}>
-                {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
-              </span>
+            <div style={{ fontSize: 11, color: isRes?'#FEF08A':'#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+              {sale.brand}
             </div>
-          )}
-          <div style={{ fontSize: 11, color: isRes?'#FDE68A':'#9CA3AF' }}>{fD(sale.sold_at)}</div>
-          {!isRes && isAdmin && <DistributorBadge paid={sale.distributor_paid} />}
+            <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 4 }}>
+              {sale.model} {sale.year ? `· ${sale.year}` : ''}
+            </div>
+            <div style={{ fontSize: 11, color: isRes?'#FEF08A':'#9CA3AF', letterSpacing: '0.04em' }}>
+              {sale.chassis || '—'}{sale.color ? ` · ${sale.color}` : ''}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+            {sale.sale_price > 0 && (
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#F28100', letterSpacing: '-1px' }}>
+                {fmt(sale.sale_price)}
+              </div>
+            )}
+            {isRes && sale.sale_price > 0 && (
+              <div style={{ fontSize: 12 }}>
+                <span style={{ color:'#86EFAC' }}>Abonado: {fmt(sale.invoice_amount||0)}</span>
+                {' · '}
+                <span style={{ color: saldo > 0 ? '#FCA5A5' : '#86EFAC', fontWeight:700 }}>
+                  {saldo > 0 ? `Falta: ${fmt(saldo)}` : '✓ Saldado'}
+                </span>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: isRes?'#FEF08A':'#9CA3AF' }}>{fD(sale.sold_at)}</div>
+            {!isRes && isAdmin && <DistributorBadge paid={sale.distributor_paid} />}
+          </div>
         </div>
       </div>
 
@@ -296,64 +339,115 @@ function SaleDetailModal({ sale, user, onClose, onUpdated }) {
         </button>
       )}
 
-      {/* Info principal — grilla */}
-      <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 16 }}>
-        {[
-          ['Vendedor',    sellerName],
-          ['Sucursal',    sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega directa' : (sale.branch_name || '—')],
-          ['Cliente',     sale.client_name || '—'],
-          ['RUT',         sale.client_rut  || '—'],
-          ['Ticket',      sale.ticket_num  || '—'],
-          ['Forma pago',  sale.payment_method || '—'],
-          ['Modalidad',   SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type || '—'],
-        ].map(([label, val]) => (
-          <div key={label} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
-            <span style={{ color: '#9CA3AF', fontSize: 11, minWidth: 90, flexShrink: 0 }}>{label}</span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: '#1F2937' }}>{val}</span>
+      {/* ── Info: Cliente + Operación en cards paralelas ── */}
+      <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        {/* Cliente */}
+        <div style={{
+          background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 12,
+          padding: '14px 16px',
+        }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+            textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10,
+          }}>
+            Cliente
           </div>
-        ))}
-        {isAdmin && sale.cost_price > 0 && (
-          <div style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #F3F4F6' }}>
-            <span style={{ color: '#9CA3AF', fontSize: 11, minWidth: 90, flexShrink: 0 }}>Precio lista</span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: '#1F2937' }}>{fmt(sale.price)}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              ['Nombre', sale.client_name || '—'],
+              ['RUT',    sale.client_rut  || '—'],
+              ...(sale.ticket_num ? [['Ticket', `#${sale.ticket_num}`]] : []),
+            ].map(([label, val]) => (
+              <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                <span style={{ color: '#9CA3AF', fontSize: 11, minWidth: 60, flexShrink: 0 }}>{label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', wordBreak: 'break-word' }}>{val}</span>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+
+        {/* Operación */}
+        <div style={{
+          background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 12,
+          padding: '14px 16px',
+        }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+            textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10,
+          }}>
+            Operación
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              ['Vendedor',   sellerName],
+              ['Sucursal',   sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega' : (sale.branch_name || '—')],
+              ['Forma pago', sale.payment_method || '—'],
+              ['Modalidad',  SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type || '—'],
+              ...(isAdmin && sale.cost_price > 0 ? [['Precio lista', fmt(sale.price)]] : []),
+            ].map(([label, val]) => (
+              <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                <span style={{ color: '#9CA3AF', fontSize: 11, minWidth: 72, flexShrink: 0 }}>{label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{val}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {sale.sale_notes && (
-        <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-                      fontSize: 12, color: '#374151', borderLeft: '3px solid #D1D5DB' }}>
+        <div style={{
+          background: '#FFFBEB', borderRadius: 10, padding: '12px 14px', marginBottom: 16,
+          fontSize: 12, color: '#713F12', border: '1px solid #FEF3C7', borderLeft: '3px solid #CA8A04',
+          whiteSpace: 'pre-wrap',
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#A16207', textTransform: 'uppercase',
+                        letterSpacing: '0.08em', marginBottom: 4 }}>Notas</div>
           {sale.sale_notes}
         </div>
       )}
 
-      {/* Documentos */}
+      {/* ── Documentos ── */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
-                      letterSpacing: '0.1em', marginBottom: 8 }}>Documentos adjuntos</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 6 }}>
-          {Object.entries(DOC_LABELS).filter(([field]) => !(isVendedor && field === 'doc_factura_dist')).map(([field, label]) => (
-            <div key={field} style={{
-              background: '#F9FAFB', border: `1px solid ${sale[field] ? '#A7F3D0' : '#E5E7EB'}`,
-              borderRadius: 8, padding: '8px 12px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <div>
-                <div style={{ fontSize: 10, color: '#6B7280', fontWeight: 600, marginBottom: 3 }}>{label}</div>
-                <DocBadge url={sale[field]} />
+                      letterSpacing: '0.09em', marginBottom: 10 }}>Documentos adjuntos</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+          {Object.entries(DOC_LABELS).filter(([field]) => !(isVendedor && field === 'doc_factura_dist')).map(([field, label]) => {
+            const hasDoc = !!sale[field];
+            return (
+              <div key={field} style={{
+                background: hasDoc ? '#F0FDF4' : '#FFFFFF',
+                border: `1px solid ${hasDoc ? '#A7F3D0' : '#EAECEF'}`,
+                borderRadius: 10, padding: '10px 12px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                transition: 'border-color 0.1s',
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 10, color: hasDoc ? '#065F46' : '#6B7280',
+                                fontWeight: 700, marginBottom: 4, textTransform: 'uppercase',
+                                letterSpacing: '0.04em' }}>
+                    {label}
+                  </div>
+                  <DocBadge url={sale[field]} />
+                </div>
+                {canEdit && (
+                  <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                    <input type="file" style={{ display: 'none' }} accept=".jpg,.jpeg,.png,.webp,.pdf"
+                      onChange={e => handleDocUpload(field, e.target.files[0])} />
+                    <span style={{
+                      fontSize: 12, fontWeight: 700,
+                      color: uploading === field ? '#F28100' : (hasDoc ? '#059669' : '#9CA3AF'),
+                      padding: '4px 8px', borderRadius: 6,
+                      background: hasDoc ? 'rgba(5,150,105,0.08)' : '#F9FAFB',
+                      border: `1px solid ${hasDoc ? '#A7F3D0' : '#E5E7EB'}`,
+                      display: 'inline-flex', alignItems: 'center', gap: 3,
+                    }}>
+                      {uploading === field ? '↑' : (hasDoc ? '↻' : '+')}
+                    </span>
+                  </label>
+                )}
               </div>
-              {canEdit && (
-                <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                  <input type="file" style={{ display: 'none' }} accept=".jpg,.jpeg,.png,.webp,.pdf"
-                    onChange={e => handleDocUpload(field, e.target.files[0])} />
-                  <span style={{ fontSize: 18, color: uploading === field ? '#F28100' : '#D1D5DB',
-                                 lineHeight: 1, display: 'block' }}>
-                    {uploading === field ? '↑' : '+'}
-                  </span>
-                </label>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -1705,7 +1799,7 @@ export function SalesView({ user, realBranches }) {
                 label: 'Reservas activas',
                 val: stats.pendiente_entrega ?? 0,
                 sub: stats.pendiente_entrega > 0 ? 'esperando entrega' : 'sin pendientes',
-                color: stats.pendiente_entrega > 0 ? '#1E40AF' : '#9CA3AF',
+                color: stats.pendiente_entrega > 0 ? '#713F12' : '#9CA3AF',
               },
               {
                 label: 'Docs pendientes',
@@ -1846,7 +1940,7 @@ export function SalesView({ user, realBranches }) {
             const docsOk     = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
             const docCount   = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
             const saldo      = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
-            const accentColor = isRes ? '#3B82F6' : '#10B981';
+            const accentColor = isRes ? '#CA8A04' : '#10B981';
             return (
               <div key={s.id} onClick={() => setSelSale(s)} style={{
                 background: '#FFFFFF',
@@ -1879,8 +1973,8 @@ export function SalesView({ user, realBranches }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                       <span style={{
                         fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 99,
-                        background: isRes ? '#DBEAFE' : '#D1FAE5',
-                        color: isRes ? '#1E40AF' : '#065F46',
+                        background: isRes ? '#FEF08A' : '#D1FAE5',
+                        color: isRes ? '#713F12' : '#065F46',
                         textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
                       }}>
                         {isRes ? 'Reserva' : 'Venta'}
@@ -1937,7 +2031,7 @@ export function SalesView({ user, realBranches }) {
                     {isRes ? (
                       <span style={{
                         fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
-                        background: '#DBEAFE', color: '#1E40AF', whiteSpace: 'nowrap',
+                        background: '#FEF08A', color: '#713F12', whiteSpace: 'nowrap',
                       }}>
                         Pend. entrega
                       </span>
@@ -1992,9 +2086,9 @@ export function SalesView({ user, realBranches }) {
             const docsOk     = !!(s.doc_factura_cli && s.doc_homologacion && s.doc_inscripcion);
             const docCount   = [s.doc_factura_dist, s.doc_factura_cli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
             const saldo      = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
-            const accentBg   = isRes ? '#EFF6FF' : '#ECFDF5';
-            const accentFg   = isRes ? '#1E40AF' : '#065F46';
-            const accentChip = isRes ? '#DBEAFE' : '#D1FAE5';
+            const accentBg   = isRes ? '#FEFCE8' : '#ECFDF5';
+            const accentFg   = isRes ? '#713F12' : '#065F46';
+            const accentChip = isRes ? '#FEF08A' : '#D1FAE5';
             return (
               <div
                 key={s.id}
@@ -2133,7 +2227,7 @@ export function SalesView({ user, realBranches }) {
                     {isRes ? (
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                        background: '#DBEAFE', color: '#1E40AF',
+                        background: '#FEF08A', color: '#713F12',
                       }}>
                         Pend. entrega
                       </span>
