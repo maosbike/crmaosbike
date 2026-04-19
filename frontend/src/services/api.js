@@ -122,6 +122,20 @@ export const api = {
   getCategories: () => request('GET', '/catalog/categories'),
   renameCategory: (from, to) => request('PATCH', '/catalog/categories/rename', { from, to }),
   getBrands: () => request('GET', '/catalog/brands'),
+  getBrandsWithLogos: () => request('GET', '/catalog/brands?withLogos=1'),
+  uploadBrandLogo: (name, file) => {
+    const fd = new FormData();
+    fd.append('logo', file);
+    return request('POST', `/catalog/brands/${encodeURIComponent(name)}/logo`, fd);
+  },
+  removeBrandLogo: (name) => request('DELETE', `/catalog/brands/${encodeURIComponent(name)}/logo`),
+  getBrandCategories: (name) => request('GET', `/catalog/brands/${encodeURIComponent(name)}/categories`),
+  createBrandCategory: (name, catName, sort_order) =>
+    request('POST', `/catalog/brands/${encodeURIComponent(name)}/categories`, { name: catName, sort_order }),
+  updateBrandCategory: (name, id, data) =>
+    request('PATCH', `/catalog/brands/${encodeURIComponent(name)}/categories/${id}`, data),
+  deleteBrandCategory: (name, id) =>
+    request('DELETE', `/catalog/brands/${encodeURIComponent(name)}/categories/${id}`),
   createModel: (data) => request('POST', '/catalog/models', data),
   updateModel: (id, data) => request('PATCH', `/catalog/models/${id}`, data),
   deleteModel: (id) => request('DELETE', `/catalog/models/${id}`),

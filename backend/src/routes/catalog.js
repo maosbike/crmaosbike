@@ -10,11 +10,12 @@ const MAX_GALLERY = 8;
 
 const uploadImg = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },   // 5 MB por foto
+  limits: { fileSize: 20 * 1024 * 1024 },   // 20 MB por foto (celulares modernos suben >5MB)
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
+    const mt = (file.mimetype || '').toLowerCase();
+    const ok = mt.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.originalname || '');
+    if (ok) cb(null, true);
+    else cb(new Error('Solo se permiten imágenes (jpg, png, webp, heic)'));
   },
 });
 
@@ -23,13 +24,26 @@ const upload = uploadImg;
 
 const uploadPdf = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },  // 15 MB para PDF
+  limits: { fileSize: 25 * 1024 * 1024 },  // 25 MB para PDF
   fileFilter: (_req, file, cb) => {
-    const ok = file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname);
+    const mt = (file.mimetype || '').toLowerCase();
+    const ok = mt === 'application/pdf'
+            || mt === 'application/octet-stream'       // algunos celulares suben así
+            || /\.pdf$/i.test(file.originalname || '');
     if (ok) cb(null, true);
     else cb(new Error('Solo se permiten archivos PDF'));
   },
 });
+
+// Handler centralizado para errores de multer (multer lanza 500 por defecto)
+function handleUploadError(err, _req, res, next) {
+  if (!err) return next();
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'Archivo demasiado grande (máx 20 MB imágenes, 25 MB PDF)' });
+  }
+  if (err.message) return res.status(400).json({ error: err.message });
+  return res.status(500).json({ error: 'Error al procesar archivo' });
+}
 
 // ── CATALOG ──
 router.get('/models', async (req, res) => {
@@ -43,11 +57,123 @@ router.get('/models', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+// Lista de marcas: devuelve array de strings (backwards compat) o objetos con logo
+// si se pasa ?withLogos=1
 router.get('/brands', async (req, res) => {
   try {
+    if (req.query.withLogos) {
+      // Merge: marcas de moto_models (distinct) + metadata de tabla brands
+      const { rows } = await db.query(`
+        SELECT DISTINCT mm.brand AS name,
+               b.logo_url, COALESCE(b.sort_order, 0) AS sort_order,
+               COUNT(mm.id)::int AS model_count
+        FROM moto_models mm
+        LEFT JOIN brands b ON b.name = mm.brand
+        WHERE mm.active = true
+        GROUP BY mm.brand, b.logo_url, b.sort_order
+        ORDER BY COALESCE(b.sort_order, 0) ASC, mm.brand ASC
+      `);
+      return res.json(rows);
+    }
     const { rows } = await db.query('SELECT DISTINCT brand FROM moto_models WHERE active = true ORDER BY brand');
     res.json(rows.map(r => r.brand));
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
+// Upload brand logo
+router.post('/brands/:name/logo',
+  roleCheck('super_admin', 'admin_comercial'),
+  (req, res, next) => uploadImg.single('logo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'Logo requerido' });
+      const name = decodeURIComponent(req.params.name);
+      const b64 = req.file.buffer.toString('base64');
+      const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+        folder: 'crmaosbike/brands',
+        transformation: [{ width: 800, crop: 'limit', quality: 'auto:good' }],
+      });
+      await db.query(
+        `INSERT INTO brands (name, logo_url) VALUES ($1, $2)
+         ON CONFLICT (name) DO UPDATE SET logo_url = EXCLUDED.logo_url, updated_at = NOW()`,
+        [name, result.secure_url]
+      );
+      res.json({ url: result.secure_url });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir logo' }); }
+  }
+);
+
+router.delete('/brands/:name/logo', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    await db.query('UPDATE brands SET logo_url = NULL, updated_at = NOW() WHERE name = $1', [name]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'Error' }); }
+});
+
+// ── Categorías por marca ─────────────────────────────────────────────────────
+router.get('/brands/:name/categories', async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    const { rows } = await db.query(
+      `SELECT bc.id, bc.name, bc.sort_order,
+              (SELECT COUNT(*)::int FROM moto_models mm
+                WHERE mm.brand = bc.brand AND mm.category = bc.name AND mm.active = true) AS model_count
+         FROM brand_categories bc
+        WHERE bc.brand = $1
+        ORDER BY bc.sort_order, bc.name`,
+      [name]
+    );
+    res.json(rows);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
+router.post('/brands/:name/categories', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    const { name: catName, sort_order } = req.body;
+    if (!catName || !catName.trim()) return res.status(400).json({ error: 'Nombre requerido' });
+    const { rows } = await db.query(
+      `INSERT INTO brand_categories (brand, name, sort_order) VALUES ($1, $2, $3)
+       ON CONFLICT (brand, name) DO UPDATE SET sort_order = EXCLUDED.sort_order
+       RETURNING *`,
+      [name, catName.trim(), sort_order || 0]
+    );
+    res.status(201).json(rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
+router.patch('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    const { name: newName, sort_order } = req.body;
+    const { rows: cur } = await db.query('SELECT name FROM brand_categories WHERE id=$1 AND brand=$2', [req.params.id, name]);
+    if (!cur[0]) return res.status(404).json({ error: 'Categoría no encontrada' });
+    const oldName = cur[0].name;
+    const finalName = (newName && newName.trim()) ? newName.trim() : oldName;
+    const { rows } = await db.query(
+      `UPDATE brand_categories SET name=$1, sort_order=COALESCE($2, sort_order)
+         WHERE id=$3 RETURNING *`,
+      [finalName, sort_order, req.params.id]
+    );
+    // Si cambió el nombre, propagarlo a moto_models
+    if (finalName !== oldName) {
+      await db.query(
+        `UPDATE moto_models SET category=$1 WHERE brand=$2 AND category=$3`,
+        [finalName, name, oldName]
+      );
+    }
+    res.json(rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
+});
+
+router.delete('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    const { rows } = await db.query('DELETE FROM brand_categories WHERE id=$1 AND brand=$2 RETURNING name', [req.params.id, name]);
+    if (!rows[0]) return res.status(404).json({ error: 'Categoría no encontrada' });
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
 
 router.post('/models', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
@@ -111,18 +237,28 @@ router.delete('/models/:id', roleCheck('super_admin'), async (req, res) => {
 });
 
 // Upload model main image
-router.post('/models/:id/image', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('image'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
-    const b64 = req.file.buffer.toString('base64');
-    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, { folder: 'crmaosbike/catalog' });
-    await db.query('UPDATE moto_models SET image_url = $1, updated_at = NOW() WHERE id = $2', [result.secure_url, req.params.id]);
-    res.json({ url: result.secure_url });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir imagen' }); }
-});
+router.post('/models/:id/image',
+  roleCheck('super_admin', 'admin_comercial'),
+  (req, res, next) => uploadImg.single('image')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
+      const b64 = req.file.buffer.toString('base64');
+      const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+        folder: 'crmaosbike/catalog',
+        transformation: [{ width: 1600, crop: 'limit', quality: 'auto:good' }],
+      });
+      await db.query('UPDATE moto_models SET image_url = $1, updated_at = NOW() WHERE id = $2', [result.secure_url, req.params.id]);
+      res.json({ url: result.secure_url });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir imagen' }); }
+  }
+);
 
 // Add gallery photo (máx MAX_GALLERY fotos)
-router.post('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('photo'), async (req, res) => {
+router.post('/models/:id/gallery',
+  roleCheck('super_admin', 'admin_comercial'),
+  (req, res, next) => uploadImg.single('photo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
+  async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
 
@@ -147,7 +283,8 @@ router.post('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial'), 
     );
     res.json({ url: result.secure_url, gallery: updated });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
-});
+  }
+);
 
 // Remove gallery photo
 router.delete('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
@@ -169,7 +306,10 @@ router.delete('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial')
 });
 
 // Upload photo for a specific color
-router.post('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('photo'), async (req, res) => {
+router.post('/models/:id/color-photo',
+  roleCheck('super_admin', 'admin_comercial'),
+  (req, res, next) => uploadImg.single('photo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
+  async (req, res) => {
   try {
     const { color } = req.body;
     if (!color) return res.status(400).json({ error: 'color requerido' });
@@ -199,7 +339,8 @@ router.post('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial
     );
     res.json({ color: color.trim(), url: result.secure_url, color_photos: updated });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto de color' }); }
-});
+  }
+);
 
 // Remove photo for a specific color
 router.delete('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
@@ -225,22 +366,31 @@ router.delete('/models/:id/color-photo', roleCheck('super_admin', 'admin_comerci
 });
 
 // Upload spec PDF
-router.post('/models/:id/spec', roleCheck('super_admin', 'admin_comercial'), uploadPdf.single('pdf'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'PDF requerido' });
-    const b64 = req.file.buffer.toString('base64');
-    const result = await cloudinary.uploader.upload(`data:application/pdf;base64,${b64}`, {
-      folder: 'crmaosbike/specs',
-      resource_type: 'raw',
-      format: 'pdf',
-    });
-    await db.query(
-      'UPDATE moto_models SET spec_url = $1, updated_at = NOW() WHERE id = $2',
-      [result.secure_url, req.params.id]
-    );
-    res.json({ url: result.secure_url });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir PDF' }); }
-});
+router.post('/models/:id/spec',
+  roleCheck('super_admin', 'admin_comercial'),
+  (req, res, next) => uploadPdf.single('pdf')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'PDF requerido' });
+      const b64 = req.file.buffer.toString('base64');
+      const safeName = (req.file.originalname || 'ficha').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.pdf$/i, '');
+      const result = await cloudinary.uploader.upload(`data:application/pdf;base64,${b64}`, {
+        folder: 'crmaosbike/specs',
+        resource_type: 'raw',
+        format: 'pdf',
+        public_id: `${safeName}_${Date.now()}`,
+      });
+      await db.query(
+        'UPDATE moto_models SET spec_url = $1, updated_at = NOW() WHERE id = $2',
+        [result.secure_url, req.params.id]
+      );
+      res.json({ url: result.secure_url });
+    } catch (e) {
+      console.error('Spec upload error:', e);
+      res.status(500).json({ error: e.message || 'Error al subir PDF' });
+    }
+  }
+);
 
 // ── BRANCHES ──
 router.get('/branches', async (req, res) => {
@@ -250,16 +400,20 @@ router.get('/branches', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
-router.post('/branches/:id/photo', roleCheck('super_admin', 'admin_comercial'), uploadImg.single('photo'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
-    const b64 = req.file.buffer.toString('base64');
-    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, { folder: 'crmaosbike/branches', resource_type: 'image' });
-    const { rows } = await db.query('UPDATE branches SET photo_url=$1 WHERE id=$2 RETURNING id, photo_url', [result.secure_url, req.params.id]);
-    if (!rows[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
-    res.json({ url: result.secure_url });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
-});
+router.post('/branches/:id/photo',
+  roleCheck('super_admin', 'admin_comercial'),
+  (req, res, next) => uploadImg.single('photo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
+      const b64 = req.file.buffer.toString('base64');
+      const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, { folder: 'crmaosbike/branches', resource_type: 'image' });
+      const { rows } = await db.query('UPDATE branches SET photo_url=$1 WHERE id=$2 RETURNING id, photo_url', [result.secure_url, req.params.id]);
+      if (!rows[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
+      res.json({ url: result.secure_url });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
+  }
+);
 
 // ── USERS ──
 router.get('/users', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {

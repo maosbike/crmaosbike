@@ -616,8 +616,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
   );
 }
 
-function AddModelModal({onClose,onAdded,allCategories}){
-  const[form,setForm]=useState({brand:"",model:"",commercial_name:"",category:"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,bono_tipo:"",bono_condicion:"",bono_requisitos:"",description:"",spec_url:""});
+function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
+  const[form,setForm]=useState({brand:defaultBrand||"",model:"",commercial_name:"",category:"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,bono_tipo:"",bono_condicion:"",bono_requisitos:"",description:"",spec_url:""});
   const[colors,setColors]=useState([]);
   const[colorInput,setColorInput]=useState("");
   const[saving,setSaving]=useState(false);
@@ -865,12 +865,175 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
   );
 }
 
+/* ── BrandCard: tarjeta grande con logo 16:9 ─────────────────────────────── */
+function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUploaded}){
+  const[uploading,setUploading]=useState(false);
+  const[err,setErr]=useState('');
+  const fileRef=useRef(null);
+
+  const handleFile=async(e)=>{
+    e.stopPropagation();
+    const f=e.target.files?.[0];
+    if(!f)return;
+    if(f.size>20*1024*1024){setErr('La imagen supera 20 MB');return;}
+    setUploading(true); setErr('');
+    try{
+      await api.uploadBrandLogo(brand,f);
+      onLogoUploaded&&onLogoUploaded();
+    }catch(ex){setErr(ex?.message||'Error al subir logo');}
+    finally{setUploading(false); if(fileRef.current)fileRef.current.value='';}
+  };
+
+  return(
+    <div onClick={onClick}
+      style={{
+        background:'#FFFFFF',
+        border:'1px solid #E5E7EB',
+        borderRadius:14,
+        overflow:'hidden',
+        cursor:'pointer',
+        boxShadow:'0 1px 3px rgba(16,24,40,0.04)',
+        display:'flex',flexDirection:'column',
+        transition:'transform 140ms, box-shadow 140ms, border-color 140ms',
+      }}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(16,24,40,0.08)';e.currentTarget.style.borderColor='#F28100';}}
+      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 1px 3px rgba(16,24,40,0.04)';e.currentTarget.style.borderColor='#E5E7EB';}}
+    >
+      {/* Logo 16:9 */}
+      <div style={{
+        position:'relative',aspectRatio:'16/9',background:'#F9FAFB',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        borderBottom:'1px solid #F3F4F6',
+      }}>
+        {logoUrl
+          ? <img src={logoUrl} alt={brand} style={{maxWidth:'78%',maxHeight:'78%',objectFit:'contain'}}/>
+          : (
+            <div style={{textAlign:'center',padding:'0 12px'}}>
+              <div style={{fontSize:28,fontWeight:900,color:'#111827',letterSpacing:'-0.8px',lineHeight:1}}>{brand}</div>
+              {canEdit&&<div style={{fontSize:10,fontWeight:600,color:'#9CA3AF',marginTop:8,letterSpacing:'0.05em',textTransform:'uppercase'}}>Sin logo</div>}
+            </div>
+          )
+        }
+        {canEdit&&(
+          <label onClick={e=>e.stopPropagation()} style={{
+            position:'absolute',top:10,right:10,
+            background:'rgba(17,24,39,0.82)',color:'#FFFFFF',
+            fontSize:11,fontWeight:700,padding:'6px 10px',borderRadius:8,
+            cursor:'pointer',display:'flex',alignItems:'center',gap:5,
+            backdropFilter:'blur(4px)',
+          }}>
+            {uploading?'Subiendo…':(logoUrl?'Cambiar':'Subir logo')}
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:'none'}} disabled={uploading}/>
+          </label>
+        )}
+      </div>
+
+      {/* Contenido */}
+      <div style={{padding:'14px 16px',flex:1,display:'flex',flexDirection:'column',gap:8}}>
+        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8}}>
+          <div style={{fontSize:17,fontWeight:900,color:'#111827',letterSpacing:'-0.4px'}}>{brand}</div>
+          <div style={{fontSize:11,fontWeight:700,color:'#6B7280'}}>{modelCount} modelo{modelCount!==1?'s':''}</div>
+        </div>
+        {categories.length>0&&(
+          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+            {categories.slice(0,5).map(c=>(
+              <span key={c} style={{fontSize:10,padding:'2px 8px',borderRadius:20,background:catColor(c)+'18',color:catColor(c),fontWeight:600,border:`1px solid ${catColor(c)}30`}}>
+                {c}
+              </span>
+            ))}
+            {categories.length>5&&<span style={{fontSize:10,color:'#9CA3AF',fontWeight:600,alignSelf:'center'}}>+{categories.length-5}</span>}
+          </div>
+        )}
+        {err&&<div style={{fontSize:11,color:'#DC2626'}}>{err}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── BrandCategoriesPanel: CRUD per-brand categories ─────────────────────── */
+function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
+  const[newName,setNewName]=useState('');
+  const[editId,setEditId]=useState(null);
+  const[editVal,setEditVal]=useState('');
+  const[saving,setSaving]=useState(false);
+  const[err,setErr]=useState('');
+
+  const add=async()=>{
+    if(!newName.trim())return;
+    setSaving(true); setErr('');
+    try{await api.createBrandCategory(brand,newName.trim());setNewName('');onChanged&&onChanged();}
+    catch(e){setErr(e?.message||'Error');}
+    finally{setSaving(false);}
+  };
+  const startEdit=(c)=>{setEditId(c.id);setEditVal(c.name);};
+  const saveEdit=async()=>{
+    if(!editVal.trim())return;
+    setSaving(true); setErr('');
+    try{await api.updateBrandCategory(brand,editId,{name:editVal.trim()});setEditId(null);setEditVal('');onChanged&&onChanged();}
+    catch(e){setErr(e?.message||'Error');}
+    finally{setSaving(false);}
+  };
+  const del=async(c)=>{
+    if(!confirm(`¿Eliminar categoría "${c.name}"?${c.model_count?` (${c.model_count} modelos la usan)`:''}`))return;
+    setSaving(true); setErr('');
+    try{await api.deleteBrandCategory(brand,c.id);onChanged&&onChanged();}
+    catch(e){setErr(e?.message||'Error');}
+    finally{setSaving(false);}
+  };
+
+  return(
+    <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:14,padding:'16px 18px',marginBottom:18,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#111827'}}>Categorías de {brand}</div>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'#9CA3AF',cursor:'pointer',fontSize:18,lineHeight:1}}>×</button>
+      </div>
+
+      {/* Lista existentes */}
+      <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14}}>
+        {cats.length===0?<span style={{fontSize:12,color:'#9CA3AF'}}>Aún no hay categorías para esta marca</span>:cats.map(c=>(
+          <div key={c.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',background:'#F9FAFB',borderRadius:8,border:'1px solid #F3F4F6'}}>
+            {editId===c.id?(
+              <>
+                <input value={editVal} onChange={e=>setEditVal(e.target.value)} autoFocus
+                  style={{...S.inp,flex:1,padding:'5px 8px',fontSize:12}}/>
+                <button onClick={saveEdit} disabled={saving||!editVal.trim()} style={{...S.btn,padding:'5px 12px',fontSize:11}}>Guardar</button>
+                <button onClick={()=>setEditId(null)} style={{...S.gh,padding:'5px 10px',fontSize:11}}>Cancelar</button>
+              </>
+            ):(
+              <>
+                <span style={{fontSize:12,padding:'2px 10px',borderRadius:20,background:catColor(c.name)+'20',color:catColor(c.name),fontWeight:700,border:`1px solid ${catColor(c.name)}40`}}>{c.name}</span>
+                <span style={{fontSize:11,color:'#9CA3AF',flex:1}}>{c.model_count} modelo{c.model_count!==1?'s':''}</span>
+                <button onClick={()=>startEdit(c)} style={{...S.gh,padding:'4px 10px',fontSize:11}}>Renombrar</button>
+                <button onClick={()=>del(c)} disabled={saving} style={{background:'none',border:'none',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer',padding:'4px 8px'}}>Eliminar</button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Agregar nueva */}
+      <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <input value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()}
+          placeholder="Nueva categoría (ej: Naked, Scooter, Enduro)..."
+          style={{...S.inp,flex:1,padding:'8px 12px',fontSize:13}}/>
+        <button onClick={add} disabled={saving||!newName.trim()} style={{...S.btn,padding:'8px 16px',fontSize:12,opacity:saving||!newName.trim()?0.6:1}}>
+          + Agregar
+        </button>
+      </div>
+      {err&&<div style={{marginTop:10,fontSize:11,color:'#DC2626'}}>{err}</div>}
+    </div>
+  );
+}
+
 export function CatalogView({user}){
   const[models,setModels]=useState([]);
+  const[brandsMeta,setBrandsMeta]=useState([]);              // [{name, logo_url, model_count}]
+  const[brandCats,setBrandCats]=useState([]);                 // categorías de la marca activa
   const[loading,setLoading]=useState(true);
   const[selected,setSelected]=useState(null);
   const[showAdd,setShowAdd]=useState(false);
   const[showManageCats,setShowManageCats]=useState(false);
+  const[showBrandCats,setShowBrandCats]=useState(false);
   const[successMsg,setSuccessMsg]=useState('');
   // Navegación: null = vista marcas, string = marca activa
   const[activeBrand,setActiveBrand]=useState(null);
@@ -883,10 +1046,21 @@ export function CatalogView({user}){
   const isMobile=useIsMobile();
   const isTablet=useIsMobile(1024);
   const gridCols=isMobile?'1fr':isTablet?'repeat(2,1fr)':'repeat(auto-fill, minmax(220px,1fr))';
+  const brandGridCols=isMobile?'1fr':isTablet?'repeat(2,1fr)':'repeat(auto-fill, minmax(260px,1fr))';
 
   useEffect(()=>{
     api.getModels().then(d=>setModels(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setLoading(false));
+    api.getBrandsWithLogos().then(d=>setBrandsMeta(Array.isArray(d)?d:[])).catch(()=>{});
   },[]);
+
+  // Al cambiar de marca activa, traer sus categorías persistidas
+  useEffect(()=>{
+    if(!activeBrand){setBrandCats([]);return;}
+    api.getBrandCategories(activeBrand).then(d=>setBrandCats(Array.isArray(d)?d:[])).catch(()=>setBrandCats([]));
+  },[activeBrand]);
+
+  const refreshBrandsMeta=()=>api.getBrandsWithLogos().then(d=>setBrandsMeta(Array.isArray(d)?d:[])).catch(()=>{});
+  const refreshBrandCats=()=>activeBrand&&api.getBrandCategories(activeBrand).then(d=>setBrandCats(Array.isArray(d)?d:[])).catch(()=>{});
 
   const onSaved=(updated)=>{setModels(ms=>ms.map(m=>m.id===updated.id?updated:m));setSelected(updated);};
   const onAdded=(created)=>{setModels(ms=>[...ms,created]);};
@@ -960,28 +1134,22 @@ export function CatalogView({user}){
               visibleBrands.length===0?(
                 <Empty icon={Ic.bike} title="Catálogo vacío" hint="Agrega el primer modelo para comenzar." action={canEdit&&<button onClick={()=>setShowAdd(true)} style={S.btn}>+ Agregar moto</button>}/>
               ):(
-                <div style={{display:"grid",gridTemplateColumns:gridCols,gap:12}}>
+                <div style={{display:"grid",gridTemplateColumns:brandGridCols,gap:14}}>
                   {visibleBrands.map(brand=>{
                     const bms=models.filter(m=>m.brand===brand);
                     const cats=[...new Set(bms.map(m=>m.category).filter(Boolean))].sort();
+                    const meta=brandsMeta.find(b=>b.name===brand);
                     return(
-                      <div key={brand} onClick={()=>{setActiveBrand(brand);setActiveCat(null);}}
-                        style={{...S.card,cursor:"pointer",transition:"box-shadow 0.15s,border-color 0.15s"}}
-                        onMouseEnter={e=>{e.currentTarget.style.borderColor="#F28100";e.currentTarget.style.boxShadow="0 4px 18px rgba(242,129,0,0.12)";}}
-                        onMouseLeave={e=>{e.currentTarget.style.borderColor="#E5E7EB";e.currentTarget.style.boxShadow=S.card.boxShadow;}}
-                      >
-                        <div style={{fontSize:18,fontWeight:900,color:"#111827",letterSpacing:"-0.5px",marginBottom:4}}>{brand}</div>
-                        <div style={{fontSize:12,color:"#9CA3AF",marginBottom:cats.length?12:0}}>{bms.length} modelo{bms.length!==1?"s":""}</div>
-                        {cats.length>0&&(
-                          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                            {cats.map(c=>(
-                              <span key={c} style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:catColor(c)+"18",color:catColor(c),fontWeight:600,border:`1px solid ${catColor(c)}30`}}>
-                                {c}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <BrandCard
+                        key={brand}
+                        brand={brand}
+                        logoUrl={meta?.logo_url}
+                        modelCount={bms.length}
+                        categories={cats}
+                        canEdit={canEdit}
+                        onClick={()=>{setActiveBrand(brand);setActiveCat(null);}}
+                        onLogoUploaded={refreshBrandsMeta}
+                      />
                     );
                   })}
                 </div>
@@ -998,38 +1166,48 @@ export function CatalogView({user}){
 
   // ── Vista: marca seleccionada (categorías + modelos) ────────────────────
   const brandModels=models.filter(m=>m.brand===activeBrand);
-  const brandCats=[...new Set(brandModels.map(m=>m.category).filter(Boolean))].sort();
-  const shownModels=activeCat?brandModels.filter(m=>m.category===activeCat):brandModels;
+  // Unión entre categorías persistidas y las derivadas de los modelos actuales
+  const derivedCats=[...new Set(brandModels.map(m=>m.category).filter(Boolean))];
+  const persistedCatNames=brandCats.map(c=>c.name);
+  const allBrandCatNames=[...new Set([...persistedCatNames,...derivedCats])].sort();
+  const shownModels=activeCat&&activeCat!=="__sin_categoria"?brandModels.filter(m=>m.category===activeCat):brandModels;
   const uncategorized=brandModels.filter(m=>!m.category);
+  const brandMeta=brandsMeta.find(b=>b.name===activeBrand);
+  const brandCatsForChildren=allBrandCatNames; // lista para combos en edit/new
 
   return(
     <div>
       {/* Breadcrumb / header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:8}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <button onClick={()=>{setActiveBrand(null);setActiveCat(null);}}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={()=>{setActiveBrand(null);setActiveCat(null);setShowBrandCats(false);}}
             style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",color:"#9CA3AF",fontSize:13,fontWeight:600,cursor:"pointer",padding:0,fontFamily:"inherit"}}>
             <Ic.back size={14}/> Catálogo
           </button>
           <span style={{color:"#D1D5DB"}}>/</span>
+          {brandMeta?.logo_url&&<img src={brandMeta.logo_url} alt="" style={{height:22,maxWidth:60,objectFit:'contain'}}/>}
           <span style={{fontSize:16,fontWeight:800,color:"#111827"}}>{activeBrand}</span>
-          {activeCat&&<><span style={{color:"#D1D5DB"}}>/</span><span style={{fontSize:14,fontWeight:700,color:catColor(activeCat)}}>{activeCat}</span></>}
+          {activeCat&&activeCat!=="__sin_categoria"&&<><span style={{color:"#D1D5DB"}}>/</span><span style={{fontSize:14,fontWeight:700,color:catColor(activeCat)}}>{activeCat}</span></>}
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <span style={{fontSize:12,color:"#9CA3AF"}}>{shownModels.length} modelo{shownModels.length!==1?"s":""}</span>
+          <span style={{fontSize:12,color:"#9CA3AF"}}>{(activeCat==="__sin_categoria"?uncategorized:shownModels).length} modelo{(activeCat==="__sin_categoria"?uncategorized:shownModels).length!==1?"s":""}</span>
+          {canEdit&&<button onClick={()=>setShowBrandCats(v=>!v)} style={{...S.btn2,fontSize:12,padding:"6px 14px"}}>Categorías</button>}
           {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
         </div>
       </div>
 
+      {/* Panel de categorías de la marca */}
+      {canEdit&&showBrandCats&&<BrandCategoriesPanel brand={activeBrand} cats={brandCats} onClose={()=>setShowBrandCats(false)} onChanged={refreshBrandCats}/>}
+
       {/* Pills de categoría */}
-      {brandCats.length>0&&(
+      {allBrandCatNames.length>0&&(
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
           <button onClick={()=>setActiveCat(null)}
             style={{padding:"6px 16px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
                     background:!activeCat?"#111827":"#F3F4F6",color:!activeCat?"#FFFFFF":"#4B5563",transition:"all 0.12s"}}>
             Todos ({brandModels.length})
           </button>
-          {brandCats.map(c=>{
+          {allBrandCatNames.map(c=>{
             const cnt=brandModels.filter(m=>m.category===c).length;
             const active=activeCat===c;
             return(
@@ -1062,8 +1240,8 @@ export function CatalogView({user}){
         );
       })()}
 
-      {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={allCategories}/>}
-      {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted} allCategories={allCategories}/>}
+      {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={brandCatsForChildren.length?brandCatsForChildren:allCategories} defaultBrand={activeBrand}/>}
+      {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted} allCategories={brandCatsForChildren.length?brandCatsForChildren:allCategories}/>}
     </div>
   );
 }
