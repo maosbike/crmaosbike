@@ -6,7 +6,7 @@ export function BottomNav({ page, nav, user, onMenuOpen }) {
   const canAdmin = hasRole(user, ...ROLE_ADMIN_WRITE);
   const items = [
     { id: 'dashboard', label: 'Inicio',   icon: Ic.home    },
-    { id: 'leads',     label: 'Leads',    icon: Ic.users   },
+    { id: 'leads',     label: 'Leads',    icon: Ic.leads   },
     { id: 'pipeline',  label: 'Pipeline', icon: Ic.kanban  },
     // Vendedor ve Ventas; admin/backoffice ve Inventario
     canAdmin
