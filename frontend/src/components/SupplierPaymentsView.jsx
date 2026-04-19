@@ -663,35 +663,69 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
 
 /* ── Mobile card ────────────────────────────────────────────────────────── */
 function MobileCard({ p, onClick }) {
-  const dv = due(p);
-  const st = pagoStatus(p);
-  const img = motoImg(p);
+  const st   = pagoStatus(p);
+  const img  = motoImg(p);
+  const paid = parseFloat(p.paid_amount || 0) > 0;
+  const saldo = Math.max(0, parseFloat(p.total_amount || 0) - parseFloat(p.paid_amount || 0));
+  const amount = paid ? p.paid_amount : (saldo || p.total_amount);
+  const amountColor = paid ? '#059669' : st.l === 'Vencido' ? '#DC2626' : '#111827';
   return (
     <div onClick={onClick} style={{
-      ...S.card,
+      background:'#FFFFFF',
+      borderRadius:14,
+      border:'1px solid #E5E7EB',
+      borderLeft:`4px solid ${st.c}`,
+      padding:12,
+      marginBottom:12,
       cursor:'pointer',
-      marginBottom:10,
-      borderLeft:`3px solid ${st.c}`,
-      paddingLeft:13,
+      display:'flex',
+      gap:12,
+      alignItems:'stretch',
+      boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
     }}>
-      <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:8}}>
-        {img&&<img src={img} alt="" style={{width:44,height:34,objectFit:'contain',borderRadius:6,border:'1px solid #E5E7EB',background:'#F9FAFB',flexShrink:0}}/>}
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:800,fontSize:13,color:'#111827',letterSpacing:'-0.2px'}}>{p.invoice_number||'—'}</div>
-          {(p.catalog_name||p.model)&&<div style={{fontSize:11,fontWeight:600,color:'#374151',marginTop:1}}>{p.catalog_name||p.model}</div>}
-        </div>
-        <div style={{textAlign:'right',flexShrink:0}}>
-          <div style={{fontWeight:800,fontSize:14,color:'#111827'}}>{$(p.total_amount)}</div>
-          <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
-        </div>
+      {/* Large photo */}
+      <div style={{
+        width:104, height:104,
+        flexShrink:0,
+        borderRadius:10,
+        background:'#F9FAFB',
+        border:'1px solid #F3F4F6',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        overflow:'hidden',
+      }}>
+        {img
+          ? <img src={img} alt="" style={{width:'100%',height:'100%',objectFit:'contain'}}/>
+          : <Ic.bike size={30} color="#D1D5DB"/>}
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px 12px',fontSize:12}}>
-        {p.color&&<div><span style={lbl9}>Color</span><span style={{color:'#374151'}}>{p.color}</span></div>}
-        {p.commercial_year&&<div><span style={lbl9}>Año</span><span style={{color:'#374151'}}>{p.commercial_year}</span></div>}
-        {dv&&<div><span style={{...lbl9,color:pagoStatus(p).l==='Vencido'?'#DC2626':'#9CA3AF'}}>Venc.</span><span style={{fontWeight:pagoStatus(p).l==='Vencido'?700:400,color:pagoStatus(p).l==='Vencido'?'#DC2626':'#374151'}}>{fd(dv)}</span></div>}
-        {p.paid_amount&&<div><span style={lbl9}>Pagado</span><strong style={{color:'#15803D'}}>{$(p.paid_amount)}</strong></div>}
-        {p.chassis&&<div><span style={lbl9}>Chasis</span><span style={{fontSize:11,color:'#111827'}}>{p.chassis}</span></div>}
-        {p.motor_num&&<div><span style={lbl9}>Motor</span><span style={{fontSize:11,color:'#111827'}}>{p.motor_num}</span></div>}
+
+      {/* Info */}
+      <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+        <div style={{minWidth:0}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:2}}>
+            <div style={{fontSize:11, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.02em'}}>
+              #{p.invoice_number || '—'}
+            </div>
+            <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
+          </div>
+          <div style={{fontSize:15, fontWeight:800, color:'#111827', lineHeight:1.2, letterSpacing:'-0.2px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+            {p.catalog_name || p.model || '—'}
+          </div>
+        </div>
+
+        <div>
+          <div style={{fontSize:19, fontWeight:800, color:amountColor, letterSpacing:'-0.4px', lineHeight:1.1}}>
+            {$(amount)}
+          </div>
+          {p.chassis && (
+            <div style={{
+              fontSize:11, color:'#6B7280', marginTop:4,
+              fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+            }}>
+              {p.chassis}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
