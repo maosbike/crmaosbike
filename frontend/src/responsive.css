@@ -242,16 +242,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     gap: 4px 6px !important;
   }
   .crm-ticket-actions {
-    margin-left: 0 !important;
-    width: 100% !important;
-    justify-content: stretch !important;
-    gap: 6px !important;
-  }
-  .crm-ticket-actions button {
-    flex: 1 !important;
-    font-size: 11px !important;
-    padding: 8px 8px !important;
-    justify-content: center !important;
+    display: none !important;
   }
 }
 
