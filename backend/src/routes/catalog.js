@@ -550,11 +550,18 @@ router.post('/aliases/test', roleCheck('super_admin', 'admin_comercial'), async 
   try {
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ error: 'text requerido' });
-    const q = text.trim();
+    // Limpia artefactos comunes ("GIXXER 150 DI -" → "GIXXER 150 DI") para que el tester
+    // refleje exactamente lo que hace el importador.
+    const q = String(text)
+      .replace(/[-–—]+\s*$/, '')
+      .replace(/^\s*[-–—]+/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     const { rows } = await db.query(
       `SELECT m.id, m.brand, m.model, m.commercial_name, m.active, a.alias
          FROM model_aliases a JOIN moto_models m ON a.model_id = m.id
-        WHERE lower(trim(a.alias)) = lower(trim($1))
+        WHERE btrim(regexp_replace(lower(a.alias), '[-\\s]+', ' ', 'g')) =
+              btrim(regexp_replace(lower($1),      '[-\\s]+', ' ', 'g'))
         LIMIT 1`,
       [q]
     );

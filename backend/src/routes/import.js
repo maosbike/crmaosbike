@@ -178,22 +178,36 @@ function expandNum(s) {
 
 // Devuelve el registro de moto_models que mejor matchea con modeloRaw,
 // o null si no hay coincidencia suficiente.
+// Limpia artefactos comunes de export (trailing " -", dashes sueltos, espacios repetidos)
+// antes de buscar alias o hacer fuzzy. Promobility exporta celdas como "GIXXER 150 DI -".
+function cleanModelRaw(s) {
+  return String(s || '')
+    .replace(/[-–—]+\s*$/, '')  // guión final ("GIXXER 150 DI -" → "GIXXER 150 DI")
+    .replace(/^\s*[-–—]+/, '')  // guión inicial
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function resolveModelWithAliases(modeloRaw, models) {
   if (!modeloRaw) return null;
+  const cleaned = cleanModelRaw(modeloRaw);
+  if (!cleaned) return null;
   // 1. Chequear tabla de aliases primero (más confiable).
-  //    Trim en ambos lados y comparación case-insensitive para tolerar espacios del lead.
+  //    Match normalizado en ambos lados: colapsamos guiones y espacios a un solo espacio
+  //    para tolerar diferencias de formato entre el alias guardado y el export de origen.
   //    No filtramos por m.active: si el admin mapeó explícitamente un alias, respetamos la decisión.
   try {
     const { rows } = await db.query(
       `SELECT m.* FROM model_aliases a
        JOIN moto_models m ON a.model_id = m.id
-       WHERE lower(trim(a.alias)) = lower(trim($1))`,
-      [modeloRaw]
+       WHERE btrim(regexp_replace(lower(a.alias), '[-\\s]+', ' ', 'g')) =
+             btrim(regexp_replace(lower($1),      '[-\\s]+', ' ', 'g'))`,
+      [cleaned]
     );
     if (rows[0]) return rows[0];
   } catch (_) {}
   // 2. Fuzzy matching como fallback
-  return resolveModel(modeloRaw, models);
+  return resolveModel(cleaned, models);
 }
 
 function resolveModel(modeloRaw, models) {
