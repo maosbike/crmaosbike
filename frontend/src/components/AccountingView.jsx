@@ -331,9 +331,9 @@ export function AccountingView({ user }) {
 
       {!loading && !error && data.length === 0 && (
         <Empty
-          icon={<Ic.invoice size={32} color="#D1D5DB" />}
+          icon={Ic.invoice}
           title="Sin facturas"
-          subtitle={syncing ? 'Sincronizando...' : 'Sincroniza desde Drive para importar facturas.'}
+          hint={syncing ? 'Sincronizando...' : 'Sincroniza desde Drive para importar facturas.'}
         />
       )}
 
