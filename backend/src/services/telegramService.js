@@ -89,56 +89,79 @@ function sendMessage(chatId, text, inlineKeyboard) {
 
 // ─── Onboarding: /start ───────────────────────────────────────────────────────
 
+// Render genérico del menú de vinculación — filtra por roles permitidos.
+async function renderLinkMenu(chatId, db, { roles, welcomeText, emptyText }) {
+  const { rows: users } = await db.query(
+    `SELECT u.id, u.first_name, u.last_name, u.role, b.name AS branch_name
+     FROM users u
+     LEFT JOIN branches b ON u.branch_id = b.id
+     WHERE u.role = ANY($1) AND u.active = true
+     ORDER BY CASE u.role
+                WHEN 'super_admin'     THEN 0
+                WHEN 'admin_comercial' THEN 1
+                WHEN 'backoffice'      THEN 2
+                ELSE 3
+              END, b.name NULLS LAST, u.first_name
+     LIMIT 40`,
+    [roles]
+  );
+
+  if (users.length === 0) {
+    return sendMessage(chatId, welcomeText + '\n\n' + emptyText);
+  }
+
+  // Hasta 2 botones por fila para que se lea bien
+  const buttons = [];
+  for (let i = 0; i < users.length; i += 2) {
+    const row = [
+      {
+        text: `${users[i].first_name} ${users[i].last_name}${users[i].branch_name ? ' · ' + users[i].branch_name : ''}`,
+        callback_data: `link:${users[i].id}`,
+      },
+    ];
+    if (users[i + 1]) {
+      row.push({
+        text: `${users[i + 1].first_name} ${users[i + 1].last_name}${users[i + 1].branch_name ? ' · ' + users[i + 1].branch_name : ''}`,
+        callback_data: `link:${users[i + 1].id}`,
+      });
+    }
+    buttons.push(row);
+  }
+
+  await sendMessage(chatId, welcomeText, buttons);
+}
+
+// /start — menú para vendedores (solo rol 'vendedor')
 async function handleStart(chatId, db) {
   try {
-    // Vendedores + admins comerciales + super_admin pueden vincularse al bot.
-    // Los vendedores reciben avisos de leads nuevos; los admins reciben avisos de
-    // ventas y reservas.
-    const { rows: sellers } = await db.query(
-      `SELECT u.id, u.first_name, u.last_name, u.role, b.name AS branch_name
-       FROM users u
-       LEFT JOIN branches b ON u.branch_id = b.id
-       WHERE u.role IN ('vendedor', 'admin_comercial', 'super_admin') AND u.active = true
-       ORDER BY CASE u.role
-                  WHEN 'super_admin'     THEN 0
-                  WHEN 'admin_comercial' THEN 1
-                  ELSE 2
-                END, b.name NULLS LAST, u.first_name
-       LIMIT 40`
-    );
-
     const welcomeText =
       `🏍️ *Bienvenido al bot de MaosBike CRM*\n\n` +
-      `Este bot te envía notificaciones según tu rol:\n` +
-      `• Vendedores → aviso de lead nuevo asignado\n` +
-      `• Admins → aviso de cada venta o reserva registrada\n\n` +
+      `Te avisaré cuando te asignen un lead nuevo.\n\n` +
       `Para empezar, *selecciona tu nombre* en la lista de abajo:`;
-
-    if (sellers.length === 0) {
-      return sendMessage(chatId, welcomeText + '\n\n_No hay vendedores activos registrados en el sistema. Contacta a un administrador._');
-    }
-
-    // Mostrar hasta 2 botones por fila para que se lea bien
-    const buttons = [];
-    for (let i = 0; i < sellers.length; i += 2) {
-      const row = [
-        {
-          text: `${sellers[i].first_name} ${sellers[i].last_name}${sellers[i].branch_name ? ' · ' + sellers[i].branch_name : ''}`,
-          callback_data: `link:${sellers[i].id}`,
-        },
-      ];
-      if (sellers[i + 1]) {
-        row.push({
-          text: `${sellers[i + 1].first_name} ${sellers[i + 1].last_name}${sellers[i + 1].branch_name ? ' · ' + sellers[i + 1].branch_name : ''}`,
-          callback_data: `link:${sellers[i + 1].id}`,
-        });
-      }
-      buttons.push(row);
-    }
-
-    await sendMessage(chatId, welcomeText, buttons);
+    await renderLinkMenu(chatId, db, {
+      roles: ['vendedor'],
+      welcomeText,
+      emptyText: '_No hay vendedores activos registrados. Contacta a un administrador._',
+    });
   } catch (e) {
     logger.warn(`[Telegram] handleStart error: ${e.message}`);
+  }
+}
+
+// /admin — menú para admins y backoffice (no aparece en la lista de vendedores)
+async function handleStartAdmin(chatId, db) {
+  try {
+    const welcomeText =
+      `🛠️ *Vinculación de administración*\n\n` +
+      `Recibirás un aviso por cada venta o reserva registrada.\n\n` +
+      `Seleccioná tu nombre:`;
+    await renderLinkMenu(chatId, db, {
+      roles: ['super_admin', 'admin_comercial', 'backoffice'],
+      welcomeText,
+      emptyText: '_No hay administradores activos registrados._',
+    });
+  } catch (e) {
+    logger.warn(`[Telegram] handleStartAdmin error: ${e.message}`);
   }
 }
 
@@ -154,7 +177,7 @@ async function handleLinkCallback(chatId, userId, callbackQueryId, db) {
     const user = rows[0];
 
     // Usuario inválido, desactivado o con rol que no se vincula al bot.
-    const LINKABLE = ['vendedor', 'admin_comercial', 'super_admin'];
+    const LINKABLE = ['vendedor', 'admin_comercial', 'super_admin', 'backoffice'];
     if (!user || !user.active || !LINKABLE.includes(user.role)) {
       await apiCall('answerCallbackQuery', {
         callback_query_id: callbackQueryId,
@@ -230,10 +253,15 @@ async function handleUpdate(update) {
       return;
     }
 
+    if (text === '/admin' || text.startsWith('/admin ')) {
+      await handleStartAdmin(chatId, db);
+      return;
+    }
+
     // Cualquier otro mensaje → guiar al usuario
     await sendMessage(
       chatId,
-      `Usa /start para vincular tu cuenta y empezar a recibir notificaciones de leads. 🏍️`
+      `Vendedores: usá /start para vincularte y recibir avisos de leads.\nAdmins y backoffice: usá /admin para recibir avisos de ventas y reservas. 🏍️`
     );
     return;
   }
@@ -365,7 +393,7 @@ const TelegramService = {
       const { rows: admins } = await db.query(
         `SELECT id, first_name, last_name, telegram_chat_id
            FROM users
-          WHERE role IN ('super_admin', 'admin_comercial')
+          WHERE role IN ('super_admin', 'admin_comercial', 'backoffice')
             AND telegram_chat_id IS NOT NULL
             AND active = true`
       );
