@@ -374,56 +374,79 @@ const TelegramService = {
       const isReserva = info.kind === 'reserva';
       const header = isReserva ? '📝 *Reserva registrada*' : '🎉 *Venta registrada*';
 
-      const money = (v) => {
-        const n = v == null ? null : Number(v);
-        return Number.isFinite(n) && n > 0 ? '$' + n.toLocaleString('es-CL') : null;
+      const n = (v) => {
+        if (v == null || v === '') return 0;
+        const x = Number(v);
+        return Number.isFinite(x) ? x : 0;
       };
-      const docLabel = (st) => {
-        const s = String(st || '').toLowerCase();
-        if (s === 'completa' || s === 'documentacion' || s === 'documentación') return 'Documentación completa 📋';
-        if (s === 'inscripcion' || s === 'inscripción' || s === 'solo_inscripcion' || s === 'solo inscripción') return 'Solo inscripción 📝';
-        return info.sale_type ? esc(info.sale_type) : null;
+      const money = (v) => {
+        const x = n(v);
+        return x > 0 ? '$' + x.toLocaleString('es-CL') : null;
       };
 
       // Moto
       const bike   = `${esc(info.brand || '')} ${esc(info.model || '')}`.trim() || '—';
-      const year   = info.year  ? ` · ${info.year}`              : '';
+      const year   = info.year  ? ` · ${info.year}`                : '';
       const color  = info.color ? `\n🎨 Color: ${esc(info.color)}` : '';
       const stock  = info.in_inventory
         ? `\n📦 Moto: estaba en inventario`
         : `\n📦 Moto: fuera de inventario`;
 
-      // Montos — desglose
-      const listPrice  = money(info.list_price ?? info.price);
-      const finalPrice = money(info.sale_price);
-      const reserve    = money(info.invoice_amount);
+      // Desglose: precio venta (base que pone el vendedor) + extras + total
+      const basePrice = n(info.sale_price) || n(info.list_price) || n(info.price);
+      const chargeType = String(info.charge_type || '').toLowerCase();
+      const chargeAmt  = n(info.charge_amt);
+      const discount   = n(info.discount_amt);
+      const accs = Array.isArray(info.accessories) ? info.accessories : [];
 
-      let montos = '';
-      if (isReserva) {
-        // En reserva lo central es cuánto pagó de seña.
-        if (reserve)    montos += `\n💵 Abono de reserva: *${reserve}*`;
-        if (finalPrice) montos += `\n💰 Precio acordado: ${finalPrice}`;
-        else if (listPrice) montos += `\n📋 Precio lista: ${listPrice}`;
-        if (finalPrice && listPrice && finalPrice !== listPrice) {
-          montos += `\n📋 Precio lista: ${listPrice}`;
-        }
-      } else {
-        // Venta: precio final es lo principal, mostrar lista si difiere.
-        if (finalPrice) montos += `\n💰 Precio final: *${finalPrice}*`;
-        if (listPrice && (!finalPrice || finalPrice !== listPrice)) {
-          montos += `\n📋 Precio lista: ${listPrice}`;
-        }
-        if (reserve) montos += `\n💵 Abono del cliente: ${reserve}`;
+      const extrasLines = [];
+      if (chargeAmt > 0) {
+        const label = chargeType === 'completa'
+          ? 'Documentación completa 📋'
+          : chargeType === 'inscripcion'
+            ? 'Inscripción vehicular 📝'
+            : 'Documentación';
+        extrasLines.push(`   • ${label}: ${money(chargeAmt)}`);
+      }
+      for (const a of accs) {
+        const amt = n(a.amount);
+        if (amt <= 0 && !a.description) continue;
+        const desc = esc(String(a.description || 'Accesorio'));
+        extrasLines.push(`   • ${desc}: ${money(amt) || '$0'}`);
+      }
+      if (discount > 0) {
+        extrasLines.push(`   • Descuento: -${money(discount)}`);
       }
 
-      // Detalles de venta
-      const doc      = docLabel(info.sale_type) ? `\n📄 Documentación: ${docLabel(info.sale_type)}` : '';
-      const payment  = info.payment_method ? `\n💳 Medio de pago: ${esc(info.payment_method)}`       : '';
-      const notes    = info.sale_notes     ? `\n🗒️ Notas: ${esc(info.sale_notes)}`                  : '';
+      const extrasSum = chargeAmt + accs.reduce((s, a) => s + n(a.amount), 0) - discount;
+      const grandTotal = basePrice + extrasSum;
 
-      // Partes involucradas
+      let montos = '';
+      if (basePrice > 0) montos += `\n💰 Precio venta: ${money(basePrice)}`;
+      if (extrasLines.length) {
+        montos += `\n➕ Extras:\n${extrasLines.join('\n')}`;
+      }
+      if (grandTotal > 0 && (extrasLines.length || isReserva)) {
+        montos += `\n🧾 Valor total: *${money(grandTotal)}*`;
+      } else if (grandTotal > 0) {
+        montos += `\n🧾 Valor total: *${money(grandTotal)}*`;
+      }
+      if (isReserva) {
+        const abono = n(info.invoice_amount);
+        if (abono > 0) {
+          montos += `\n💵 Abono pagado: *${money(abono)}*`;
+          const saldo = grandTotal - abono;
+          if (saldo > 0) montos += `\n⏳ Saldo pendiente: ${money(saldo)}`;
+        }
+      }
+
+      // Detalles
+      const payment  = info.payment_method ? `\n💳 Medio de pago: ${esc(info.payment_method)}` : '';
+      const notes    = info.sale_notes     ? `\n🗒️ Notas: ${esc(info.sale_notes)}`             : '';
+
+      // Partes
       const client = `\n🧑 Cliente: ${esc(info.client_name || '—')}`;
-      const rut    = info.client_rut  ? `\n📇 RUT: ${esc(info.client_rut)}`     : '';
+      const rut    = info.client_rut  ? `\n📇 RUT: ${esc(info.client_rut)}`       : '';
       const branch = info.branch_name ? `\n🏢 Sucursal: ${esc(info.branch_name)}` : '';
       const seller = info.seller_name ? `\n👤 Vendedor: ${esc(info.seller_name)}` : '';
 
@@ -431,14 +454,12 @@ const TelegramService = {
         `${header}\n\n` +
         `🏍️ ${bike}${year}${color}${stock}` +
         montos +
-        doc + payment + notes +
+        payment + notes +
         client + rut + branch + seller;
 
-      const kb = info.ticket_id ? crmButton(info.ticket_id) : undefined;
-
-      // No usamos Promise.all para no pisar rate limit del bot (30 msg/s global).
+      // Sin botones — la notificación va limpia.
       for (const a of admins) {
-        await sendMessage(a.telegram_chat_id, text, kb);
+        await sendMessage(a.telegram_chat_id, text);
       }
     } catch (e) {
       logger.warn(`[Telegram] notifyAdminsOfSale error: ${e.message}`);

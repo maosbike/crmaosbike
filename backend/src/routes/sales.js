@@ -296,7 +296,21 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
       sale_price, invoice_amount, delivered,
       client_name, client_rut, status: reqStatus,
       model_id: reqModelId,
+      accessories, charge_type, charge_amt, discount_amt,
     } = req.body;
+
+    // Normaliza desglose de extras
+    const accArr = Array.isArray(accessories)
+      ? accessories
+          .filter(a => a && (a.description || a.amount))
+          .map(a => ({
+            description: String(a.description || '').slice(0, 200),
+            amount: parseInt(a.amount) || 0,
+          }))
+      : null;
+    const chType = charge_type === 'completa' || charge_type === 'inscripcion' ? charge_type : null;
+    const chAmt  = charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
+    const dcAmt  = discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
 
     // Vendedor: solo puede registrar ventas propias. Forzamos sold_by a su propio id.
     const sold_by = req.user.role === 'vendedor' ? req.user.id : (req.body.sold_by || null);
@@ -336,13 +350,15 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
          sold_at, sold_by, ticket_id,
          payment_method, sale_type, sale_notes,
          sale_price, cost_price, invoice_amount, delivered,
-         client_name, client_rut, created_by, model_id
+         client_name, client_rut, created_by, model_id,
+         accessories, charge_type, charge_amt, discount_amt
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9,
          $10, $11, $12,
          $13, $14, $15,
          $16, $17, $18, $19,
-         $20, $21, $22, $23
+         $20, $21, $22, $23,
+         $24, $25, $26, $27
        ) RETURNING *`,
       [
         finalStatus,
@@ -368,6 +384,10 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
         client_rut  || null,
         req.user.id,
         finalModelId,
+        accArr && accArr.length ? JSON.stringify(accArr) : null,
+        chType,
+        chAmt,
+        dcAmt,
       ]
     );
 
@@ -402,7 +422,10 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
           client_name, client_rut,
           branch_name: br[0]?.name || null,
           seller_name: se[0] ? `${se[0].first_name || ''} ${se[0].last_name || ''}`.trim() : null,
-          ticket_id:   ticket_id || null,
+          accessories:  accArr,
+          charge_type:  chType,
+          charge_amt:   chAmt,
+          discount_amt: dcAmt,
         });
       } catch (e) {
         logger.warn(`[Telegram] sales.POST notify error: ${e.message}`);
