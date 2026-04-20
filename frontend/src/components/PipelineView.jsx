@@ -3,12 +3,41 @@ import { api } from '../services/api.js';
 import { Ic, S, Modal, TICKET_STATUS, PIPELINE_STAGES, ROLES, hasRole, useIsMobile, ViewHeader, Empty, ErrorMsg } from '../ui.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
+// Edad en horas desde último contacto (o creación)
+const ageHours = l => {
+  const ref = l.lastContact || l.createdAt;
+  if (!ref) return null;
+  return (Date.now() - new Date(ref).getTime()) / 3_600_000;
+};
+const humanAge = h => {
+  if (h == null) return null;
+  if (h < 1)  return `${Math.max(1, Math.floor(h * 60))}m`;
+  if (h < 24) return `${Math.floor(h)}h`;
+  return `${Math.floor(h / 24)}d`;
+};
+
+// Regla de atención — solo marca cuando realmente hay problema.
+// Evita el ruido de "todos urgentes".
+const NEGLECT_H = 72; // sin contacto hace 3+ días
+const getAttention = l => {
+  // Usuario marcó como prioridad alta explícitamente
+  if (l.priority === 'alta') {
+    return { level: 'priority', label: 'Prioridad', color: '#F59E0B', bg: '#FFFBEB' };
+  }
+  // Lead estancado sin contacto (solo etapas activas)
+  const h = ageHours(l);
+  if (h != null && h >= NEGLECT_H) {
+    return { level: 'neglect', label: `Sin contacto ${Math.floor(h/24)}d`, color: '#EF4444', bg: '#FEF2F2' };
+  }
+  return null;
+};
+
 export function PipelineView({leads,user,nav,updLead}){
   const isMobile = useIsMobile();
   const [dragId,   setDragId]   = useState(null);
+  const [hoverId,  setHoverId]  = useState(null);
   const [sellLead, setSellLead] = useState(null);
   const [pipeErr,  setPipeErr]  = useState('');
-  // Mobile: etapa activa (1 columna a la vez) + modal mover
   const [mobStage, setMobStage] = useState(PIPELINE_STAGES[0]);
   const [moveLead, setMoveLead] = useState(null);
   const [moving,   setMoving]   = useState(false);
@@ -51,37 +80,21 @@ export function PipelineView({leads,user,nav,updLead}){
     } finally { setMoving(false); setMoveLead(null); }
   };
 
-  const getSlaInfo = l => {
-    if (l.sla_status === 'breached') return {breach: true,  warning: false};
-    if (l.sla_status === 'warning')  return {breach: false, warning: true};
-    const now   = Date.now();
-    const start = l.lastContact ? new Date(l.lastContact).getTime() : new Date(l.createdAt).getTime();
-    const h     = (now - start) / 3_600_000;
-    return {breach: h >= 3, warning: h >= 2 && h < 3};
-  };
-
-  const getSlaColor = l => {
-    const s = getSlaInfo(l);
-    if (s.breach)  return '#EF4444';
-    if (s.warning) return '#F59E0B';
-    return '#E5E7EB';
-  };
-
-  const getSlaLabel = l => {
-    if (l.sla_status === 'breached') return 'SLA vencido';
-    if (l.sla_status === 'warning')  return 'Atender ya';
-    const s = getSlaInfo(l);
-    if (s.breach)  return 'SLA vencido';
-    if (s.warning) return 'Atender ya';
-    return null;
-  };
-
   /* ════════════════════════════════════════════════════
      MOBILE — chips de etapa + lista vertical + modal mover
   ════════════════════════════════════════════════════ */
   if (isMobile) {
     const sc = TICKET_STATUS[mobStage];
     const sl = pLeads.filter(l => l.status === mobStage);
+
+    // Ordena: prioridad alta primero, luego descuidados, luego el resto
+    const sorted = [...sl].sort((a,b) => {
+      const pa = a.priority === 'alta' ? 0 : 1;
+      const pb = b.priority === 'alta' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return (ageHours(b) || 0) - (ageHours(a) || 0);
+    });
+
     return (
       <div>
         <ViewHeader
@@ -96,7 +109,7 @@ export function PipelineView({leads,user,nav,updLead}){
         {/* Chips de etapa */}
         <div style={{
           display:'flex', gap:6, overflowX:'auto',
-          padding:'0 0 12px',
+          padding:'0 0 14px',
           scrollbarWidth:'none', WebkitOverflowScrolling:'touch',
         }}>
           {stages.map(stage => {
@@ -105,7 +118,7 @@ export function PipelineView({leads,user,nav,updLead}){
             const act = mobStage === stage;
             return (
               <button key={stage} onClick={() => setMobStage(stage)} style={{
-                flexShrink:0, padding:'7px 14px', borderRadius:99,
+                flexShrink:0, padding:'8px 14px', borderRadius:99,
                 border:'none', cursor:'pointer', fontFamily:'inherit',
                 fontSize:13, fontWeight:600,
                 background: act ? x.c  : '#F3F4F6',
@@ -128,99 +141,113 @@ export function PipelineView({leads,user,nav,updLead}){
         </div>
 
         {/* Lista */}
-        <div style={{display:'flex', flexDirection:'column', gap:10}}>
-          {sl.length === 0 && (
+        <div style={{display:'flex', flexDirection:'column', gap:12}}>
+          {sorted.length === 0 && (
             <div style={{
               padding:'48px 24px', textAlign:'center',
               border:'2px dashed #E5E7EB', borderRadius:14,
               color:'#C4C9D4',
             }}>
-              <Ic.bike size={32} color="#E5E7EB"/>
-              <div style={{fontSize:13, marginTop:10}}>Sin fichas en {sc?.l}</div>
+              <Ic.leads size={32} color="#E5E7EB"/>
+              <div style={{fontSize:13, marginTop:10, color:'#9CA3AF'}}>Sin fichas en {sc?.l}</div>
             </div>
           )}
-          {sl.map(l => {
-            const m        = l.model_brand ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0} : null;
-            const slaColor = getSlaColor(l);
-            const slaLabel = getSlaLabel(l);
+          {sorted.map(l => {
+            const m   = l.model_brand ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0} : null;
+            const att = getAttention(l);
+            const age = humanAge(ageHours(l));
+
             return (
               <div key={l.id} style={{
-                background:'#FFFFFF', borderRadius:12,
+                background:'#FFFFFF', borderRadius:14,
                 border:'1px solid #E5E7EB',
-                borderLeft:`4px solid ${slaColor}`,
+                borderLeft: att ? `4px solid ${att.color}` : '1px solid #E5E7EB',
                 overflow:'hidden',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}>
                 <div onClick={() => nav('ticket', l.id)} style={{
                   display:'flex', cursor:'pointer', alignItems:'stretch',
                 }}>
                   {/* Foto */}
-                  {l.model_image && (
-                    <div style={{flexShrink:0, padding:'12px 0 12px 12px'}}>
+                  {l.model_image ? (
+                    <div style={{flexShrink:0, padding:'14px 0 14px 14px'}}>
                       <img src={l.model_image} alt="" style={{
-                        width:96, height:96, borderRadius:10,
+                        width:104, height:104, borderRadius:12,
                         objectFit:'cover', display:'block',
-                        border:'1.5px solid #E5E7EB',
+                        background:'#F9FAFB',
                       }}/>
+                    </div>
+                  ) : (
+                    <div style={{
+                      flexShrink:0, margin:'14px 0 14px 14px',
+                      width:104, height:104, borderRadius:12,
+                      background:'#F9FAFB', display:'flex',
+                      alignItems:'center', justifyContent:'center',
+                    }}>
+                      <Ic.bike size={28} color="#D1D5DB"/>
                     </div>
                   )}
                   {/* Contenido */}
-                  <div style={{flex:1, padding:'12px 14px', minWidth:0, overflow:'hidden'}}>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:6, marginBottom:4}}>
-                      <span style={{
-                        fontSize:14, fontWeight:700, color:'#111827', lineHeight:1.3,
-                        minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                      }}>
-                        {l.fn} {l.ln || ''}
-                      </span>
-                      {l.priority === 'alta' && (
-                        <span style={{
-                          fontSize:9, fontWeight:700, flexShrink:0,
-                          color:'#EF4444', background:'#FEF2F2',
-                          padding:'2px 7px', borderRadius:99, marginTop:2,
-                        }}>URGENTE</span>
-                      )}
-                    </div>
-                    <div style={{
-                      fontSize:12, color:'#6B7280', marginBottom:4,
-                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                    }}>
-                      {m ? `${m.brand} ${m.model}`.trim() : <span style={{color:'#D1D5DB', fontStyle:'italic'}}>Sin moto</span>}
-                    </div>
-                    {m && m.price > 0 && (
+                  <div style={{flex:1, padding:'14px 14px', minWidth:0, overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+                    <div>
                       <div style={{
-                        fontSize:13, fontWeight:700, color:'#374151', letterSpacing:'-0.01em',
+                        fontSize:15, fontWeight:700, color:'#111827', lineHeight:1.25, marginBottom:3,
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                       }}>
-                        ${Number(m.price - m.bonus).toLocaleString('es-CL')}
+                        {l.fn} {l.ln || ''}
                       </div>
-                    )}
-                    {slaLabel && (
                       <div style={{
-                        display:'inline-flex', alignItems:'center', gap:4, marginTop:6,
-                        padding:'3px 8px', borderRadius:6, fontSize:10, fontWeight:700,
-                        background: slaColor==='#EF4444'?'#FEF2F2':'#FFFBEB',
-                        color: slaColor==='#EF4444'?'#EF4444':'#F59E0B',
+                        fontSize:12, color:'#6B7280', marginBottom:6,
+                        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                       }}>
-                        <Ic.alert size={10} color={slaColor==='#EF4444'?'#EF4444':'#F59E0B'}/>
-                        {slaLabel}
+                        {m ? `${m.brand} ${m.model}`.trim() : <span style={{color:'#D1D5DB', fontStyle:'italic'}}>Sin moto</span>}
                       </div>
-                    )}
+                      {m && m.price > 0 && (
+                        <div style={{
+                          fontSize:14, fontWeight:700, color:'#111827', letterSpacing:'-0.01em',
+                        }}>
+                          ${Number(m.price - m.bonus).toLocaleString('es-CL')}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Meta: age + atención */}
+                    <div style={{display:'flex', alignItems:'center', gap:6, marginTop:8, flexWrap:'wrap'}}>
+                      {age && (
+                        <span style={{
+                          fontSize:10, fontWeight:600, color:'#9CA3AF',
+                          display:'inline-flex', alignItems:'center', gap:3,
+                        }}>
+                          <Ic.clock size={10} color="#9CA3AF"/>{age}
+                        </span>
+                      )}
+                      {att && (
+                        <span style={{
+                          fontSize:10, fontWeight:700,
+                          padding:'2px 7px', borderRadius:99,
+                          background: att.bg, color: att.color,
+                        }}>
+                          {att.label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+
                 {/* Acciones */}
-                <div style={{display:'flex', gap:8, padding:'8px 14px 12px', borderTop:'1px solid #F3F4F6'}}>
+                <div style={{display:'flex', gap:8, padding:'10px 14px 12px', borderTop:'1px solid #F3F4F6'}}>
                   <button onClick={() => setMoveLead(l)} style={{
-                    flex:1, padding:'8px 0', fontSize:12, fontWeight:600,
+                    flex:1, padding:'9px 0', fontSize:12, fontWeight:600,
                     background:'#F9FAFB', color:'#374151',
-                    border:'1px solid #D1D5DB', borderRadius:8,
+                    border:'1px solid #E5E7EB', borderRadius:8,
                     cursor:'pointer', fontFamily:'inherit',
                   }}>
-                    Mover →
+                    Mover etapa
                   </button>
                   <button onClick={() => setSellLead(l)} style={{
-                    flex:1, padding:'8px 0', fontSize:12, fontWeight:600,
-                    background:'rgba(16,185,129,0.08)', color:'#059669',
-                    border:'1px solid rgba(16,185,129,0.25)', borderRadius:8,
+                    flex:1, padding:'9px 0', fontSize:12, fontWeight:700,
+                    background:'#10B981', color:'#fff',
+                    border:'none', borderRadius:8,
                     cursor:'pointer', fontFamily:'inherit',
                   }}>
                     Registrar venta
@@ -266,7 +293,7 @@ export function PipelineView({leads,user,nav,updLead}){
   }
 
   /* ════════════════════════════════════════════════════
-     DESKTOP — kanban con columnas de 300px
+     DESKTOP — kanban más aireado, cards limpias
   ════════════════════════════════════════════════════ */
   return (
     <div style={{display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden'}}>
@@ -286,7 +313,7 @@ export function PipelineView({leads,user,nav,updLead}){
       {/* Kanban */}
       <div style={{
         display:'flex',
-        gap:14,
+        gap:16,
         flex:1,
         overflowX:'auto',
         overflowY:'hidden',
@@ -297,7 +324,14 @@ export function PipelineView({leads,user,nav,updLead}){
       }}>
         {stages.map(stage => {
           const sc = TICKET_STATUS[stage];
-          const sl = pLeads.filter(l => l.status === stage);
+          const raw = pLeads.filter(l => l.status === stage);
+          // Ordena dentro de la columna: prioridad alta primero, luego descuidados, luego por antigüedad
+          const sl = [...raw].sort((a,b) => {
+            const pa = a.priority === 'alta' ? 0 : 1;
+            const pb = b.priority === 'alta' ? 0 : 1;
+            if (pa !== pb) return pa - pb;
+            return (ageHours(b) || 0) - (ageHours(a) || 0);
+          });
 
           return (
             <div
@@ -305,7 +339,7 @@ export function PipelineView({leads,user,nav,updLead}){
               onDragOver={e => e.preventDefault()}
               onDrop={() => drop(stage)}
               style={{
-                minWidth:320, width:320, flexShrink:0,
+                minWidth:340, width:340, flexShrink:0,
                 display:'flex', flexDirection:'column',
                 background:'#F9FAFB',
                 borderRadius:14,
@@ -313,27 +347,28 @@ export function PipelineView({leads,user,nav,updLead}){
                 overflow:'hidden',
               }}
             >
-              {/* ── Header de columna ── */}
+              {/* ── Header de columna — suave, sin barra gruesa ── */}
               <div style={{
                 padding:'14px 16px',
-                background:'#FFFFFF',
-                borderBottom:`3px solid ${sc?.c}`,
+                background: sc?.bg || '#FFFFFF',
+                borderBottom:'1px solid #E5E7EB',
                 display:'flex', alignItems:'center', justifyContent:'space-between',
                 flexShrink:0,
               }}>
                 <div style={{display:'flex', alignItems:'center', gap:10}}>
                   <div style={{
-                    width:10, height:10, borderRadius:'50%',
+                    width:8, height:8, borderRadius:'50%',
                     background:sc?.c, flexShrink:0,
                   }}/>
-                  <span style={{fontSize:14, fontWeight:700, color:'#111827'}}>
+                  <span style={{fontSize:13, fontWeight:700, color:'#111827', letterSpacing:'-0.01em'}}>
                     {sc?.l}
                   </span>
                 </div>
                 <span style={{
                   fontSize:12, fontWeight:700,
                   padding:'3px 10px', borderRadius:99,
-                  background:sc?.bg, color:sc?.c,
+                  background:'#FFFFFF', color:sc?.c,
+                  border:`1px solid ${sc?.c}30`,
                   minWidth:28, textAlign:'center',
                 }}>
                   {sl.length}
@@ -343,7 +378,7 @@ export function PipelineView({leads,user,nav,updLead}){
               {/* ── Zona scrollable de cards ── */}
               <div style={{
                 flex:1, overflowY:'auto',
-                padding:'10px',
+                padding:'12px',
                 display:'flex', flexDirection:'column', gap:10,
                 scrollbarWidth:'thin',
                 scrollbarColor:'#E5E7EB transparent',
@@ -358,10 +393,10 @@ export function PipelineView({leads,user,nav,updLead}){
                     borderRadius:12,
                     color:'#D1D5DB',
                     gap:10,
-                    minHeight:200,
+                    minHeight:180,
                   }}>
-                    <Ic.bike size={28} color="#E5E7EB"/>
-                    <span style={{fontSize:12, color:'#C4C9D4'}}>Sin fichas</span>
+                    <Ic.leads size={28} color="#E5E7EB"/>
+                    <span style={{fontSize:12, color:'#9CA3AF'}}>Sin fichas</span>
                   </div>
                 )}
 
@@ -370,74 +405,68 @@ export function PipelineView({leads,user,nav,updLead}){
                   const m = l.model_brand
                     ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0}
                     : null;
-                  const slaColor = getSlaColor(l);
-                  const slaLabel = getSlaLabel(l);
+                  const att   = getAttention(l);
+                  const age   = humanAge(ageHours(l));
+                  const hover = hoverId === l.id;
 
                   return (
                     <div
                       key={l.id}
                       draggable
                       onDragStart={() => setDragId(l.id)}
+                      onMouseEnter={() => setHoverId(l.id)}
+                      onMouseLeave={() => setHoverId(null)}
                       onClick={() => nav('ticket', l.id)}
                       style={{
                         background:'#FFFFFF',
-                        borderRadius:10,
+                        borderRadius:14,
                         border:'1px solid #E5E7EB',
-                        borderLeft:`4px solid ${slaColor}`,
+                        borderLeft: att ? `4px solid ${att.color}` : '1px solid #E5E7EB',
                         cursor:'grab',
-                        transition:'box-shadow 0.12s',
+                        transition:'transform 0.15s, box-shadow 0.15s',
+                        transform: hover ? 'translateY(-2px)' : 'none',
+                        boxShadow: hover ? '0 6px 16px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.03)',
                         display:'flex',
                         alignItems:'stretch',
-                        minHeight:110,
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.10)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
                     >
                       {/* Foto */}
-                      {l.model_image && (
-                        <div style={{
-                          flexShrink:0,
-                          padding:'12px 0 12px 12px',
-                        }}>
+                      {l.model_image ? (
+                        <div style={{flexShrink:0, padding:'14px 0 14px 14px'}}>
                           <img
                             src={l.model_image} alt=""
                             style={{
                               width:96, height:96, borderRadius:10,
                               objectFit:'cover', display:'block',
-                              border:'1.5px solid #E5E7EB',
+                              background:'#F9FAFB',
                             }}
                           />
+                        </div>
+                      ) : (
+                        <div style={{
+                          flexShrink:0, margin:'14px 0 14px 14px',
+                          width:96, height:96, borderRadius:10,
+                          background:'#F9FAFB', display:'flex',
+                          alignItems:'center', justifyContent:'center',
+                        }}>
+                          <Ic.bike size={26} color="#D1D5DB"/>
                         </div>
                       )}
 
                       {/* Contenido */}
                       <div style={{
                         flex:1, minWidth:0, overflow:'hidden',
-                        padding:'14px 16px',
-                        display:'flex', flexDirection:'column', gap:3,
-                        justifyContent:'space-between',
+                        padding:'14px 14px',
+                        display:'flex', flexDirection:'column',
+                        justifyContent:'space-between', gap:4,
                       }}>
-                        {/* Nombre + prioridad */}
+                        {/* Nombre */}
                         <div style={{
-                          display:'flex', justifyContent:'space-between',
-                          alignItems:'flex-start', gap:6,
+                          fontSize:14, fontWeight:700, color:'#111827',
+                          lineHeight:1.3,
+                          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                         }}>
-                          <span style={{
-                            fontSize:14, fontWeight:700, color:'#111827',
-                            lineHeight:1.35,
-                            minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                          }}>
-                            {l.fn} {l.ln || ''}
-                          </span>
-                          {l.priority === 'alta' && (
-                            <span style={{
-                              fontSize:9, fontWeight:700, flexShrink:0, marginTop:2,
-                              color:'#EF4444', background:'#FEF2F2',
-                              padding:'2px 7px', borderRadius:99,
-                            }}>
-                              URGENTE
-                            </span>
-                          )}
+                          {l.fn} {l.ln || ''}
                         </div>
 
                         {/* Modelo */}
@@ -447,50 +476,49 @@ export function PipelineView({leads,user,nav,updLead}){
                         }}>
                           {m
                             ? `${m.brand || ''} ${m.model || ''}`.trim() || 'Sin modelo'
-                            : (
-                              <div style={{
-                                display:'inline-flex', alignItems:'center',
-                                fontSize:10, color:'#C4C9D4',
-                                padding:'2px 8px', borderRadius:99,
-                                background:'#F9FAFB', border:'1px solid #F3F4F6',
-                                alignSelf:'flex-start',
-                              }}>
-                                Sin moto asignada
-                              </div>
-                            )
+                            : <span style={{color:'#D1D5DB', fontStyle:'italic'}}>Sin moto</span>
                           }
                         </div>
 
                         {/* Precio */}
                         {m && m.price > 0 && (
                           <div style={{
-                            fontSize:13, fontWeight:700, color:'#374151',
-                            letterSpacing:'-0.01em', marginTop:2,
+                            fontSize:13, fontWeight:700, color:'#111827',
+                            letterSpacing:'-0.01em',
                             overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                           }}>
                             ${Number(m.price - m.bonus).toLocaleString('es-CL')}
                           </div>
                         )}
 
-                        {/* Badge SLA si urgente */}
-                        {slaLabel && (
-                          <div style={{
-                            display:'inline-flex', alignItems:'center', gap:4,
-                            marginTop:4, alignSelf:'flex-start',
-                            padding:'3px 8px', borderRadius:6,
-                            fontSize:10, fontWeight:700,
-                            background: slaColor==='#EF4444' ? '#FEF2F2' : '#FFFBEB',
-                            color:      slaColor==='#EF4444' ? '#EF4444' : '#F59E0B',
-                          }}>
-                            <Ic.alert size={10} color={slaColor==='#EF4444'?'#EF4444':'#F59E0B'}/>
-                            {slaLabel}
-                          </div>
-                        )}
+                        {/* Meta: age + atención */}
+                        <div style={{
+                          display:'flex', alignItems:'center', gap:6, marginTop:4,
+                          flexWrap:'wrap',
+                        }}>
+                          {age && (
+                            <span style={{
+                              fontSize:10, fontWeight:600, color:'#9CA3AF',
+                              display:'inline-flex', alignItems:'center', gap:3,
+                            }}>
+                              <Ic.clock size={10} color="#9CA3AF"/>{age}
+                            </span>
+                          )}
+                          {att && (
+                            <span style={{
+                              fontSize:10, fontWeight:700,
+                              padding:'2px 7px', borderRadius:99,
+                              background: att.bg, color: att.color,
+                            }}>
+                              {att.label}
+                            </span>
+                          )}
+                        </div>
 
-                        {/* Footer: vendedor + botón venta */}
+                        {/* Footer: vendedor + venta */}
                         <div style={{
                           display:'flex', alignItems:'center', justifyContent:'space-between',
-                          marginTop:6, paddingTop:8, borderTop:'1px solid #F3F4F6', gap:6,
+                          marginTop:8, paddingTop:8, borderTop:'1px solid #F3F4F6', gap:6,
                         }}>
                           <span style={{
                             fontSize:11, color:'#9CA3AF',
@@ -506,10 +534,11 @@ export function PipelineView({leads,user,nav,updLead}){
                             onClick={e => { e.stopPropagation(); setSellLead(l); }}
                             style={{
                               flexShrink:0,
-                              padding:'4px 10px', fontSize:10, fontWeight:600,
-                              background:'rgba(16,185,129,0.08)', color:'#059669',
-                              border:'1px solid rgba(16,185,129,0.20)',
+                              padding:'5px 10px', fontSize:10, fontWeight:700,
+                              background:'#10B981', color:'#fff',
+                              border:'none',
                               borderRadius:6, cursor:'pointer', fontFamily:'inherit',
+                              letterSpacing:'0.02em',
                             }}
                           >
                             Venta
