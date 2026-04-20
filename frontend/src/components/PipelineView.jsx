@@ -16,18 +16,10 @@ const humanAge = h => {
   return `${Math.floor(h / 24)}d`;
 };
 
-// Tiers de edad — el vendedor ve de un vistazo cuáles atacar primero.
-// La mayoría queda en gris; las pocas rojas saltan naturalmente.
-// No usamos priority=alta porque en la base casi todas están marcadas así
-// (ruido = 0 señal).
-const getTier = l => {
-  const h = ageHours(l);
-  if (h == null)   return { key:'fresh',   color:'#9CA3AF', bg:'transparent', border:false, cta:null };
-  if (h >= 24*7)   return { key:'cold',    color:'#B91C1C', bg:'#FEE2E2',     border:true,  cta:'Llamar hoy' };
-  if (h >= 72)     return { key:'neglect', color:'#EF4444', bg:'#FEF2F2',     border:true,  cta:'Atender' };
-  if (h >= 24)     return { key:'stale',   color:'#F59E0B', bg:'#FFFBEB',     border:false, cta:null };
-  return           { key:'fresh',   color:'#9CA3AF', bg:'transparent', border:false, cta:null };
-};
+// La señal de prioridad es la POSICIÓN en la columna (más viejo arriba),
+// no un grito rojo en cada ficha. El vendedor decide qué atacar, no el CRM.
+// Mostramos el tiempo como referencia neutra — sin colores alarmistas,
+// sin CTAs tipo "LLAMAR HOY" (que pierden sentido cuando la data está vieja).
 
 export function PipelineView({leads,user,nav,updLead}){
   const isMobile = useIsMobile();
@@ -145,15 +137,13 @@ export function PipelineView({leads,user,nav,updLead}){
             </div>
           )}
           {sorted.map(l => {
-            const m    = l.model_brand ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0} : null;
-            const tier = getTier(l);
-            const age  = humanAge(ageHours(l));
+            const m   = l.model_brand ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0} : null;
+            const age = humanAge(ageHours(l));
 
             return (
               <div key={l.id} style={{
                 background:'#FFFFFF', borderRadius:14,
                 border:'1px solid #E5E7EB',
-                borderLeft: tier.border ? `4px solid ${tier.color}` : '1px solid #E5E7EB',
                 overflow:'hidden',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}>
@@ -203,28 +193,19 @@ export function PipelineView({leads,user,nav,updLead}){
                       )}
                     </div>
 
-                    {/* Meta: edad coloreada por tier */}
-                    <div style={{display:'flex', alignItems:'center', gap:6, marginTop:8, flexWrap:'wrap'}}>
-                      {age && (
-                        <span style={{
-                          fontSize:11, fontWeight:700,
-                          padding:'3px 8px', borderRadius:99,
-                          background: tier.bg === 'transparent' ? '#F3F4F6' : tier.bg,
-                          color: tier.color,
-                          display:'inline-flex', alignItems:'center', gap:4,
-                        }}>
-                          <Ic.clock size={10} color={tier.color}/>{age}
-                        </span>
-                      )}
-                      {tier.cta && (
-                        <span style={{
-                          fontSize:10, fontWeight:700, letterSpacing:'0.02em',
-                          color: tier.color, textTransform:'uppercase',
-                        }}>
-                          · {tier.cta}
-                        </span>
-                      )}
-                    </div>
+                    {/* Edad en la etapa — referencia neutra, sin colorinches */}
+                    {age && (
+                      <div style={{
+                        display:'inline-flex', alignItems:'center', gap:4,
+                        marginTop:8,
+                        fontSize:11, fontWeight:600, color:'#6B7280',
+                        padding:'3px 8px', borderRadius:99,
+                        background:'#F3F4F6',
+                        alignSelf:'flex-start',
+                      }}>
+                        <Ic.clock size={10} color="#6B7280"/>{age}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -394,7 +375,6 @@ export function PipelineView({leads,user,nav,updLead}){
                   const m = l.model_brand
                     ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0}
                     : null;
-                  const tier  = getTier(l);
                   const age   = humanAge(ageHours(l));
                   const hover = hoverId === l.id;
 
@@ -410,7 +390,6 @@ export function PipelineView({leads,user,nav,updLead}){
                         background:'#FFFFFF',
                         borderRadius:14,
                         border:'1px solid #E5E7EB',
-                        borderLeft: tier.border ? `4px solid ${tier.color}` : '1px solid #E5E7EB',
                         cursor:'grab',
                         transition:'transform 0.15s, box-shadow 0.15s',
                         transform: hover ? 'translateY(-2px)' : 'none',
@@ -480,31 +459,19 @@ export function PipelineView({leads,user,nav,updLead}){
                           </div>
                         )}
 
-                        {/* Meta: edad coloreada por tier (gris → ámbar → rojo) */}
-                        <div style={{
-                          display:'flex', alignItems:'center', gap:6, marginTop:4,
-                          flexWrap:'wrap',
-                        }}>
-                          {age && (
-                            <span style={{
-                              fontSize:11, fontWeight:700,
-                              padding:'3px 8px', borderRadius:99,
-                              background: tier.bg === 'transparent' ? '#F3F4F6' : tier.bg,
-                              color: tier.color,
-                              display:'inline-flex', alignItems:'center', gap:4,
-                            }}>
-                              <Ic.clock size={10} color={tier.color}/>{age}
-                            </span>
-                          )}
-                          {tier.cta && (
-                            <span style={{
-                              fontSize:10, fontWeight:700, letterSpacing:'0.02em',
-                              color: tier.color, textTransform:'uppercase',
-                            }}>
-                              · {tier.cta}
-                            </span>
-                          )}
-                        </div>
+                        {/* Edad — referencia neutra */}
+                        {age && (
+                          <div style={{
+                            display:'inline-flex', alignItems:'center', gap:4,
+                            marginTop:4,
+                            fontSize:11, fontWeight:600, color:'#6B7280',
+                            padding:'3px 8px', borderRadius:99,
+                            background:'#F3F4F6',
+                            alignSelf:'flex-start',
+                          }}>
+                            <Ic.clock size={10} color="#6B7280"/>{age}
+                          </div>
+                        )}
 
                         {/* Footer: vendedor + venta */}
                         <div style={{
