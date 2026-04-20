@@ -53,11 +53,16 @@ function validateRut(raw) {
 // ─── Teléfono chileno ─────────────────────────────────────────────────────────
 
 // "+56 9 1234 5678" → "912345678" | "56912345678" → "912345678"
+// Promobility exporta a veces con "+56" duplicado ("+56 +569XXXXXXXX" → 13 dígitos "5656...");
+// limpiamos todos los prefijos "56" repetidos mientras el número siga siendo más largo que los
+// 9 dígitos canónicos de un número chileno.
 function normalizePhone(raw) {
   if (!raw) return '';
-  const digits = String(raw).replace(/[^\d]/g, '');
+  let digits = String(raw).replace(/[^\d]/g, '');
   if (!digits) return '';
-  if (digits.length === 11 && digits.startsWith('56')) return digits.slice(2);
+  while (digits.length > 9 && digits.startsWith('56')) {
+    digits = digits.slice(2);
+  }
   return digits;
 }
 
