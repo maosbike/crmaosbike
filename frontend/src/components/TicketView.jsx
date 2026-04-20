@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, AccordionSection, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
-import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 // Formatea teléfono para display: "912345678" → "+56 9 1234 5678"
 function formatPhone(raw) {
@@ -100,7 +99,21 @@ export function TicketView({lead,user,nav,updLead}){
   const slaBreach=lead.sla_status==="breached";
   const slaWarning=lead.sla_status==="warning";
 
-  const[showSell,setShowSell]=useState(false);
+  // Nota de venta/reserva ahora se registra en la sección Ventas — el botón navega con el cliente prellenado.
+  const goToSale=()=>{
+    const phoneRaw=(lead.phone||'').toString();
+    const phone=/^569\d{8}$/.test(phoneRaw)?phoneRaw.slice(2):phoneRaw;
+    nav('sales',null,{saleClient:{
+      ticket_id:      lead.id,
+      client_name:    [lead.fn,lead.ln].filter(Boolean).join(' ').trim(),
+      client_rut:     lead.rut||'',
+      client_phone:   phone,
+      client_email:   lead.email||'',
+      client_commune: lead.comuna||'',
+      branch_id:      lead.branch_id||'',
+      sold_by:        lead.seller_id||'',
+    }});
+  };
   const[noteForm,setNoteForm]=useState("");
   const[noteErr,setNoteErr]=useState("");
 
@@ -295,7 +308,7 @@ export function TicketView({lead,user,nav,updLead}){
                 </button>
               )}
               {!isPerdido&&(
-                <button onClick={()=>setShowSell(true)}
+                <button onClick={goToSale}
                   style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
                     background: isGanado||isEarly?'transparent':'#10B981',
                     color: isGanado?'#10B981':isEarly?'#6B7280':'#ffffff',
@@ -324,7 +337,7 @@ export function TicketView({lead,user,nav,updLead}){
               <Ic.msg size={14} color="#ffffff"/>Registrar contacto
             </button>
           )}
-          <button onClick={()=>setShowSell(true)}
+          <button onClick={goToSale}
             style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
               padding:'10px 14px',
               background:isGanado?'transparent':'#10B981',
@@ -1030,8 +1043,6 @@ export function TicketView({lead,user,nav,updLead}){
           )}
         </div>
       )}
-
-      {showSell&&<SellFromTicketModal ticketId={lead.id} lead={lead} user={user} onClose={()=>setShowSell(false)} onSuccess={()=>{updLead(lead.id,{status:"ganado"});}}/>}
 
       {/* ══ MODAL SEGUIMIENTO OBLIGATORIO ═══════════════════════ */}
       {showFollowup&&<Modal

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api.js';
 import { Ic, S, Modal, TICKET_STATUS, PIPELINE_STAGES, ROLES, hasRole, useIsMobile, ViewHeader, Empty, ErrorMsg, colorFor } from '../ui.jsx';
-import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 // Edad en horas desde último contacto (o creación)
 const ageHours = l => {
@@ -25,8 +24,23 @@ export function PipelineView({leads,user,nav,updLead}){
   const isMobile = useIsMobile();
   const [dragId,   setDragId]   = useState(null);
   const [hoverId,  setHoverId]  = useState(null);
-  const [sellLead, setSellLead] = useState(null);
   const [pipeErr,  setPipeErr]  = useState('');
+
+  // Navegación a Ventas con el cliente del lead prellenado
+  const goToSale = (l) => {
+    const phoneRaw = (l.phone || '').toString();
+    const phone = /^569\d{8}$/.test(phoneRaw) ? phoneRaw.slice(2) : phoneRaw;
+    nav('sales', null, { saleClient: {
+      ticket_id:      l.id,
+      client_name:    [l.fn, l.ln].filter(Boolean).join(' ').trim(),
+      client_rut:     l.rut || '',
+      client_phone:   phone,
+      client_email:   l.email || '',
+      client_commune: l.comuna || '',
+      branch_id:      l.branch_id || '',
+      sold_by:        l.seller_id || '',
+    }});
+  };
   const [mobStage, setMobStage] = useState(PIPELINE_STAGES[0]);
   const [moveLead, setMoveLead] = useState(null);
   const [moving,   setMoving]   = useState(false);
@@ -219,7 +233,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   }}>
                     Mover etapa
                   </button>
-                  <button onClick={() => setSellLead(l)} style={{
+                  <button onClick={() => goToSale(l)} style={{
                     flex:1, padding:'9px 0', fontSize:12, fontWeight:700,
                     background:'#10B981', color:'#fff',
                     border:'none', borderRadius:8,
@@ -255,13 +269,6 @@ export function PipelineView({leads,user,nav,updLead}){
               })}
             </div>
           </Modal>
-        )}
-        {sellLead && (
-          <SellFromTicketModal
-            ticketId={sellLead.id} lead={sellLead} user={user}
-            onClose={() => setSellLead(null)}
-            onSuccess={() => { updLead(sellLead.id, {status:'ganado'}); setSellLead(null); }}
-          />
         )}
       </div>
     );
@@ -503,7 +510,7 @@ export function PipelineView({leads,user,nav,updLead}){
                             </span>
                           )}
                           <button
-                            onClick={e => { e.stopPropagation(); setSellLead(l); }}
+                            onClick={e => { e.stopPropagation(); goToSale(l); }}
                             style={{
                               flexShrink:0,
                               padding:'5px 10px', fontSize:10, fontWeight:700,
@@ -526,13 +533,6 @@ export function PipelineView({leads,user,nav,updLead}){
         })}
       </div>
 
-      {sellLead && (
-        <SellFromTicketModal
-          ticketId={sellLead.id} lead={sellLead} user={user}
-          onClose={() => setSellLead(null)}
-          onSuccess={() => { updLead(sellLead.id, {status:'ganado'}); setSellLead(null); }}
-        />
-      )}
     </div>
   );
 }
