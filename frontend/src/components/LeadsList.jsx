@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile, ViewHeader, selectCtrl, filterLabel, Empty, ErrorMsg } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, useIsMobile, ViewHeader, selectCtrl, filterLabel, Empty, ErrorMsg, colorFor } from '../ui.jsx';
 
 // ── Helpers y constantes visuales (mismo lenguaje que InventoryView) ─────────
 
@@ -10,26 +10,6 @@ const stripFor = (k) => {
   const v = TICKET_STATUS[k];
   return v ? { color: v.c, light: v.bg || '#F9FAFB' } : { color: '#6B7280', light: '#F9FAFB' };
 };
-
-// Paleta determinista — cada seller/sucursal siempre tiene el mismo color
-// aunque se reordene la lista. Se asigna por hash del id/nombre.
-const ID_PALETTE = [
-  { c:'#6366F1', bg:'#EEF2FF' }, // indigo
-  { c:'#10B981', bg:'#ECFDF5' }, // emerald
-  { c:'#F97316', bg:'#FFF7ED' }, // orange
-  { c:'#EC4899', bg:'#FDF2F8' }, // pink
-  { c:'#8B5CF6', bg:'#F5F3FF' }, // violet
-  { c:'#06B6D4', bg:'#ECFEFF' }, // cyan
-  { c:'#EAB308', bg:'#FEFCE8' }, // yellow
-  { c:'#14B8A6', bg:'#F0FDFA' }, // teal
-];
-const hashStr = (s) => {
-  const str = String(s ?? '');
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-};
-const colorFor = (key) => ID_PALETTE[hashStr(key) % ID_PALETTE.length];
 
 // selectCtrl y filterLabel importados desde ui.jsx (centralizados)
 const divider=<div style={{width:1,height:28,background:'#E5E7EB',flexShrink:0}}/>;

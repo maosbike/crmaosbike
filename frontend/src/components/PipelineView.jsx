@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api.js';
-import { Ic, S, Modal, TICKET_STATUS, PIPELINE_STAGES, ROLES, hasRole, useIsMobile, ViewHeader, Empty, ErrorMsg } from '../ui.jsx';
+import { Ic, S, Modal, TICKET_STATUS, PIPELINE_STAGES, ROLES, hasRole, useIsMobile, ViewHeader, Empty, ErrorMsg, colorFor } from '../ui.jsx';
 import { SellFromTicketModal } from './SellFromTicketModal.jsx';
 
 // Edad en horas desde último contacto (o creación)
@@ -478,16 +478,30 @@ export function PipelineView({leads,user,nav,updLead}){
                           display:'flex', alignItems:'center', justifyContent:'space-between',
                           marginTop:8, paddingTop:8, borderTop:'1px solid #F3F4F6', gap:6,
                         }}>
-                          <span style={{
-                            fontSize:11, color:'#9CA3AF',
-                            flex:1, minWidth:0,
-                            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                          }}>
-                            {l.seller_fn
-                              ? `${l.seller_fn} ${l.seller_ln || ''}`
-                              : <span style={{color:'#D1D5DB'}}>Sin asignar</span>
-                            }
-                          </span>
+                          {l.seller_fn ? (() => {
+                            const sc = colorFor(l.seller_id || `${l.seller_fn}${l.seller_ln||''}`);
+                            return (
+                              <span style={{
+                                display:'inline-flex', alignItems:'center', gap:5,
+                                fontSize:11, color:sc.c, fontWeight:700,
+                                background:sc.bg,
+                                padding:'2px 8px', borderRadius:99,
+                                border:`1px solid ${sc.c}30`,
+                                flex:1, minWidth:0,
+                                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                              }}>
+                                <span style={{width:6,height:6,borderRadius:'50%',background:sc.c,flexShrink:0}}/>
+                                {l.seller_fn} {l.seller_ln || ''}
+                              </span>
+                            );
+                          })() : (
+                            <span style={{
+                              fontSize:11, color:'#D1D5DB', flex:1, minWidth:0,
+                              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                            }}>
+                              Sin asignar
+                            </span>
+                          )}
                           <button
                             onClick={e => { e.stopPropagation(); setSellLead(l); }}
                             style={{

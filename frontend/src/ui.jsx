@@ -57,6 +57,26 @@ export const ROLE_ADMIN_READ    = [ROLES.SUPER, ROLES.ADMIN];                   
 export const ROLE_SALES_WRITE   = [ROLES.SUPER, ROLES.ADMIN, ROLES.BACK, ROLES.VEND]; // crea ventas (vendedor con ownership)
 
 export const PRIORITY={alta:{l:"Alta",c:"#EF4444"},media:{l:"Media",c:"#F59E0B"},baja:{l:"Baja",c:"#6B7280"}};
+// Paleta determinista compartida — cada vendedor/sucursal tiene siempre
+// el mismo color (hash del id/nombre). La usan LeadsList, SalesView,
+// PipelineView, OverdueLeadsModal para mantener identidad visual consistente.
+export const ID_PALETTE = [
+  { c:'#6366F1', bg:'#EEF2FF' }, // indigo
+  { c:'#10B981', bg:'#ECFDF5' }, // emerald
+  { c:'#F97316', bg:'#FFF7ED' }, // orange
+  { c:'#EC4899', bg:'#FDF2F8' }, // pink
+  { c:'#8B5CF6', bg:'#F5F3FF' }, // violet
+  { c:'#06B6D4', bg:'#ECFEFF' }, // cyan
+  { c:'#EAB308', bg:'#FEFCE8' }, // yellow
+  { c:'#14B8A6', bg:'#F0FDFA' }, // teal
+];
+const _hashStr = (s) => {
+  const str = String(s ?? '');
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+export const colorFor = (key) => ID_PALETTE[_hashStr(key) % ID_PALETTE.length];
 export const SRC={web:"Web",redes_sociales:"RRSS",whatsapp:"WhatsApp",presencial:"Presencial",referido:"Referido",evento:"Evento",llamada:"Llamada"};
 export const COMUNAS=["Huechuraba","Providencia","Las Condes","La Florida","Maipú","Santiago Centro","Ñuñoa","Vitacura","Puente Alto","San Bernardo","Cerrillos","Recoleta","Independencia","Quilicura","Lo Barnechea","Peñalolén","La Reina","Macul","San Miguel","Otra"];
 export const RECHAZO_MOTIVOS=["Renta insuficiente","Sin continuidad laboral","No cuenta con pie inicial solicitado","Sin ingresos acreditables","Mal comportamiento de pago","Morosidad vigente","Edad fuera de rango","Otro"];

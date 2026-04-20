@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api';
-import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES, ChoiceChip, TICKET_STATUS, SRC, fD, ago } from '../ui.jsx';
+import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES, ChoiceChip, TICKET_STATUS, SRC, fD, ago, colorFor } from '../ui.jsx';
 
 // OverdueLeadsModal — modal bloqueante de seguimiento obligatorio.
 // Se muestra cuando el vendedor entra al módulo de leads con leads atrasados.
@@ -197,20 +197,32 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
             </div>
 
             {/* Sucursal */}
-            {lead.branch_name && (
-              <div style={ctxRowStyle}>
-                <span style={ctxLabelStyle}>Sucursal</span>
-                <span style={ctxValStyle}>{lead.branch_name}</span>
-              </div>
-            )}
+            {lead.branch_name && (() => {
+              const bc = colorFor(lead.branch_id || lead.branch_name);
+              return (
+                <div style={ctxRowStyle}>
+                  <span style={ctxLabelStyle}>Sucursal</span>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:bc.c, background:bc.bg, border:`1px solid ${bc.c}30`, padding:'2px 8px', borderRadius:99 }}>
+                    <span style={{ width:6, height:6, borderRadius:'50%', background:bc.c }} />
+                    {lead.branch_name}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Vendedor */}
-            {sellerName && (
-              <div style={ctxRowStyle}>
-                <span style={ctxLabelStyle}>Vendedor</span>
-                <span style={ctxValStyle}>{sellerName}</span>
-              </div>
-            )}
+            {sellerName && (() => {
+              const sc = colorFor(lead.seller_id || sellerName);
+              return (
+                <div style={ctxRowStyle}>
+                  <span style={ctxLabelStyle}>Vendedor</span>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:sc.c, background:sc.bg, border:`1px solid ${sc.c}30`, padding:'2px 8px', borderRadius:99 }}>
+                    <span style={{ width:6, height:6, borderRadius:'50%', background:sc.c }} />
+                    {sellerName}
+                  </span>
+                </div>
+              );
+            })()}
 
           </div>
 

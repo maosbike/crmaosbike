@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg, selectCtrl, useIsMobile } from '../ui.jsx';
+import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg, selectCtrl, useIsMobile, colorFor } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -2263,20 +2263,32 @@ export function SalesView({ user, realBranches }) {
 
                   {/* Meta chips: vendedor, sucursal, chassis */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 600, color: '#374151',
-                      background: '#F3F4F6', padding: '3px 9px', borderRadius: 99,
-                    }}>
-                      {sellerName}
-                    </span>
-                    {isAdmin && s.branch_name && (
-                      <span style={{
-                        fontSize: 11, fontWeight: 500, color: '#6B7280',
-                        background: '#F9FAFB', padding: '3px 9px', borderRadius: 99,
-                      }}>
-                        {s.branch_name}
-                      </span>
-                    )}
+                    {s.seller_fn && (() => {
+                      const sc = colorFor(s.seller_id || sellerName);
+                      return (
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:5,
+                          fontSize: 11, fontWeight: 700, color: sc.c,
+                          background: sc.bg, padding: '3px 9px', borderRadius: 99,
+                          border: `1px solid ${sc.c}30`,
+                        }}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:sc.c,flexShrink:0}}/>
+                          {sellerName}
+                        </span>
+                      );
+                    })()}
+                    {isAdmin && s.branch_name && (() => {
+                      const bc = colorFor(s.branch_id || s.branch_name);
+                      return (
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:5,
+                          fontSize: 11, fontWeight: 700, color: bc.c,
+                          background: bc.bg, padding: '3px 9px', borderRadius: 99,
+                          border: `1px solid ${bc.c}30`,
+                        }}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:bc.c,flexShrink:0}}/>
+                          {s.branch_name}
+                        </span>
+                      );
+                    })()}
                     {s.chassis && (
                       <span style={{
                         fontSize: 10, fontWeight: 600, color: '#9CA3AF',
