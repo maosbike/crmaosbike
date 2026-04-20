@@ -310,6 +310,7 @@ export const api = {
 
   // Contabilidad
   getAccounting: (params) => request('GET', `/accounting?${new URLSearchParams(params || {})}`),
+  getAccountingStats: (params) => request('GET', `/accounting/stats?${new URLSearchParams(params || {})}`),
   getAccountingInvoice: (id) => request('GET', `/accounting/${id}`),
   patchAccounting: (id, data) => request('PATCH', `/accounting/${id}`, data),
   deleteAccounting: (id) => request('DELETE', `/accounting/${id}`),

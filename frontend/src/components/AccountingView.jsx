@@ -1,11 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../services/api';
-import { Ic, S, TY, Modal, ROLES, hasRole, ViewHeader, Loader, Empty, ErrorMsg, useIsMobile } from '../ui.jsx';
+import { Ic, S, TY, Modal, ViewHeader, Loader, Empty, ErrorMsg, useIsMobile } from '../ui.jsx';
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 function $(n) {
   if (!n && n !== 0) return '-';
   return '$\u2009' + parseInt(n).toLocaleString('es-CL');
+}
+function $compact(n) {
+  const v = parseInt(n) || 0;
+  if (v >= 1_000_000) return '$\u2009' + (v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1) + 'M';
+  if (v >= 1_000)     return '$\u2009' + Math.round(v / 1_000) + 'k';
+  return '$\u2009' + v.toLocaleString('es-CL');
 }
 function fd(s) {
   if (!s) return '-';
@@ -20,6 +26,24 @@ function rutFmt(r) {
   return (s.slice(0, -1) + '-' + s.slice(-1)).toUpperCase();
 }
 
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function ymLabel(ym) {
+  if (!ym) return '-';
+  const [y, m] = String(ym).split('-');
+  return `${MESES[parseInt(m) - 1] || ''} ${y}`;
+}
+function ymShort(ym) {
+  if (!ym) return '-';
+  const [y, m] = String(ym).split('-');
+  return `${(MESES[parseInt(m) - 1] || '').slice(0,3)} ${String(y).slice(2)}`;
+}
+function currentYM() { return new Date().toISOString().slice(0, 7); }
+function shiftYM(ym, delta) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 /* ── Status badge ─────────────────────────────────────────────────────────── */
 const LINK_STATUS = {
   vinculada:    { l: 'Vinculada',    c: '#15803D', bg: 'rgba(21,128,61,0.10)'  },
@@ -29,70 +53,198 @@ const LINK_STATUS = {
 function LinkBadge({ status }) {
   const s = LINK_STATUS[status] || LINK_STATUS.sin_vincular;
   return (
-    <span style={{ fontSize: 11, fontWeight: 600, color: s.c, background: s.bg,
-      borderRadius: 20, padding: '2px 10px', whiteSpace: 'nowrap' }}>
+    <span style={{ fontSize: 10, fontWeight: 600, color: s.c, background: s.bg,
+      borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap' }}>
       {s.l}
     </span>
   );
 }
 
-/* ── InvoiceRow (card mobile / row desktop) ───────────────────────────────── */
-function InvoiceRow({ inv, onOpen, isMobile }) {
-  const modelo = inv.brand || inv.model
-    ? [inv.brand, inv.model, inv.commercial_year].filter(Boolean).join(' ')
-    : null;
+/* ── Month hero ───────────────────────────────────────────────────────────── */
+function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
+  const mes = stats?.mes || { count: 0, neto: 0, iva: 0, total: 0, exento: 0 };
+  const serie = stats?.serie || [];
+  const maxTotal = serie.reduce((mx, r) => Math.max(mx, Number(r.total) || 0), 0) || 1;
 
-  const isNC     = inv.doc_type === 'nota_credito';
-  const anulada  = !!inv.anulada_por_id;
-  const folioLbl = isNC ? `NC ${inv.folio || '-'}` : inv.folio || '-';
-
-  if (isMobile) {
-    return (
-      <div onClick={() => onOpen(inv)} style={{
-        background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12,
-        padding: '12px 14px', marginBottom: 10, cursor: 'pointer',
-        opacity: anulada ? 0.65 : 1,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 13 }}>{folioLbl}</span>
-            {anulada && <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: 'rgba(220,38,38,0.1)', borderRadius: 20, padding: '2px 8px' }}>ANULADA</span>}
-            {isNC && inv.ref_folio && <span style={{ fontSize: 10, color: '#6B7280' }}>→ #{inv.ref_folio}</span>}
-          </div>
-          <LinkBadge status={inv.link_status} />
-        </div>
-        <div style={{ ...TY.meta, marginBottom: 2 }}>{inv.cliente_nombre || inv.rut_cliente || '-'}</div>
-        {modelo && <div style={{ ...TY.meta, color: '#6B7280' }}>{modelo}</div>}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-          <span style={{ fontSize: 11, color: '#6B7280' }}>{fd(inv.fecha_emision)}</span>
-          <span style={{ fontWeight: 700, fontSize: 13, color: isNC ? '#DC2626' : '#111827' }}>
-            {isNC ? '-' : ''}{$(inv.total)}
-          </span>
-        </div>
+  const KPI = ({ label, value, accent }) => (
+    <div style={{
+      flex: 1, minWidth: 130,
+      background: 'rgba(255,255,255,0.08)',
+      borderRadius: 10, padding: '10px 14px',
+      border: '1px solid rgba(255,255,255,0.08)',
+    }}>
+      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 4 }}>
+        {label}
       </div>
-    );
-  }
+      <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: accent || '#fff', letterSpacing: '-0.01em' }}>
+        {value}
+      </div>
+    </div>
+  );
 
   return (
-    <tr onClick={() => onOpen(inv)} style={{ cursor: 'pointer', opacity: anulada ? 0.65 : 1 }}
-      className="crm-tr-hover">
-      <td style={{ padding: '10px 12px', fontWeight: 600 }}>
-        {folioLbl}
-        {anulada && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#DC2626', background: 'rgba(220,38,38,0.1)', borderRadius: 20, padding: '2px 8px' }}>ANULADA</span>}
-        {isNC && inv.ref_folio && <span style={{ marginLeft: 6, fontSize: 10, color: '#6B7280' }}>→ #{inv.ref_folio}</span>}
-      </td>
-      <td style={{ padding: '10px 12px' }}>{fd(inv.fecha_emision)}</td>
-      <td style={{ padding: '10px 12px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {inv.cliente_nombre || '-'}
-      </td>
-      <td style={{ padding: '10px 12px', fontSize: 11, color: '#6B7280' }}>{rutFmt(inv.rut_cliente)}</td>
-      <td style={{ padding: '10px 12px', fontSize: 12 }}>{modelo || '-'}</td>
-      <td style={{ padding: '10px 12px', fontSize: 11, color: '#6B7280' }}>{inv.chassis || '-'}</td>
-      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: isNC ? '#DC2626' : '#111827' }}>
-        {isNC ? '-' : ''}{$(inv.total)}
-      </td>
-      <td style={{ padding: '10px 12px' }}><LinkBadge status={inv.link_status} /></td>
-    </tr>
+    <div style={{
+      background: 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
+      borderRadius: 16,
+      padding: isMobile ? '16px' : '20px 24px',
+      marginBottom: 16,
+      color: '#fff',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+    }}>
+      {/* Month nav */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <button onClick={onPrev} style={{
+          background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff',
+          width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'inherit',
+        }}>‹</button>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>
+            Resumen del mes
+          </div>
+          <div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            {ymLabel(ym)}
+          </div>
+        </div>
+        <button onClick={onNext} style={{
+          background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff',
+          width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'inherit',
+        }}>›</button>
+      </div>
+
+      {/* KPIs */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: serie.length ? 14 : 0, opacity: loading ? 0.4 : 1 }}>
+        <KPI label="Total facturado" value={$(mes.total)} accent="#F28100" />
+        <KPI label="Neto" value={$(mes.neto)} />
+        <KPI label="IVA 19%" value={$(mes.iva)} />
+        <KPI label="Facturas" value={mes.count} />
+      </div>
+
+      {/* Mini bar chart — últimos 12 meses */}
+      {serie.length > 1 && (
+        <div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Últimos 12 meses
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 48 }}>
+            {serie.map(r => {
+              const h = Math.max(4, Math.round((Number(r.total) || 0) / maxTotal * 48));
+              const isActive = r.ym === ym;
+              return (
+                <div key={r.ym} title={`${ymLabel(r.ym)} — ${$compact(r.total)}`}
+                  style={{
+                    flex: 1, height: h,
+                    background: isActive ? '#F28100' : 'rgba(255,255,255,0.25)',
+                    borderRadius: 3,
+                    transition: 'height 0.2s',
+                  }} />
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+            {serie.map(r => (
+              <div key={r.ym} style={{
+                flex: 1, textAlign: 'center',
+                fontSize: 8, color: r.ym === ym ? '#F28100' : 'rgba(255,255,255,0.35)',
+                fontWeight: r.ym === ym ? 700 : 500,
+              }}>
+                {ymShort(r.ym).split(' ')[0]}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── InvoiceCard (unificado mobile+desktop) ───────────────────────────────── */
+function InvoiceCard({ inv, onOpen }) {
+  const isNC     = inv.doc_type === 'nota_credito';
+  const anulada  = !!inv.anulada_por_id;
+  const modelo   = [inv.brand, inv.model, inv.commercial_year].filter(Boolean).join(' ');
+  const folioLbl = isNC ? `NC ${inv.folio || '-'}` : inv.folio || '-';
+
+  return (
+    <div onClick={() => onOpen(inv)} style={{
+      background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12,
+      padding: '14px 16px', cursor: 'pointer',
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0,1fr) auto',
+      gap: 12, alignItems: 'center',
+      opacity: anulada ? 0.6 : 1,
+      transition: 'all 0.15s',
+      position: 'relative',
+    }}
+    className="acc-card"
+    >
+      {/* Left: info */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 11, fontWeight: 800,
+            color: isNC ? '#DC2626' : '#F28100',
+            background: isNC ? 'rgba(220,38,38,0.08)' : 'rgba(242,129,0,0.08)',
+            padding: '2px 8px', borderRadius: 6,
+            letterSpacing: '0.02em',
+          }}>
+            {folioLbl}
+          </span>
+          {anulada && (
+            <span style={{ fontSize: 9, fontWeight: 800, color: '#DC2626', background: 'rgba(220,38,38,0.1)', borderRadius: 20, padding: '2px 8px', letterSpacing: '0.04em' }}>
+              ANULADA
+            </span>
+          )}
+          {isNC && inv.ref_folio && (
+            <span style={{ fontSize: 10, color: '#6B7280' }}>→ factura #{inv.ref_folio}</span>
+          )}
+          <LinkBadge status={inv.link_status} />
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {inv.cliente_nombre || <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontWeight: 500 }}>Sin cliente</span>}
+        </div>
+        <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {inv.rut_cliente && <span>{rutFmt(inv.rut_cliente)}</span>}
+          {modelo && <span>·  {modelo}</span>}
+          {inv.chassis && <span style={{ fontFamily: 'monospace', fontSize: 11 }}>· {inv.chassis}</span>}
+        </div>
+        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+          {fd(inv.fecha_emision)}
+        </div>
+      </div>
+
+      {/* Right: amount + actions */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        <div style={{
+          fontSize: 16, fontWeight: 800,
+          color: isNC ? '#DC2626' : '#111827',
+          letterSpacing: '-0.01em',
+          whiteSpace: 'nowrap',
+        }}>
+          {isNC ? '−' : ''}{$(inv.total)}
+        </div>
+        {inv.pdf_url && (
+          <a
+            href={inv.pdf_url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              fontSize: 11, color: '#F28100', textDecoration: 'none',
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'rgba(242,129,0,0.08)',
+              padding: '4px 10px', borderRadius: 6,
+              fontWeight: 600,
+            }}
+          >
+            <Ic.file size={12} color="#F28100" /> PDF
+          </a>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -116,14 +268,16 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
   const Row = ({ label, val }) => val ? (
     <div style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 13 }}>
       <span style={{ color: '#6B7280', minWidth: 130, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontWeight: 500, wordBreak: 'break-all' }}>{val}</span>
+      <span style={{ fontWeight: 500, wordBreak: 'break-word' }}>{val}</span>
     </div>
   ) : null;
 
+  const isNC = inv.doc_type === 'nota_credito';
+
   return (
-    <Modal onClose={onClose} title={`${inv.doc_type === 'nota_credito' ? 'Nota de crédito' : 'Factura'} N° ${inv.folio || '-'}`}>
+    <Modal onClose={onClose} title={`${isNC ? 'Nota de crédito' : 'Factura'} N° ${inv.folio || '-'}`}>
       <div style={{ maxWidth: 560, width: '100%' }}>
-        {/* Status */}
+        {/* Status row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <LinkBadge status={inv.link_status} />
           {inv.anulada_por_id && (
@@ -133,14 +287,16 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
           )}
           {inv.pdf_url && (
             <a href={inv.pdf_url} target="_blank" rel="noreferrer"
-              style={{ fontSize: 12, color: '#F28100', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Ic.file size={13} color="#F28100" /> Ver PDF
+              style={{ fontSize: 12, color: '#fff', background: '#F28100', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 8, fontWeight: 600, marginLeft: 'auto' }}>
+              <Ic.file size={13} color="#fff" /> Ver PDF
             </a>
           )}
         </div>
 
         {/* Referencia (nota de crédito) */}
-        {inv.doc_type === 'nota_credito' && inv.ref_folio && (
+        {isNC && inv.ref_folio && (
           <div style={{ background: 'rgba(220,38,38,0.04)', border: '1px solid #FCA5A5', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
             <div style={{ ...TY.micro, color: '#DC2626', marginBottom: 8 }}>ANULA FACTURA</div>
             <Row label="Folio factura" val={`#${inv.ref_folio}`} />
@@ -153,7 +309,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
           <div style={{ ...TY.micro, color: '#9CA3AF', marginBottom: 8 }}>CLIENTE</div>
           <Row label="Nombre" val={inv.cliente_nombre} />
           <Row label="RUT" val={rutFmt(inv.rut_cliente)} />
-          <Row label="Direccion" val={inv.cliente_direccion} />
+          <Row label="Dirección" val={inv.cliente_direccion} />
           <Row label="Comuna" val={inv.cliente_comuna} />
           <Row label="Giro" val={inv.cliente_giro} />
         </div>
@@ -161,7 +317,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
         {/* Vehículo */}
         {(inv.brand || inv.model || inv.chassis) && (
           <div style={{ background: '#F9FAFB', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
-            <div style={{ ...TY.micro, color: '#9CA3AF', marginBottom: 8 }}>VEHICULO</div>
+            <div style={{ ...TY.micro, color: '#9CA3AF', marginBottom: 8 }}>VEHÍCULO</div>
             <Row label="Marca" val={inv.brand} />
             <Row label="Modelo" val={inv.model} />
             <Row label="Color" val={inv.color} />
@@ -214,7 +370,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
 }
 
 /* ── Main component ───────────────────────────────────────────────────────── */
-export function AccountingView({ user }) {
+export function AccountingView() {
   const isMobile = useIsMobile();
   const [data, setData]         = useState([]);
   const [total, setTotal]       = useState(0);
@@ -224,34 +380,46 @@ export function AccountingView({ user }) {
   const [error, setError]       = useState('');
   const [selected, setSelected] = useState(null);
 
-  // Filtros
-  const [tab, setTab]           = useState('facturas'); // facturas | notas | otras
+  // Mes activo → filtra la lista y el hero.
+  const [ym, setYm]             = useState(currentYM());
+  const [stats, setStats]       = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // Tabs
+  const [tab, setTab]           = useState('facturas');
   const [q, setQ]               = useState('');
   const [linkStatus, setLinkStatus] = useState('');
-  const [desde, setDesde]       = useState('');
-  const [hasta, setHasta]       = useState('');
   const [page, setPage]         = useState(1);
   const LIMIT = 50;
+
+  // Rango del mes activo (primer y último día)
+  const { desde, hasta } = useMemo(() => {
+    const [y, m] = ym.split('-').map(Number);
+    const first = `${ym}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const last = `${ym}-${String(lastDay).padStart(2, '0')}`;
+    return { desde: first, hasta: last };
+  }, [ym]);
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const r = await api.getAccountingStats({ month: ym });
+      setStats(r);
+    } catch { /* noop */ }
+    finally { setStatsLoading(false); }
+  }, [ym]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const params = { source: 'emitida', page, limit: LIMIT };
-      // "Otras" = documentos de emisores que no son Maosbike (category='otras').
-      // Facturas / Notas se filtran por doc_type y por NOT category='otras'
-      // (eso se decide en el parser cuando lee el RUT emisor).
-      if (tab === 'otras') {
-        params.category = 'otras';
-      } else if (tab === 'notas') {
-        params.doc_type = 'nota_credito';
-      } else {
-        params.doc_type = 'factura';
-      }
+      const params = { source: 'emitida', page, limit: LIMIT, desde, hasta };
+      if (tab === 'otras')      params.category = 'otras';
+      else if (tab === 'notas') params.doc_type = 'nota_credito';
+      else                      params.doc_type = 'factura';
       if (q)          params.q = q;
       if (linkStatus) params.link_status = linkStatus;
-      if (desde)      params.desde = desde;
-      if (hasta)      params.hasta = hasta;
       const r = await api.getAccounting(params);
       setData(r.data || []);
       setTotal(r.total || 0);
@@ -263,6 +431,7 @@ export function AccountingView({ user }) {
   }, [tab, q, linkStatus, desde, hasta, page]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadStats(); }, [loadStats]);
 
   async function syncDrive() {
     setSyncing(true);
@@ -271,6 +440,7 @@ export function AccountingView({ user }) {
       const r = await api.syncAccountingFromDrive();
       setSyncResult(r);
       load();
+      loadStats();
     } catch (e) {
       setSyncResult({ error: e.message });
     } finally {
@@ -283,18 +453,16 @@ export function AccountingView({ user }) {
     setSelected(prev => prev ? { ...prev, ...updated } : prev);
   }
 
-  const thStyle = { padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600,
-    color: '#9CA3AF', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB',
-    textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' };
-
-  const sinVinc = data.filter(d => d.link_status === 'sin_vincular').length;
-  const revisar = data.filter(d => d.link_status === 'revisar').length;
-
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <style>{`
+        .acc-card:hover { border-color: #D1D5DB !important; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+        .acc-tab { position: relative; }
+      `}</style>
+
       <ViewHeader
         title="Contabilidad"
-        subtitle="Facturas emitidas"
+        subtitle={ymLabel(ym)}
         actions={
           <button onClick={syncDrive} disabled={syncing}
             style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
@@ -302,6 +470,15 @@ export function AccountingView({ user }) {
             {syncing ? 'Sincronizando...' : 'Sincronizar Drive'}
           </button>
         }
+      />
+
+      <MonthHero
+        stats={stats}
+        ym={ym}
+        loading={statsLoading}
+        isMobile={isMobile}
+        onPrev={() => setYm(shiftYM(ym, -1))}
+        onNext={() => setYm(shiftYM(ym, +1))}
       />
 
       {/* Sync result */}
@@ -338,7 +515,7 @@ export function AccountingView({ user }) {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #E5E7EB' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
         {[
           { key: 'facturas', label: 'Facturas' },
           { key: 'notas',    label: 'Notas de crédito' },
@@ -365,50 +542,25 @@ export function AccountingView({ user }) {
         ))}
       </div>
 
-      {/* Stats */}
-      {!loading && data.length > 0 && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-          {[
-            { label: 'Total facturas', val: total, color: '#374151' },
-            { label: 'Vinculadas', val: data.filter(d => d.link_status === 'vinculada').length, color: '#15803D' },
-            { label: 'Sin vincular', val: sinVinc, color: '#6B7280' },
-            { label: 'Revisar', val: revisar, color: '#D97706' },
-          ].map(s => (
-            <div key={s.label} style={{ background: '#fff', border: '1px solid #E5E7EB',
-              borderRadius: 10, padding: '10px 16px', fontSize: 12, minWidth: 100 }}>
-              <div style={{ color: '#9CA3AF', marginBottom: 2 }}>{s.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.val}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           placeholder="Folio, RUT, cliente, chasis..."
           value={q}
           onChange={e => { setQ(e.target.value); setPage(1); }}
-          style={{ ...S.inp, width: 220, height: 36, fontSize: 13 }}
+          style={{ ...S.inp, flex: 1, minWidth: 180, height: 36, fontSize: 13 }}
         />
         <select value={linkStatus} onChange={e => { setLinkStatus(e.target.value); setPage(1); }}
           style={{ height: 36, borderRadius: 8, border: '1px solid #D1D5DB', background: '#F9FAFB',
             color: '#374151', fontSize: 13, padding: '0 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
-          <option value="">Todos los estados</option>
+          <option value="">Todos</option>
           <option value="vinculada">Vinculadas</option>
           <option value="revisar">Revisar</option>
           <option value="sin_vincular">Sin vincular</option>
         </select>
-        <input type="date" value={desde} onChange={e => { setDesde(e.target.value); setPage(1); }}
-          style={{ ...S.inp, height: 36, fontSize: 13, width: 150 }} />
-        <input type="date" value={hasta} onChange={e => { setHasta(e.target.value); setPage(1); }}
-          style={{ ...S.inp, height: 36, fontSize: 13, width: 150 }} />
-        {(q || linkStatus || desde || hasta) && (
-          <button onClick={() => { setQ(''); setLinkStatus(''); setDesde(''); setHasta(''); setPage(1); }}
-            style={{ ...S.gh, height: 36, fontSize: 13 }}>
-            Limpiar
-          </button>
-        )}
+        <span style={{ fontSize: 12, color: '#9CA3AF' }}>
+          {loading ? '...' : `${total} ${total === 1 ? 'documento' : 'documentos'}`}
+        </span>
       </div>
 
       {/* Content */}
@@ -418,36 +570,17 @@ export function AccountingView({ user }) {
       {!loading && !error && data.length === 0 && (
         <Empty
           icon={Ic.invoice}
-          title="Sin facturas"
-          hint={syncing ? 'Sincronizando...' : 'Sincroniza desde Drive para importar facturas.'}
+          title={`Sin ${tab === 'notas' ? 'notas de crédito' : tab === 'otras' ? 'otras facturas' : 'facturas'} en ${ymLabel(ym)}`}
+          hint={syncing ? 'Sincronizando...' : 'Probá con otro mes o sincroniza desde Drive.'}
         />
       )}
 
       {!loading && !error && data.length > 0 && (
-        isMobile ? (
-          <div>
-            {data.map(inv => (
-              <InvoiceRow key={inv.id} inv={inv} onOpen={setSelected} isMobile />
-            ))}
-          </div>
-        ) : (
-          <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Folio', 'Fecha', 'Cliente', 'RUT', 'Modelo', 'Chasis', 'Total', 'Estado'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.map(inv => (
-                  <InvoiceRow key={inv.id} inv={inv} onOpen={setSelected} isMobile={false} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {data.map(inv => (
+            <InvoiceCard key={inv.id} inv={inv} onOpen={setSelected} />
+          ))}
+        </div>
       )}
 
       {/* Paginación */}
