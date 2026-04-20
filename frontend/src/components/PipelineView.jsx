@@ -16,20 +16,17 @@ const humanAge = h => {
   return `${Math.floor(h / 24)}d`;
 };
 
-// Regla de atención — solo marca cuando realmente hay problema.
-// Evita el ruido de "todos urgentes".
-const NEGLECT_H = 72; // sin contacto hace 3+ días
-const getAttention = l => {
-  // Usuario marcó como prioridad alta explícitamente
-  if (l.priority === 'alta') {
-    return { level: 'priority', label: 'Prioridad', color: '#F59E0B', bg: '#FFFBEB' };
-  }
-  // Lead estancado sin contacto (solo etapas activas)
+// Tiers de edad — el vendedor ve de un vistazo cuáles atacar primero.
+// La mayoría queda en gris; las pocas rojas saltan naturalmente.
+// No usamos priority=alta porque en la base casi todas están marcadas así
+// (ruido = 0 señal).
+const getTier = l => {
   const h = ageHours(l);
-  if (h != null && h >= NEGLECT_H) {
-    return { level: 'neglect', label: `Sin contacto ${Math.floor(h/24)}d`, color: '#EF4444', bg: '#FEF2F2' };
-  }
-  return null;
+  if (h == null)   return { key:'fresh',   color:'#9CA3AF', bg:'transparent', border:false, cta:null };
+  if (h >= 24*7)   return { key:'cold',    color:'#B91C1C', bg:'#FEE2E2',     border:true,  cta:'Llamar hoy' };
+  if (h >= 72)     return { key:'neglect', color:'#EF4444', bg:'#FEF2F2',     border:true,  cta:'Atender' };
+  if (h >= 24)     return { key:'stale',   color:'#F59E0B', bg:'#FFFBEB',     border:false, cta:null };
+  return           { key:'fresh',   color:'#9CA3AF', bg:'transparent', border:false, cta:null };
 };
 
 export function PipelineView({leads,user,nav,updLead}){
@@ -87,13 +84,8 @@ export function PipelineView({leads,user,nav,updLead}){
     const sc = TICKET_STATUS[mobStage];
     const sl = pLeads.filter(l => l.status === mobStage);
 
-    // Ordena: prioridad alta primero, luego descuidados, luego el resto
-    const sorted = [...sl].sort((a,b) => {
-      const pa = a.priority === 'alta' ? 0 : 1;
-      const pb = b.priority === 'alta' ? 0 : 1;
-      if (pa !== pb) return pa - pb;
-      return (ageHours(b) || 0) - (ageHours(a) || 0);
-    });
+    // Más viejo primero — los que llevan más tiempo sin contacto al tope
+    const sorted = [...sl].sort((a,b) => (ageHours(b) || 0) - (ageHours(a) || 0));
 
     return (
       <div>
@@ -153,15 +145,15 @@ export function PipelineView({leads,user,nav,updLead}){
             </div>
           )}
           {sorted.map(l => {
-            const m   = l.model_brand ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0} : null;
-            const att = getAttention(l);
-            const age = humanAge(ageHours(l));
+            const m    = l.model_brand ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0} : null;
+            const tier = getTier(l);
+            const age  = humanAge(ageHours(l));
 
             return (
               <div key={l.id} style={{
                 background:'#FFFFFF', borderRadius:14,
                 border:'1px solid #E5E7EB',
-                borderLeft: att ? `4px solid ${att.color}` : '1px solid #E5E7EB',
+                borderLeft: tier.border ? `4px solid ${tier.color}` : '1px solid #E5E7EB',
                 overflow:'hidden',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}>
@@ -211,23 +203,25 @@ export function PipelineView({leads,user,nav,updLead}){
                       )}
                     </div>
 
-                    {/* Meta: age + atención */}
+                    {/* Meta: edad coloreada por tier */}
                     <div style={{display:'flex', alignItems:'center', gap:6, marginTop:8, flexWrap:'wrap'}}>
                       {age && (
                         <span style={{
-                          fontSize:10, fontWeight:600, color:'#9CA3AF',
-                          display:'inline-flex', alignItems:'center', gap:3,
+                          fontSize:11, fontWeight:700,
+                          padding:'3px 8px', borderRadius:99,
+                          background: tier.bg === 'transparent' ? '#F3F4F6' : tier.bg,
+                          color: tier.color,
+                          display:'inline-flex', alignItems:'center', gap:4,
                         }}>
-                          <Ic.clock size={10} color="#9CA3AF"/>{age}
+                          <Ic.clock size={10} color={tier.color}/>{age}
                         </span>
                       )}
-                      {att && (
+                      {tier.cta && (
                         <span style={{
-                          fontSize:10, fontWeight:700,
-                          padding:'2px 7px', borderRadius:99,
-                          background: att.bg, color: att.color,
+                          fontSize:10, fontWeight:700, letterSpacing:'0.02em',
+                          color: tier.color, textTransform:'uppercase',
                         }}>
-                          {att.label}
+                          · {tier.cta}
                         </span>
                       )}
                     </div>
@@ -325,13 +319,8 @@ export function PipelineView({leads,user,nav,updLead}){
         {stages.map(stage => {
           const sc = TICKET_STATUS[stage];
           const raw = pLeads.filter(l => l.status === stage);
-          // Ordena dentro de la columna: prioridad alta primero, luego descuidados, luego por antigüedad
-          const sl = [...raw].sort((a,b) => {
-            const pa = a.priority === 'alta' ? 0 : 1;
-            const pb = b.priority === 'alta' ? 0 : 1;
-            if (pa !== pb) return pa - pb;
-            return (ageHours(b) || 0) - (ageHours(a) || 0);
-          });
+          // Más viejo primero — trabajar por antigüedad, no por flag manual
+          const sl = [...raw].sort((a,b) => (ageHours(b) || 0) - (ageHours(a) || 0));
 
           return (
             <div
@@ -339,7 +328,7 @@ export function PipelineView({leads,user,nav,updLead}){
               onDragOver={e => e.preventDefault()}
               onDrop={() => drop(stage)}
               style={{
-                minWidth:340, width:340, flexShrink:0,
+                flex:'1 1 240px', minWidth:220, maxWidth:320,
                 display:'flex', flexDirection:'column',
                 background:'#F9FAFB',
                 borderRadius:14,
@@ -405,7 +394,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   const m = l.model_brand
                     ? {brand:l.model_brand, model:l.model_name, price:l.model_price||0, bonus:l.model_bonus||0}
                     : null;
-                  const att   = getAttention(l);
+                  const tier  = getTier(l);
                   const age   = humanAge(ageHours(l));
                   const hover = hoverId === l.id;
 
@@ -421,7 +410,7 @@ export function PipelineView({leads,user,nav,updLead}){
                         background:'#FFFFFF',
                         borderRadius:14,
                         border:'1px solid #E5E7EB',
-                        borderLeft: att ? `4px solid ${att.color}` : '1px solid #E5E7EB',
+                        borderLeft: tier.border ? `4px solid ${tier.color}` : '1px solid #E5E7EB',
                         cursor:'grab',
                         transition:'transform 0.15s, box-shadow 0.15s',
                         transform: hover ? 'translateY(-2px)' : 'none',
@@ -432,11 +421,11 @@ export function PipelineView({leads,user,nav,updLead}){
                     >
                       {/* Foto */}
                       {l.model_image ? (
-                        <div style={{flexShrink:0, padding:'14px 0 14px 14px'}}>
+                        <div style={{flexShrink:0, padding:'12px 0 12px 12px'}}>
                           <img
                             src={l.model_image} alt=""
                             style={{
-                              width:96, height:96, borderRadius:10,
+                              width:84, height:84, borderRadius:10,
                               objectFit:'cover', display:'block',
                               background:'#F9FAFB',
                             }}
@@ -444,12 +433,12 @@ export function PipelineView({leads,user,nav,updLead}){
                         </div>
                       ) : (
                         <div style={{
-                          flexShrink:0, margin:'14px 0 14px 14px',
-                          width:96, height:96, borderRadius:10,
+                          flexShrink:0, margin:'12px 0 12px 12px',
+                          width:84, height:84, borderRadius:10,
                           background:'#F9FAFB', display:'flex',
                           alignItems:'center', justifyContent:'center',
                         }}>
-                          <Ic.bike size={26} color="#D1D5DB"/>
+                          <Ic.bike size={24} color="#D1D5DB"/>
                         </div>
                       )}
 
@@ -491,26 +480,28 @@ export function PipelineView({leads,user,nav,updLead}){
                           </div>
                         )}
 
-                        {/* Meta: age + atención */}
+                        {/* Meta: edad coloreada por tier (gris → ámbar → rojo) */}
                         <div style={{
                           display:'flex', alignItems:'center', gap:6, marginTop:4,
                           flexWrap:'wrap',
                         }}>
                           {age && (
                             <span style={{
-                              fontSize:10, fontWeight:600, color:'#9CA3AF',
-                              display:'inline-flex', alignItems:'center', gap:3,
+                              fontSize:11, fontWeight:700,
+                              padding:'3px 8px', borderRadius:99,
+                              background: tier.bg === 'transparent' ? '#F3F4F6' : tier.bg,
+                              color: tier.color,
+                              display:'inline-flex', alignItems:'center', gap:4,
                             }}>
-                              <Ic.clock size={10} color="#9CA3AF"/>{age}
+                              <Ic.clock size={10} color={tier.color}/>{age}
                             </span>
                           )}
-                          {att && (
+                          {tier.cta && (
                             <span style={{
-                              fontSize:10, fontWeight:700,
-                              padding:'2px 7px', borderRadius:99,
-                              background: att.bg, color: att.color,
+                              fontSize:10, fontWeight:700, letterSpacing:'0.02em',
+                              color: tier.color, textTransform:'uppercase',
                             }}>
-                              {att.label}
+                              · {tier.cta}
                             </span>
                           )}
                         </div>
