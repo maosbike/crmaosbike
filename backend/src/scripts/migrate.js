@@ -103,6 +103,9 @@ async function migrate() {
     await runMigration('052', 'can_sell flag',                                 m('052_can_sell.sql'));
     await runMigration('053', 'login lockout',                                 m('053_login_lockout.sql'));
     await runMigration('054', 'user time off (d\u00edas libres)',                   m('054_user_time_off.sql'));
+    await runMigration('055', 'sale extras',                                   m('055_sale_extras.sql'));
+    await runMigration('056', 'accounting invoices',                           m('056_accounting_invoices.sql'));
+    await runMigration('057', 'sync ticket assignment trigger',                m('057_sync_ticket_assignment.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');
