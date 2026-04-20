@@ -53,7 +53,15 @@ const request = async (method, path, body, _retry = false) => {
 
   const res = await fetch(`${BASE}${path}`, opts);
 
-  if (res.status === 401 && !_retry) {
+  // Los endpoints de sesión NO deben pasar por el retry-con-refresh:
+  // — /auth/login es quien crea la sesión (un 401 acá = credenciales malas, no sesión caída)
+  // — /auth/refresh es el refresh mismo (meterlo en loop es un bucle infinito)
+  // — /auth/logout tampoco — si falla da igual, ya estamos saliendo
+  const isAuthEndpoint = path.startsWith('/auth/login')
+                      || path.startsWith('/auth/refresh')
+                      || path.startsWith('/auth/logout');
+
+  if (res.status === 401 && !_retry && !isAuthEndpoint) {
     // Intentar renovar silenciosamente (una sola vez, deduplicado)
     if (!_refreshing) _refreshing = tryRefresh();
     const ok = await _refreshing;
@@ -65,7 +73,7 @@ const request = async (method, path, body, _retry = false) => {
     throw new Error('Sesión expirada');
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.error || 'Error');
     if (data.detail !== undefined) err.detail = data.detail;
