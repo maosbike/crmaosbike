@@ -63,8 +63,9 @@ const SLAService = {
     return rows.map(r => r.id);
   },
 
-  // Lógica oficial de asignación: least-loaded considerando branch_id + extra_branches
-  // Usada tanto para leads manuales como importados
+  // Lógica oficial de asignación: least-loaded considerando branch_id + extra_branches.
+  // Excluye vendedores con día libre HOY (user_time_off.off_date = hoy America/Santiago).
+  // Usada tanto para leads manuales como importados.
   async assignSeller(branch_id) {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
@@ -74,6 +75,11 @@ const SLAService = {
        WHERE u.role = 'vendedor'
          AND u.active = true
          AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
+         AND NOT EXISTS (
+           SELECT 1 FROM user_time_off o
+            WHERE o.user_id = u.id
+              AND o.off_date = (NOW() AT TIME ZONE 'America/Santiago')::date
+         )
        GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
        ORDER BY active_tickets ASC
        LIMIT 1`,
@@ -82,8 +88,8 @@ const SLAService = {
     return rows[0] || null;
   },
 
-  // Least-loaded excluyendo un conjunto de vendedores (para reasignación por SLA)
-  // excluded_ids: array de UUIDs a excluir (puede ser vacío → sin exclusión)
+  // Least-loaded excluyendo un conjunto de vendedores (para reasignación por SLA).
+  // También excluye a quienes están libres hoy.
   async findBestSeller(branch_id, excluded_ids = []) {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
@@ -94,6 +100,11 @@ const SLAService = {
          AND u.active = true
          AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
          AND u.id != ALL($2::uuid[])
+         AND NOT EXISTS (
+           SELECT 1 FROM user_time_off o
+            WHERE o.user_id = u.id
+              AND o.off_date = (NOW() AT TIME ZONE 'America/Santiago')::date
+         )
        GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
        ORDER BY active_tickets ASC
        LIMIT 1`,

@@ -299,4 +299,10 @@ export const api = {
   updateSupplierPayment: (id, data) => request('PATCH', `/supplier-payments/${id}`, data),
   deleteSupplierPayment: (id) => request('DELETE', `/supplier-payments/${id}`),
   syncSupplierPaymentsFromDrive: () => request('POST', '/supplier-payments/sync-drive'),
+
+  // Días libres (time-off)
+  getTimeOff:      (params) => request('GET',    `/time-off?${new URLSearchParams(params || {})}`),
+  getTimeOffToday: ()       => request('GET',    '/time-off/today'),
+  saveTimeOff:     (data)   => request('POST',   '/time-off', data),
+  deleteTimeOff:   (id)     => request('DELETE', `/time-off/${id}`),
 };

@@ -102,6 +102,7 @@ async function migrate() {
     await runMigration('051', 'brands + brand_categories',                     m('051_brands_and_categories.sql'));
     await runMigration('052', 'can_sell flag',                                 m('052_can_sell.sql'));
     await runMigration('053', 'login lockout',                                 m('053_login_lockout.sql'));
+    await runMigration('054', 'user time off (d\u00edas libres)',                   m('054_user_time_off.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');

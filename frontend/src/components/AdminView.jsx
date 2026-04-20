@@ -32,6 +32,249 @@ const sectionLbl = {
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
+// ─── Calendario de días libres ───────────────────────────────────────────────
+// Calendario mensual interactivo. Cada día muestra los vendedores libres
+// como chips. Hacer click en un día abre un modal con el listado de vendedores
+// activos para marcar/desmarcar. Los libres no reciben leads ni notificaciones.
+
+const MONTHS_ES = [
+  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
+];
+const DOW_ES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+// YYYY-MM-DD en TZ local del browser (coincide con lo que ingresa el admin).
+function ymdLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+// Paleta determinística por user_id para que los chips sean reconocibles
+// entre días sin depender de orden ni del servidor.
+const CHIP_PALETTE = [
+  { bg:'#DBEAFE', fg:'#1E40AF' }, { bg:'#DCFCE7', fg:'#166534' },
+  { bg:'#FCE7F3', fg:'#9D174D' }, { bg:'#FEF3C7', fg:'#92400E' },
+  { bg:'#EDE9FE', fg:'#5B21B6' }, { bg:'#FEE2E2', fg:'#991B1B' },
+  { bg:'#CCFBF1', fg:'#115E59' }, { bg:'#FFE4E6', fg:'#9F1239' },
+];
+function chipColor(uid) {
+  let h = 0;
+  const s = String(uid || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return CHIP_PALETTE[h % CHIP_PALETTE.length];
+}
+
+function TimeOffCalendar({ users }) {
+  const today = new Date();
+  const [cursor, setCursor]   = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [entries, setEntries] = useState([]);   // [{id, user_id, off_date, first_name, last_name, role, ...}]
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]         = useState('');
+  const [dayModal, setDayModal] = useState(null); // { date: 'YYYY-MM-DD' }
+  const [saving, setSaving]   = useState(false);
+
+  // Vendedores activos — únicos que pueden tomar leads. El admin marca libres solo sobre estos.
+  const sellers = (users || []).filter(u => u.active && (u.role === 'vendedor' || u.role === 'backoffice'));
+
+  const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const monthEnd   = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+  const from = ymdLocal(monthStart);
+  const to   = ymdLocal(monthEnd);
+
+  const load = async () => {
+    setLoading(true); setErr('');
+    try {
+      const rows = await api.getTimeOff({ from, to });
+      setEntries(Array.isArray(rows) ? rows : []);
+    } catch (ex) {
+      setErr(ex.message || 'Error al cargar días libres');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [from, to]);
+
+  // Construcción de la grilla: lunes como primer día de semana.
+  const grid = [];
+  {
+    const firstDow = (monthStart.getDay() + 6) % 7; // 0 = Lun
+    for (let i = 0; i < firstDow; i++) grid.push(null);
+    for (let d = 1; d <= monthEnd.getDate(); d++) {
+      grid.push(new Date(cursor.getFullYear(), cursor.getMonth(), d));
+    }
+    while (grid.length % 7 !== 0) grid.push(null);
+  }
+
+  // Map día → lista de entries para render rápido de chips.
+  const byDay = new Map();
+  for (const e of entries) {
+    const key = (e.off_date || '').slice(0, 10);
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(e);
+  }
+
+  const isToday = (d) => d && ymdLocal(d) === ymdLocal(today);
+  const prevMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  const nextMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
+
+  // Toggle: si el vendedor ya está libre ese día, borrar; si no, crear.
+  const toggleSeller = async (user_id, dateStr) => {
+    setSaving(true); setErr('');
+    try {
+      const existing = (byDay.get(dateStr) || []).find(e => e.user_id === user_id);
+      if (existing) {
+        await api.deleteTimeOff(existing.id);
+      } else {
+        await api.saveTimeOff({ user_id, dates: [dateStr] });
+      }
+      await load();
+    } catch (ex) { setErr(ex.message || 'No se pudo actualizar'); }
+    finally { setSaving(false); }
+  };
+
+  const dayEntries = dayModal ? (byDay.get(dayModal.date) || []) : [];
+  const dayOffSet  = new Set(dayEntries.map(e => e.user_id));
+
+  return (
+    <div style={{ ...S.card, marginBottom:14 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, flexWrap:'wrap', gap:8 }}>
+        <div>
+          <h3 style={{ fontSize:13, fontWeight:600, margin:0 }}>Días libres del equipo</h3>
+          <p style={{ fontSize:11, color:'#6B7280', margin:'2px 0 0' }}>
+            Marca los días en que un vendedor no trabaja — ese día no recibe leads nuevos ni notificaciones.
+          </p>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <button onClick={prevMonth} title="Mes anterior"
+            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid #E5E7EB' }}>
+            <Ic.chev size={14}/>
+          </button>
+          <div style={{ fontSize:12, fontWeight:700, minWidth:150, textAlign:'center' }}>
+            {MONTHS_ES[cursor.getMonth()]} {cursor.getFullYear()}
+          </div>
+          <button onClick={nextMonth} title="Mes siguiente"
+            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid #E5E7EB', transform:'rotate(180deg)' }}>
+            <Ic.chev size={14}/>
+          </button>
+          <button onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}
+            style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E5E7EB', marginLeft:4 }}>
+            Hoy
+          </button>
+        </div>
+      </div>
+
+      {err && <ErrorMsg msg={err}/>}
+
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4 }}>
+        {DOW_ES.map(d => (
+          <div key={d} style={{ ...sectionLbl, textAlign:'center', padding:'6px 0' }}>{d}</div>
+        ))}
+        {grid.map((d, idx) => {
+          if (!d) return <div key={idx} style={{ minHeight:78 }}/>;
+          const key = ymdLocal(d);
+          const list = byDay.get(key) || [];
+          const isPast = new Date(d.getFullYear(), d.getMonth(), d.getDate()) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          return (
+            <div
+              key={idx}
+              onClick={() => setDayModal({ date: key })}
+              style={{
+                minHeight:78, borderRadius:8, padding:'6px 7px',
+                background: isToday(d) ? '#FFF7ED' : (isPast ? '#FAFAFA' : '#FFFFFF'),
+                border: isToday(d) ? '1.5px solid #F28100' : '1px solid #E5E7EB',
+                cursor:'pointer', transition:'background 0.1s', opacity: isPast ? 0.75 : 1,
+                display:'flex', flexDirection:'column', gap:4, overflow:'hidden',
+              }}
+              onMouseEnter={e => { if (!isToday(d)) e.currentTarget.style.background = '#F9FAFB'; }}
+              onMouseLeave={e => { if (!isToday(d)) e.currentTarget.style.background = isPast ? '#FAFAFA' : '#FFFFFF'; }}
+            >
+              <div style={{ fontSize:11, fontWeight:700, color: isToday(d) ? '#F28100' : '#374151' }}>
+                {d.getDate()}
+              </div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:3 }}>
+                {list.slice(0, 3).map(e => {
+                  const c = chipColor(e.user_id);
+                  const initials = ((e.first_name||'?')[0] + (e.last_name||'?')[0]).toUpperCase();
+                  return (
+                    <span key={e.id} title={`${e.first_name} ${e.last_name}${e.note ? ' · ' + e.note : ''}`}
+                      style={{
+                        fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:10,
+                        background: c.bg, color: c.fg, whiteSpace:'nowrap',
+                      }}>
+                      {initials}
+                    </span>
+                  );
+                })}
+                {list.length > 3 && (
+                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:10, background:'#F3F4F6', color:'#6B7280' }}>
+                    +{list.length - 3}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {loading && <div style={{ marginTop:8, fontSize:11, color:'#9CA3AF' }}>Cargando…</div>}
+
+      {dayModal && (
+        <Modal onClose={() => setDayModal(null)} title={`Días libres · ${dayModal.date}`}>
+          <p style={{ fontSize:12, color:'#6B7280', margin:'0 0 12px' }}>
+            Activa la casilla para marcar que ese vendedor <strong>no trabaja ese día</strong>.
+            No recibirá leads nuevos ni notificaciones.
+          </p>
+          {sellers.length === 0
+            ? <Empty title="Sin vendedores activos" hint="Activa usuarios con rol vendedor o backoffice."/>
+            : <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:380, overflowY:'auto' }}>
+                {sellers.map(u => {
+                  const isOff = dayOffSet.has(u.id);
+                  const c = chipColor(u.id);
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => !saving && toggleSeller(u.id, dayModal.date)}
+                      style={{
+                        display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
+                        borderRadius:8, cursor: saving ? 'wait' : 'pointer',
+                        background: isOff ? c.bg : '#F9FAFB',
+                        border: `1px solid ${isOff ? c.fg : '#E5E7EB'}`,
+                        transition:'background 0.1s',
+                      }}
+                    >
+                      <div style={{
+                        width:16, height:16, borderRadius:4, flexShrink:0,
+                        border: isOff ? 'none' : '2px solid #D1D5DB',
+                        background: isOff ? c.fg : 'transparent',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                      }}>
+                        {isOff && <Ic.check size={10} color="white"/>}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:12, fontWeight:600, color: isOff ? c.fg : '#111827' }}>
+                          {u.first_name} {u.last_name}
+                        </div>
+                        <div style={{ fontSize:10, color:'#6B7280' }}>
+                          {(ROLES.find(r => r.v === u.role)?.l) || u.role}
+                          {u.branch_name ? ` · ${u.branch_name}` : ''}
+                        </div>
+                      </div>
+                      {isOff && <span style={{ fontSize:10, fontWeight:700, color:c.fg }}>Libre</span>}
+                    </div>
+                  );
+                })}
+              </div>
+          }
+          <div style={{ display:'flex', justifyContent:'flex-end', marginTop:14 }}>
+            <button onClick={() => setDayModal(null)} style={S.btn}>Listo</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 function ActiveToggle({ value, onChange }) {
   return (
     <div
@@ -499,6 +742,9 @@ export function AdminView() {
           ))}
         </div>
       </div>
+
+      {/* ── DÍAS LIBRES ── */}
+      <TimeOffCalendar users={users} />
 
       {/* ── DANGER ZONE ── */}
       <div style={{ border:'2px solid #FECACA', borderRadius:12, padding:'16px 20px', marginBottom:14, background:'#FFF5F5' }}>

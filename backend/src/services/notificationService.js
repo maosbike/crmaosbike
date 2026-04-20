@@ -9,9 +9,24 @@ function dn(ticket) {
     || '—';
 }
 
+// Chequea si el usuario está libre hoy (TZ Chile). Usado para filtrar notificaciones.
+async function isOffToday(user_id) {
+  const { rows } = await db.query(
+    `SELECT 1 FROM user_time_off
+      WHERE user_id = $1
+        AND off_date = (NOW() AT TIME ZONE 'America/Santiago')::date
+      LIMIT 1`,
+    [user_id]
+  );
+  return rows.length > 0;
+}
+
 const NotificationService = {
-  // Crear una notificación
+  isOffToday,
+
+  // Crear una notificación. Si el usuario está libre hoy, se omite silenciosamente.
   async create({ user_id, type, title, message, link_type, link_id }) {
+    if (await isOffToday(user_id)) return null;
     const { rows } = await db.query(
       `INSERT INTO notifications (user_id, type, title, message, link_type, link_id)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
@@ -25,7 +40,8 @@ const NotificationService = {
     const promises = user_ids.map(uid =>
       this.create({ user_id: uid, type, title, message, link_type, link_id })
     );
-    return Promise.all(promises);
+    const results = await Promise.all(promises);
+    return results.filter(Boolean);
   },
 
   // Notificar nuevo lead asignado
