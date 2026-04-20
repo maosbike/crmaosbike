@@ -91,20 +91,27 @@ function sendMessage(chatId, text, inlineKeyboard) {
 
 async function handleStart(chatId, db) {
   try {
+    // Vendedores + admins comerciales + super_admin pueden vincularse al bot.
+    // Los vendedores reciben avisos de leads nuevos; los admins reciben avisos de
+    // ventas y reservas.
     const { rows: sellers } = await db.query(
-      `SELECT u.id, u.first_name, u.last_name, b.name AS branch_name
+      `SELECT u.id, u.first_name, u.last_name, u.role, b.name AS branch_name
        FROM users u
        LEFT JOIN branches b ON u.branch_id = b.id
-       WHERE u.role = 'vendedor' AND u.active = true
-       ORDER BY b.name NULLS LAST, u.first_name
-       LIMIT 30`
+       WHERE u.role IN ('vendedor', 'admin_comercial', 'super_admin') AND u.active = true
+       ORDER BY CASE u.role
+                  WHEN 'super_admin'     THEN 0
+                  WHEN 'admin_comercial' THEN 1
+                  ELSE 2
+                END, b.name NULLS LAST, u.first_name
+       LIMIT 40`
     );
 
     const welcomeText =
       `🏍️ *Bienvenido al bot de MaosBike CRM*\n\n` +
-      `Este bot te enviará una notificación cuando:\n` +
-      `📥 Te asignen un lead nuevo\n\n` +
-      `El resto de alertas (SLA, reasignaciones, recordatorios) las verás en la campanita del CRM.\n\n` +
+      `Este bot te envía notificaciones según tu rol:\n` +
+      `• Vendedores → aviso de lead nuevo asignado\n` +
+      `• Admins → aviso de cada venta o reserva registrada\n\n` +
       `Para empezar, *selecciona tu nombre* en la lista de abajo:`;
 
     if (sellers.length === 0) {
@@ -146,8 +153,9 @@ async function handleLinkCallback(chatId, userId, callbackQueryId, db) {
     );
     const user = rows[0];
 
-    // Usuario inválido o desactivado
-    if (!user || !user.active || user.role !== 'vendedor') {
+    // Usuario inválido, desactivado o con rol que no se vincula al bot.
+    const LINKABLE = ['vendedor', 'admin_comercial', 'super_admin'];
+    if (!user || !user.active || !LINKABLE.includes(user.role)) {
       await apiCall('answerCallbackQuery', {
         callback_query_id: callbackQueryId,
         text: '❌ Usuario no encontrado o no disponible.',
@@ -189,10 +197,15 @@ async function handleLinkCallback(chatId, userId, callbackQueryId, db) {
       text: '✅ ¡Vinculado correctamente!',
     });
 
+    const isAdmin = user.role === 'super_admin' || user.role === 'admin_comercial';
+    const scopeLine = isAdmin
+      ? `Desde ahora te llegará un aviso cada vez que se registre una *venta* o *reserva*.`
+      : `Desde ahora te llegará un aviso cada vez que te asignen un lead nuevo.`;
+
     const successText =
       `✅ *¡Cuenta vinculada exitosamente!*\n\n` +
       `👤 *${esc(user.first_name)} ${esc(user.last_name)}*\n\n` +
-      `Desde ahora te llegará un aviso cada vez que te asignen un lead nuevo.\n` +
+      `${scopeLine}\n` +
       `El resto de alertas las encuentras en la campanita del CRM.\n\n` +
       `_Si cambias de dispositivo, usa /start nuevamente para re-vincular._`;
 
@@ -342,6 +355,95 @@ const TelegramService = {
   async notifyReassigned() { return null; },
   async notifyLostLead()   { return null; },
   async notifySlaWarning() { return null; },
+
+  // Aviso a super_admin / admin_comercial cada vez que se registra una venta o reserva.
+  // El caller arma el objeto con los datos ya resueltos (sucursal/vendedor/cliente/montos).
+  // Si el admin no tiene Telegram vinculado, se omite silenciosamente.
+  async notifyAdminsOfSale(info) {
+    try {
+      const db = require('../config/db');
+      const { rows: admins } = await db.query(
+        `SELECT id, first_name, last_name, telegram_chat_id
+           FROM users
+          WHERE role IN ('super_admin', 'admin_comercial')
+            AND telegram_chat_id IS NOT NULL
+            AND active = true`
+      );
+      if (admins.length === 0) return;
+
+      const isReserva = info.kind === 'reserva';
+      const header = isReserva ? '📝 *Reserva registrada*' : '🎉 *Venta registrada*';
+
+      const money = (v) => {
+        const n = v == null ? null : Number(v);
+        return Number.isFinite(n) && n > 0 ? '$' + n.toLocaleString('es-CL') : null;
+      };
+      const docLabel = (st) => {
+        const s = String(st || '').toLowerCase();
+        if (s === 'completa' || s === 'documentacion' || s === 'documentación') return 'Documentación completa 📋';
+        if (s === 'inscripcion' || s === 'inscripción' || s === 'solo_inscripcion' || s === 'solo inscripción') return 'Solo inscripción 📝';
+        return info.sale_type ? esc(info.sale_type) : null;
+      };
+
+      // Moto
+      const bike   = `${esc(info.brand || '')} ${esc(info.model || '')}`.trim() || '—';
+      const year   = info.year  ? ` · ${info.year}`              : '';
+      const color  = info.color ? `\n🎨 Color: ${esc(info.color)}` : '';
+      const stock  = info.in_inventory
+        ? `\n📦 Moto: estaba en inventario`
+        : `\n📦 Moto: fuera de inventario`;
+
+      // Montos — desglose
+      const listPrice  = money(info.list_price ?? info.price);
+      const finalPrice = money(info.sale_price);
+      const reserve    = money(info.invoice_amount);
+
+      let montos = '';
+      if (isReserva) {
+        // En reserva lo central es cuánto pagó de seña.
+        if (reserve)    montos += `\n💵 Abono de reserva: *${reserve}*`;
+        if (finalPrice) montos += `\n💰 Precio acordado: ${finalPrice}`;
+        else if (listPrice) montos += `\n📋 Precio lista: ${listPrice}`;
+        if (finalPrice && listPrice && finalPrice !== listPrice) {
+          montos += `\n📋 Precio lista: ${listPrice}`;
+        }
+      } else {
+        // Venta: precio final es lo principal, mostrar lista si difiere.
+        if (finalPrice) montos += `\n💰 Precio final: *${finalPrice}*`;
+        if (listPrice && (!finalPrice || finalPrice !== listPrice)) {
+          montos += `\n📋 Precio lista: ${listPrice}`;
+        }
+        if (reserve) montos += `\n💵 Abono del cliente: ${reserve}`;
+      }
+
+      // Detalles de venta
+      const doc      = docLabel(info.sale_type) ? `\n📄 Documentación: ${docLabel(info.sale_type)}` : '';
+      const payment  = info.payment_method ? `\n💳 Medio de pago: ${esc(info.payment_method)}`       : '';
+      const notes    = info.sale_notes     ? `\n🗒️ Notas: ${esc(info.sale_notes)}`                  : '';
+
+      // Partes involucradas
+      const client = `\n🧑 Cliente: ${esc(info.client_name || '—')}`;
+      const rut    = info.client_rut  ? `\n📇 RUT: ${esc(info.client_rut)}`     : '';
+      const branch = info.branch_name ? `\n🏢 Sucursal: ${esc(info.branch_name)}` : '';
+      const seller = info.seller_name ? `\n👤 Vendedor: ${esc(info.seller_name)}` : '';
+
+      const text =
+        `${header}\n\n` +
+        `🏍️ ${bike}${year}${color}${stock}` +
+        montos +
+        doc + payment + notes +
+        client + rut + branch + seller;
+
+      const kb = info.ticket_id ? crmButton(info.ticket_id) : undefined;
+
+      // No usamos Promise.all para no pisar rate limit del bot (30 msg/s global).
+      for (const a of admins) {
+        await sendMessage(a.telegram_chat_id, text, kb);
+      }
+    } catch (e) {
+      logger.warn(`[Telegram] notifyAdminsOfSale error: ${e.message}`);
+    }
+  },
 
   // Onboarding / webhook / polling
   handleUpdate,

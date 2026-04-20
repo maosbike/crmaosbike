@@ -149,6 +149,35 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
       );
     }
 
+    // Aviso a admins por Telegram si la unidad se creó ya vendida.
+    // Se agregó como fila de inventario → in_inventory: true.
+    if (isSold) {
+      (async () => {
+        try {
+          const [{ rows: br }, { rows: sv }] = await Promise.all([
+            unit.branch_id ? db.query('SELECT name FROM branches WHERE id = $1', [unit.branch_id]) : Promise.resolve({ rows: [] }),
+            sold_by        ? db.query('SELECT first_name, last_name FROM users WHERE id = $1', [sold_by]) : Promise.resolve({ rows: [] }),
+          ]);
+          const TelegramService = require('../services/telegramService');
+          await TelegramService.notifyAdminsOfSale({
+            kind: 'venta',
+            in_inventory: true,
+            brand: unit.brand, model: unit.model, year: unit.year, color: unit.color,
+            list_price:     unit.price,
+            sale_price:     unit.sale_price,
+            invoice_amount: unit.invoice_amount,
+            payment_method, sale_type,
+            sale_notes:     unit.sale_notes,
+            client_name:    unit.client_name,
+            client_rut:     unit.client_rut,
+            branch_name:    br[0]?.name || null,
+            seller_name:    sv[0] ? `${sv[0].first_name || ''} ${sv[0].last_name || ''}`.trim() : null,
+            ticket_id:      ticket_id || null,
+          });
+        } catch (e) { console.warn('[Telegram] inventory.POST notify error:', e.message); }
+      })();
+    }
+
     res.status(201).json(unit);
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Chasis ya existe' });
@@ -275,6 +304,37 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
       );
     }
 
+    // Aviso a admins por Telegram sólo cuando la unidad pasa a reservada
+    // (no cuando ya estaba reservada y se editan campos).
+    if (status === 'reservada' && cur[0].status !== 'reservada') {
+      (async () => {
+        try {
+          const u = rows[0];
+          const [{ rows: br }, { rows: sv }] = await Promise.all([
+            u.branch_id ? db.query('SELECT name FROM branches WHERE id = $1', [u.branch_id]) : Promise.resolve({ rows: [] }),
+            u.sold_by   ? db.query('SELECT first_name, last_name FROM users WHERE id = $1', [u.sold_by]) : Promise.resolve({ rows: [] }),
+          ]);
+          const TelegramService = require('../services/telegramService');
+          await TelegramService.notifyAdminsOfSale({
+            kind: 'reserva',
+            in_inventory: true,
+            brand: u.brand, model: u.model, year: u.year, color: u.color,
+            list_price:     u.price,
+            sale_price:     u.sale_price,
+            invoice_amount: u.invoice_amount,
+            payment_method: u.payment_method,
+            sale_type:      u.sale_type,
+            sale_notes:     u.sale_notes,
+            client_name:    u.client_name,
+            client_rut:     u.client_rut,
+            branch_name:    br[0]?.name || null,
+            seller_name:    sv[0] ? `${sv[0].first_name || ''} ${sv[0].last_name || ''}`.trim() : null,
+            ticket_id:      u.ticket_id || null,
+          });
+        } catch (e) { console.warn('[Telegram] inventory.reserva notify error:', e.message); }
+      })();
+    }
+
     res.json(rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
 });
@@ -371,6 +431,33 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
         [ticket_id]
       );
     }
+
+    // Aviso a admins por Telegram (fire-and-forget) — unidad que sí estaba en inventario.
+    (async () => {
+      try {
+        const u = updated[0];
+        const { rows: br } = u.branch_id
+          ? await db.query('SELECT name FROM branches WHERE id = $1', [u.branch_id])
+          : { rows: [] };
+        const TelegramService = require('../services/telegramService');
+        await TelegramService.notifyAdminsOfSale({
+          kind: 'venta',
+          in_inventory: true,
+          brand: u.brand, model: u.model, year: u.year, color: u.color,
+          list_price:     u.price,
+          sale_price:     u.sale_price,
+          invoice_amount: u.invoice_amount,
+          payment_method: u.payment_method,
+          sale_type:      u.sale_type,
+          sale_notes:     u.sale_notes,
+          client_name:    u.client_name,
+          client_rut:     u.client_rut,
+          branch_name:    br[0]?.name || null,
+          seller_name:    svName,
+          ticket_id:      u.ticket_id || null,
+        });
+      } catch (e) { console.warn('[Telegram] inventory.sell notify error:', e.message); }
+    })();
 
     res.json(updated[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error al registrar venta: ' + e.message }); }

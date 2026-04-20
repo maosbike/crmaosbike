@@ -382,6 +382,33 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
 
     await db.query('COMMIT');
 
+    // Notificación a admins por Telegram — fire-and-forget para no bloquear la respuesta.
+    // sales_notes vive fuera del inventario real → in_inventory: false.
+    (async () => {
+      try {
+        const [{ rows: br }, { rows: se }] = await Promise.all([
+          branch_id ? db.query('SELECT name FROM branches WHERE id = $1', [branch_id]) : Promise.resolve({ rows: [] }),
+          sold_by   ? db.query('SELECT first_name, last_name FROM users WHERE id = $1', [sold_by]) : Promise.resolve({ rows: [] }),
+        ]);
+        const TelegramService = require('../services/telegramService');
+        await TelegramService.notifyAdminsOfSale({
+          kind: finalStatus === 'reservada' ? 'reserva' : 'venta',
+          in_inventory: false,
+          brand, model, year, color,
+          list_price:     price,
+          sale_price,
+          invoice_amount,
+          payment_method, sale_type, sale_notes,
+          client_name, client_rut,
+          branch_name: br[0]?.name || null,
+          seller_name: se[0] ? `${se[0].first_name || ''} ${se[0].last_name || ''}`.trim() : null,
+          ticket_id:   ticket_id || null,
+        });
+      } catch (e) {
+        logger.warn(`[Telegram] sales.POST notify error: ${e.message}`);
+      }
+    })();
+
     res.status(201).json({ ...rows[0], is_note_only: true });
   } catch (e) {
     await db.query('ROLLBACK').catch(() => {});
