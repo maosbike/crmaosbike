@@ -176,15 +176,15 @@ export default function App(){
   const SIDEBAR_GROUPS = [
     {
       label: 'Comercial',
-      ids: ['dashboard','leads','pipeline','calendar'],
+      ids: ['dashboard','leads','pipeline','calendar','reports'],
     },
     {
       label: 'Stock y Ventas',
-      ids: ['inventory','sales','supplier-payments'],
+      ids: ['catalog','inventory','sales','supplier-payments'],
     },
     {
       label: 'Configuración',
-      ids: ['catalog','reports','admin','import','priceimport'],
+      ids: ['admin','import','priceimport'],
     },
   ];
 

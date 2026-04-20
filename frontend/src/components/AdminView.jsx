@@ -75,8 +75,9 @@ function TimeOffCalendar({ users }) {
   const [dayModal, setDayModal] = useState(null); // { date: 'YYYY-MM-DD' }
   const [saving, setSaving]   = useState(false);
 
-  // Vendedores activos — únicos que pueden tomar leads. El admin marca libres solo sobre estos.
-  const sellers = (users || []).filter(u => u.active && (u.role === 'vendedor' || u.role === 'backoffice'));
+  // Solo vendedores activos reciben leads nuevos — son los únicos que corresponde marcar libres.
+  // Backoffice/admin no entran en la rotación de asignación, así que quedan fuera del selector.
+  const sellers = (users || []).filter(u => u.active && u.role === 'vendedor');
 
   const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const monthEnd   = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
@@ -171,7 +172,7 @@ function TimeOffCalendar({ users }) {
           <div key={d} style={{ ...sectionLbl, textAlign:'center', padding:'6px 0' }}>{d}</div>
         ))}
         {grid.map((d, idx) => {
-          if (!d) return <div key={idx} style={{ minHeight:78 }}/>;
+          if (!d) return <div key={idx} style={{ minHeight:96 }}/>;
           const key = ymdLocal(d);
           const list = byDay.get(key) || [];
           const isPast = new Date(d.getFullYear(), d.getMonth(), d.getDate()) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -180,7 +181,7 @@ function TimeOffCalendar({ users }) {
               key={idx}
               onClick={() => setDayModal({ date: key })}
               style={{
-                minHeight:78, borderRadius:8, padding:'6px 7px',
+                minHeight:96, borderRadius:8, padding:'6px 7px',
                 background: isToday(d) ? '#FFF7ED' : (isPast ? '#FAFAFA' : '#FFFFFF'),
                 border: isToday(d) ? '1.5px solid #F28100' : '1px solid #E5E7EB',
                 cursor:'pointer', transition:'background 0.1s', opacity: isPast ? 0.75 : 1,
@@ -192,23 +193,25 @@ function TimeOffCalendar({ users }) {
               <div style={{ fontSize:11, fontWeight:700, color: isToday(d) ? '#F28100' : '#374151' }}>
                 {d.getDate()}
               </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:3 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                 {list.slice(0, 3).map(e => {
                   const c = chipColor(e.user_id);
-                  const initials = ((e.first_name||'?')[0] + (e.last_name||'?')[0]).toUpperCase();
+                  const fullName = `${e.first_name || ''} ${e.last_name || ''}`.trim();
                   return (
-                    <span key={e.id} title={`${e.first_name} ${e.last_name}${e.note ? ' · ' + e.note : ''}`}
+                    <span key={e.id} title={`${fullName}${e.note ? ' · ' + e.note : ''}`}
                       style={{
-                        fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:10,
-                        background: c.bg, color: c.fg, whiteSpace:'nowrap',
+                        fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:6,
+                        background: c.bg, color: c.fg,
+                        whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                        maxWidth:'100%',
                       }}>
-                      {initials}
+                      {fullName || '—'}
                     </span>
                   );
                 })}
                 {list.length > 3 && (
-                  <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:10, background:'#F3F4F6', color:'#6B7280' }}>
-                    +{list.length - 3}
+                  <span style={{ fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:6, background:'#F3F4F6', color:'#6B7280' }}>
+                    +{list.length - 3} más
                   </span>
                 )}
               </div>
