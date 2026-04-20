@@ -102,10 +102,9 @@ async function handleStart(chatId, db) {
 
     const welcomeText =
       `🏍️ *Bienvenido al bot de MaosBike CRM*\n\n` +
-      `Este bot te enviará notificaciones directamente cuando:\n` +
-      `📥 Te asignen un lead nuevo\n` +
-      `⏰ Un lead esté por vencer su plazo de atención\n` +
-      `🔄 Te reasignen o pierdas un lead\n\n` +
+      `Este bot te enviará una notificación cuando:\n` +
+      `📥 Te asignen un lead nuevo\n\n` +
+      `El resto de alertas (SLA, reasignaciones, recordatorios) las verás en la campanita del CRM.\n\n` +
       `Para empezar, *selecciona tu nombre* en la lista de abajo:`;
 
     if (sellers.length === 0) {
@@ -193,10 +192,8 @@ async function handleLinkCallback(chatId, userId, callbackQueryId, db) {
     const successText =
       `✅ *¡Cuenta vinculada exitosamente!*\n\n` +
       `👤 *${esc(user.first_name)} ${esc(user.last_name)}*\n\n` +
-      `Desde ahora recibirás notificaciones en este chat:\n` +
-      `📥 Leads nuevos asignados a ti\n` +
-      `⏰ Alertas de SLA próximo a vencer\n` +
-      `🔄 Avisos de reasignaciones\n\n` +
+      `Desde ahora te llegará un aviso cada vez que te asignen un lead nuevo.\n` +
+      `El resto de alertas las encuentras en la campanita del CRM.\n\n` +
       `_Si cambias de dispositivo, usa /start nuevamente para re-vincular._`;
 
     await sendMessage(chatId, successText);
@@ -339,38 +336,12 @@ const TelegramService = {
     return sendMessage(seller.telegram_chat_id, text, crmButton(ticket.id));
   },
 
-  async notifyReassigned(ticket, newSeller, _fromName, _reason) {
-    if (!newSeller?.telegram_chat_id) return;
-    const text =
-      `🔄 *Lead reasignado*\n\n` +
-      `👤 Vendedor: ${sellerName(newSeller)}\n` +
-      `🧑 Cliente: ${clientName(ticket)}\n` +
-      `${modelLines(ticket)}\n` +
-      `🏢 Sucursal: ${branchName(ticket)}`;
-    return sendMessage(newSeller.telegram_chat_id, text, crmButton(ticket.id));
-  },
-
-  async notifyLostLead(ticket, oldSeller) {
-    if (!oldSeller?.telegram_chat_id) return;
-    const text =
-      `⚠️ *Lead reasignado por falta de gestión*\n\n` +
-      `👤 Vendedor: ${sellerName(oldSeller)}\n` +
-      `🧑 Cliente: ${clientName(ticket)}\n` +
-      `${modelLines(ticket)}\n` +
-      `🏢 Sucursal: ${branchName(ticket)}`;
-    return sendMessage(oldSeller.telegram_chat_id, text, crmButton(ticket.id));
-  },
-
-  async notifySlaWarning(ticket, seller) {
-    if (!seller?.telegram_chat_id) return;
-    const text =
-      `⏰ *SLA próximo a vencer*\n\n` +
-      `👤 Vendedor: ${sellerName(seller)}\n` +
-      `🧑 Cliente: ${clientName(ticket)}\n` +
-      `🏢 Sucursal: ${branchName(ticket)}\n` +
-      `Queda menos de 1 hora para gestionar este lead.`;
-    return sendMessage(seller.telegram_chat_id, text, crmButton(ticket.id));
-  },
+  // Las notificaciones de reasignación, pérdida de lead y SLA se silencian en Telegram
+  // por decisión de producto — demasiado ruido para el vendedor. Las in-app (campanita)
+  // siguen funcionando normalmente vía NotificationService.
+  async notifyReassigned() { return null; },
+  async notifyLostLead()   { return null; },
+  async notifySlaWarning() { return null; },
 
   // Onboarding / webhook / polling
   handleUpdate,
