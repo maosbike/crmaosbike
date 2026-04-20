@@ -100,6 +100,7 @@ async function migrate() {
     await runMigration('049', 'inventory color_hex',                           m('049_inventory_color_hex.sql'));
     await runMigration('050', 'sales_notes.model_id',                          m('050_sales_notes_model_id.sql'));
     await runMigration('051', 'brands + brand_categories',                     m('051_brands_and_categories.sql'));
+    await runMigration('052', 'can_sell flag',                                 m('052_can_sell.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');

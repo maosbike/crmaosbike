@@ -481,13 +481,18 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
                   {/* Fila 3: Meta — chips para vendedor, sucursal, origen */}
                   <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-                    {x.seller_fn&&(
-                      <span style={{display:'inline-flex',alignItems:'center',gap:4,
-                        fontSize:11,color:'#374151',fontWeight:600,
-                        background:'#F3F4F6',padding:'3px 9px',borderRadius:99}}>
-                        <Ic.user size={11} color="#6B7280"/>{x.seller_fn} {x.seller_ln||''}
-                      </span>
-                    )}
+                    {x.seller_fn&&(() => {
+                      const sc = colorFor(x.seller_id);
+                      return (
+                        <span style={{display:'inline-flex',alignItems:'center',gap:5,
+                          fontSize:11,color:sc.c,fontWeight:700,
+                          background:sc.bg,padding:'3px 9px',borderRadius:99,
+                          border:`1px solid ${sc.c}30`}}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:sc.c,flexShrink:0}}/>
+                          {x.seller_fn} {x.seller_ln||''}
+                        </span>
+                      );
+                    })()}
                     {brName&&(() => {
                       const bc = colorFor(x.branch_id || brName);
                       return (

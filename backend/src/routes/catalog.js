@@ -434,10 +434,14 @@ router.get('/users', roleCheck('super_admin', 'admin_comercial'), async (req, re
 
 router.get('/sellers', async (req, res) => {
   try {
+    // Incluye vendedores puros + no-vendedores con can_sell (Joaquín, Miguel Ángel)
+    // que venden esporádicamente. El round-robin de importación sigue filtrando
+    // por role='vendedor' estricto, así que no reciben leads automáticos.
     const { rows } = await db.query(
-      `SELECT u.id, u.first_name, u.last_name, u.branch_id, b.code as branch_code
+      `SELECT u.id, u.first_name, u.last_name, u.branch_id, b.code as branch_code, u.role
        FROM users u LEFT JOIN branches b ON u.branch_id = b.id
-       WHERE u.role = 'vendedor' AND u.active = true ORDER BY u.first_name`
+       WHERE u.active = true AND (u.role = 'vendedor' OR u.can_sell = true)
+       ORDER BY u.first_name`
     );
     res.json(rows);
   } catch (e) { res.status(500).json({ error: 'Error' }); }
