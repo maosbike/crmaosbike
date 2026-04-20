@@ -36,6 +36,8 @@ export default function App(){
   const[leadsFilter,setLeadsFilter]=useState({search:'',stF:'',brF:'',prF:'',srcF:'',selF:''});
   const[showOverdueModal,setShowOverdueModal]=useState(false);
   const[overdueResolved,setOverdueResolved]=useState(new Set());
+  // Prefill de cliente cuando se navega a "ventas" desde un lead
+  const[saleClient,setSaleClient]=useState(null);
 
   // Intento de restore silencioso al cargar — usa la cookie httpOnly si existe
   useEffect(()=>{
@@ -102,7 +104,7 @@ export default function App(){
 
   const reloadLeads=()=>fetchAllTickets().then(all=>setLeads(all.map(mapTicket))).catch(()=>{});
 
-  const nav=(pg,lid)=>{
+  const nav=(pg,lid,opts)=>{
     if(pg==="ticket"&&lid){
       setSelLead(leads.find(l=>l.id===lid)||{id:lid,fn:'',ln:'',timeline:[]});
       api.getTicket(lid).then(d=>{
@@ -112,6 +114,8 @@ export default function App(){
         setLeads(p=>p.map(l=>l.id===lid?full:l));
       }).catch(()=>{});
     }
+    if(opts&&opts.saleClient)setSaleClient(opts.saleClient);
+    else if(pg!=="sales")setSaleClient(null);
     setPage(pg);
   };
 
@@ -263,7 +267,7 @@ export default function App(){
           {page==="pipeline"&&<PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/>}
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
           {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/>}
-          {page==="sales"&&<SalesView user={user} realBranches={realBranches}/>}
+          {page==="sales"&&<SalesView user={user} realBranches={realBranches} prefillClient={saleClient} onPrefillConsumed={()=>setSaleClient(null)}/>}
           {page==="supplier-payments"&&<SupplierPaymentsView user={user}/>}
           {page==="catalog"&&<CatalogView user={user}/>}
           {page==="reports"&&<ReportsView branches={realBranches}/>}

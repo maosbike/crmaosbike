@@ -1017,7 +1017,7 @@ const SEC = ({ children }) => (
 
 // ─── Modal: nueva venta/reserva ───────────────────────────────────────────────
 
-function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta', user }) {
+function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta', user, initial = null }) {
   const isReserva  = noteType === 'reserva';
   const isVendedor = user?.role === 'vendedor';
   const [step,       setStep]     = useState(0);
@@ -1026,8 +1026,25 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [invSearch,  setInvSearch]= useState('');
   const [selUnit,    setSelUnit]  = useState(null);
   const [savedDoc,   setSavedDoc] = useState(null);
-  // Vendedor: pre-fill sold_by con su propio id
-  const [form,       setForm]     = useState({ ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' });
+  // Vendedor: pre-fill sold_by con su propio id.
+  // Si viene un `initial` (cliente desde un lead), lo fusionamos sobre el formulario vacío.
+  const [form,       setForm]     = useState(() => {
+    const base = { ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' };
+    if (!initial) return base;
+    return {
+      ...base,
+      ticket_id:      initial.ticket_id      || base.ticket_id,
+      client_name:    initial.client_name    || base.client_name,
+      client_rut:     initial.client_rut     || base.client_rut,
+      client_phone:   initial.client_phone   || base.client_phone,
+      client_email:   initial.client_email   || base.client_email,
+      client_commune: initial.client_commune || base.client_commune,
+      client_address: initial.client_address || base.client_address,
+      client_type:    initial.client_type    || base.client_type,
+      branch_id:      initial.branch_id      || base.branch_id,
+      sold_by:        base.sold_by || initial.sold_by || '',
+    };
+  });
   const [saving,     setSaving]   = useState(false);
   const [err,        setErr]      = useState('');
 
@@ -1738,7 +1755,7 @@ async function openNoteFromSale(s) {
 
 // ─── Vista principal ──────────────────────────────────────────────────────────
 
-export function SalesView({ user, realBranches }) {
+export function SalesView({ user, realBranches, prefillClient = null, onPrefillConsumed }) {
   const isAdmin      = CAN_ADMIN.includes(user.role);
   const canCreate    = CAN_CREATE.includes(user.role);
   const isSuperAdmin = user.role === 'super_admin';
@@ -1750,6 +1767,12 @@ export function SalesView({ user, realBranches }) {
   const [loading,  setLoading]  = useState(true);
   const [selSale,  setSelSale]  = useState(null);
   const [showNew,  setShowNew]  = useState(null);
+  // Prefill pegajoso del cliente cuando venimos desde un lead
+  const [pendingClient, setPendingClient] = useState(null);
+
+  useEffect(() => {
+    if (prefillClient) setPendingClient(prefillClient);
+  }, [prefillClient]);
 
   const [q,              setQ]              = useState('');
   const [debouncedQ,     setDebouncedQ]     = useState('');
@@ -1863,6 +1886,34 @@ export function SalesView({ user, realBranches }) {
           </>
         )}
       />
+
+      {/* ── Prefill de cliente desde un lead ── */}
+      {pendingClient && (pendingClient.client_name || pendingClient.ticket_id) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          marginBottom: 12, padding: '10px 14px', borderRadius: 10,
+          background: '#FFF7ED', border: '1.5px solid #FED7AA',
+        }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>🎯</span>
+          <div style={{ flex: 1, fontSize: 12, color: '#7C2D12', lineHeight: 1.45 }}>
+            Cliente listo desde el lead:{' '}
+            <strong style={{ color: '#111827' }}>{pendingClient.client_name || '—'}</strong>
+            {pendingClient.client_rut ? <span style={{ color: '#6B7280' }}> · {pendingClient.client_rut}</span> : null}
+            <div style={{ fontSize: 11, color: '#9A3412', marginTop: 2 }}>
+              Elegí <strong>Reserva</strong> o <strong>Nueva venta</strong> para continuar con el cliente ya cargado.
+            </div>
+          </div>
+          <button
+            onClick={() => { setPendingClient(null); if (onPrefillConsumed) onPrefillConsumed(); }}
+            style={{
+              background: 'transparent', border: '1px solid #FDBA74',
+              color: '#9A3412', borderRadius: 6, padding: '4px 10px',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+            Quitar
+          </button>
+        </div>
+      )}
 
       {/* ── Mensajes de estado ── */}
       {deleteMsg && (
@@ -2506,7 +2557,13 @@ export function SalesView({ user, realBranches }) {
           user={user}
           sellers={sellers}
           branches={realBranches || []}
-          onClose={() => { setShowNew(null); load(); }}
+          initial={pendingClient}
+          onClose={() => {
+            setShowNew(null);
+            setPendingClient(null);
+            if (onPrefillConsumed) onPrefillConsumed();
+            load();
+          }}
           onCreated={() => load()}
         />
       )}
