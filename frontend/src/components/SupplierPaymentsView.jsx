@@ -801,7 +801,9 @@ function RowCard({ p, onClick }) {
       }}>
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-            <div style={{ fontSize:17, fontWeight:800, color:'#0F172A', letterSpacing:'-0.3px' }}>
+            <div style={{ fontSize:16, fontWeight:800, color:'#4F46E5', letterSpacing:'-0.2px',
+                          background:'#EEF2FF', border:'1px solid #C7D2FE',
+                          padding:'2px 10px', borderRadius:8 }}>
               #{p.invoice_number||'—'}
             </div>
             <span style={{
