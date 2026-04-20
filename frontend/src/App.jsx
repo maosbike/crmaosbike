@@ -22,6 +22,7 @@ import { CalendarView } from "./components/CalendarView";
 import { NotifBell } from "./components/NotifBell";
 import { BottomNav } from "./components/BottomNav";
 import { SupplierPaymentsView } from "./components/SupplierPaymentsView";
+import { AccountingView } from "./components/AccountingView";
 
 export default function App(){
   const[user,setUser]=useState(null);
@@ -160,6 +161,7 @@ export default function App(){
     inventory: 'Inventario',
     sales: 'Ventas',
     'supplier-payments': 'Pagos a proveedor',
+    accounting: 'Contabilidad',
     catalog: 'Catálogo',
     reports: 'Reportes',
     admin: 'Administración',
@@ -176,6 +178,7 @@ export default function App(){
     {id:"inventory",icon:Ic.box,label:"Inventario"},
     {id:"sales",icon:Ic.sale,label:"Ventas"},
     ...(hasRole(user, ...ROLE_ADMIN_WRITE)?[{id:"supplier-payments",icon:Ic.invoice,label:"Pagos proveedor"}]:[]),
+    ...(hasRole(user, ...ROLE_ADMIN_WRITE)?[{id:"accounting",icon:Ic.chart,label:"Contabilidad"}]:[]),
     {id:"catalog",icon:Ic.bike,label:"Catálogo"},
     ...(hasRole(user, ...ROLE_ADMIN_READ)?[{id:"reports",icon:Ic.chart,label:"Reportes"}]:[]),
     ...(hasRole(user, ROLES.SUPER)?[{id:"admin",icon:Ic.gear,label:"Admin"},{id:"import",icon:Ic.dl,label:"Importar"},{id:"priceimport",icon:Ic.tag,label:"Importar Precios"}]:[]),
@@ -190,7 +193,7 @@ export default function App(){
     },
     {
       label: 'Stock y Ventas',
-      ids: ['catalog','inventory','sales','supplier-payments'],
+      ids: ['catalog','inventory','sales','supplier-payments','accounting'],
     },
     {
       label: 'Configuración',
@@ -275,6 +278,7 @@ export default function App(){
           {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/>}
           {page==="sales"&&<SalesView user={user} realBranches={realBranches} prefillClient={saleClient} prefillNoteType={saleNoteType} onPrefillConsumed={()=>{setSaleClient(null);setSaleNoteType(null);}}/>}
           {page==="supplier-payments"&&<SupplierPaymentsView user={user}/>}
+          {page==="accounting"&&hasRole(user,...ROLE_ADMIN_WRITE)&&<AccountingView user={user}/>}
           {page==="catalog"&&<CatalogView user={user}/>}
           {page==="reports"&&<ReportsView branches={realBranches}/>}
           {page==="admin"&&<AdminView/>}
