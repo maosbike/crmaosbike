@@ -1755,7 +1755,7 @@ async function openNoteFromSale(s) {
 
 // ─── Vista principal ──────────────────────────────────────────────────────────
 
-export function SalesView({ user, realBranches, prefillClient = null, onPrefillConsumed }) {
+export function SalesView({ user, realBranches, prefillClient = null, prefillNoteType = null, onPrefillConsumed }) {
   const isAdmin      = CAN_ADMIN.includes(user.role);
   const canCreate    = CAN_CREATE.includes(user.role);
   const isSuperAdmin = user.role === 'super_admin';
@@ -1767,12 +1767,15 @@ export function SalesView({ user, realBranches, prefillClient = null, onPrefillC
   const [loading,  setLoading]  = useState(true);
   const [selSale,  setSelSale]  = useState(null);
   const [showNew,  setShowNew]  = useState(null);
-  // Prefill pegajoso del cliente cuando venimos desde un lead
+  // Prefill del cliente cuando venimos desde un lead — abre el modal de inmediato
   const [pendingClient, setPendingClient] = useState(null);
 
   useEffect(() => {
-    if (prefillClient) setPendingClient(prefillClient);
-  }, [prefillClient]);
+    if (prefillClient) {
+      setPendingClient(prefillClient);
+      setShowNew(prefillNoteType === 'reserva' ? 'reserva' : 'venta');
+    }
+  }, [prefillClient, prefillNoteType]);
 
   const [q,              setQ]              = useState('');
   const [debouncedQ,     setDebouncedQ]     = useState('');
@@ -1886,34 +1889,6 @@ export function SalesView({ user, realBranches, prefillClient = null, onPrefillC
           </>
         )}
       />
-
-      {/* ── Prefill de cliente desde un lead ── */}
-      {pendingClient && (pendingClient.client_name || pendingClient.ticket_id) && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          marginBottom: 12, padding: '10px 14px', borderRadius: 10,
-          background: '#FFF7ED', border: '1.5px solid #FED7AA',
-        }}>
-          <span style={{ fontSize: 18, lineHeight: 1 }}>🎯</span>
-          <div style={{ flex: 1, fontSize: 12, color: '#7C2D12', lineHeight: 1.45 }}>
-            Cliente listo desde el lead:{' '}
-            <strong style={{ color: '#111827' }}>{pendingClient.client_name || '—'}</strong>
-            {pendingClient.client_rut ? <span style={{ color: '#6B7280' }}> · {pendingClient.client_rut}</span> : null}
-            <div style={{ fontSize: 11, color: '#9A3412', marginTop: 2 }}>
-              Elegí <strong>Reserva</strong> o <strong>Nueva venta</strong> para continuar con el cliente ya cargado.
-            </div>
-          </div>
-          <button
-            onClick={() => { setPendingClient(null); if (onPrefillConsumed) onPrefillConsumed(); }}
-            style={{
-              background: 'transparent', border: '1px solid #FDBA74',
-              color: '#9A3412', borderRadius: 6, padding: '4px 10px',
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-            Quitar
-          </button>
-        </div>
-      )}
 
       {/* ── Mensajes de estado ── */}
       {deleteMsg && (

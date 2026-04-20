@@ -26,7 +26,7 @@ export function PipelineView({leads,user,nav,updLead}){
   const [hoverId,  setHoverId]  = useState(null);
   const [pipeErr,  setPipeErr]  = useState('');
 
-  // Navegación a Ventas con el cliente del lead prellenado
+  // Navegación a Ventas con el cliente del lead prellenado y modal de venta abierto
   const goToSale = (l) => {
     const phoneRaw = (l.phone || '').toString();
     const phone = /^569\d{8}$/.test(phoneRaw) ? phoneRaw.slice(2) : phoneRaw;
@@ -39,7 +39,7 @@ export function PipelineView({leads,user,nav,updLead}){
       client_commune: l.comuna || '',
       branch_id:      l.branch_id || '',
       sold_by:        l.seller_id || '',
-    }});
+    }, openNoteType: 'venta' });
   };
   const [mobStage, setMobStage] = useState(PIPELINE_STAGES[0]);
   const [moveLead, setMoveLead] = useState(null);

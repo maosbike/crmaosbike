@@ -99,7 +99,8 @@ export function TicketView({lead,user,nav,updLead}){
   const slaBreach=lead.sla_status==="breached";
   const slaWarning=lead.sla_status==="warning";
 
-  // Nota de venta/reserva ahora se registra en la sección Ventas — el botón navega con el cliente prellenado.
+  // Nota de venta ahora se registra en la sección Ventas — el botón navega con el cliente prellenado
+  // y abre el modal de nueva venta de inmediato.
   const goToSale=()=>{
     const phoneRaw=(lead.phone||'').toString();
     const phone=/^569\d{8}$/.test(phoneRaw)?phoneRaw.slice(2):phoneRaw;
@@ -112,7 +113,7 @@ export function TicketView({lead,user,nav,updLead}){
       client_commune: lead.comuna||'',
       branch_id:      lead.branch_id||'',
       sold_by:        lead.seller_id||'',
-    }});
+    },openNoteType:'venta'});
   };
   const[noteForm,setNoteForm]=useState("");
   const[noteErr,setNoteErr]=useState("");
