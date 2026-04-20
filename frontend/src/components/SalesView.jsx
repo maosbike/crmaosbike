@@ -1491,9 +1491,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               </div>
               <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                 {[
-                  { v:'inscripcion',   l:'Inscripción vehicular',   hint:'Moto a inscribir',                  amt: INSCRIPCION_AMT },
-                  { v:'completa',      l:'Documentación completa',  hint:'Factura + homologación + inscripción', amt: docCompletaAmt(form.sale_price) },
-                  { v:'transferencia', l:'Transferencia vehicular', hint:'Moto ya inscrita a nombre Maosbike', amt: TRANSFERENCIA_AMT },
+                  { v:'inscripcion',   l:'Inscripción vehicular',   hint:'Primera inscripción',                         amt: INSCRIPCION_AMT },
+                  { v:'completa',      l:'Documentación completa',  hint:'Inscripción + SOAP + permiso de circulación', amt: docCompletaAmt(form.sale_price) },
+                  { v:'transferencia', l:'Transferencia vehicular', hint:'Moto ya inscrita',                            amt: TRANSFERENCIA_AMT },
                 ].map(opt => (
                   <button key={opt.v} type="button" onClick={() => setChargeType(opt.v)}
                     style={{ padding:'10px 14px', borderRadius:8, textAlign:'left', cursor:'pointer', fontFamily:'inherit',
