@@ -103,7 +103,9 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
     const {
       branch_id, year, brand, model, model_id, color, color_hex, chassis, motor_num,
       // Sale fields (optional — only when added_as_sold = true)
-      added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type
+      added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type,
+      sale_price, invoice_amount, client_name, client_rut,
+      accessories, charge_type, charge_amt, discount_amt,
     } = req.body;
 
     if (!brand || !model) return res.status(400).json({ error: 'Marca y modelo son requeridos' });
@@ -112,18 +114,40 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
     const finalStatus = isSold ? 'vendida' : 'disponible';
     const finalSoldAt = isSold ? (sold_at || new Date().toISOString()) : null;
 
+    // Desglose (migración 055) — solo aplicable si la unidad se crea vendida
+    const accArr = isSold && Array.isArray(accessories)
+      ? accessories
+          .filter(a => a && (a.description || a.amount))
+          .map(a => ({
+            description: String(a.description || '').slice(0, 200),
+            amount: parseInt(a.amount) || 0,
+          }))
+      : null;
+    const chType = isSold && (charge_type === 'completa' || charge_type === 'inscripcion') ? charge_type : null;
+    const chAmt  = isSold && charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
+    const dcAmt  = isSold && discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
+
     const { rows } = await db.query(
       `INSERT INTO inventory
          (branch_id, year, brand, model, model_id, color, color_hex, chassis, motor_num, status, price,
-          added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+          added_as_sold, sold_at, sold_by, ticket_id, sale_notes, payment_method, sale_type, created_by,
+          sale_price, invoice_amount, client_name, client_rut,
+          accessories, charge_type, charge_amt, discount_amt)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+               $20,$21,$22,$23,$24,$25,$26,$27)
        RETURNING *`,
       [
         branch_id, year, brand, model, model_id || null, color, color_hex || null, chassis, motor_num || null,
         finalStatus, 0,
         isSold, finalSoldAt,
         sold_by || null, ticket_id || null, sale_notes || null,
-        payment_method || null, sale_type || null, req.user.id
+        payment_method || null, sale_type || null, req.user.id,
+        isSold && sale_price     ? parseInt(sale_price)     : null,
+        isSold && invoice_amount ? parseInt(invoice_amount) : null,
+        isSold ? (client_name || null) : null,
+        isSold ? (client_rut  || null) : null,
+        accArr && accArr.length ? JSON.stringify(accArr) : null,
+        chType, chAmt, dcAmt,
       ]
     );
 
@@ -172,7 +196,10 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
             client_rut:     unit.client_rut,
             branch_name:    br[0]?.name || null,
             seller_name:    sv[0] ? `${sv[0].first_name || ''} ${sv[0].last_name || ''}`.trim() : null,
-            ticket_id:      ticket_id || null,
+            accessories:    Array.isArray(unit.accessories) ? unit.accessories : (unit.accessories || null),
+            charge_type:    unit.charge_type,
+            charge_amt:     unit.charge_amt,
+            discount_amt:   unit.discount_amt,
           });
         } catch (e) { console.warn('[Telegram] inventory.POST notify error:', e.message); }
       })();
@@ -215,7 +242,8 @@ router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
 router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
     let { branch_id, status, color, color_hex, price, notes, brand, model, model_id, year, chassis, motor_num,
-          sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method } = req.body;
+          sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method,
+          accessories, charge_type, charge_amt, discount_amt } = req.body;
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
     if (status === 'vendida') {
@@ -277,6 +305,30 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     if (client_name    !== undefined) { sets.push(`client_name = $${idx++}`);    params.push(client_name || null); }
     if (client_rut     !== undefined) { sets.push(`client_rut = $${idx++}`);     params.push(client_rut || null); }
     if (payment_method !== undefined) { sets.push(`payment_method = $${idx++}`); params.push(payment_method || null); }
+    if (accessories !== undefined) {
+      const accArr = Array.isArray(accessories)
+        ? accessories
+            .filter(a => a && (a.description || a.amount))
+            .map(a => ({
+              description: String(a.description || '').slice(0, 200),
+              amount: parseInt(a.amount) || 0,
+            }))
+        : null;
+      sets.push(`accessories = $${idx++}`);
+      params.push(accArr && accArr.length ? JSON.stringify(accArr) : null);
+    }
+    if (charge_type !== undefined) {
+      sets.push(`charge_type = $${idx++}`);
+      params.push(charge_type === 'completa' || charge_type === 'inscripcion' ? charge_type : null);
+    }
+    if (charge_amt !== undefined) {
+      sets.push(`charge_amt = $${idx++}`);
+      params.push(charge_amt === '' || charge_amt == null ? null : (parseInt(charge_amt) || 0));
+    }
+    if (discount_amt !== undefined) {
+      sets.push(`discount_amt = $${idx++}`);
+      params.push(discount_amt === '' || discount_amt == null ? null : (parseInt(discount_amt) || 0));
+    }
 
     if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
     params.push(req.params.id);
@@ -329,7 +381,10 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
             client_rut:     u.client_rut,
             branch_name:    br[0]?.name || null,
             seller_name:    sv[0] ? `${sv[0].first_name || ''} ${sv[0].last_name || ''}`.trim() : null,
-            ticket_id:      u.ticket_id || null,
+            accessories:    Array.isArray(u.accessories) ? u.accessories : (u.accessories || null),
+            charge_type:    u.charge_type,
+            charge_amt:     u.charge_amt,
+            discount_amt:   u.discount_amt,
           });
         } catch (e) { console.warn('[Telegram] inventory.reserva notify error:', e.message); }
       })();
@@ -367,6 +422,8 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
       sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes,
       // Nuevos campos (migración 024)
       sale_price, cost_price, invoice_amount, client_name, client_rut,
+      // Desglose (migración 055)
+      accessories, charge_type, charge_amt, discount_amt,
     } = req.body;
 
     // Ownership: un vendedor SOLO puede registrarse a sí mismo como sold_by
@@ -377,6 +434,19 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
 
     if (!sold_by) return res.status(400).json({ error: 'Vendedor requerido' });
 
+    // Normaliza desglose
+    const accArr = Array.isArray(accessories)
+      ? accessories
+          .filter(a => a && (a.description || a.amount))
+          .map(a => ({
+            description: String(a.description || '').slice(0, 200),
+            amount: parseInt(a.amount) || 0,
+          }))
+      : null;
+    const chType = charge_type === 'completa' || charge_type === 'inscripcion' ? charge_type : null;
+    const chAmt  = charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
+    const dcAmt  = discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
+
     // Verificar unidad existe y no está vendida
     const { rows: unitRows } = await db.query('SELECT * FROM inventory WHERE id = $1', [req.params.id]);
     if (!unitRows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
@@ -386,19 +456,22 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     const finalSoldAt = sold_at || new Date().toISOString();
     const prevStatus  = unit.status;
 
-    // Actualizar unidad — incluye campos extendidos de 024
+    // Actualizar unidad — incluye campos extendidos de 024 + desglose 055
     const { rows: updated } = await db.query(
       `UPDATE inventory SET
          status='vendida', sold_at=$1, sold_by=$2, ticket_id=$3,
          payment_method=$4, sale_type=$5, sale_notes=$6,
          sale_price=$7, cost_price=$8, invoice_amount=$9,
          client_name=$10, client_rut=$11,
+         accessories=$12, charge_type=$13, charge_amt=$14, discount_amt=$15,
          updated_at=NOW()
-       WHERE id=$12 RETURNING *`,
+       WHERE id=$16 RETURNING *`,
       [finalSoldAt, sold_by, ticket_id||null, payment_method||null,
        sale_type||null, sale_notes||null,
        sale_price||null, cost_price||null, invoice_amount||null,
        client_name||null, client_rut||null,
+       accArr && accArr.length ? JSON.stringify(accArr) : null,
+       chType, chAmt, dcAmt,
        req.params.id]
     );
 
@@ -454,7 +527,10 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
           client_rut:     u.client_rut,
           branch_name:    br[0]?.name || null,
           seller_name:    svName,
-          ticket_id:      u.ticket_id || null,
+          accessories:    Array.isArray(u.accessories) ? u.accessories : (u.accessories || null),
+          charge_type:    u.charge_type,
+          charge_amt:     u.charge_amt,
+          discount_amt:   u.discount_amt,
         });
       } catch (e) { console.warn('[Telegram] inventory.sell notify error:', e.message); }
     })();

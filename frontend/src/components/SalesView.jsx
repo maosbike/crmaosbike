@@ -1155,6 +1155,27 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         form.sale_notes     || null,
       ].filter(Boolean).join(' | ');
 
+      // Desglose que va a la DB (migración 055): accesorios, tipo de cobro y descuento
+      const motoAmt = Number(form.sale_price) || 0;
+      const accessoriesPayload = (accs || [])
+        .filter(a => (a.name && String(a.name).trim()) || Number(a.amount) > 0)
+        .map(a => ({ description: String(a.name || '').trim(), amount: Number(a.amount) || 0 }));
+      const chargeAmtPayload = chargeType === 'inscripcion'
+        ? INSCRIPCION_AMT
+        : chargeType === 'completa' ? docCompletaAmt(motoAmt) : 0;
+      const subtotalForDiscount = motoAmt
+        + accessoriesPayload.reduce((s, a) => s + a.amount, 0)
+        + chargeAmtPayload;
+      const discountAmtPayload = discount
+        ? Math.round(subtotalForDiscount * Number(discount) / 100)
+        : 0;
+      const extrasPayload = {
+        accessories:  accessoriesPayload.length ? accessoriesPayload : null,
+        charge_type:  chargeType || null,
+        charge_amt:   chargeAmtPayload || null,
+        discount_amt: discountAmtPayload || null,
+      };
+
       if (selUnit && !isReserva) {
         await api.sellInventory(selUnit.id, {
           sold_by: form.sold_by, sold_at: form.sold_at || null,
@@ -1162,6 +1183,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           sale_type: form.sale_type || null, sale_notes: clientExtra || null,
           client_name: form.client_name || null, client_rut: form.client_rut || null,
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
+          ...extrasPayload,
         });
       } else if (!selUnit) {
         // Referencia comercial sin unidad de inventario — NO crea stock
@@ -1171,6 +1193,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           sale_notes: clientExtra || null,
           status: isReserva ? 'reservada' : 'vendida',
           invoice_amount: isReserva && abono ? parseInt(abono) : null,
+          ...extrasPayload,
         });
       } else if (selUnit && isReserva) {
         await api.updateInventory(selUnit.id, {
@@ -1183,6 +1206,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           client_name: form.client_name || null,
           client_rut: form.client_rut || null,
           payment_method: payMode || null,
+          ...extrasPayload,
         });
       }
 
