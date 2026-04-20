@@ -247,6 +247,25 @@ function resolveModel(modeloRaw, models) {
     const regex = new RegExp(pattern.replace(/\|/g, '|'));
     if (regex.test(mc) && rawCore.length >= 2) return m;
   }
+  // 10. Token-set match tolerante a orden — "GIXXER 250 FI" ↔ "GSX250FI GIXXER".
+  //     Requiere ≥ 2 tokens y al menos uno numérico (evita que "gixxer" solo
+  //     matchee con cualquier gixxer del catálogo). Compacta sin espacios para
+  //     tolerar "GSX250FI" ≡ "GSX 250 FI".
+  const inputTokens = raw.split(/\s+/).map(t => t.trim()).filter(t => t.length >= 2);
+  const hasNumTok   = inputTokens.some(t => /\d/.test(t));
+  if (inputTokens.length >= 2 && hasNumTok) {
+    const hits = [];
+    for (const m of models) {
+      const catCompact = normalizeStr(`${m.brand} ${m.model} ${m.commercial_name || ''}`).replace(/\s+/g, '');
+      if (inputTokens.every(t => catCompact.includes(t))) {
+        hits.push({ m, len: catCompact.length });
+      }
+    }
+    if (hits.length) {
+      hits.sort((a, b) => a.len - b.len);
+      return hits[0].m;
+    }
+  }
   return null;
 }
 
@@ -308,9 +327,13 @@ function validateRow(row, headerMap, rowIndex) {
   if (telefono && !/^\d{7,12}$/.test(telefono))
                                  errors.push(`Teléfono inválido tras normalizar: ${telefono}`);
   const warnings = [];
-  if (rut) {
-    const cleaned = normalizeRut(rut);
-    if (!/^\d{6,8}[0-9K]$/.test(cleaned)) {
+  // Placeholders comunes de export ("---", "-", "N/A", "sin dato"...) → sin RUT, no error.
+  const rutClean = rut && !/^[-\s]*$|^n\/?a$|^sin/i.test(rut.trim()) ? rut : '';
+  if (rutClean) {
+    const cleaned = normalizeRut(rutClean);
+    if (!cleaned) {
+      // Queda vacío tras normalizar: tratamos como sin RUT, sin error
+    } else if (!/^\d{6,8}[0-9K]$/.test(cleaned)) {
       errors.push('Formato de RUT inválido');
     } else if (!validateRut(cleaned)) {
       // Dígito verificador no coincide — no bloqueamos, dejamos registro como warning
@@ -363,7 +386,7 @@ function validateRow(row, headerMap, rowIndex) {
     apellido:        last_name,
     telefono:        telefono   || null,
     email:           email      || null,
-    rut:             rut ? formatRut(rut) : null,
+    rut:             rutClean ? formatRut(rutClean) : null,
     birthdate:       birthdate,
     sucursal_raw:    sucursalRaw,           // valor original para display y matching
     fuente:          VALID_SOURCES.includes(fuente) ? fuente : 'importacion',
