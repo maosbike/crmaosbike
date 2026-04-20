@@ -22,19 +22,56 @@ router.use(auth);
 
 const ADMIN_ROLES = ['super_admin', 'admin_comercial'];
 
-// ─── Parser de factura emitida Maosbike ───────────────────────────────────────
-// Formato DTE tipo 33/34 — lo que exporta el SII / software de facturación CL.
-// El texto resultante de pdf-parse tiene saltos y espacios variables; todo
-// se colapsa a una línea y luego se extrae con regex.
-function extractEmitida(text) {
+// ─── Parser de factura/nota de crédito emitida Maosbike ──────────────────────
+// Formato DTE tipo 33/34/61 — lo que exporta el SII / software de facturación CL.
+// pdf-parse desordena el texto cuando el layout tiene dos columnas (header
+// emisor a la izquierda, RUT/folio/título a la derecha), así que el regex
+// puro falla para la mayoría. Usamos el nombre del archivo como fuente de
+// verdad del folio (son "7588.pdf", "809.pdf", etc).
+// fileName: opcional; si se pasa, tiene prioridad sobre el texto para el folio.
+function extractEmitida(text, fileName = '') {
   const t = text.replace(/\r/g, ' ').replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ');
 
+  // ── Tipo de documento ──
+  // Si el PDF dice "NOTA DE CREDITO" es una anulación; caso contrario, factura.
+  const isNotaCredito = /NOTA\s+DE\s+CR[EÉ]DITO/i.test(t);
+  const doc_type = isNotaCredito ? 'nota_credito' : 'factura';
+
   // ── Folio ──
-  const folio =
-    t.match(/FACTURA\s+ELECTR[OÓ]NICA[^\d]*(?:N[°º\.]\s*)?(\d{4,9})/i)?.[1] ||
-    t.match(/FOLIO[^\d]*(\d{4,9})/i)?.[1] ||
-    t.match(/N[°º]\s*(\d{4,9})/i)?.[1] ||
-    null;
+  // 1° prioridad: nombre de archivo (e.g. "7588.pdf" → 7588). Drive guarda así.
+  // 2° prioridad: regex sobre el texto.
+  let folio = null;
+  const fnMatch = fileName.match(/(\d{3,9})/);
+  if (fnMatch) folio = fnMatch[1];
+  if (!folio) {
+    folio =
+      t.match(/FACTURA\s+ELECTR[OÓ]NICA[^\d]*(?:N[°º\.]\s*)?(\d{4,9})/i)?.[1] ||
+      t.match(/NOTA\s+DE\s+CR[EÉ]DITO[^\d]*(?:N[°º\.]\s*)?(\d{4,9})/i)?.[1] ||
+      t.match(/FOLIO[^\d]*(\d{4,9})/i)?.[1] ||
+      t.match(/N[°º]\s*(\d{4,9})/i)?.[1] ||
+      null;
+  }
+
+  // ── Referencia (notas de crédito anulan facturas: "Fact.Electronica N° XXXX del YYYY-MM-DD") ──
+  // Ejemplo real: "ANULA DOCUMENTO DE LA REFERENCIA- Fact.Electronica N° 7600 del 2026-04-08"
+  let ref_folio = null, ref_fecha = null;
+  if (isNotaCredito) {
+    const refMatch = t.match(
+      /Fact(?:ura)?\.?\s*Electr[oó]nica\s*N[°º\.]?\s*(\d{3,9})(?:\s+del\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4}))?/i
+    );
+    if (refMatch) {
+      ref_folio = refMatch[1];
+      if (refMatch[2]) {
+        const raw = refMatch[2];
+        ref_fecha = raw.includes('-') && raw.length === 10 && raw.startsWith('20')
+          ? raw
+          : (() => {
+              const [d, m, y] = raw.split(/[-\/]/);
+              return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            })();
+      }
+    }
+  }
 
   // ── RUT emisor (Maosbike = 76.405.840-2, pero leemos el PDF para ser agnósticos) ──
   const rutEmisorMatch =
@@ -113,10 +150,20 @@ function extractEmitida(text) {
   const descMatch = t.match(/(?:DESCRIPCI[OÓ]N|DETALLE)\s*:?\s*(.{10,200}?)(?=\s+(?:CANTIDAD|PRECIO|VALOR|UNIDAD|TOTAL))/i);
   const descripcion = descMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
 
+  // Emisor Maosracing/Maosbike (RUT 76.405.840-2). Si el emisor es otro,
+  // lo mandamos a la pestaña "Otras" aunque parezca moto.
+  const MAOS_RUT = '764058402';
+  const isMaos = rut_emisor && normalizeRut(rut_emisor) === MAOS_RUT;
+
+  let category;
+  if (!isMaos) category = 'otras';
+  else if (chassis || motor_num || brand) category = 'motos';
+  else category = 'otros';
+
   return {
     source: 'emitida',
-    doc_type: 'factura',
-    category: (chassis || motor_num || brand) ? 'motos' : 'otros',
+    doc_type,
+    category,
     folio,
     rut_emisor,
     emisor_nombre,
@@ -137,6 +184,9 @@ function extractEmitida(text) {
     motor_num,
     chassis,
     descripcion,
+    ref_folio,
+    ref_rut_emisor: ref_folio ? rut_emisor : null,
+    ref_fecha,
   };
 }
 
@@ -194,6 +244,7 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
     const {
       source = 'emitida',
       category,
+      doc_type,
       link_status,
       desde,
       hasta,
@@ -207,6 +258,7 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
     let idx = 2;
 
     if (category) { conds.push(`i.category = $${idx++}`); params.push(category); }
+    if (doc_type) { conds.push(`i.doc_type = $${idx++}`); params.push(doc_type); }
     if (link_status) { conds.push(`i.link_status = $${idx++}`); params.push(link_status); }
     if (desde) { conds.push(`i.fecha_emision >= $${idx++}`); params.push(desde); }
     if (hasta) { conds.push(`i.fecha_emision <= $${idx++}`); params.push(hasta); }
@@ -368,7 +420,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
       try {
         const buf  = await downloadPDF(file.id);
         const text = (await pdfParse(buf)).text;
-        const parsed = extractEmitida(text);
+        const parsed = extractEmitida(text, file.name);
 
         if (!parsed.folio) {
           results.errors.push(`${file.name}: no se pudo extraer folio`);
@@ -395,22 +447,27 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
 
         const links = await resolveLinks(parsed);
 
+        let invoiceId;
         if (existing[0]) {
+          invoiceId = existing[0].id;
           await db.query(
             `UPDATE invoices SET
-               fecha_emision=$1, rut_cliente=$2, cliente_nombre=$3,
-               cliente_direccion=$4, cliente_comuna=$5, cliente_giro=$6,
-               monto_neto=$7, iva=$8, monto_exento=$9, total=$10,
-               brand=$11, model=$12, color=$13, commercial_year=$14,
-               motor_num=$15, chassis=$16, descripcion=$17,
-               pdf_url=$18, drive_file_id=$19,
-               lead_id=COALESCE(lead_id,$20),
-               inventory_id=COALESCE(inventory_id,$21),
-               sale_note_id=COALESCE(sale_note_id,$22),
-               link_status=$23,
+               doc_type=$1, category=$2,
+               fecha_emision=$3, rut_cliente=$4, cliente_nombre=$5,
+               cliente_direccion=$6, cliente_comuna=$7, cliente_giro=$8,
+               monto_neto=$9, iva=$10, monto_exento=$11, total=$12,
+               brand=$13, model=$14, color=$15, commercial_year=$16,
+               motor_num=$17, chassis=$18, descripcion=$19,
+               pdf_url=$20, drive_file_id=$21,
+               lead_id=COALESCE(lead_id,$22),
+               inventory_id=COALESCE(inventory_id,$23),
+               sale_note_id=COALESCE(sale_note_id,$24),
+               link_status=$25,
+               ref_folio=$26, ref_rut_emisor=$27, ref_fecha=$28,
                updated_at=NOW()
-             WHERE id=$24`,
+             WHERE id=$29`,
             [
+              parsed.doc_type, parsed.category,
               parsed.fecha_emision, parsed.rut_cliente, parsed.cliente_nombre,
               parsed.cliente_direccion, parsed.cliente_comuna, parsed.cliente_giro,
               parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
@@ -419,12 +476,13 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               pdf_url, file.id,
               links.lead_id, links.inventory_id, links.sale_note_id,
               links.link_status,
-              existing[0].id,
+              parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
+              invoiceId,
             ]
           );
           results.updated++;
         } else {
-          await db.query(
+          const ins = await db.query(
             `INSERT INTO invoices (
                source, doc_type, category, folio, rut_emisor, emisor_nombre,
                fecha_emision, rut_cliente, cliente_nombre, cliente_direccion,
@@ -433,6 +491,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                brand, model, color, commercial_year, motor_num, chassis, descripcion,
                pdf_url, drive_file_id,
                lead_id, inventory_id, sale_note_id, link_status,
+               ref_folio, ref_rut_emisor, ref_fecha,
                created_by
              ) VALUES (
                $1,$2,$3,$4,$5,$6,
@@ -442,8 +501,9 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                $17,$18,$19,$20,$21,$22,$23,
                $24,$25,
                $26,$27,$28,$29,
-               $30
-             )`,
+               $30,$31,$32,
+               $33
+             ) RETURNING id`,
             [
               parsed.source, parsed.doc_type, parsed.category,
               parsed.folio, parsed.rut_emisor, parsed.emisor_nombre,
@@ -454,10 +514,23 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               parsed.motor_num, parsed.chassis, parsed.descripcion,
               pdf_url, file.id,
               links.lead_id, links.inventory_id, links.sale_note_id, links.link_status,
+              parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
               req.user.id,
             ]
           );
+          invoiceId = ins.rows[0].id;
           results.created++;
+        }
+
+        // Si es una nota de crédito con referencia, vinculamos la factura
+        // original marcándola como anulada. No borramos nada — queda el rastro.
+        if (parsed.doc_type === 'nota_credito' && parsed.ref_folio) {
+          await db.query(
+            `UPDATE invoices SET anulada_por_id=$1, updated_at=NOW()
+             WHERE source='emitida' AND doc_type='factura'
+               AND folio=$2 AND ($3::text IS NULL OR rut_emisor=$3)`,
+            [invoiceId, parsed.ref_folio, parsed.ref_rut_emisor || parsed.rut_emisor || null]
+          );
         }
       } catch (e) {
         results.errors.push(`${file.name}: ${e.message}`);

@@ -123,7 +123,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
             amount: parseInt(a.amount) || 0,
           }))
       : null;
-    const chType = isSold && (charge_type === 'completa' || charge_type === 'inscripcion') ? charge_type : null;
+    const chType = isSold && ['completa','inscripcion','transferencia'].includes(charge_type) ? charge_type : null;
     const chAmt  = isSold && charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
     const dcAmt  = isSold && discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
 
@@ -319,7 +319,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     }
     if (charge_type !== undefined) {
       sets.push(`charge_type = $${idx++}`);
-      params.push(charge_type === 'completa' || charge_type === 'inscripcion' ? charge_type : null);
+      params.push(['completa','inscripcion','transferencia'].includes(charge_type) ? charge_type : null);
     }
     if (charge_amt !== undefined) {
       sets.push(`charge_amt = $${idx++}`);
@@ -443,7 +443,7 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
             amount: parseInt(a.amount) || 0,
           }))
       : null;
-    const chType = charge_type === 'completa' || charge_type === 'inscripcion' ? charge_type : null;
+    const chType = ['completa','inscripcion','transferencia'].includes(charge_type) ? charge_type : null;
     const chAmt  = charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
     const dcAmt  = discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
 

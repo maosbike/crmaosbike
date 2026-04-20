@@ -42,30 +42,45 @@ function InvoiceRow({ inv, onOpen, isMobile }) {
     ? [inv.brand, inv.model, inv.commercial_year].filter(Boolean).join(' ')
     : null;
 
+  const isNC     = inv.doc_type === 'nota_credito';
+  const anulada  = !!inv.anulada_por_id;
+  const folioLbl = isNC ? `NC ${inv.folio || '-'}` : inv.folio || '-';
+
   if (isMobile) {
     return (
       <div onClick={() => onOpen(inv)} style={{
         background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12,
         padding: '12px 14px', marginBottom: 10, cursor: 'pointer',
+        opacity: anulada ? 0.65 : 1,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-          <span style={{ fontWeight: 700, fontSize: 13 }}>Folio {inv.folio || '-'}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>{folioLbl}</span>
+            {anulada && <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', background: 'rgba(220,38,38,0.1)', borderRadius: 20, padding: '2px 8px' }}>ANULADA</span>}
+            {isNC && inv.ref_folio && <span style={{ fontSize: 10, color: '#6B7280' }}>→ #{inv.ref_folio}</span>}
+          </div>
           <LinkBadge status={inv.link_status} />
         </div>
         <div style={{ ...TY.meta, marginBottom: 2 }}>{inv.cliente_nombre || inv.rut_cliente || '-'}</div>
         {modelo && <div style={{ ...TY.meta, color: '#6B7280' }}>{modelo}</div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
           <span style={{ fontSize: 11, color: '#6B7280' }}>{fd(inv.fecha_emision)}</span>
-          <span style={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>{$(inv.total)}</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: isNC ? '#DC2626' : '#111827' }}>
+            {isNC ? '-' : ''}{$(inv.total)}
+          </span>
         </div>
       </div>
     );
   }
 
   return (
-    <tr onClick={() => onOpen(inv)} style={{ cursor: 'pointer' }}
+    <tr onClick={() => onOpen(inv)} style={{ cursor: 'pointer', opacity: anulada ? 0.65 : 1 }}
       className="crm-tr-hover">
-      <td style={{ padding: '10px 12px', fontWeight: 600 }}>{inv.folio || '-'}</td>
+      <td style={{ padding: '10px 12px', fontWeight: 600 }}>
+        {folioLbl}
+        {anulada && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#DC2626', background: 'rgba(220,38,38,0.1)', borderRadius: 20, padding: '2px 8px' }}>ANULADA</span>}
+        {isNC && inv.ref_folio && <span style={{ marginLeft: 6, fontSize: 10, color: '#6B7280' }}>→ #{inv.ref_folio}</span>}
+      </td>
       <td style={{ padding: '10px 12px' }}>{fd(inv.fecha_emision)}</td>
       <td style={{ padding: '10px 12px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {inv.cliente_nombre || '-'}
@@ -73,7 +88,9 @@ function InvoiceRow({ inv, onOpen, isMobile }) {
       <td style={{ padding: '10px 12px', fontSize: 11, color: '#6B7280' }}>{rutFmt(inv.rut_cliente)}</td>
       <td style={{ padding: '10px 12px', fontSize: 12 }}>{modelo || '-'}</td>
       <td style={{ padding: '10px 12px', fontSize: 11, color: '#6B7280' }}>{inv.chassis || '-'}</td>
-      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{$(inv.total)}</td>
+      <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: isNC ? '#DC2626' : '#111827' }}>
+        {isNC ? '-' : ''}{$(inv.total)}
+      </td>
       <td style={{ padding: '10px 12px' }}><LinkBadge status={inv.link_status} /></td>
     </tr>
   );
@@ -104,11 +121,16 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
   ) : null;
 
   return (
-    <Modal onClose={onClose} title={`Factura N° ${inv.folio || '-'}`}>
+    <Modal onClose={onClose} title={`${inv.doc_type === 'nota_credito' ? 'Nota de crédito' : 'Factura'} N° ${inv.folio || '-'}`}>
       <div style={{ maxWidth: 560, width: '100%' }}>
         {/* Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <LinkBadge status={inv.link_status} />
+          {inv.anulada_por_id && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#DC2626', background: 'rgba(220,38,38,0.1)', borderRadius: 20, padding: '3px 10px' }}>
+              ANULADA POR NC
+            </span>
+          )}
           {inv.pdf_url && (
             <a href={inv.pdf_url} target="_blank" rel="noreferrer"
               style={{ fontSize: 12, color: '#F28100', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -116,6 +138,15 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
             </a>
           )}
         </div>
+
+        {/* Referencia (nota de crédito) */}
+        {inv.doc_type === 'nota_credito' && inv.ref_folio && (
+          <div style={{ background: 'rgba(220,38,38,0.04)', border: '1px solid #FCA5A5', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
+            <div style={{ ...TY.micro, color: '#DC2626', marginBottom: 8 }}>ANULA FACTURA</div>
+            <Row label="Folio factura" val={`#${inv.ref_folio}`} />
+            <Row label="Fecha factura" val={fd(inv.ref_fecha)} />
+          </div>
+        )}
 
         {/* Cliente */}
         <div style={{ background: '#F9FAFB', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
@@ -194,6 +225,7 @@ export function AccountingView({ user }) {
   const [selected, setSelected] = useState(null);
 
   // Filtros
+  const [tab, setTab]           = useState('facturas'); // facturas | notas | otras
   const [q, setQ]               = useState('');
   const [linkStatus, setLinkStatus] = useState('');
   const [desde, setDesde]       = useState('');
@@ -206,6 +238,16 @@ export function AccountingView({ user }) {
     setError('');
     try {
       const params = { source: 'emitida', page, limit: LIMIT };
+      // "Otras" = documentos de emisores que no son Maosbike (category='otras').
+      // Facturas / Notas se filtran por doc_type y por NOT category='otras'
+      // (eso se decide en el parser cuando lee el RUT emisor).
+      if (tab === 'otras') {
+        params.category = 'otras';
+      } else if (tab === 'notas') {
+        params.doc_type = 'nota_credito';
+      } else {
+        params.doc_type = 'factura';
+      }
       if (q)          params.q = q;
       if (linkStatus) params.link_status = linkStatus;
       if (desde)      params.desde = desde;
@@ -218,7 +260,7 @@ export function AccountingView({ user }) {
     } finally {
       setLoading(false);
     }
-  }, [q, linkStatus, desde, hasta, page]);
+  }, [tab, q, linkStatus, desde, hasta, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -271,13 +313,57 @@ export function AccountingView({ user }) {
         }}>
           {syncResult.error
             ? <span style={{ color: '#DC2626' }}>{syncResult.error}</span>
-            : <span style={{ color: '#15803D' }}>
-                {syncResult.archivos_leidos} archivos — {syncResult.created} creados, {syncResult.updated} actualizados
-                {syncResult.errors?.length > 0 && <>, <strong>{syncResult.errors.length} con errores</strong></>}
-              </span>
+            : (
+              <>
+                <div style={{ color: '#15803D' }}>
+                  {syncResult.archivos_leidos} archivos — {syncResult.created} creados, {syncResult.updated} actualizados
+                  {syncResult.errors?.length > 0 && <>, <strong>{syncResult.errors.length} con errores</strong></>}
+                </div>
+                {syncResult.errors?.length > 0 && (
+                  <details style={{ marginTop: 8 }}>
+                    <summary style={{ cursor: 'pointer', fontSize: 12, color: '#DC2626' }}>
+                      Ver errores ({syncResult.errors.length})
+                    </summary>
+                    <ul style={{ margin: '8px 0 0 0', padding: '0 0 0 18px', fontSize: 12, color: '#7F1D1D', maxHeight: 200, overflow: 'auto' }}>
+                      {syncResult.errors.map((err, i) => (
+                        <li key={i} style={{ marginBottom: 2 }}>{err}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </>
+            )
           }
         </div>
       )}
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #E5E7EB' }}>
+        {[
+          { key: 'facturas', label: 'Facturas' },
+          { key: 'notas',    label: 'Notas de crédito' },
+          { key: 'otras',    label: 'Otras' },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => { setTab(t.key); setPage(1); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: tab === t.key ? '2px solid #F28100' : '2px solid transparent',
+              color: tab === t.key ? '#F28100' : '#6B7280',
+              fontWeight: tab === t.key ? 700 : 500,
+              fontSize: 13,
+              padding: '8px 14px',
+              cursor: 'pointer',
+              marginBottom: -1,
+              fontFamily: 'inherit',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       {/* Stats */}
       {!loading && data.length > 0 && (
