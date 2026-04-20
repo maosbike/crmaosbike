@@ -1,0 +1,484 @@
+/**
+ * Contabilidad — CRMaosBike
+ * MVP: Facturas emitidas (motos), sincronización desde Google Drive.
+ * Cruza por RUT cliente (→ tickets) y chasis (→ inventory).
+ */
+const router   = require('express').Router();
+const db       = require('../config/db');
+const logger   = require('../config/logger');
+const cloudinary = require('../config/cloudinary');
+const pdfParse   = require('pdf-parse');
+const { auth, roleCheck }  = require('../middleware/auth');
+const {
+  toISODate,
+  parseChileanInt,
+  normalizeRut,
+  normalizeChassis,
+} = require('../utils/normalize');
+
+const parseAmt = parseChileanInt;
+
+router.use(auth);
+
+const ADMIN_ROLES = ['super_admin', 'admin_comercial'];
+
+// ─── Parser de factura emitida Maosbike ───────────────────────────────────────
+// Formato DTE tipo 33/34 — lo que exporta el SII / software de facturación CL.
+// El texto resultante de pdf-parse tiene saltos y espacios variables; todo
+// se colapsa a una línea y luego se extrae con regex.
+function extractEmitida(text) {
+  const t = text.replace(/\r/g, ' ').replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ');
+
+  // ── Folio ──
+  const folio =
+    t.match(/FACTURA\s+ELECTR[OÓ]NICA[^\d]*(?:N[°º\.]\s*)?(\d{4,9})/i)?.[1] ||
+    t.match(/FOLIO[^\d]*(\d{4,9})/i)?.[1] ||
+    t.match(/N[°º]\s*(\d{4,9})/i)?.[1] ||
+    null;
+
+  // ── RUT emisor (Maosbike = 76.405.840-2, pero leemos el PDF para ser agnósticos) ──
+  const rutEmisorMatch =
+    t.match(/(?:R\.U\.T\.?|RUT)\s*(?:EMPRESA|EMISOR)?[:\s]+(\d[\d\.]+[-][0-9Kk])/i) ||
+    t.match(/(\d{2,3}\.\d{3}\.\d{3}-[0-9Kk])/);
+  const rut_emisor = rutEmisorMatch?.[1]?.replace(/\./g, '') || null;
+
+  // ── Nombre emisor (texto antes del primer "RUT") ──
+  const emisorNombreMatch = t.match(/^(.+?)\s+(?:R\.U\.T\.?|RUT)/i);
+  const emisor_nombre = emisorNombreMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+
+  // ── Fecha ──
+  const dateMatch =
+    t.match(/FECHA\s+(?:EMISI[OÓ]N|DE\s+EMISI[OÓ]N)\s*:?\s*(\d{1,2})[-\/\s](\d{1,2})[-\/\s](\d{4})/i) ||
+    t.match(/(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
+    t.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  let fecha_emision = null;
+  if (dateMatch) {
+    const isTextMonth = isNaN(parseInt(dateMatch[2]));
+    fecha_emision = isTextMonth
+      ? toISODate(dateMatch[1], dateMatch[2], dateMatch[3])
+      : `${dateMatch[3]}-${String(dateMatch[2]).padStart(2,'0')}-${String(dateMatch[1]).padStart(2,'0')}`;
+  }
+
+  // ── RUT cliente / receptor ──
+  // En facturas chilenas: "RUT:" aparece varias veces — el del receptor suele ser el 2do.
+  const allRuts = [...t.matchAll(/R\.?U\.?T\.?\s*:?\s*(\d[\d\.]{6,11}-[0-9Kk])/gi)].map(m => m[1].replace(/\./g,''));
+  const rut_emisorNorm = rut_emisor ? normalizeRut(rut_emisor) : null;
+  const rut_cliente = allRuts.find(r => normalizeRut(r) !== rut_emisorNorm) || null;
+
+  // ── Nombre cliente ──
+  const nombreClienteMatch =
+    t.match(/(?:CLIENTE|RECEPTOR|SE[ÑN]OR(?:ES)?|NOMBRE|RAZ[OÓ]N\s+SOCIAL)\s*:?\s*([A-ZÁÉÍÓÚÑ][^,\n|]{3,80}?)(?:\s+RUT|\s+GIRO|\s+DIRECCI[OÓ]N|\s+DOMICILIO)/i);
+  const cliente_nombre = nombreClienteMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+
+  // ── Dirección cliente ──
+  const dirMatch = t.match(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*:?\s*(.+?)(?=\s+CIUDAD|\s+COMUNA|\s+GIRO|\s+RUT|\s+TEL[EÉ]F|\s+\d{2}[-\/])/i);
+  const cliente_direccion = dirMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+
+  // ── Comuna cliente ──
+  const comunaMatch = t.match(/(?:CIUDAD|COMUNA)\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,40}?)(?=\s+(?:GIRO|RUT|FONO|TEL[EÉ]F|FECHA|[A-Z]{3,}))/i);
+  const cliente_comuna = comunaMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+
+  // ── Giro ──
+  const giroMatch = t.match(/GIRO\s*:?\s*([A-ZÁÉÍÓÚÑ][^|]{3,80}?)(?=\s+(?:DIRECCI[OÓ]N|RUT|CIUDAD|COMUNA|FECHA|[A-Z]{4,}))/i);
+  const cliente_giro = giroMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+
+  // ── Montos ──
+  const neto  = parseAmt(t.match(/(?:NETO|MONTO\s+NETO)\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
+  const iva   = parseAmt(t.match(/I\.?V\.?A\.?\s*(?:19\s*%?)?\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
+  const exento = parseAmt(t.match(/EXENTO\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
+  const total = parseAmt(
+    t.match(/TOTAL\s+A\s+PAGAR\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1] ||
+    t.match(/TOTAL\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]
+  );
+
+  // ── Vehículo ── (en descripción de ítem de factura)
+  const chassis =
+    t.match(/(?:N[°º\.]?\s*DE\s*CHASIS|CHASIS|VIN)\s*:?\s*([A-Z0-9][A-Z0-9\-]{10,19})/i)?.[1]?.trim() || null;
+  const motorRaw =
+    t.match(/N[°º\.]?\s*(?:DE\s*)?MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-\s]{4,20}?)(?=\s+(?:CHASIS|MARCA|MODELO|COLOR|A[ÑN]O))/i)?.[1]?.trim() ||
+    t.match(/MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-\/]{4,20})/i)?.[1]?.trim() || null;
+  const motor_num = motorRaw ? motorRaw.replace(/\s+/g, '') : null;
+
+  const brand = t.match(/\bMARCA\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i)?.[1]?.trim() || null;
+  const modelCapRaw = (
+    t.match(/COD\.?\s*MODELO\s*:?\s*(.+?)(?=\s+(?:COLOR|MARCA|A[ÑN]O|N[°º]?\s*(?:MOTOR|DE\s*CHASIS)))/i) ||
+    t.match(/MODELO\s*:?\s*(.+?)(?=\s+(?:COLOR|MARCA|A[ÑN]O|CHASIS))/i)
+  )?.[1]?.trim().replace(/\s+/g, '') || null;
+  const model = modelCapRaw ? (modelCapRaw.replace(/0-?[A-Z]\d+$/i, '').replace(/-$/, '') || modelCapRaw) : null;
+
+  const color = t.match(/\bCOLOR\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i)?.[1]?.trim() || null;
+  const year  = parseInt(t.match(/A[ÑN]O\s*(?:COMERCIAL)?\s*:?\s*(\d{4})/i)?.[1]) || null;
+
+  // ── Descripción del ítem principal ──
+  const descMatch = t.match(/(?:DESCRIPCI[OÓ]N|DETALLE)\s*:?\s*(.{10,200}?)(?=\s+(?:CANTIDAD|PRECIO|VALOR|UNIDAD|TOTAL))/i);
+  const descripcion = descMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+
+  return {
+    source: 'emitida',
+    doc_type: 'factura',
+    category: (chassis || motor_num || brand) ? 'motos' : 'otros',
+    folio,
+    rut_emisor,
+    emisor_nombre,
+    rut_cliente,
+    cliente_nombre,
+    cliente_direccion,
+    cliente_comuna,
+    cliente_giro,
+    fecha_emision,
+    monto_neto: neto,
+    iva,
+    monto_exento: exento,
+    total,
+    brand,
+    model,
+    color,
+    commercial_year: year,
+    motor_num,
+    chassis,
+    descripcion,
+  };
+}
+
+// ─── Cruce automático ─────────────────────────────────────────────────────────
+async function resolveLinks(parsed) {
+  let lead_id      = null;
+  let inventory_id = null;
+  let sale_note_id = null;
+  let link_status  = 'sin_vincular';
+
+  const rutNorm    = parsed.rut_cliente ? normalizeRut(parsed.rut_cliente) : null;
+  const chassisNorm = parsed.chassis     ? normalizeChassis(parsed.chassis) : null;
+
+  // 1. Buscar lead por RUT
+  if (rutNorm) {
+    const { rows } = await db.query(
+      `SELECT id FROM tickets WHERE REPLACE(REPLACE(rut,'.',''),'-','') = $1 ORDER BY created_at DESC LIMIT 1`,
+      [rutNorm]
+    );
+    if (rows[0]) lead_id = rows[0].id;
+  }
+
+  // 2. Buscar inventario por chasis
+  if (chassisNorm) {
+    const { rows } = await db.query(
+      `SELECT id FROM inventory WHERE UPPER(REPLACE(chassis,' ','')) = $1 LIMIT 1`,
+      [chassisNorm]
+    );
+    if (rows[0]) inventory_id = rows[0].id;
+  }
+
+  // 3. Buscar nota de venta por chasis
+  if (chassisNorm) {
+    const { rows } = await db.query(
+      `SELECT id FROM sales_notes WHERE UPPER(REPLACE(chassis,' ','')) = $1 ORDER BY created_at DESC LIMIT 1`,
+      [chassisNorm]
+    );
+    if (rows[0]) sale_note_id = rows[0].id;
+  }
+
+  // 4. Determinar estado de vinculación
+  if (lead_id && (inventory_id || sale_note_id)) {
+    link_status = 'vinculada';
+  } else if (lead_id || inventory_id || sale_note_id) {
+    // Match parcial — revisar si RUT sin chasis o viceversa
+    link_status = (rutNorm && chassisNorm) ? 'revisar' : 'vinculada';
+  }
+
+  return { lead_id, inventory_id, sale_note_id, link_status };
+}
+
+// ─── GET /api/accounting ─────────────────────────────────────────────────────
+router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const {
+      source = 'emitida',
+      category,
+      link_status,
+      desde,
+      hasta,
+      q,       // búsqueda por folio / rut / nombre
+      page = 1,
+      limit = 50,
+    } = req.query;
+
+    const conds = [`i.source = $1`];
+    const params = [source];
+    let idx = 2;
+
+    if (category) { conds.push(`i.category = $${idx++}`); params.push(category); }
+    if (link_status) { conds.push(`i.link_status = $${idx++}`); params.push(link_status); }
+    if (desde) { conds.push(`i.fecha_emision >= $${idx++}`); params.push(desde); }
+    if (hasta) { conds.push(`i.fecha_emision <= $${idx++}`); params.push(hasta); }
+    if (q) {
+      conds.push(`(
+        i.folio ILIKE $${idx} OR
+        i.rut_cliente ILIKE $${idx} OR
+        i.cliente_nombre ILIKE $${idx} OR
+        i.chassis ILIKE $${idx}
+      )`);
+      params.push(`%${q}%`);
+      idx++;
+    }
+
+    const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+    const off = (parseInt(page) - 1) * parseInt(limit);
+
+    const { rows } = await db.query(
+      `SELECT
+         i.*,
+         t.ticket_num, t.first_name, t.last_name,
+         inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
+         sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status
+       FROM invoices i
+       LEFT JOIN tickets   t   ON t.id   = i.lead_id
+       LEFT JOIN inventory inv ON inv.id = i.inventory_id
+       LEFT JOIN sales_notes sn ON sn.id = i.sale_note_id
+       ${where}
+       ORDER BY i.fecha_emision DESC NULLS LAST, i.created_at DESC
+       LIMIT $${idx} OFFSET $${idx+1}`,
+      [...params, parseInt(limit), off]
+    );
+
+    const { rows: cnt } = await db.query(
+      `SELECT COUNT(*) FROM invoices i ${where}`,
+      params
+    );
+
+    res.json({ data: rows, total: parseInt(cnt[0].count) });
+  } catch (e) {
+    logger.error({ err: e }, '[Accounting/GET]');
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── GET /api/accounting/:id ─────────────────────────────────────────────────
+router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT i.*,
+         t.ticket_num, t.first_name, t.last_name, t.rut, t.phone, t.email, t.status AS lead_status,
+         inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
+         sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
+         sn.sold_at, sn.sale_price
+       FROM invoices i
+       LEFT JOIN tickets   t   ON t.id   = i.lead_id
+       LEFT JOIN inventory inv ON inv.id = i.inventory_id
+       LEFT JOIN sales_notes sn ON sn.id = i.sale_note_id
+       WHERE i.id = $1`,
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
+    res.json(rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── PATCH /api/accounting/:id ────────────────────────────────────────────────
+router.patch('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const allowed = ['lead_id','inventory_id','sale_note_id','link_status','notes','category','doc_type'];
+    const sets = [], params = [];
+    let idx = 1;
+    for (const [k, v] of Object.entries(req.body)) {
+      if (allowed.includes(k)) {
+        sets.push(`${k} = $${idx++}`);
+        params.push(v === '' ? null : v);
+      }
+    }
+    if (!sets.length) return res.status(400).json({ error: 'Nada que actualizar' });
+    params.push(req.params.id);
+    const { rows } = await db.query(
+      `UPDATE invoices SET ${sets.join(', ')}, updated_at=NOW() WHERE id=$${idx} RETURNING *`,
+      params
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
+    res.json(rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── DELETE /api/accounting/:id ───────────────────────────────────────────────
+router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query('DELETE FROM invoices WHERE id=$1 RETURNING id', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── POST /api/accounting/sync-drive ─────────────────────────────────────────
+router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
+  const FOLDER_ID = process.env.ACCOUNTING_EMITIDAS_FOLDER_ID;
+  if (!FOLDER_ID) {
+    return res.status(503).json({
+      error: 'Carpeta de Drive no configurada. Agregá ACCOUNTING_EMITIDAS_FOLDER_ID en Railway.',
+    });
+  }
+
+  const credsJson = process.env.GCLOUD_CREDS;
+  if (!credsJson) {
+    return res.status(503).json({ error: 'Credenciales de Google no configuradas. Agregá GCLOUD_CREDS en Railway.' });
+  }
+
+  let creds;
+  try { creds = JSON.parse(credsJson); }
+  catch { return res.status(503).json({ error: 'GCLOUD_CREDS no es JSON válido.' }); }
+
+  const { google } = require('googleapis');
+  const driveAuth = new google.auth.GoogleAuth({
+    credentials: creds,
+    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+  });
+  const drive = google.drive({ version: 'v3', auth: driveAuth });
+
+  async function listPDFs(folderId) {
+    const files = [];
+    let pageToken = null;
+    do {
+      const resp = await drive.files.list({
+        q: `'${folderId}' in parents and mimeType='application/pdf' and trashed=false`,
+        fields: 'nextPageToken, files(id, name, webViewLink)',
+        pageSize: 100,
+        pageToken: pageToken || undefined,
+      });
+      files.push(...(resp.data.files || []));
+      pageToken = resp.data.nextPageToken;
+    } while (pageToken);
+    return files;
+  }
+
+  async function downloadPDF(fileId) {
+    const resp = await drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'arraybuffer' }
+    );
+    return Buffer.from(resp.data);
+  }
+
+  try {
+    const files = await listPDFs(FOLDER_ID);
+    const results = { created: 0, updated: 0, skipped: 0, errors: [] };
+
+    for (const file of files) {
+      try {
+        const buf  = await downloadPDF(file.id);
+        const text = (await pdfParse(buf)).text;
+        const parsed = extractEmitida(text);
+
+        if (!parsed.folio) {
+          results.errors.push(`${file.name}: no se pudo extraer folio`);
+          continue;
+        }
+
+        // Subir PDF a Cloudinary (resource_type=raw para PDFs)
+        let pdf_url = file.webViewLink;
+        try {
+          const uploadResult = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: 'accounting/emitidas', resource_type: 'raw', public_id: `factura_${parsed.folio}` },
+              (err, result) => { if (err) reject(err); else resolve(result); }
+            );
+            stream.end(buf);
+          });
+          pdf_url = uploadResult.secure_url;
+        } catch (_) { /* si Cloudinary falla usamos Drive link */ }
+
+        const { rows: existing } = await db.query(
+          `SELECT id FROM invoices WHERE source='emitida' AND folio=$1 AND rut_emisor=$2 LIMIT 1`,
+          [parsed.folio, parsed.rut_emisor || '']
+        );
+
+        const links = await resolveLinks(parsed);
+
+        if (existing[0]) {
+          await db.query(
+            `UPDATE invoices SET
+               fecha_emision=$1, rut_cliente=$2, cliente_nombre=$3,
+               cliente_direccion=$4, cliente_comuna=$5, cliente_giro=$6,
+               monto_neto=$7, iva=$8, monto_exento=$9, total=$10,
+               brand=$11, model=$12, color=$13, commercial_year=$14,
+               motor_num=$15, chassis=$16, descripcion=$17,
+               pdf_url=$18, drive_file_id=$19,
+               lead_id=COALESCE(lead_id,$20),
+               inventory_id=COALESCE(inventory_id,$21),
+               sale_note_id=COALESCE(sale_note_id,$22),
+               link_status=$23,
+               updated_at=NOW()
+             WHERE id=$24`,
+            [
+              parsed.fecha_emision, parsed.rut_cliente, parsed.cliente_nombre,
+              parsed.cliente_direccion, parsed.cliente_comuna, parsed.cliente_giro,
+              parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
+              parsed.brand, parsed.model, parsed.color, parsed.commercial_year,
+              parsed.motor_num, parsed.chassis, parsed.descripcion,
+              pdf_url, file.id,
+              links.lead_id, links.inventory_id, links.sale_note_id,
+              links.link_status,
+              existing[0].id,
+            ]
+          );
+          results.updated++;
+        } else {
+          await db.query(
+            `INSERT INTO invoices (
+               source, doc_type, category, folio, rut_emisor, emisor_nombre,
+               fecha_emision, rut_cliente, cliente_nombre, cliente_direccion,
+               cliente_comuna, cliente_giro,
+               monto_neto, iva, monto_exento, total,
+               brand, model, color, commercial_year, motor_num, chassis, descripcion,
+               pdf_url, drive_file_id,
+               lead_id, inventory_id, sale_note_id, link_status,
+               created_by
+             ) VALUES (
+               $1,$2,$3,$4,$5,$6,
+               $7,$8,$9,$10,
+               $11,$12,
+               $13,$14,$15,$16,
+               $17,$18,$19,$20,$21,$22,$23,
+               $24,$25,
+               $26,$27,$28,$29,
+               $30
+             )`,
+            [
+              parsed.source, parsed.doc_type, parsed.category,
+              parsed.folio, parsed.rut_emisor, parsed.emisor_nombre,
+              parsed.fecha_emision, parsed.rut_cliente, parsed.cliente_nombre,
+              parsed.cliente_direccion, parsed.cliente_comuna, parsed.cliente_giro,
+              parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
+              parsed.brand, parsed.model, parsed.color, parsed.commercial_year,
+              parsed.motor_num, parsed.chassis, parsed.descripcion,
+              pdf_url, file.id,
+              links.lead_id, links.inventory_id, links.sale_note_id, links.link_status,
+              req.user.id,
+            ]
+          );
+          results.created++;
+        }
+      } catch (e) {
+        results.errors.push(`${file.name}: ${e.message}`);
+      }
+    }
+
+    res.json({
+      ok: true,
+      archivos_leidos: files.length,
+      ...results,
+    });
+  } catch (e) {
+    logger.error({ err: e }, '[Accounting/sync-drive]');
+    if (e.code === 403 || (e.message || '').includes('permission')) {
+      return res.status(403).json({
+        error: `Sin acceso a la carpeta de Drive. Compartila con: ${creds.client_email}`,
+        service_account_email: creds.client_email,
+      });
+    }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+module.exports = router;

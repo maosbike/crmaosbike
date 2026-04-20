@@ -75,6 +75,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/priceimport', require('./routes/priceimport'));
 app.use('/api/telegram',  require('./routes/telegram'));
 app.use('/api/time-off',  require('./routes/timeOff'));
+app.use('/api/accounting', require('./routes/accounting'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'CRMaosBike API v2.0' }));

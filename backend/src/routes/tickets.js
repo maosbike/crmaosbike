@@ -28,6 +28,31 @@ const NEXT_STEP_MAX = 500;
 
 router.use(auth);
 
+// ─── Helper: chequeo de permiso tolerante a race-condition ────────────────────
+// Un vendedor puede accionar sobre un ticket si:
+//  a) es el seller_id/assigned_to actual, O
+//  b) estuvo asignado en los últimos 15 min (por reassignment_log).
+// Esto evita perder el trabajo de un vendedor que estaba redactando el contacto
+// cuando un admin lo reasignó. La acción se guarda bajo su usuario y queda
+// trazada en la timeline, así el nuevo vendedor y el admin la ven.
+async function vendedorPuedeAccionar(ticketId, userId) {
+  const direct = await db.query(
+    'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
+    [ticketId, userId]
+  );
+  if (direct.rows[0]) return true;
+
+  const recent = await db.query(
+    `SELECT id FROM reassignment_log
+      WHERE ticket_id = $1
+        AND (from_user_id = $2 OR to_user_id = $2)
+        AND created_at > NOW() - INTERVAL '15 minutes'
+      LIMIT 1`,
+    [ticketId, userId]
+  );
+  return !!recent.rows[0];
+}
+
 // List tickets
 router.get('/', asyncHandler(async (req, res) => {
   const { status, branch_id, search, needs_attention, page = 1, limit = 50 } = req.query;
@@ -127,6 +152,25 @@ router.post('/', asyncHandler(async (req, res) => {
     if (assigned) seller = assigned.id;
   }
 
+  // Fallback final — el ticket JAMÁS se crea huérfano.
+  // Si no hay vendedor disponible (ningún active vendedor en la sucursal, etc.),
+  // se asigna al primer admin_comercial/super_admin activo de la sucursal,
+  // o en último caso a quien está creando el ticket. El admin después reasigna.
+  if (!seller) {
+    const fallback = await db.query(
+      `SELECT id FROM users
+       WHERE active = true
+         AND role IN ('admin_comercial','super_admin')
+         AND ($1::uuid IS NULL OR branch_id = $1 OR branch_id IS NULL)
+       ORDER BY
+         CASE WHEN branch_id = $1 THEN 0 ELSE 1 END,
+         role = 'admin_comercial' DESC
+       LIMIT 1`,
+      [branch || null]
+    );
+    seller = fallback.rows[0]?.id || req.user.id;
+  }
+
   // Transacción: ticket + timeline deben crearse juntos
   const client = await db.connect();
   try {
@@ -198,13 +242,10 @@ router.post('/', asyncHandler(async (req, res) => {
 
 // Update ticket
 router.put('/:id', asyncHandler(async (req, res) => {
-  // Vendedores solo pueden modificar sus propios tickets
+  // Vendedores solo pueden modificar sus propios tickets (con ventana de gracia por reasignación)
   if (req.user.role === 'vendedor') {
-    const check = await db.query(
-      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
-      [req.params.id, req.user.id]
-    );
-    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para modificar este ticket' });
+    const ok = await vendedorPuedeAccionar(req.params.id, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Sin permiso para modificar este ticket' });
   }
 
   const fields = ['first_name','last_name','rut','birthdate','email','phone','comuna','source',
@@ -275,11 +316,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
 // FOLLOWUP_STATUSES y FOLLOWUP_LABELS viven en config/leadStatus.js
 router.post('/:id/followup', asyncHandler(async (req, res) => {
   if (req.user.role === 'vendedor') {
-    const check = await db.query(
-      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
-      [req.params.id, req.user.id]
-    );
-    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para este ticket' });
+    const ok = await vendedorPuedeAccionar(req.params.id, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Sin permiso para este ticket' });
   }
 
   const { followup_status, followup_note, followup_next_step, next_followup_at } = req.body;
@@ -337,11 +375,8 @@ router.post('/:id/followup', asyncHandler(async (req, res) => {
 // Add timeline entry
 router.post('/:id/timeline', asyncHandler(async (req, res) => {
   if (req.user.role === 'vendedor') {
-    const check = await db.query(
-      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
-      [req.params.id, req.user.id]
-    );
-    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para este ticket' });
+    const ok = await vendedorPuedeAccionar(req.params.id, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Sin permiso para este ticket' });
   }
 
   const { type, title, note, method } = req.body;
@@ -395,11 +430,8 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
 // Upload evidence for a ticket contact
 router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (req, res) => {
   if (req.user.role === 'vendedor') {
-    const check = await db.query(
-      'SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)',
-      [req.params.id, req.user.id]
-    );
-    if (!check.rows[0]) return res.status(403).json({ error: 'Sin permiso para este ticket' });
+    const ok = await vendedorPuedeAccionar(req.params.id, req.user.id);
+    if (!ok) return res.status(403).json({ error: 'Sin permiso para este ticket' });
   }
 
   const { note, ev_type } = req.body;

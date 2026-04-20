@@ -300,6 +300,13 @@ export const api = {
   deleteSupplierPayment: (id) => request('DELETE', `/supplier-payments/${id}`),
   syncSupplierPaymentsFromDrive: () => request('POST', '/supplier-payments/sync-drive'),
 
+  // Contabilidad
+  getAccounting: (params) => request('GET', `/accounting?${new URLSearchParams(params || {})}`),
+  getAccountingInvoice: (id) => request('GET', `/accounting/${id}`),
+  patchAccounting: (id, data) => request('PATCH', `/accounting/${id}`, data),
+  deleteAccounting: (id) => request('DELETE', `/accounting/${id}`),
+  syncAccountingFromDrive: () => request('POST', '/accounting/sync-drive'),
+
   // Días libres (time-off)
   getTimeOff:      (params) => request('GET',    `/time-off?${new URLSearchParams(params || {})}`),
   getTimeOffToday: ()       => request('GET',    '/time-off/today'),

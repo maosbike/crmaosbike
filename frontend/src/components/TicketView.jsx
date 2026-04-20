@@ -181,7 +181,12 @@ export function TicketView({lead,user,nav,updLead}){
       setCfDone(true);
       setTimeout(()=>closeContact(),2200);
     }catch(e){
-      setCfErr(e.message||'Error al guardar. Intentá de nuevo.');
+      const msg = e.message||'';
+      setCfErr(
+        msg.includes('Sin permiso')
+          ? 'Este lead ya no está asignado a tu usuario. Recarga la página o pide al administrador que te lo reasigne.'
+          : msg||'Error al guardar. Intentá de nuevo.'
+      );
     }finally{setCfSaving(false);}
   };
 
