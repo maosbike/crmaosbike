@@ -308,7 +308,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
             amount: parseInt(a.amount) || 0,
           }))
       : null;
-    const chType = charge_type === 'completa' || charge_type === 'inscripcion' ? charge_type : null;
+    const chType = ['completa','inscripcion','transferencia'].includes(charge_type) ? charge_type : null;
     const chAmt  = charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
     const dcAmt  = discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
 

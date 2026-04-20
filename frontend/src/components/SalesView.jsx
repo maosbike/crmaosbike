@@ -7,14 +7,22 @@ import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, RO
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const SALE_TYPES = [
-  { v: '',            l: '— Seleccionar —' },
-  { v: 'inscripcion', l: 'Solo inscripción' },
-  { v: 'completa',    l: 'Documentación completa' },
+  { v: '',              l: '— Seleccionar —' },
+  { v: 'inscripcion',   l: 'Solo inscripción' },
+  { v: 'completa',      l: 'Documentación completa' },
+  { v: 'transferencia', l: 'Transferencia vehicular' },
 ];
 
-const INSCRIPCION_AMT = 90000;
+const INSCRIPCION_AMT   = 90000;
+const TRANSFERENCIA_AMT = 120000; // moto ya inscrita a nombre de Maosbike
 function docCompletaAmt(motoPrice) {
   return Number(motoPrice) > 4000000 ? 350000 : 300000;
+}
+function chargeAmtFor(chargeType, motoPrice) {
+  if (chargeType === 'inscripcion')   return INSCRIPCION_AMT;
+  if (chargeType === 'completa')      return docCompletaAmt(motoPrice);
+  if (chargeType === 'transferencia') return TRANSFERENCIA_AMT;
+  return 0;
 }
 
 const DOC_LABELS = {
@@ -698,7 +706,7 @@ const PAY_MODES = [
 function computeTotals({ sale_price, accessories = [], discount = '', payMode = '', payLines = [], chargeType = 'inscripcion', abono = 0, isReserva = false }) {
   const motoAmt   = Number(sale_price) || 0;
   const accAmt    = accessories.reduce((s, a) => s + (Number(a.amount) || 0), 0);
-  const chargeAmt = chargeType === 'inscripcion' ? INSCRIPCION_AMT : (chargeType === 'completa' ? docCompletaAmt(motoAmt) : 0);
+  const chargeAmt = chargeAmtFor(chargeType, motoAmt);
   const subtotal  = motoAmt + accAmt + chargeAmt;
   const discAmt  = discount ? Math.round(subtotal * Number(discount) / 100) : 0;
   const netTotal = subtotal - discAmt;
@@ -857,8 +865,9 @@ async function openNote(data, type) {
     [`${data.brand || ''} ${data.model || ''} ${data.year ? '(' + data.year + ')' : ''} — ${data.color || ''}`, fmtCLP(t.motoAmt)],
     ...(data.accessories || []).filter(a => a.name && Number(a.amount) > 0).map(a => [a.name, fmtCLP(Number(a.amount))]),
   ];
-  if (data.chargeType === 'inscripcion') tableBody.push(['Inscripción vehicular', fmtCLP(INSCRIPCION_AMT)]);
-  else if (data.chargeType === 'completa') tableBody.push(['Documentación completa', fmtCLP(t.chargeAmt)]);
+  if (data.chargeType === 'inscripcion')        tableBody.push(['Inscripción vehicular',    fmtCLP(INSCRIPCION_AMT)]);
+  else if (data.chargeType === 'completa')      tableBody.push(['Documentación completa',   fmtCLP(t.chargeAmt)]);
+  else if (data.chargeType === 'transferencia') tableBody.push(['Transferencia vehicular',  fmtCLP(TRANSFERENCIA_AMT)]);
   // Solo mostrar recargo en la tabla cuando aplica sobre el total (no sobre abono parcial)
   if (t.cardSurcharge > 0 && !(isRes && (data.abono > 0))) {
     tableBody.push(['Recargo tarjeta de crédito/débito (2%)', '+' + fmtCLP(t.cardSurcharge)]);
@@ -1177,9 +1186,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       const accessoriesPayload = (accs || [])
         .filter(a => (a.name && String(a.name).trim()) || Number(a.amount) > 0)
         .map(a => ({ description: String(a.name || '').trim(), amount: Number(a.amount) || 0 }));
-      const chargeAmtPayload = chargeType === 'inscripcion'
-        ? INSCRIPCION_AMT
-        : chargeType === 'completa' ? docCompletaAmt(motoAmt) : 0;
+      const chargeAmtPayload = chargeAmtFor(chargeType, motoAmt);
       const subtotalForDiscount = motoAmt
         + accessoriesPayload.reduce((s, a) => s + a.amount, 0)
         + chargeAmtPayload;
@@ -1482,10 +1489,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <div style={{ fontSize:9, fontWeight:800, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:8 }}>
                 Documentación (obligatorio)
               </div>
-              <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+              <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                 {[
-                  { v:'inscripcion', l:'Inscripción vehicular',   amt: INSCRIPCION_AMT },
-                  { v:'completa',    l:'Documentación completa',  amt: docCompletaAmt(form.sale_price) },
+                  { v:'inscripcion',   l:'Inscripción vehicular',   hint:'Moto a inscribir',                  amt: INSCRIPCION_AMT },
+                  { v:'completa',      l:'Documentación completa',  hint:'Factura + homologación + inscripción', amt: docCompletaAmt(form.sale_price) },
+                  { v:'transferencia', l:'Transferencia vehicular', hint:'Moto ya inscrita a nombre Maosbike', amt: TRANSFERENCIA_AMT },
                 ].map(opt => (
                   <button key={opt.v} type="button" onClick={() => setChargeType(opt.v)}
                     style={{ padding:'10px 14px', borderRadius:8, textAlign:'left', cursor:'pointer', fontFamily:'inherit',
@@ -1497,6 +1505,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     <div style={{ fontSize:13, fontWeight:900, color: chargeType===opt.v ? '#059669' : '#6B7280' }}>
                       {fmtCLP(opt.amt)}
                     </div>
+                    <div style={{ fontSize:10, color:'#9CA3AF', marginTop:2, lineHeight:1.3 }}>{opt.hint}</div>
                   </button>
                 ))}
               </div>
@@ -1631,7 +1640,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 {[
                   ['Precio moto', fmtCLP(totals.motoAmt), '#D1D5DB'],
                   totals.accAmt > 0  ? [`Accesorios`, fmtCLP(totals.accAmt), '#D1D5DB'] : null,
-                  [chargeType === 'inscripcion' ? 'Inscripción vehicular' : 'Documentación completa', fmtCLP(totals.chargeAmt), '#A7F3D0'],
+                  [chargeType === 'inscripcion' ? 'Inscripción vehicular'
+                    : chargeType === 'transferencia' ? 'Transferencia vehicular'
+                    : 'Documentación completa', fmtCLP(totals.chargeAmt), '#A7F3D0'],
                   totals.discAmt > 0 ? [`Descuento ${discount}%`, `−${fmtCLP(totals.discAmt)}`, '#10B981'] : null,
                   totals.cardSurcharge > 0 ? [`Recargo tarjeta 2%`, `+${fmtCLP(totals.cardSurcharge)}`, '#FCD34D'] : null,
                 ].filter(Boolean).map(([lbl, val, clr]) => (
@@ -1747,7 +1758,7 @@ async function openNoteFromSale(s) {
     client_name: s.client_name||'', client_rut: s.client_rut||'', client_type:'persona',
     sale_price: s.sale_price, abono: s.invoice_amount||0,
     accessories:[], discount:'', payMode: s.payment_method||'', payLines:[],
-    chargeType: s.sale_type === 'completa' ? 'completa' : 'inscripcion',
+    chargeType: ['completa','transferencia','inscripcion'].includes(s.sale_type) ? s.sale_type : 'inscripcion',
     sale_notes: s.sale_notes, titularSame:true, titular:null,
     modelPhotoUrl, finData,
   }, isRes ? 'reserva' : 'venta');
