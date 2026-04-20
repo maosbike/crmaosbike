@@ -85,6 +85,26 @@ export function AdminView() {
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateErr, setDeactivateErr] = useState('');
 
+  // Eliminar usuario (hard delete)
+  const [deleteTarget, setDeleteTarget] = useState(null); // user object
+  const [deleting, setDeleting] = useState(false);
+  const [deleteErr, setDeleteErr] = useState('');
+  const [deleteDetail, setDeleteDetail] = useState(null); // detalle de refs si bloquea
+
+  // Sucursales — crear / editar
+  const [branchEditTarget, setBranchEditTarget] = useState(null); // null = nuevo, obj = editar
+  const [bForm, setBForm] = useState({ name:'', code:'', address:'', active:true });
+  const [bErr, setBErr] = useState('');
+  const [bSaving, setBSaving] = useState(false);
+  const [branchDeleteTarget, setBranchDeleteTarget] = useState(null);
+  const [branchDeleting, setBranchDeleting] = useState(false);
+  const [branchDeleteErr, setBranchDeleteErr] = useState('');
+
+  // Probador de alias
+  const [aliasTestText, setAliasTestText] = useState('');
+  const [aliasTestResult, setAliasTestResult] = useState(null);
+  const [aliasTesting, setAliasTesting] = useState(false);
+
   // ── Danger zone ─────────────────────────────────────────────────────────────
   const [cleaning,          setCleaning]         = useState(false);
   const [cleanDone,         setCleanDone]        = useState(false);
@@ -188,6 +208,80 @@ export function AdminView() {
       setDeactivateInfo(null);
     } catch(ex) { setDeactivateErr(ex.message || 'Error al desactivar'); }
     finally { setDeactivating(false); }
+  };
+
+  // Eliminar (hard delete) — abre modal que avisa si hay historial
+  const openDelete = u => {
+    setDeleteTarget(u);
+    setDeleteErr('');
+    setDeleteDetail(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true); setDeleteErr(''); setDeleteDetail(null);
+    try {
+      await api.deleteUser(deleteTarget.id);
+      setUsers(prev => prev.filter(x => x.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch(ex) {
+      setDeleteErr(ex.message || 'Error al eliminar');
+      if (ex.detail) setDeleteDetail(ex.detail);
+    } finally { setDeleting(false); }
+  };
+
+  // ── Handlers sucursales ─────────────────────────────────────────────────────
+  const openBranchNew = () => {
+    setBranchEditTarget({ __new: true });
+    setBForm({ name:'', code:'', address:'', active:true });
+    setBErr('');
+  };
+  const openBranchEdit = b => {
+    setBranchEditTarget(b);
+    setBForm({ name:b.name||'', code:b.code||'', address:b.address||b.addr||'', active:b.active !== false });
+    setBErr('');
+  };
+  const handleBranchSave = async e => {
+    e.preventDefault(); setBErr('');
+    if (!bForm.name.trim() || !bForm.code.trim()) return setBErr('Nombre y código son requeridos');
+    setBSaving(true);
+    try {
+      if (branchEditTarget?.__new) {
+        const b = await api.createBranch({ name:bForm.name.trim(), code:bForm.code.trim(), address:bForm.address.trim() });
+        setBranches(prev => [...prev, b].sort((a,b)=>a.name.localeCompare(b.name)));
+      } else {
+        const b = await api.updateBranch(branchEditTarget.id, {
+          name: bForm.name.trim(), code: bForm.code.trim(),
+          address: bForm.address.trim(), active: bForm.active,
+        });
+        setBranches(prev => prev.map(x => x.id === b.id ? b : x));
+      }
+      setBranchEditTarget(null);
+    } catch(ex) { setBErr(ex.message || 'Error al guardar sucursal'); }
+    finally { setBSaving(false); }
+  };
+  const openBranchDelete = b => { setBranchDeleteTarget(b); setBranchDeleteErr(''); };
+  const handleBranchDelete = async () => {
+    if (!branchDeleteTarget) return;
+    setBranchDeleting(true); setBranchDeleteErr('');
+    try {
+      await api.deleteBranch(branchDeleteTarget.id);
+      setBranches(prev => prev.filter(x => x.id !== branchDeleteTarget.id));
+      setBranchDeleteTarget(null);
+    } catch(ex) { setBranchDeleteErr(ex.message || 'Error al eliminar sucursal'); }
+    finally { setBranchDeleting(false); }
+  };
+
+  // ── Probador de alias ───────────────────────────────────────────────────────
+  const handleAliasTest = async e => {
+    e.preventDefault();
+    if (!aliasTestText.trim()) return;
+    setAliasTesting(true); setAliasTestResult(null);
+    try {
+      const r = await api.testAlias(aliasTestText.trim());
+      setAliasTestResult(r);
+    } catch(ex) { setAliasTestResult({ error: ex.message || 'Error' }); }
+    finally { setAliasTesting(false); }
   };
 
   const handleReset = async u => {
@@ -356,6 +450,10 @@ export function AdminView() {
                                 Activar
                               </button>
                           }
+                          <button onClick={() => openDelete(u)} title="Eliminar usuario (solo si no tiene historial)"
+                            style={{ padding:'4px 8px',fontSize:11,borderRadius:6,cursor:'pointer',border:'1px solid #E5E7EB',background:'#FFFFFF',color:'#9CA3AF' }}>
+                            <Ic.trash size={12}/>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -369,14 +467,33 @@ export function AdminView() {
 
       {/* ── SUCURSALES ── */}
       <div style={{ ...S.card, marginBottom:14 }}>
-        <h3 style={{ fontSize:12, fontWeight:600, margin:'0 0 10px' }}>Sucursales</h3>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+          <h3 style={{ fontSize:12, fontWeight:600, margin:0 }}>Sucursales</h3>
+          <button onClick={openBranchNew} style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:4 }}>
+            <Ic.plus size={12}/> Nueva sucursal
+          </button>
+        </div>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           {branches.map(b => (
-            <div key={b.id} style={{ background:'#F9FAFB', borderRadius:10, padding:12, minWidth:200, flex:'1 1 200px' }}>
-              <div style={{ fontWeight:700, marginBottom:4 }}>{b.name}</div>
-              <div style={{ fontSize:11, color:'#6B7280' }}>{b.address||b.addr}</div>
-              <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>
-                Código: {b.code} · Vendedores: {users.filter(u => u.branch_id===b.id && u.role===ROLE_KEYS.VEND).length}
+            <div key={b.id} style={{ background:'#F9FAFB', borderRadius:10, padding:12, minWidth:220, flex:'1 1 220px', position:'relative' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8 }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontWeight:700, marginBottom:4 }}>{b.name}</div>
+                  <div style={{ fontSize:11, color:'#6B7280' }}>{b.address||b.addr}</div>
+                  <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>
+                    Código: {b.code} · Vendedores: {users.filter(u => u.branch_id===b.id && u.role===ROLE_KEYS.VEND).length}
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                  <button onClick={() => openBranchEdit(b)} title="Editar sucursal"
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid #E5E7EB', background:'#FFFFFF', color:'#6B7280' }}>
+                    <Ic.edit size={12}/>
+                  </button>
+                  <button onClick={() => openBranchDelete(b)} title="Eliminar sucursal"
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid #E5E7EB', background:'#FFFFFF', color:'#9CA3AF' }}>
+                    <Ic.trash size={12}/>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -407,6 +524,32 @@ export function AdminView() {
       <div style={{ ...S.card }}>
         <h3 style={{ fontSize:13, fontWeight:600, margin:'0 0 4px' }}>Aliases de Modelos</h3>
         <p style={{ fontSize:11, color:'#6B7280', margin:'0 0 12px' }}>Mapea nombres alternativos (como vienen en los leads) al modelo del catálogo. Ej: "R15 V4" → YZF-R15A</p>
+
+        {/* Probador — valida a qué modelo resolvería un texto sin re-importar */}
+        <form onSubmit={handleAliasTest} style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap', background:'#F9FAFB', padding:'10px 12px', borderRadius:8, border:'1px solid #E5E7EB' }}>
+          <input value={aliasTestText} onChange={e=>setAliasTestText(e.target.value)}
+            placeholder='Probar: pega el texto como viene en el lead…' style={{ ...S.inp, flex:1, minWidth:200 }}/>
+          <button type="submit" disabled={aliasTesting||!aliasTestText.trim()}
+            style={{ ...S.btn2, opacity:aliasTesting?0.7:1 }}>Probar alias</button>
+        </form>
+        {aliasTestResult && (
+          <div style={{
+            fontSize:12, padding:'8px 12px', borderRadius:8, marginBottom:12,
+            background: aliasTestResult.matched ? '#F0FDF4' : aliasTestResult.error ? '#FEF2F2' : '#FFFBEB',
+            border: `1px solid ${aliasTestResult.matched ? '#BBF7D0' : aliasTestResult.error ? '#FECACA' : '#FCD34D'}`,
+            color:  aliasTestResult.matched ? '#166534' : aliasTestResult.error ? '#DC2626' : '#92400E',
+          }}>
+            {aliasTestResult.error
+              ? aliasTestResult.error
+              : aliasTestResult.matched
+                ? <>
+                    <strong>Match:</strong> "{aliasTestResult.model.alias}" → {aliasTestResult.model.brand} {aliasTestResult.model.model}
+                    {aliasTestResult.model.commercial_name && aliasTestResult.model.commercial_name !== aliasTestResult.model.model && ` (${aliasTestResult.model.commercial_name})`}
+                    {aliasTestResult.warning && <div style={{ marginTop:4, color:'#92400E' }}>⚠ {aliasTestResult.warning}</div>}
+                  </>
+                : <>Sin alias exacto. {aliasTestResult.note}</>}
+          </div>
+        )}
         <form onSubmit={handleAddAlias} style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
           <input value={aliasForm.alias} onChange={e=>setAliasForm(f=>({...f,alias:e.target.value}))}
             placeholder='Alias del lead (ej: "R15 V4")' style={{ ...S.inp,flex:1,minWidth:160 }}/>
@@ -578,6 +721,86 @@ export function AdminView() {
               style={{ ...S.btn, background:'#DC2626', opacity:(deactivating||deactivateInfo?.loading)?0.7:1 }}
             >
               {deactivating ? 'Desactivando...' : 'Confirmar desactivación'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ══ MODAL — ELIMINAR USUARIO ══ */}
+      {deleteTarget && (
+        <Modal onClose={() => { setDeleteTarget(null); setDeleteErr(''); setDeleteDetail(null); }} title="Eliminar usuario">
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#FEF2F2',borderRadius:9,border:'1px solid #FECACA',marginBottom:14 }}>
+            <div style={{ width:34,height:34,borderRadius:'50%',background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',color:'#DC2626',fontSize:12,fontWeight:700,flexShrink:0 }}>
+              {((deleteTarget.first_name||'?')[0]+(deleteTarget.last_name||'?')[0]).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize:13,fontWeight:700,color:'#DC2626' }}>{deleteTarget.first_name} {deleteTarget.last_name}</div>
+              <div style={{ fontSize:11,color:'#9CA3AF' }}>{deleteTarget.email}</div>
+            </div>
+          </div>
+          <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:8, fontSize:11, color:'#92400E', marginBottom:14 }}>
+            Esta acción <strong>borra al usuario definitivamente</strong>. Solo funciona si el usuario no tiene leads, ventas, recordatorios, inventario ni reasignaciones en su historial. Si tiene historial, el sistema te lo avisa y deberás usar «Desactivar».
+          </div>
+          {deleteDetail && (
+            <div style={{ padding:'10px 12px', background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:8, fontSize:11, color:'#374151', marginBottom:14 }}>
+              <div style={{ fontWeight:600, marginBottom:4 }}>Historial detectado:</div>
+              {Object.entries(deleteDetail).filter(([,v]) => v > 0).map(([k,v]) => (
+                <div key={k} style={{ color:'#6B7280' }}>· {k}: {v}</div>
+              ))}
+            </div>
+          )}
+          <ErrorMsg msg={deleteErr}/>
+          <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
+            <button type="button" onClick={() => { setDeleteTarget(null); setDeleteErr(''); setDeleteDetail(null); }} style={S.btn2}>Cancelar</button>
+            <button type="button" disabled={deleting} onClick={handleDelete}
+              style={{ ...S.btn, background:'#DC2626', opacity:deleting?0.7:1 }}>
+              {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ══ MODAL — SUCURSAL (crear / editar) ══ */}
+      {branchEditTarget && (
+        <Modal onClose={()=>setBranchEditTarget(null)} title={branchEditTarget.__new ? 'Nueva sucursal' : 'Editar sucursal'}>
+          <form onSubmit={handleBranchSave}>
+            <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:12, marginBottom:12 }}>
+              <Field label="Nombre *" value={bForm.name} onChange={v=>setBForm(p=>({...p,name:v}))} ph="Mall Plaza Norte"/>
+              <Field label="Código *" value={bForm.code} onChange={v=>setBForm(p=>({...p,code:v.toUpperCase()}))} ph="MPN"/>
+            </div>
+            <div style={{ marginBottom:12 }}>
+              <Field label="Dirección" value={bForm.address} onChange={v=>setBForm(p=>({...p,address:v}))} ph="Av. ..."/>
+            </div>
+            {!branchEditTarget.__new && (
+              <ActiveToggle value={bForm.active} onChange={v=>setBForm(p=>({...p,active:v}))}/>
+            )}
+            <ErrorMsg msg={bErr}/>
+            <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
+              <button type="button" onClick={()=>setBranchEditTarget(null)} style={S.btn2}>Cancelar</button>
+              <button type="submit" disabled={bSaving} style={{ ...S.btn, opacity:bSaving?0.7:1 }}>
+                {bSaving ? 'Guardando...' : (branchEditTarget.__new ? 'Crear sucursal' : 'Guardar cambios')}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ══ MODAL — ELIMINAR SUCURSAL ══ */}
+      {branchDeleteTarget && (
+        <Modal onClose={()=>{ setBranchDeleteTarget(null); setBranchDeleteErr(''); }} title="Eliminar sucursal">
+          <div style={{ padding:'10px 14px', background:'#FEF2F2', borderRadius:9, border:'1px solid #FECACA', marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#DC2626' }}>{branchDeleteTarget.name}</div>
+            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{branchDeleteTarget.code} · {branchDeleteTarget.address || '—'}</div>
+          </div>
+          <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:8, fontSize:11, color:'#92400E', marginBottom:14 }}>
+            Se eliminará definitivamente. Si la sucursal tiene usuarios, leads o inventario, el sistema bloqueará el borrado — en ese caso edítala y desactívala en su lugar.
+          </div>
+          <ErrorMsg msg={branchDeleteErr}/>
+          <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+            <button type="button" onClick={()=>{ setBranchDeleteTarget(null); setBranchDeleteErr(''); }} style={S.btn2}>Cancelar</button>
+            <button type="button" disabled={branchDeleting} onClick={handleBranchDelete}
+              style={{ ...S.btn, background:'#DC2626', opacity:branchDeleting?0.7:1 }}>
+              {branchDeleting ? 'Eliminando...' : 'Eliminar sucursal'}
             </button>
           </div>
         </Modal>

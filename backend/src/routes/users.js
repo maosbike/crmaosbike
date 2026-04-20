@@ -133,6 +133,54 @@ router.post('/:id/deactivate', roleCheck('super_admin'), async (req, res) => {
   } catch (e) { console.error('Error desactivar usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
+// Hard-delete: solo se permite si el usuario no tiene ninguna huella en el sistema.
+// Si tiene tickets/ventas/reminders/etc., se bloquea y se recomienda desactivar.
+router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
+  try {
+    if (req.params.id === req.user.id) return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+    const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);
+    if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // Contar referencias en las tablas críticas del negocio
+    const refs = await db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM tickets        WHERE seller_id = $1 OR assigned_to = $1)           AS tickets,
+         (SELECT COUNT(*) FROM sales          WHERE seller_id = $1)                                AS sales,
+         (SELECT COUNT(*) FROM reminders      WHERE assigned_to = $1 OR created_by = $1)           AS reminders,
+         (SELECT COUNT(*) FROM inventory      WHERE created_by = $1)                               AS inventory,
+         (SELECT COUNT(*) FROM reassignments  WHERE from_user_id = $1 OR to_user_id = $1)          AS reassignments`,
+      [req.params.id]
+    );
+    const r = refs.rows[0];
+    const total = ['tickets','sales','reminders','inventory','reassignments']
+      .reduce((acc, k) => acc + parseInt(r[k] || 0), 0);
+
+    if (total > 0) {
+      return res.status(409).json({
+        error: 'No se puede eliminar: el usuario tiene historial en el sistema. Desactívalo en su lugar.',
+        detail: {
+          tickets:       parseInt(r.tickets),
+          sales:         parseInt(r.sales),
+          reminders:     parseInt(r.reminders),
+          inventory:     parseInt(r.inventory),
+          reassignments: parseInt(r.reassignments),
+        },
+      });
+    }
+
+    // Limpia refs benignas antes del delete (notifications ya es ON DELETE CASCADE)
+    await db.query('DELETE FROM model_aliases WHERE created_by = $1', [req.params.id]);
+    await db.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+    const u = check.rows[0];
+    res.json({ message: `${u.first_name} ${u.last_name} eliminado` });
+  } catch (e) {
+    if (e.code === '23503') {
+      return res.status(409).json({ error: 'No se puede eliminar: el usuario tiene datos referenciados. Desactívalo.' });
+    }
+    console.error('Error eliminar usuario:', e); res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 router.put('/:id/reset-password', roleCheck('super_admin'), async (req, res) => {
   try {
     const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);

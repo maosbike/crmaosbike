@@ -180,13 +180,15 @@ function expandNum(s) {
 // o null si no hay coincidencia suficiente.
 async function resolveModelWithAliases(modeloRaw, models) {
   if (!modeloRaw) return null;
-  // 1. Chequear tabla de aliases primero (más confiable)
+  // 1. Chequear tabla de aliases primero (más confiable).
+  //    Trim en ambos lados y comparación case-insensitive para tolerar espacios del lead.
+  //    No filtramos por m.active: si el admin mapeó explícitamente un alias, respetamos la decisión.
   try {
     const { rows } = await db.query(
       `SELECT m.* FROM model_aliases a
        JOIN moto_models m ON a.model_id = m.id
-       WHERE a.alias = lower($1) AND m.active = true`,
-      [modeloRaw.trim()]
+       WHERE lower(trim(a.alias)) = lower(trim($1))`,
+      [modeloRaw]
     );
     if (rows[0]) return rows[0];
   } catch (_) {}

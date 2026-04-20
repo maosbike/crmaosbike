@@ -66,7 +66,11 @@ const request = async (method, path, body, _retry = false) => {
   }
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Error');
+  if (!res.ok) {
+    const err = new Error(data.error || 'Error');
+    if (data.detail !== undefined) err.detail = data.detail;
+    throw err;
+  }
   return data;
 };
 
@@ -180,6 +184,12 @@ export const api = {
     request('PUT', `/users/${id}/reset-password`),
   getUserActiveTickets: (id) => request('GET', `/users/${id}/active-tickets`),
   deactivateUser: (id, data) => request('POST', `/users/${id}/deactivate`, data || {}),
+  deleteUser:     (id) => request('DELETE', `/users/${id}`),
+
+  // Branches management
+  createBranch:   (data) => request('POST',   '/catalog/branches', data),
+  updateBranch:   (id, data) => request('PUT', `/catalog/branches/${id}`, data),
+  deleteBranch:   (id) => request('DELETE', `/catalog/branches/${id}`),
 
   // Notificaciones
   getNotifications: (params) => request('GET', `/notifications?${new URLSearchParams(params || {})}`),
@@ -256,6 +266,7 @@ export const api = {
   getAliases:    ()     => request('GET',    '/catalog/aliases'),
   createAlias:   (data) => request('POST',   '/catalog/aliases', data),
   deleteAlias:   (id)   => request('DELETE', `/catalog/aliases/${id}`),
+  testAlias:     (text) => request('POST',   '/catalog/aliases/test', { text }),
 
   // Ventas
   getSales:       (params) => request('GET',   `/sales?${new URLSearchParams(params || {})}`),

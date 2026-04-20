@@ -400,6 +400,70 @@ router.get('/branches', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Error' }); }
 });
 
+router.post('/branches', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { name, code, address } = req.body;
+    if (!name || !code) return res.status(400).json({ error: 'Nombre y código son requeridos' });
+    const { rows } = await db.query(
+      `INSERT INTO branches (name, code, address) VALUES ($1, $2, $3) RETURNING *`,
+      [name.trim(), code.trim().toUpperCase(), address?.trim() || null]
+    );
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(400).json({ error: 'Ya existe una sucursal con ese código' });
+    console.error('Error crear sucursal:', e); res.status(500).json({ error: 'Error' });
+  }
+});
+
+router.put('/branches/:id', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { name, code, address, active } = req.body;
+    const { rows } = await db.query(
+      `UPDATE branches
+         SET name    = COALESCE($1, name),
+             code    = COALESCE($2, code),
+             address = COALESCE($3, address),
+             active  = COALESCE($4, active)
+       WHERE id = $5 RETURNING *`,
+      [name?.trim(), code?.trim().toUpperCase(), address?.trim(), active, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
+    res.json(rows[0]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(400).json({ error: 'Ya existe una sucursal con ese código' });
+    console.error('Error editar sucursal:', e); res.status(500).json({ error: 'Error' });
+  }
+});
+
+router.delete('/branches/:id', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const check = await db.query('SELECT id, name FROM branches WHERE id = $1', [req.params.id]);
+    if (!check.rows[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
+
+    const refs = await db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM users     WHERE branch_id = $1) AS users,
+         (SELECT COUNT(*) FROM tickets   WHERE branch_id = $1) AS tickets,
+         (SELECT COUNT(*) FROM inventory WHERE branch_id = $1) AS inventory`,
+      [req.params.id]
+    );
+    const r = refs.rows[0];
+    const total = parseInt(r.users) + parseInt(r.tickets) + parseInt(r.inventory);
+
+    if (total > 0) {
+      return res.status(409).json({
+        error: 'No se puede eliminar: la sucursal tiene usuarios, leads o inventario. Desactívala.',
+        detail: { users: parseInt(r.users), tickets: parseInt(r.tickets), inventory: parseInt(r.inventory) },
+      });
+    }
+    await db.query('DELETE FROM branches WHERE id = $1', [req.params.id]);
+    res.json({ message: `${check.rows[0].name} eliminada` });
+  } catch (e) {
+    if (e.code === '23503') return res.status(409).json({ error: 'No se puede eliminar: la sucursal tiene datos referenciados. Desactívala.' });
+    console.error('Error eliminar sucursal:', e); res.status(500).json({ error: 'Error' });
+  }
+});
+
 router.post('/branches/:id/photo',
   roleCheck('super_admin', 'admin_comercial'),
   (req, res, next) => uploadImg.single('photo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
@@ -479,6 +543,26 @@ router.delete('/aliases/:id', roleCheck('super_admin', 'admin_comercial'), async
     await db.query('DELETE FROM model_aliases WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'Error' }); }
+});
+
+// Probador: dado un texto (como viene en el lead), dice a qué modelo resolvería el importador.
+router.post('/aliases/test', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'text requerido' });
+    const q = text.trim();
+    const { rows } = await db.query(
+      `SELECT m.id, m.brand, m.model, m.commercial_name, m.active, a.alias
+         FROM model_aliases a JOIN moto_models m ON a.model_id = m.id
+        WHERE lower(trim(a.alias)) = lower(trim($1))
+        LIMIT 1`,
+      [q]
+    );
+    if (rows[0]) {
+      return res.json({ matched: true, via: 'alias', model: rows[0], warning: rows[0].active ? null : 'El modelo del catálogo está INACTIVO — el alias no se aplicará en importación.' });
+    }
+    res.json({ matched: false, via: null, model: null, note: 'No hay alias exacto. El importador intentará fuzzy-matching contra el catálogo.' });
+  } catch (e) { console.error('Error test alias:', e); res.status(500).json({ error: 'Error' }); }
 });
 
 // Renombrar categoría en todos los modelos
