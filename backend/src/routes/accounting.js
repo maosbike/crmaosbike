@@ -160,32 +160,38 @@ function extractEmitida(text, fileName = '') {
   else if (chassis || motor_num || brand) category = 'motos';
   else category = 'otros';
 
+  // Truncación defensiva al largo de cada columna. pdf-parse escupe el texto
+  // desordenado en layouts de 2 columnas y los regex perezosos a veces
+  // capturan cientos de caracteres. Preferimos truncar silenciosamente
+  // a reventar el INSERT con "value too long".
+  const clip = (s, n) => (s == null ? null : String(s).slice(0, n));
+
   return {
     source: 'emitida',
     doc_type,
     category,
-    folio,
-    rut_emisor,
-    emisor_nombre,
-    rut_cliente,
-    cliente_nombre,
-    cliente_direccion,
-    cliente_comuna,
-    cliente_giro,
+    folio:             clip(folio, 50),
+    rut_emisor:        clip(rut_emisor, 20),
+    emisor_nombre:     clip(emisor_nombre, 250),
+    rut_cliente:       clip(rut_cliente, 20),
+    cliente_nombre:    clip(cliente_nombre, 250),
+    cliente_direccion: cliente_direccion,             // TEXT
+    cliente_comuna:    clip(cliente_comuna, 100),
+    cliente_giro:      clip(cliente_giro, 250),
     fecha_emision,
     monto_neto: neto,
     iva,
     monto_exento: exento,
     total,
-    brand,
-    model,
-    color,
+    brand:           clip(brand, 100),
+    model:           clip(model, 200),
+    color:           clip(color, 100),
     commercial_year: year,
-    motor_num,
-    chassis,
-    descripcion,
-    ref_folio,
-    ref_rut_emisor: ref_folio ? rut_emisor : null,
+    motor_num:       clip(motor_num, 100),
+    chassis:         clip(chassis, 100),
+    descripcion,                                       // TEXT
+    ref_folio:       clip(ref_folio, 50),
+    ref_rut_emisor:  clip(ref_folio ? rut_emisor : null, 20),
     ref_fecha,
   };
 }
