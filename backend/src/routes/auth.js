@@ -24,23 +24,63 @@ const REFRESH_COOKIE_OPTS = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días en ms
 };
 
+// Bloqueo por usuario: tras N fallos seguidos, la cuenta queda bloqueada por X minutos
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
 router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const identifier = (email || '').trim();
   if (!identifier || !password) return res.status(400).json({ error: 'Usuario/email y contraseña requeridos' });
 
+  // Lookup case-insensitive tanto en username como en email
   const { rows } = await db.query(
     `SELECT u.*, b.name as branch_name, b.code as branch_code
      FROM users u LEFT JOIN branches b ON u.branch_id = b.id
-     WHERE u.username = $1 OR LOWER(u.email) = LOWER($1)
+     WHERE LOWER(u.username) = LOWER($1) OR LOWER(u.email) = LOWER($1)
      LIMIT 1`,
     [identifier]
   );
   const user = rows[0];
   if (!user || !user.active) return res.status(401).json({ error: 'Credenciales inválidas' });
 
+  // Cuenta bloqueada temporalmente por intentos fallidos consecutivos
+  if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    const mins = Math.max(1, Math.ceil((new Date(user.locked_until) - new Date()) / 60000));
+    return res.status(429).json({
+      error: `Cuenta bloqueada por demasiados intentos fallidos. Reintenta en ${mins} ${mins === 1 ? 'minuto' : 'minutos'}.`,
+    });
+  }
+
   const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return res.status(401).json({ error: 'Credenciales inválidas' });
+  if (!valid) {
+    // Incrementa contador; si alcanza el umbral, bloquea y resetea
+    const nextAttempts = (user.failed_login_attempts || 0) + 1;
+    if (nextAttempts >= MAX_FAILED_ATTEMPTS) {
+      await db.query(
+        `UPDATE users SET failed_login_attempts = 0,
+                         locked_until = NOW() + INTERVAL '${LOCKOUT_MINUTES} minutes'
+         WHERE id = $1`,
+        [user.id]
+      );
+      return res.status(429).json({
+        error: `Cuenta bloqueada por ${LOCKOUT_MINUTES} minutos tras ${MAX_FAILED_ATTEMPTS} intentos fallidos.`,
+      });
+    }
+    await db.query(
+      'UPDATE users SET failed_login_attempts = $1 WHERE id = $2',
+      [nextAttempts, user.id]
+    );
+    return res.status(401).json({ error: 'Credenciales inválidas' });
+  }
+
+  // Login exitoso — limpia contador y lockout
+  if (user.failed_login_attempts > 0 || user.locked_until) {
+    await db.query(
+      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1',
+      [user.id]
+    );
+  }
 
   // Access token corto (15min) — se renueva silenciosamente vía refresh cookie
   const token = jwt.sign(
