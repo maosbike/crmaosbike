@@ -118,10 +118,12 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
     api.getModels({ brand: form.brand }).then(mods => {
       const list = Array.isArray(mods) ? mods : [];
       setEditCatMods(list);
-      const m = list.find(x => x.model?.toUpperCase() === (form.model || '').toUpperCase());
-      setEditSelMod(m || null);
+      // Precarga: preferimos model_id existente; si no, buscamos por nombre
+      const byId   = sale.model_id ? list.find(x => String(x.id) === String(sale.model_id)) : null;
+      const byName = list.find(x => x.model?.toUpperCase() === (form.model || '').toUpperCase());
+      setEditSelMod(byId || byName || null);
     }).catch(() => {});
-  }, [editing, form.brand]);
+  }, [editing, form.brand, sale.model_id]);
 
   const editColors = Array.isArray(editSelMod?.colors) ? editSelMod.colors : [];
 
@@ -168,14 +170,19 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
             sold_at:    form.sold_at    || null,
             brand:      form.brand      || null,
             model:      form.model      || null,
+            model_id:   editSelMod?.id  || null,
             year:       form.year ? parseInt(form.year) : null,
             color:      form.color      || null,
             chassis:    form.chassis    || null,
           } : {}),
         });
       } else {
-        // Nota comercial (reserva o venta) → PATCH /sales/:id
-        await api.updateSale(sale.id, { ...form, is_note_only: !!sale.is_note_only });
+        // Nota comercial (reserva o venta) o venta real → PATCH /sales/:id
+        await api.updateSale(sale.id, {
+          ...form,
+          model_id:     editSelMod?.id || null,
+          is_note_only: !!sale.is_note_only,
+        });
       }
       onUpdated();
       setEditing(false);

@@ -185,7 +185,7 @@ router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
 // Update inventory unit (edición completa para admin; vendedor acotado a reserva)
 router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
-    let { branch_id, status, color, color_hex, price, notes, brand, model, year, chassis, motor_num,
+    let { branch_id, status, color, color_hex, price, notes, brand, model, model_id, year, chassis, motor_num,
           sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method } = req.body;
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
@@ -233,6 +233,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     if (notes      !== undefined) { sets.push(`notes = $${idx++}`);      params.push(notes); }
     if (brand      !== undefined) { sets.push(`brand = $${idx++}`);      params.push(normalizeModel(brand)); }
     if (model      !== undefined) { sets.push(`model = $${idx++}`);      params.push(normalizeModel(model)); }
+    if (model_id   !== undefined) { sets.push(`model_id = $${idx++}`);   params.push(model_id || null); }
     if (year       !== undefined) { sets.push(`year = $${idx++}`);       params.push(parseInt(year) || null); }
     if (chassis    !== undefined && chassis !== '') {
       sets.push(`chassis = $${idx++}`);
