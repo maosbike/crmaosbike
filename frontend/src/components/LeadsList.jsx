@@ -173,6 +173,32 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
       {/* ── KPI tabs por estado ── */}
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,paddingBottom:2,overflowX:'auto',scrollbarWidth:'none'}}>
+        {(() => {
+          const totalCnt = effectiveLeads.filter(l=>!hasRole(user, ROLES.VEND)||l.seller_id===user.id).length;
+          const active = !stF;
+          return (
+            <button onClick={()=>setStF('')} style={{
+              padding:'5px 12px',borderRadius:99,
+              border:active?'1.5px solid #111827':'1.5px solid transparent',
+              background:active?'#111827':'#F3F4F6',
+              color:active?'#FFFFFF':'#6B7280',
+              fontSize:12,fontWeight:active?700:500,
+              cursor:'pointer',flexShrink:0,
+              display:'inline-flex',alignItems:'center',gap:5,
+              fontFamily:'inherit',transition:'all 0.12s',
+            }}>
+              Todos
+              <span style={{
+                fontSize:10,fontWeight:700,
+                background:active?'rgba(255,255,255,0.2)':'#E5E7EB',
+                color:active?'#FFFFFF':'#9CA3AF',
+                padding:'1px 5px',borderRadius:99,
+              }}>
+                {totalCnt}
+              </span>
+            </button>
+          );
+        })()}
         {Object.entries(TICKET_STATUS).filter(([k])=>hasRole(user,ROLES.VEND)?!['ganado','perdido'].includes(k):true).map(([k,v])=>{
           const cnt=effectiveLeads.filter(l=>l.status===k&&(!hasRole(user, ROLES.VEND)||l.seller_id===user.id)).length;
           const active=stF===k;
