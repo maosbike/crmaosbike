@@ -38,6 +38,7 @@ export default function App(){
   const[overdueResolved,setOverdueResolved]=useState(new Set());
   // Prefill de cliente cuando se navega a "ventas" desde un lead
   const[saleClient,setSaleClient]=useState(null);
+  const[saleNoteType,setSaleNoteType]=useState(null); // 'venta' | 'reserva' — abre el modal de inmediato
 
   // Intento de restore silencioso al cargar — usa la cookie httpOnly si existe
   useEffect(()=>{
@@ -114,8 +115,13 @@ export default function App(){
         setLeads(p=>p.map(l=>l.id===lid?full:l));
       }).catch(()=>{});
     }
-    if(opts&&opts.saleClient)setSaleClient(opts.saleClient);
-    else if(pg!=="sales")setSaleClient(null);
+    if(opts&&opts.saleClient){
+      setSaleClient(opts.saleClient);
+      setSaleNoteType(opts.openNoteType||null);
+    }else if(pg!=="sales"){
+      setSaleClient(null);
+      setSaleNoteType(null);
+    }
     setPage(pg);
   };
 
@@ -267,7 +273,7 @@ export default function App(){
           {page==="pipeline"&&<PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/>}
           {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
           {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/>}
-          {page==="sales"&&<SalesView user={user} realBranches={realBranches} prefillClient={saleClient} onPrefillConsumed={()=>setSaleClient(null)}/>}
+          {page==="sales"&&<SalesView user={user} realBranches={realBranches} prefillClient={saleClient} prefillNoteType={saleNoteType} onPrefillConsumed={()=>{setSaleClient(null);setSaleNoteType(null);}}/>}
           {page==="supplier-payments"&&<SupplierPaymentsView user={user}/>}
           {page==="catalog"&&<CatalogView user={user}/>}
           {page==="reports"&&<ReportsView branches={realBranches}/>}
