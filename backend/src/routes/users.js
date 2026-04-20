@@ -141,30 +141,32 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
     const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    // Contar referencias en las tablas críticas del negocio
+    // Contar referencias en las tablas reales del negocio.
+    // Nombres de tabla/columna verificados en migraciones:
+    //   tickets.seller_id / tickets.assigned_to
+    //   inventory.sold_by / inventory.created_by  (no hay tabla "sales": ventas viven en inventory + sales_notes)
+    //   sales_notes.sold_by / sales_notes.created_by
+    //   reminders.assigned_to / reminders.created_by
+    //   reassignment_log.from_user_id / to_user_id / reassigned_by
     const refs = await db.query(
       `SELECT
-         (SELECT COUNT(*) FROM tickets        WHERE seller_id = $1 OR assigned_to = $1)           AS tickets,
-         (SELECT COUNT(*) FROM sales          WHERE seller_id = $1)                                AS sales,
-         (SELECT COUNT(*) FROM reminders      WHERE assigned_to = $1 OR created_by = $1)           AS reminders,
-         (SELECT COUNT(*) FROM inventory      WHERE created_by = $1)                               AS inventory,
-         (SELECT COUNT(*) FROM reassignments  WHERE from_user_id = $1 OR to_user_id = $1)          AS reassignments`,
+         (SELECT COUNT(*) FROM tickets         WHERE seller_id = $1 OR assigned_to = $1)                            AS tickets,
+         (SELECT COUNT(*) FROM inventory       WHERE sold_by   = $1 OR created_by = $1)                             AS inventory,
+         (SELECT COUNT(*) FROM sales_notes     WHERE sold_by   = $1 OR created_by = $1)                             AS sales_notes,
+         (SELECT COUNT(*) FROM reminders       WHERE assigned_to = $1 OR created_by = $1)                           AS reminders,
+         (SELECT COUNT(*) FROM reassignment_log WHERE from_user_id = $1 OR to_user_id = $1 OR reassigned_by = $1)   AS reassignments`,
       [req.params.id]
     );
     const r = refs.rows[0];
-    const total = ['tickets','sales','reminders','inventory','reassignments']
-      .reduce((acc, k) => acc + parseInt(r[k] || 0), 0);
+    const keys = ['tickets','inventory','sales_notes','reminders','reassignments'];
+    const total = keys.reduce((acc, k) => acc + parseInt(r[k] || 0), 0);
 
     if (total > 0) {
+      const detail = {};
+      keys.forEach(k => { if (parseInt(r[k]) > 0) detail[k] = parseInt(r[k]); });
       return res.status(409).json({
         error: 'No se puede eliminar: el usuario tiene historial en el sistema. Desactívalo en su lugar.',
-        detail: {
-          tickets:       parseInt(r.tickets),
-          sales:         parseInt(r.sales),
-          reminders:     parseInt(r.reminders),
-          inventory:     parseInt(r.inventory),
-          reassignments: parseInt(r.reassignments),
-        },
+        detail,
       });
     }
 
@@ -177,7 +179,8 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
     if (e.code === '23503') {
       return res.status(409).json({ error: 'No se puede eliminar: el usuario tiene datos referenciados. Desactívalo.' });
     }
-    console.error('Error eliminar usuario:', e); res.status(500).json({ error: 'Error del servidor' });
+    console.error('Error eliminar usuario:', e);
+    res.status(500).json({ error: `Error del servidor: ${e.message || 'desconocido'}` });
   }
 });
 
