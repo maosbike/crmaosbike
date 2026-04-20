@@ -11,6 +11,26 @@ const stripFor = (k) => {
   return v ? { color: v.c, light: v.bg || '#F9FAFB' } : { color: '#6B7280', light: '#F9FAFB' };
 };
 
+// Paleta determinista — cada seller/sucursal siempre tiene el mismo color
+// aunque se reordene la lista. Se asigna por hash del id/nombre.
+const ID_PALETTE = [
+  { c:'#6366F1', bg:'#EEF2FF' }, // indigo
+  { c:'#10B981', bg:'#ECFDF5' }, // emerald
+  { c:'#F97316', bg:'#FFF7ED' }, // orange
+  { c:'#EC4899', bg:'#FDF2F8' }, // pink
+  { c:'#8B5CF6', bg:'#F5F3FF' }, // violet
+  { c:'#06B6D4', bg:'#ECFEFF' }, // cyan
+  { c:'#EAB308', bg:'#FEFCE8' }, // yellow
+  { c:'#14B8A6', bg:'#F0FDFA' }, // teal
+];
+const hashStr = (s) => {
+  const str = String(s ?? '');
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+const colorFor = (key) => ID_PALETTE[hashStr(key) % ID_PALETTE.length];
+
 // selectCtrl y filterLabel importados desde ui.jsx (centralizados)
 const divider=<div style={{width:1,height:28,background:'#E5E7EB',flexShrink:0}}/>;
 
@@ -233,12 +253,17 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           {allSellers.map(s=>{
             const active=effectiveLeads.filter(l=>l.seller_id===s.id&&!['ganado','perdido'].includes(l.status)).length;
             const isSel=selF===s.id;
+            const col=colorFor(s.id);
             return(
               <button key={s.id} onClick={()=>setSelF(isSel?'':s.id)}
-                style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,border:isSel?'2px solid #3B82F6':'1px solid #E5E7EB',background:isSel?'#EFF6FF':'#FFFFFF',cursor:'pointer',fontFamily:'inherit',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',transition:'all 0.12s'}}>
-                <span style={{fontSize:22,fontWeight:900,color:isSel?'#3B82F6':'#111827',lineHeight:1}}>{active}</span>
+                style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,
+                  border:isSel?`2px solid ${col.c}`:'1px solid #E5E7EB',
+                  background:isSel?col.bg:'#FFFFFF',
+                  borderLeft:`4px solid ${col.c}`,
+                  cursor:'pointer',fontFamily:'inherit',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',transition:'all 0.12s'}}>
+                <span style={{fontSize:22,fontWeight:900,color:col.c,lineHeight:1}}>{active}</span>
                 <div style={{textAlign:'left'}}>
-                  <div style={{fontSize:11,fontWeight:700,color:isSel?'#3B82F6':'#374151'}}>{s.first_name} {s.last_name}</div>
+                  <div style={{fontSize:11,fontWeight:700,color:isSel?col.c:'#374151'}}>{s.first_name} {s.last_name}</div>
                   <div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>leads activos</div>
                 </div>
               </button>
@@ -463,12 +488,18 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                         <Ic.user size={11} color="#6B7280"/>{x.seller_fn} {x.seller_ln||''}
                       </span>
                     )}
-                    {brName&&(
-                      <span style={{fontSize:11,color:'#6B7280',fontWeight:500,
-                        background:'#F9FAFB',padding:'3px 9px',borderRadius:99,border:'1px solid #F3F4F6'}}>
-                        {brName}
-                      </span>
-                    )}
+                    {brName&&(() => {
+                      const bc = colorFor(x.branch_id || brName);
+                      return (
+                        <span style={{fontSize:11,color:bc.c,fontWeight:700,
+                          background:bc.bg,padding:'3px 9px',borderRadius:99,
+                          border:`1px solid ${bc.c}30`,
+                          display:'inline-flex',alignItems:'center',gap:5}}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:bc.c,flexShrink:0}}/>
+                          {brName}
+                        </span>
+                      );
+                    })()}
                     {x.source&&(
                       <span style={{fontSize:11,color:'#6B7280',fontWeight:500,
                         background:'#F9FAFB',padding:'3px 9px',borderRadius:99,border:'1px solid #F3F4F6'}}>
