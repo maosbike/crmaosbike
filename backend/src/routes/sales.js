@@ -422,13 +422,26 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
       ? [...UPDATABLE_BASE, 'status', 'sold_at', 'brand', 'model', 'year', 'color', 'chassis', 'motor_num']
       : UPDATABLE_BASE;
 
+    // Columnas numéricas — el form manda '' cuando está vacío, Postgres falla en INTEGER
+    const INT_FIELDS = new Set(['sale_price', 'cost_price', 'invoice_amount', 'year']);
+    const coerce = (field, v) => {
+      if (INT_FIELDS.has(field)) {
+        if (v === '' || v === null || v === undefined) return null;
+        const n = parseInt(v, 10);
+        return isNaN(n) ? null : n;
+      }
+      // UUIDs que pueden venir como '' desde selects
+      if ((field === 'sold_by' || field === 'branch_id') && v === '') return null;
+      return v;
+    };
+
     const sets = [], params = [];
     let idx = 1;
 
     for (const field of UPDATABLE) {
       if (req.body[field] !== undefined) {
         sets.push(`${field} = $${idx++}`);
-        params.push(req.body[field]);
+        params.push(coerce(field, req.body[field]));
       }
     }
 
@@ -449,7 +462,7 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
     res.json({ ...rows[0], is_note_only: isNoteOnly });
   } catch (e) {
     logger.error({err:e},'[Sales] PATCH /:id');
-    res.status(500).json({ error: 'Error al actualizar venta' });
+    res.status(500).json({ error: `Error al actualizar venta: ${e.message || 'desconocido'}` });
   }
 });
 
