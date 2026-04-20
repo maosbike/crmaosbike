@@ -244,6 +244,57 @@ async function resolveLinks(parsed) {
   return { lead_id, inventory_id, sale_note_id, link_status };
 }
 
+// ─── GET /api/accounting/stats ───────────────────────────────────────────────
+// Totales mensuales (facturas emitidas, excluye notas de crédito).
+// Devuelve (a) resumen del mes pedido y (b) breakdown de los últimos 12 meses.
+router.get('/stats', roleCheck(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const { month, source = 'emitida' } = req.query;
+    // month: 'YYYY-MM' (default: mes actual)
+    const ym = /^\d{4}-\d{2}$/.test(month || '')
+      ? month
+      : new Date().toISOString().slice(0, 7);
+
+    const { rows: mes } = await db.query(
+      `SELECT
+         COUNT(*)::int           AS count,
+         COALESCE(SUM(monto_neto),   0)::bigint AS neto,
+         COALESCE(SUM(iva),          0)::bigint AS iva,
+         COALESCE(SUM(monto_exento), 0)::bigint AS exento,
+         COALESCE(SUM(total),        0)::bigint AS total
+       FROM invoices
+       WHERE source=$1
+         AND doc_type='factura'
+         AND anulada_por_id IS NULL
+         AND to_char(fecha_emision, 'YYYY-MM') = $2`,
+      [source, ym]
+    );
+
+    const { rows: serie } = await db.query(
+      `SELECT
+         to_char(fecha_emision, 'YYYY-MM')     AS ym,
+         COUNT(*)::int                          AS count,
+         COALESCE(SUM(monto_neto),   0)::bigint AS neto,
+         COALESCE(SUM(iva),          0)::bigint AS iva,
+         COALESCE(SUM(total),        0)::bigint AS total
+       FROM invoices
+       WHERE source=$1
+         AND doc_type='factura'
+         AND anulada_por_id IS NULL
+         AND fecha_emision IS NOT NULL
+         AND fecha_emision >= (CURRENT_DATE - INTERVAL '12 months')
+       GROUP BY ym
+       ORDER BY ym ASC`,
+      [source]
+    );
+
+    res.json({ month: ym, mes: mes[0], serie });
+  } catch (e) {
+    logger.error({ err: e }, '[Accounting/stats]');
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── GET /api/accounting ─────────────────────────────────────────────────────
 router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
   try {
