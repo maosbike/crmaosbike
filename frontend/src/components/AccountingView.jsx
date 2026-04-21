@@ -255,87 +255,72 @@ function InvoiceCard({ inv, onOpen }) {
         )}
       </div>
 
-      {/* Contenido */}
+      {/* Contenido — jerarquía: folio/fecha → cliente → vehículo → meta */}
       <div style={{
         flex:1, minWidth:0,
         padding:'14px 18px',
-        display:'flex', flexDirection:'column', justifyContent:'space-between',
-        gap:8,
+        display:'flex', flexDirection:'column', justifyContent:'center',
+        gap:6,
       }}>
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-            <div style={{
-              fontSize:16, fontWeight:800,
-              color: isNC ? '#DC2626' : '#4F46E5',
-              letterSpacing:'-0.2px',
-              background: isNC ? '#FEE2E2' : '#EEF2FF',
-              border:`1px solid ${isNC ? '#FCA5A5' : '#C7D2FE'}`,
-              padding:'2px 10px', borderRadius:8,
-            }}>
-              #{folioLbl}
-            </div>
-            <span style={{
-              fontSize:10, fontWeight:700, color:'#6B7280',
-              background:'#F9FAFB', padding:'2px 8px', borderRadius:20, border:'1px solid #E5E7EB',
-            }}>
-              {fd(inv.fecha_emision)}
-            </span>
-            {isNC && inv.ref_folio && (
-              <span style={{ fontSize:10, fontWeight:600, color:'#6B7280' }}>
-                → anula #{inv.ref_folio}
-              </span>
-            )}
-          </div>
+        {/* Línea 1: folio + fecha + ref NC */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <div style={{
-            fontSize:13, fontWeight:700, color:'#111827', marginBottom:6,
+            fontSize:15, fontWeight:800,
+            color: isNC ? '#DC2626' : '#4F46E5',
+            letterSpacing:'-0.2px',
+            background: isNC ? '#FEE2E2' : '#EEF2FF',
+            border:`1px solid ${isNC ? '#FCA5A5' : '#C7D2FE'}`,
+            padding:'1px 10px', borderRadius:6,
+          }}>
+            #{folioLbl}
+          </div>
+          <span style={{ fontSize:11, fontWeight:600, color:'#9CA3AF' }}>
+            {fd(inv.fecha_emision)}
+          </span>
+          {isNC && inv.ref_folio && (
+            <span style={{ fontSize:10, fontWeight:600, color:'#DC2626' }}>
+              anula #{inv.ref_folio}
+            </span>
+          )}
+        </div>
+
+        {/* Línea 2: cliente — es el dato primario del card */}
+        <div style={{
+          fontSize:15, fontWeight:700, color:'#0F172A',
+          letterSpacing:'-0.2px',
+          whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+        }}>
+          {inv.cliente_nombre || <span style={{ color:'#9CA3AF', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
+        </div>
+
+        {/* Línea 3: vehículo como texto limpio con bullets */}
+        {modelo && (
+          <div style={{
+            fontSize:12, fontWeight:600, color:'#374151',
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
           }}>
-            {inv.cliente_nombre || <span style={{ color:'#9CA3AF', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
+            {modelo}
+            {inv.commercial_year && <span style={{ color:'#9CA3AF', fontWeight:500 }}> · {inv.commercial_year}</span>}
+            {inv.color && <span style={{ color:'#9CA3AF', fontWeight:500 }}> · {inv.color}</span>}
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-            {modelo && (
-              <span style={{
-                fontSize:10, fontWeight:700, color:'#4F46E5',
-                background:'#EEF2FF', padding:'2px 8px', borderRadius:20, border:'1px solid #C7D2FE',
-              }}>
-                {modelo}
-              </span>
-            )}
-            {inv.commercial_year && (
-              <span style={{
-                fontSize:10, fontWeight:700, color:'#6B7280',
-                background:'#F9FAFB', padding:'2px 8px', borderRadius:20, border:'1px solid #E5E7EB',
-              }}>
-                {inv.commercial_year}
-              </span>
-            )}
-            {inv.color && (
-              <span style={{
-                fontSize:10, fontWeight:600, color:'#6B7280',
-                background:'#F3F4F6', padding:'2px 8px', borderRadius:20,
-              }}>
-                {inv.color}
-              </span>
-            )}
+        )}
+
+        {/* Línea 4: chasis + RUT como meta secundaria */}
+        {(inv.chassis || inv.rut_cliente) && (
+          <div style={{
+            display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+            fontSize:11, fontWeight:500, color:'#9CA3AF',
+          }}>
             {inv.chassis && (
-              <span style={{
-                fontSize:10, fontWeight:700, color:'#6B7280',
-                background:'#F3F4F6', padding:'2px 8px', borderRadius:20,
-                letterSpacing:'0.03em',
-              }}>
+              <span style={{ letterSpacing:'0.03em', fontWeight:600, color:'#6B7280' }}>
                 {inv.chassis}
               </span>
             )}
             {inv.rut_cliente && (
-              <span style={{
-                fontSize:10, fontWeight:600, color:'#6B7280',
-                background:'#F3F4F6', padding:'2px 8px', borderRadius:20,
-              }}>
-                {rutFmt(inv.rut_cliente)}
-              </span>
+              <span>RUT {rutFmt(inv.rut_cliente)}</span>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Zona derecha: estado + monto + PDF */}
