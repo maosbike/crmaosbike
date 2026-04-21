@@ -73,14 +73,27 @@ function extractEmitida(text, fileName = '') {
     }
   }
 
-  // ── RUT emisor (Maosbike = 76.405.840-2, pero leemos el PDF para ser agnósticos) ──
-  const rutEmisorMatch =
-    t.match(/(?:R\.U\.T\.?|RUT)\s*(?:EMPRESA|EMISOR)?[:\s]+(\d[\d\.]+[-][0-9Kk])/i) ||
-    t.match(/(\d{2,3}\.\d{3}\.\d{3}-[0-9Kk])/);
-  const rut_emisor = rutEmisorMatch?.[1]?.replace(/\./g, '') || null;
+  // ── RUTs (emisor y cliente) ──
+  // Chasquido de realidad: pdf-parse desordena el texto en layouts de 2
+  // columnas, por eso NO confiamos en la etiqueta "RUT:" como anchor.
+  // Extraemos por formato (X.XXX.XXX-D o XXXXXXXX-D) y discriminamos por RUT.
+  const MAOS_RUT = '764058402';
+  const rutRe = /\b(\d{1,2}(?:\.\d{3}){2}-[0-9Kk]|\d{7,8}-[0-9Kk])\b/g;
+  const rawRuts  = [...t.matchAll(rutRe)].map(m => m[1]);
+  const allRuts  = [...new Set(rawRuts.map(r => r.replace(/\./g, '')))];
 
-  // ── Nombre emisor (texto antes del primer "RUT") ──
-  const emisorNombreMatch = t.match(/^(.+?)\s+(?:R\.U\.T\.?|RUT)/i);
+  // Emisor: si aparece el RUT de Maosbike, ese. Si no, el primero que veamos.
+  const normedRuts = allRuts.map(r => ({ raw: r, norm: normalizeRut(r) }));
+  const emisorHit  = normedRuts.find(r => r.norm === MAOS_RUT);
+  const rut_emisor = (emisorHit || normedRuts[0])?.raw || null;
+  const rut_emisorNorm = rut_emisor ? normalizeRut(rut_emisor) : null;
+
+  // Cliente: el primer RUT distinto del emisor.
+  const clienteHit = normedRuts.find(r => r.norm !== rut_emisorNorm);
+  const rut_cliente = clienteHit?.raw || null;
+
+  // ── Nombre emisor (acotado: hasta 120 chars antes del primer RUT) ──
+  const emisorNombreMatch = t.match(/^\s*(.{3,120}?)\s+(?:R\.?U\.?T|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk])/i);
   const emisor_nombre = emisorNombreMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
 
   // ── Fecha ──
@@ -96,28 +109,60 @@ function extractEmitida(text, fileName = '') {
       : `${dateMatch[3]}-${String(dateMatch[2]).padStart(2,'0')}-${String(dateMatch[1]).padStart(2,'0')}`;
   }
 
-  // ── RUT cliente / receptor ──
-  // En facturas chilenas: "RUT:" aparece varias veces — el del receptor suele ser el 2do.
-  const allRuts = [...t.matchAll(/R\.?U\.?T\.?\s*:?\s*(\d[\d\.]{6,11}-[0-9Kk])/gi)].map(m => m[1].replace(/\./g,''));
-  const rut_emisorNorm = rut_emisor ? normalizeRut(rut_emisor) : null;
-  const rut_cliente = allRuts.find(r => normalizeRut(r) !== rut_emisorNorm) || null;
+  // ── Helper: ventana de texto alrededor del RUT cliente ──
+  // Sirve para los casos donde no hay labels "Señor(es):" / "Dirección:" etc.
+  let clienteWindow = '';
+  if (rut_cliente) {
+    // Busca el RUT como aparece en el texto (con o sin puntos).
+    const rutRawFound = rawRuts.find(r => r.replace(/\./g,'') === rut_cliente) || rut_cliente;
+    const idx = t.indexOf(rutRawFound);
+    if (idx >= 0) {
+      // Tomamos 400 chars antes y 400 después — suficiente para capturar el bloque receptor.
+      clienteWindow = t.slice(Math.max(0, idx - 400), idx + 400);
+    }
+  }
 
-  // ── Nombre cliente ──
-  const nombreClienteMatch =
-    t.match(/(?:CLIENTE|RECEPTOR|SE[ÑN]OR(?:ES)?|NOMBRE|RAZ[OÓ]N\s+SOCIAL)\s*:?\s*([A-ZÁÉÍÓÚÑ][^,\n|]{3,80}?)(?:\s+RUT|\s+GIRO|\s+DIRECCI[OÓ]N|\s+DOMICILIO)/i);
-  const cliente_nombre = nombreClienteMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+  // ── Nombre cliente ── (varias estrategias en orden de confianza)
+  const nameStopAhead = '(?=\\s+(?:R\\.?U\\.?T|RUT|GIRO|DIRECCI[OÓ]N|DOMICILIO|COMUNA|CIUDAD|TEL[EÉ]F|FONO|FAX|FECHA|\\d{2}[-\\/])|\\s*[|\\n\\r]|$)';
+  const nameCore      = "[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ'\\.\\s,&\\-]{3,120}?";
+
+  const tryNameRegexes = [
+    // 1) Después de "Señor(es):" / "Sr(a).:" — estándar DTE chileno.
+    new RegExp(`(?:SE[ÑN]OR(?:ES)?|SRA?|RECEPTOR|CLIENTE|RAZ[OÓ]N\\s+SOCIAL|NOMBRE)\\s*[:\\.]?\\s*(${nameCore})${nameStopAhead}`, 'i'),
+    // 2) Justo antes o después del RUT cliente (captura el token alfabético más cercano).
+  ];
+  let cliente_nombre = null;
+  for (const re of tryNameRegexes) {
+    const m = t.match(re) || (clienteWindow && clienteWindow.match(re));
+    if (m) { cliente_nombre = m[1].trim().replace(/\s+/g, ' '); break; }
+  }
+  // 3) Heurística: en la ventana del RUT cliente, agarrar la secuencia MAYÚSCULAS
+  //    más larga que no sea un label conocido.
+  if (!cliente_nombre && clienteWindow) {
+    const candidates = [...clienteWindow.matchAll(/([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s'\.,\-]{6,80})/g)]
+      .map(m => m[1].trim().replace(/\s+/g, ' '))
+      .filter(s => !/^(?:R\.?U\.?T|GIRO|DIRECCI|DOMICILIO|COMUNA|CIUDAD|TEL|FONO|FAX|FECHA|FACTURA|NOTA|ELECTR|EMISI|VENCIMI|CONTADO|SII|SERVICIO|IMPUESTO|CHILE|REGION|METROP)/i.test(s))
+      .sort((a, b) => b.length - a.length);
+    cliente_nombre = candidates[0] || null;
+  }
 
   // ── Dirección cliente ──
-  const dirMatch = t.match(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*:?\s*(.+?)(?=\s+CIUDAD|\s+COMUNA|\s+GIRO|\s+RUT|\s+TEL[EÉ]F|\s+\d{2}[-\/])/i);
-  const cliente_direccion = dirMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+  let cliente_direccion =
+    (t.match(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*(.+?)(?=\s+CIUDAD|\s+COMUNA|\s+GIRO|\s+R\.?U\.?T|\s+TEL[EÉ]F|\s+FONO|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
+    (clienteWindow && clienteWindow.match(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*(.+?)(?=\s+CIUDAD|\s+COMUNA|\s+GIRO|\s+R\.?U\.?T|\s+TEL[EÉ]F|\s+FONO|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
+    null;
 
   // ── Comuna cliente ──
-  const comunaMatch = t.match(/(?:CIUDAD|COMUNA)\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,40}?)(?=\s+(?:GIRO|RUT|FONO|TEL[EÉ]F|FECHA|[A-Z]{3,}))/i);
-  const cliente_comuna = comunaMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+  let cliente_comuna =
+    (t.match(/(?:COMUNA|CIUDAD)\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,40}?)(?=\s+(?:GIRO|R\.?U\.?T|FONO|TEL[EÉ]F|FECHA|DIRECCI|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
+    (clienteWindow && clienteWindow.match(/(?:COMUNA|CIUDAD)\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,40}?)(?=\s+(?:GIRO|R\.?U\.?T|FONO|TEL[EÉ]F|FECHA|DIRECCI|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
+    null;
 
   // ── Giro ──
-  const giroMatch = t.match(/GIRO\s*:?\s*([A-ZÁÉÍÓÚÑ][^|]{3,80}?)(?=\s+(?:DIRECCI[OÓ]N|RUT|CIUDAD|COMUNA|FECHA|[A-Z]{4,}))/i);
-  const cliente_giro = giroMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+  let cliente_giro =
+    (t.match(/GIRO\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][^|\n\r]{3,120}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
+    (clienteWindow && clienteWindow.match(/GIRO\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][^|\n\r]{3,120}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
+    null;
 
   // ── Montos ──
   const neto  = parseAmt(t.match(/(?:NETO|MONTO\s+NETO)\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
@@ -150,9 +195,7 @@ function extractEmitida(text, fileName = '') {
   const descMatch = t.match(/(?:DESCRIPCI[OÓ]N|DETALLE)\s*:?\s*(.{10,200}?)(?=\s+(?:CANTIDAD|PRECIO|VALOR|UNIDAD|TOTAL))/i);
   const descripcion = descMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
 
-  // Emisor Maosracing/Maosbike (RUT 76.405.840-2). Si el emisor es otro,
-  // lo mandamos a la pestaña "Otras" aunque parezca moto.
-  const MAOS_RUT = '764058402';
+  // Emisor Maosracing/Maosbike. Si el emisor es otro, → pestaña "Otras".
   const isMaos = rut_emisor && normalizeRut(rut_emisor) === MAOS_RUT;
 
   let category;
