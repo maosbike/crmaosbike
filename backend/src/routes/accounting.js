@@ -22,6 +22,64 @@ router.use(auth);
 
 const ADMIN_ROLES = ['super_admin', 'admin_comercial'];
 
+// ─── Auto-match model_id al catálogo ─────────────────────────────────────────
+// Mismo patrón que supplier-payments.js: exact match → model_aliases → fuzzy
+// con guard de ambigüedad. Sin este match, invoices.model_id queda NULL y la
+// factura aparece sin foto aunque el modelo exista en el catálogo.
+async function resolveModelId(brand, model) {
+  if (!model) return null;
+  const m = String(model).trim();
+  const b = String(brand || '').trim();
+  const FUZZY_MIN = 4;
+
+  let q = await db.query(
+    `SELECT id FROM moto_models
+     WHERE active=true AND LOWER(brand)=LOWER($1)
+       AND (LOWER(model)=LOWER($2) OR LOWER(code)=LOWER($2) OR LOWER(normalized_model)=LOWER($2))
+     LIMIT 1`,
+    [b, m]
+  );
+  if (q.rows[0]) return q.rows[0].id;
+
+  q = await db.query(
+    `SELECT ma.model_id FROM model_aliases ma
+     JOIN moto_models mm ON mm.id=ma.model_id
+     WHERE mm.active=true AND LOWER(ma.alias)=LOWER($1)
+     LIMIT 1`,
+    [m]
+  );
+  if (q.rows[0]) return q.rows[0].model_id;
+
+  if (b && m.length >= FUZZY_MIN) {
+    const fz = await db.query(
+      `SELECT id FROM moto_models
+       WHERE active=true AND LOWER(brand)=LOWER($1)
+         AND (LOWER(model) LIKE LOWER($2)||'%' OR LOWER($2) LIKE LOWER(model)||'%')
+       LIMIT 2`,
+      [b, m]
+    );
+    if (fz.rows.length === 1) return fz.rows[0].id;
+  }
+
+  // Normalización canónica (sin espacios/guiones/puntos) como último recurso —
+  // match inequívoco ("YZF-R3" == "YZFR3" == "yzf r3").
+  if (b && m.length >= FUZZY_MIN) {
+    const canon = await db.query(
+      `SELECT id FROM moto_models
+       WHERE active=true
+         AND UPPER(REGEXP_REPLACE(brand, '[\\s\\-\\.]', '', 'g'))
+           = UPPER(REGEXP_REPLACE($1,    '[\\s\\-\\.]', '', 'g'))
+         AND UPPER(REGEXP_REPLACE(model, '[\\s\\-\\.]', '', 'g'))
+           = UPPER(REGEXP_REPLACE($2,    '[\\s\\-\\.]', '', 'g'))
+       LIMIT 2`,
+      [b, m]
+    );
+    if (canon.rows.length === 1) return canon.rows[0].id;
+  }
+
+  return null;
+}
+
 // ─── Parser de factura/nota de crédito emitida Maosbike ──────────────────────
 // Formato DTE tipo 33/34/61 — lo que exporta el SII / software de facturación CL.
 // pdf-parse desordena el texto cuando el layout tiene dos columnas (header
@@ -599,34 +657,16 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
          t.ticket_num, t.first_name, t.last_name,
          inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
          sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
-         COALESCE(mm_inv.image_url, mm_sn.image_url, mm_text.image_url) AS model_image_url,
-         COALESCE(mm_inv.gallery,   mm_sn.gallery,   mm_text.gallery)   AS model_gallery,
-         COALESCE(mm_inv.id,        mm_sn.id,        mm_text.id)        AS model_id_resolved
+         COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url) AS model_image_url,
+         COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery)   AS model_gallery,
+         COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id)        AS model_id_resolved
        FROM invoices i
        LEFT JOIN tickets     t   ON t.id   = i.lead_id
        LEFT JOIN inventory   inv ON inv.id = i.inventory_id
        LEFT JOIN sales_notes sn  ON sn.id  = i.sale_note_id
+       LEFT JOIN moto_models mm_own ON mm_own.id = i.model_id
        LEFT JOIN moto_models mm_inv ON mm_inv.id = inv.model_id
        LEFT JOIN moto_models mm_sn  ON mm_sn.id  = sn.model_id
-       LEFT JOIN LATERAL (
-         SELECT id, image_url, gallery FROM moto_models m
-          WHERE i.brand IS NOT NULL
-            AND i.model IS NOT NULL
-            AND UPPER(m.brand) = UPPER(i.brand)
-            AND (
-              UPPER(m.model) = UPPER(i.model)
-              OR UPPER(i.model) LIKE UPPER(m.model) || '%'
-              OR UPPER(m.model) LIKE UPPER(i.model) || '%'
-              OR UPPER(regexp_replace(m.model, '[^A-Za-z0-9]', '', 'g'))
-                 = UPPER(regexp_replace(i.model, '[^A-Za-z0-9]', '', 'g'))
-            )
-          ORDER BY
-            (UPPER(m.model) = UPPER(i.model)) DESC,
-            (m.year = i.commercial_year) DESC NULLS LAST,
-            ABS(COALESCE(m.year, 0) - COALESCE(i.commercial_year, m.year, 0)) ASC,
-            m.year DESC
-          LIMIT 1
-       ) mm_text ON true
        ${where}
        ORDER BY i.fecha_emision DESC NULLS LAST, i.created_at DESC
        LIMIT $${idx} OFFSET $${idx+1}`,
@@ -654,34 +694,16 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
          inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
          sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
          sn.sold_at, sn.sale_price,
-         COALESCE(mm_inv.image_url, mm_sn.image_url, mm_text.image_url) AS model_image_url,
-         COALESCE(mm_inv.gallery,   mm_sn.gallery,   mm_text.gallery)   AS model_gallery,
-         COALESCE(mm_inv.id,        mm_sn.id,        mm_text.id)        AS model_id_resolved
+         COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url) AS model_image_url,
+         COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery)   AS model_gallery,
+         COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id)        AS model_id_resolved
        FROM invoices i
        LEFT JOIN tickets     t   ON t.id   = i.lead_id
        LEFT JOIN inventory   inv ON inv.id = i.inventory_id
        LEFT JOIN sales_notes sn  ON sn.id  = i.sale_note_id
+       LEFT JOIN moto_models mm_own ON mm_own.id = i.model_id
        LEFT JOIN moto_models mm_inv ON mm_inv.id = inv.model_id
        LEFT JOIN moto_models mm_sn  ON mm_sn.id  = sn.model_id
-       LEFT JOIN LATERAL (
-         SELECT id, image_url, gallery FROM moto_models m
-          WHERE i.brand IS NOT NULL
-            AND i.model IS NOT NULL
-            AND UPPER(m.brand) = UPPER(i.brand)
-            AND (
-              UPPER(m.model) = UPPER(i.model)
-              OR UPPER(i.model) LIKE UPPER(m.model) || '%'
-              OR UPPER(m.model) LIKE UPPER(i.model) || '%'
-              OR UPPER(regexp_replace(m.model, '[^A-Za-z0-9]', '', 'g'))
-                 = UPPER(regexp_replace(i.model, '[^A-Za-z0-9]', '', 'g'))
-            )
-          ORDER BY
-            (UPPER(m.model) = UPPER(i.model)) DESC,
-            (m.year = i.commercial_year) DESC NULLS LAST,
-            ABS(COALESCE(m.year, 0) - COALESCE(i.commercial_year, m.year, 0)) ASC,
-            m.year DESC
-          LIMIT 1
-       ) mm_text ON true
        WHERE i.id = $1`,
       [req.params.id]
     );
@@ -913,6 +935,22 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
 
         const links = await resolveLinks(parsed);
 
+        // Resolver model_id: prioridad (1) inventory vinculado, (2) sale_note
+        // vinculada, (3) resolución por brand+model sobre moto_models. Si nada
+        // coincide queda NULL — la factura sale sin foto pero no bloquea.
+        let modelId = null;
+        if (links.inventory_id) {
+          const r = await db.query(`SELECT model_id FROM inventory WHERE id=$1`, [links.inventory_id]);
+          modelId = r.rows[0]?.model_id || null;
+        }
+        if (!modelId && links.sale_note_id) {
+          const r = await db.query(`SELECT model_id FROM sales_notes WHERE id=$1`, [links.sale_note_id]);
+          modelId = r.rows[0]?.model_id || null;
+        }
+        if (!modelId) {
+          modelId = await resolveModelId(parsed.brand, parsed.model);
+        }
+
         let invoiceId;
         if (existing[0]) {
           invoiceId = existing[0].id;
@@ -933,6 +971,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                link_status=$27,
                ref_folio=$28, ref_rut_emisor=$29, ref_fecha=$30,
                notes=COALESCE(notes, $31),
+               model_id=COALESCE($33, model_id),
                updated_at=NOW()
              WHERE id=$32`,
             [
@@ -949,6 +988,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
               parsed.notes,
               invoiceId,
+              modelId,
             ]
           );
           results.updated++;
@@ -963,7 +1003,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                pdf_url, drive_file_id,
                lead_id, inventory_id, sale_note_id, link_status,
                ref_folio, ref_rut_emisor, ref_fecha,
-               notes,
+               notes, model_id,
                created_by
              ) VALUES (
                $1,$2,$3,$4,$5,$6,
@@ -974,8 +1014,8 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                $24,$25,
                $26,$27,$28,$29,
                $30,$31,$32,
-               $33,
-               $34
+               $33,$34,
+               $35
              ) RETURNING id`,
             [
               parsed.source, parsed.doc_type, parsed.category,
@@ -988,7 +1028,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               pdf_url, file.id,
               links.lead_id, links.inventory_id, links.sale_note_id, links.link_status,
               parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
-              parsed.notes,
+              parsed.notes, modelId,
               req.user.id,
             ]
           );
