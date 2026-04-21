@@ -739,6 +739,14 @@ function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
 // Tarjeta de modelo (reutilizable)
 function ModelCard({m,onClick}){
   const colors=Array.isArray(m.colors)?m.colors:(m.colors?JSON.parse(m.colors):[]);
+  // color_photos guarda hex personalizado por color (editable en el detalle).
+  // Si existe, tiene prioridad sobre colorNameToCss — así los colores propios
+  // del modelo ("Goan Black", "Stellar", etc.) dejan de aparecer todos en gris.
+  const colorPhotos=Array.isArray(m.color_photos)?m.color_photos:(m.color_photos?JSON.parse(m.color_photos):[]);
+  const swatchCss=(c)=>{
+    const entry=colorPhotos.find(p=>p.color?.toLowerCase().trim()===c.toLowerCase().trim());
+    return entry?.hex||colorNameToCss(c);
+  };
   return(
     <div onClick={onClick}
       style={{...S.card,padding:0,overflow:"hidden",cursor:"pointer",transition:"box-shadow 0.15s"}}
@@ -795,7 +803,7 @@ function ModelCard({m,onClick}){
             {colors.slice(0,6).map(c=>(
               <div key={c} title={c} style={{
                 width:14,height:14,borderRadius:"50%",
-                background:colorNameToCss(c),
+                background:swatchCss(c),
                 border:"1px solid rgba(0,0,0,0.1)",
                 flexShrink:0,
               }}/>
