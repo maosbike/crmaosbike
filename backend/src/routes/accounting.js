@@ -30,16 +30,44 @@ const ADMIN_ROLES = ['super_admin', 'admin_comercial'];
 // verdad del folio (son "7588.pdf", "809.pdf", etc).
 // fileName: opcional; si se pasa, tiene prioridad sobre el texto para el folio.
 function extractEmitida(text, fileName = '') {
+  // Mantenemos DOS vistas del texto:
+  //   · t      → todo en una línea, whitespace colapsado (útil para regex globales)
+  //   · lines  → array de líneas originales (útil para receptor block y tablas)
   const t = text.replace(/\r/g, ' ').replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ');
+  const lines = text
+    .split(/\r?\n/)
+    .map(l => l.replace(/\s{2,}/g, ' ').trim())
+    .filter(Boolean);
+
+  // ── Emisor conocido: Maosbike/Maosracing ──
+  // Usado para (a) identificar cuál RUT es emisor vs cliente,
+  //            (b) RECHAZAR candidatos de cliente que contengan el nombre emisor
+  //                (pdf-parse a veces derrama "MAOSRACING LIMITADA" al campo cliente).
+  const MAOS_RUT = '764058402';
+  const EMISOR_TOKEN_RE = /MAOS\s*(?:RACING|BIKE)|MAOSRACING|MAOSBIKE/i;
+
+  // Algunos strings son ruido garantizado: fragmentos sueltos del emisor
+  // ("CING LIMITADA" ← truncado de "MAOSRACING LIMITADA"), o palabras legales
+  // sueltas ("LIMITADA", "S.A.", etc), o labels que se colaron sin valor.
+  const JUNK_CLIENTE_RE = new RegExp([
+    EMISOR_TOKEN_RE.source,
+    '^(?:LIMITADA|LTDA|S\\.?A\\.?|SPA|EIRL|SOCIEDAD)$',
+    '^(?:[A-Z]{1,5})\\s+LIMITADA$',           // "CING LIMITADA", "ING LIMITADA"…
+    '^(?:RUT|R\\.U\\.T|GIRO|DIRECCI[OÓ]N|DOMICILIO|COMUNA|CIUDAD|TEL[EÉ]F|FONO|FAX|FECHA|VENCIMIENTO|TOTAL|NETO|IVA|CONTADO|CR[EÉ]DITO|FACTURA|NOTA|ELECTR[OÓ]NICA|EMISI[OÓ]N|SII|S\\.?I\\.?I\\.?|CHILE|SANTIAGO|REGION|METROPOLITANA|RECEPTOR|EMISOR|SE[ÑN]OR(?:ES)?|RAZ[OÓ]N\\s+SOCIAL|FORMA\\s+DE\\s+PAGO|ORDEN\\s+COMPRA|VENDEDOR|DETALLE|DESCRIPCI[OÓ]N|CANTIDAD|PRECIO|UNITARIO|SUBTOTAL|DESCUENTO|MONTO|AFECTO|EXENTO)',
+  ].join('|'), 'i');
+
+  const isJunkCliente = (s) => {
+    if (!s) return true;
+    const v = s.trim();
+    if (v.length < 3) return true;
+    return JUNK_CLIENTE_RE.test(v);
+  };
 
   // ── Tipo de documento ──
-  // Si el PDF dice "NOTA DE CREDITO" es una anulación; caso contrario, factura.
   const isNotaCredito = /NOTA\s+DE\s+CR[EÉ]DITO/i.test(t);
   const doc_type = isNotaCredito ? 'nota_credito' : 'factura';
 
   // ── Folio ──
-  // 1° prioridad: nombre de archivo (e.g. "7588.pdf" → 7588). Drive guarda así.
-  // 2° prioridad: regex sobre el texto.
   let folio = null;
   const fnMatch = fileName.match(/(\d{3,9})/);
   if (fnMatch) folio = fnMatch[1];
@@ -52,8 +80,7 @@ function extractEmitida(text, fileName = '') {
       null;
   }
 
-  // ── Referencia (notas de crédito anulan facturas: "Fact.Electronica N° XXXX del YYYY-MM-DD") ──
-  // Ejemplo real: "ANULA DOCUMENTO DE LA REFERENCIA- Fact.Electronica N° 7600 del 2026-04-08"
+  // ── Referencia (nota de crédito anula factura) ──
   let ref_folio = null, ref_fecha = null;
   if (isNotaCredito) {
     const refMatch = t.match(
@@ -73,30 +100,29 @@ function extractEmitida(text, fileName = '') {
     }
   }
 
-  // ── RUTs (emisor y cliente) ──
-  // Chasquido de realidad: pdf-parse desordena el texto en layouts de 2
-  // columnas, por eso NO confiamos en la etiqueta "RUT:" como anchor.
-  // Extraemos por formato (X.XXX.XXX-D o XXXXXXXX-D) y discriminamos por RUT.
-  const MAOS_RUT = '764058402';
+  // ── RUTs (por formato, no por label) ──
   const rutRe = /\b(\d{1,2}(?:\.\d{3}){2}-[0-9Kk]|\d{7,8}-[0-9Kk])\b/g;
-  const rawRuts  = [...t.matchAll(rutRe)].map(m => m[1]);
-  const allRuts  = [...new Set(rawRuts.map(r => r.replace(/\./g, '')))];
+  const rawRuts   = [...t.matchAll(rutRe)].map(m => m[1]);
+  const normedRuts = [...new Set(rawRuts.map(r => r.replace(/\./g, '')))]
+    .map(raw => ({ raw, norm: normalizeRut(raw) }));
 
-  // Emisor: si aparece el RUT de Maosbike, ese. Si no, el primero que veamos.
-  const normedRuts = allRuts.map(r => ({ raw: r, norm: normalizeRut(r) }));
   const emisorHit  = normedRuts.find(r => r.norm === MAOS_RUT);
   const rut_emisor = (emisorHit || normedRuts[0])?.raw || null;
   const rut_emisorNorm = rut_emisor ? normalizeRut(rut_emisor) : null;
 
-  // Cliente: el primer RUT distinto del emisor.
   const clienteHit = normedRuts.find(r => r.norm !== rut_emisorNorm);
   const rut_cliente = clienteHit?.raw || null;
 
-  // ── Nombre emisor (acotado: hasta 120 chars antes del primer RUT) ──
-  const emisorNombreMatch = t.match(/^\s*(.{3,120}?)\s+(?:R\.?U\.?T|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk])/i);
-  const emisor_nombre = emisorNombreMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+  // ── Nombre emisor (fijo para Maosbike; si no, primer token antes del primer RUT) ──
+  let emisor_nombre = null;
+  if (rut_emisorNorm === MAOS_RUT) {
+    emisor_nombre = 'MAOSRACING LIMITADA';
+  } else {
+    const m = t.match(/^\s*(.{3,120}?)\s+(?:R\.?U\.?T|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk])/i);
+    emisor_nombre = m?.[1]?.trim().replace(/\s+/g, ' ') || null;
+  }
 
-  // ── Fecha ──
+  // ── Fecha de emisión ──
   const dateMatch =
     t.match(/FECHA\s+(?:EMISI[OÓ]N|DE\s+EMISI[OÓ]N)\s*:?\s*(\d{1,2})[-\/\s](\d{1,2})[-\/\s](\d{4})/i) ||
     t.match(/(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:del?\s+)?(\d{4})/i) ||
@@ -109,71 +135,102 @@ function extractEmitida(text, fileName = '') {
       : `${dateMatch[3]}-${String(dateMatch[2]).padStart(2,'0')}-${String(dateMatch[1]).padStart(2,'0')}`;
   }
 
-  // ── Helper: ventana de texto alrededor del RUT cliente ──
-  // Sirve para los casos donde no hay labels "Señor(es):" / "Dirección:" etc.
-  let clienteWindow = '';
-  if (rut_cliente) {
-    // Busca el RUT como aparece en el texto (con o sin puntos).
+  // ── Cliente — nombre ──
+  // Orden de estrategias (de mayor a menor confianza). En cada una rechazamos
+  // candidatos que contengan el nombre del emisor u otros labels conocidos.
+  let cliente_nombre = null;
+  const clean = (s) => s?.trim().replace(/\s+/g, ' ').replace(/[|,;:\-–\.\s]+$/, '');
+
+  const tryPush = (cand) => {
+    if (cliente_nombre) return;
+    const c = clean(cand);
+    if (c && !isJunkCliente(c) && c.length >= 3) cliente_nombre = c;
+  };
+
+  // 1) Anclas estándar DTE CL: "SEÑOR(ES):", "RAZON SOCIAL:", "RECEPTOR:", "CLIENTE:", "NOMBRE:"
+  const nameStop = '(?=\\s+(?:R\\.?U\\.?T|RUT\\b|GIRO|DIRECCI[OÓ]N|DOMICILIO|COMUNA|CIUDAD|TEL[EÉ]F|FONO|FAX|FECHA|VENCIMIENTO|FORMA\\s+DE\\s+PAGO|ORDEN\\s+COMPRA|VENDEDOR|CONTACTO|\\d{1,2}\\.\\d{3}\\.\\d{3}-[0-9Kk]|\\d{7,8}-[0-9Kk])|\\s*[|\\n\\r]|$)';
+  // OJO con SEÑOR(ES): — los paréntesis son literales en el PDF real (DTEclick).
+  const anchors = [
+    '(?:SE[ÑN]OR(?:\\(ES\\)|ES)?)',
+    '(?:RAZ[OÓ]N\\s+SOCIAL)',
+    '(?:RECEPTOR)',
+    '(?:CLIENTE)',
+    '(?:NOMBRE)',
+  ];
+  for (const a of anchors) {
+    if (cliente_nombre) break;
+    const re = new RegExp(`${a}\\s*[:\\.]?\\s*([^|\\n\\r]{3,200}?)${nameStop}`, 'i');
+    const m = t.match(re);
+    if (m) tryPush(m[1].replace(/^\(?ES\)?\s*[:\.]?\s*/i, ''));
+  }
+
+  // 2) Línea que contenga el RUT cliente: a menudo el nombre está en la misma
+  //    línea (antes o después), o en la línea inmediatamente previa.
+  if (!cliente_nombre && rut_cliente) {
     const rutRawFound = rawRuts.find(r => r.replace(/\./g,'') === rut_cliente) || rut_cliente;
-    const idx = t.indexOf(rutRawFound);
-    if (idx >= 0) {
-      // Tomamos 400 chars antes y 400 después — suficiente para capturar el bloque receptor.
-      clienteWindow = t.slice(Math.max(0, idx - 400), idx + 400);
+    for (let i = 0; i < lines.length && !cliente_nombre; i++) {
+      if (!lines[i].includes(rutRawFound)) continue;
+      // misma línea: lo que hay antes del RUT y después de un eventual label.
+      const before = lines[i].split(rutRawFound)[0]
+        .replace(/(?:SE[ÑN]OR(?:ES)?|RAZ[OÓ]N\s+SOCIAL|RECEPTOR|CLIENTE|NOMBRE|R\.?U\.?T)\s*[:\.]?\s*/ig, '')
+        .trim();
+      tryPush(before);
+      // línea previa completa
+      if (!cliente_nombre && i > 0) tryPush(lines[i - 1]);
+      // después del RUT en la misma línea (por si el layout invierte orden)
+      if (!cliente_nombre) {
+        const after = lines[i].split(rutRawFound)[1]?.replace(/^[\s:\.\-]+/, '');
+        if (after) tryPush(after.split(/\s{2,}|[|\n]/)[0]);
+      }
     }
   }
 
-  // ── Nombre cliente ── (varias estrategias en orden de confianza)
-  const nameStopAhead = '(?=\\s+(?:R\\.?U\\.?T|RUT|GIRO|DIRECCI[OÓ]N|DOMICILIO|COMUNA|CIUDAD|TEL[EÉ]F|FONO|FAX|FECHA|\\d{2}[-\\/])|\\s*[|\\n\\r]|$)';
-  const nameCore      = "[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ'\\.\\s,&\\-]{3,120}?";
-
-  const tryNameRegexes = [
-    // 1) Después de "Señor(es):" / "Sr(a).:" — estándar DTE chileno.
-    new RegExp(`(?:SE[ÑN]OR(?:ES)?|SRA?|RECEPTOR|CLIENTE|RAZ[OÓ]N\\s+SOCIAL|NOMBRE)\\s*[:\\.]?\\s*(${nameCore})${nameStopAhead}`, 'i'),
-    // 2) Justo antes o después del RUT cliente (captura el token alfabético más cercano).
-  ];
-  let cliente_nombre = null;
-  for (const re of tryNameRegexes) {
-    const m = t.match(re) || (clienteWindow && clienteWindow.match(re));
-    if (m) { cliente_nombre = m[1].trim().replace(/\s+/g, ' '); break; }
-  }
-  // 3) Heurística: en la ventana del RUT cliente, agarrar la secuencia MAYÚSCULAS
-  //    más larga que no sea un label conocido.
-  if (!cliente_nombre && clienteWindow) {
-    const candidates = [...clienteWindow.matchAll(/([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s'\.,\-]{6,80})/g)]
-      .map(m => m[1].trim().replace(/\s+/g, ' '))
-      .filter(s => !/^(?:R\.?U\.?T|GIRO|DIRECCI|DOMICILIO|COMUNA|CIUDAD|TEL|FONO|FAX|FECHA|FACTURA|NOTA|ELECTR|EMISI|VENCIMI|CONTADO|SII|SERVICIO|IMPUESTO|CHILE|REGION|METROP)/i.test(s))
-      .sort((a, b) => b.length - a.length);
-    cliente_nombre = candidates[0] || null;
+  // 3) Ventana alrededor del RUT cliente (±300 chars) — candidatos MAYÚSCULAS
+  //    largos, filtrando ruido.
+  if (!cliente_nombre && rut_cliente) {
+    const rutRawFound = rawRuts.find(r => r.replace(/\./g,'') === rut_cliente) || rut_cliente;
+    const idx = t.indexOf(rutRawFound);
+    if (idx >= 0) {
+      const win = t.slice(Math.max(0, idx - 300), idx + 300);
+      const candidates = [...win.matchAll(/([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s'\.,&\-]{5,80})/g)]
+        .map(m => clean(m[1]))
+        .filter(s => s && !isJunkCliente(s))
+        .sort((a, b) => b.length - a.length);
+      if (candidates[0]) cliente_nombre = candidates[0];
+    }
   }
 
-  // ── Dirección cliente ──
-  let cliente_direccion =
-    (t.match(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*(.+?)(?=\s+CIUDAD|\s+COMUNA|\s+GIRO|\s+R\.?U\.?T|\s+TEL[EÉ]F|\s+FONO|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
-    (clienteWindow && clienteWindow.match(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*(.+?)(?=\s+CIUDAD|\s+COMUNA|\s+GIRO|\s+R\.?U\.?T|\s+TEL[EÉ]F|\s+FONO|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
-    null;
+  // ── Dirección / Comuna / Giro / Ciudad del RECEPTOR ──
+  // Truco: buscamos a partir del RUT cliente (más adelante en el texto),
+  // para no confundir con campos del emisor que aparecen antes.
+  const afterRut = rut_cliente
+    ? t.slice(t.indexOf(rawRuts.find(r => r.replace(/\./g,'') === rut_cliente) || rut_cliente))
+    : t;
 
-  // ── Comuna cliente ──
-  let cliente_comuna =
-    (t.match(/(?:COMUNA|CIUDAD)\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,40}?)(?=\s+(?:GIRO|R\.?U\.?T|FONO|TEL[EÉ]F|FECHA|DIRECCI|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
-    (clienteWindow && clienteWindow.match(/(?:COMUNA|CIUDAD)\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,40}?)(?=\s+(?:GIRO|R\.?U\.?T|FONO|TEL[EÉ]F|FECHA|DIRECCI|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
-    null;
+  const afterLabel = (base, re) => {
+    const m = base.match(re);
+    return m?.[1] ? clean(m[1]) : null;
+  };
+  // Siempre intentamos primero en la ventana posterior al RUT cliente;
+  // si no encuentra, caemos al texto completo.
+  const field = (re) => afterLabel(afterRut, re) || afterLabel(t, re);
 
-  // ── Giro ──
-  let cliente_giro =
-    (t.match(/GIRO\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][^|\n\r]{3,120}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
-    (clienteWindow && clienteWindow.match(/GIRO\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][^|\n\r]{3,120}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim().replace(/\s+/g, ' ')) ||
-    null;
+  let cliente_direccion = field(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*([^|\n\r]{3,200}?)(?=\s+(?:CIUDAD|COMUNA|GIRO|R\.?U\.?T|TEL[EÉ]F|FONO|FAX|FECHA|VENCIMIENTO|FORMA\s+DE\s+PAGO|ORDEN\s+COMPRA|VENDEDOR|CONTACTO|TIPO\s+DE\s+COMPRA|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk]|\d{7,8}-[0-9Kk])|\s*[|\n\r]|$)/i);
+  let cliente_comuna    = field(/\bCOMUNA\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|CIUDAD|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
+  let cliente_ciudad    = field(/\bCIUDAD\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|COMUNA|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
+  let cliente_giro      = field(/\bGIRO\s*[:\.]?\s*([^|\n\r]{3,160}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i);
 
   // ── Montos ──
-  const neto  = parseAmt(t.match(/(?:NETO|MONTO\s+NETO)\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
+  const neto  = parseAmt(t.match(/(?:MONTO\s+)?NETO\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
   const iva   = parseAmt(t.match(/I\.?V\.?A\.?\s*(?:19\s*%?)?\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
-  const exento = parseAmt(t.match(/EXENTO\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
+  const exento = parseAmt(t.match(/(?:MONTO\s+)?EXENTO\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
   const total = parseAmt(
     t.match(/TOTAL\s+A\s+PAGAR\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1] ||
+    t.match(/MONTO\s+TOTAL\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1] ||
     t.match(/TOTAL\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]
   );
 
-  // ── Vehículo ── (en descripción de ítem de factura)
+  // ── Vehículo (chasis, motor, marca, modelo, color, año) ──
   const chassis =
     t.match(/(?:N[°º\.]?\s*DE\s*CHASIS|CHASIS|VIN)\s*:?\s*([A-Z0-9][A-Z0-9\-]{10,19})/i)?.[1]?.trim() || null;
   const motorRaw =
@@ -181,33 +238,56 @@ function extractEmitida(text, fileName = '') {
     t.match(/MOTOR\s*:?\s*([A-Z0-9][A-Z0-9\-\/]{4,20})/i)?.[1]?.trim() || null;
   const motor_num = motorRaw ? motorRaw.replace(/\s+/g, '') : null;
 
-  const brand = t.match(/\bMARCA\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i)?.[1]?.trim() || null;
+  // Marcas reales son multi-palabra ("ROYAL ENFIELD"), así que capturamos
+  // hasta el próximo label del bloque item (MODELO/COLOR/CHASIS/MOTOR/AÑO/PBV…).
+  const itemStop = '(?=\\s+(?:MODELO|COLOR|CHASIS|MOTOR|A[ÑN]O|PBV|COMBUSTIBLE|DESCRIPCI|MARCA|CANTIDAD|PRECIO|VALOR|TOTAL|NETO|EXENTO|IVA)|\\s*[|\\n\\r]|$)';
+  const brand = t.match(new RegExp(`\\bMARCA\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\\s\\-]{1,40}?)${itemStop}`, 'i'))?.[1]?.trim().replace(/\s+/g, ' ') || null;
   const modelCapRaw = (
-    t.match(/COD\.?\s*MODELO\s*:?\s*(.+?)(?=\s+(?:COLOR|MARCA|A[ÑN]O|N[°º]?\s*(?:MOTOR|DE\s*CHASIS)))/i) ||
-    t.match(/MODELO\s*:?\s*(.+?)(?=\s+(?:COLOR|MARCA|A[ÑN]O|CHASIS))/i)
-  )?.[1]?.trim().replace(/\s+/g, '') || null;
+    t.match(new RegExp(`COD\\.?\\s*MODELO\\s*:?\\s*(.+?)${itemStop}`, 'i')) ||
+    t.match(new RegExp(`MODELO\\s*:?\\s*(.+?)${itemStop}`, 'i'))
+  )?.[1]?.trim().replace(/\s+/g, ' ') || null;
   const model = modelCapRaw ? (modelCapRaw.replace(/0-?[A-Z]\d+$/i, '').replace(/-$/, '') || modelCapRaw) : null;
 
-  const color = t.match(/\bCOLOR\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ]+)/i)?.[1]?.trim() || null;
+  const color = t.match(new RegExp(`\\bCOLOR\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\\s\\-]{1,30}?)${itemStop}`, 'i'))?.[1]?.trim().replace(/\s+/g, ' ') || null;
   const year  = parseInt(t.match(/A[ÑN]O\s*(?:COMERCIAL)?\s*:?\s*(\d{4})/i)?.[1]) || null;
 
+  // ── Extras útiles: forma de pago, vendedor, orden de compra, observaciones ──
+  const forma_pago =
+    t.match(/FORMA\s+(?:DE\s+)?PAGO\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,40}?)(?=\s+(?:VENDEDOR|ORDEN|OBSERVAC|CONDICI|FECHA|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim() || null;
+  const vendedor =
+    t.match(/VENDEDOR\s*:?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,60}?)(?=\s+(?:ORDEN|FORMA|OBSERVAC|FECHA|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i)?.[1]?.trim() || null;
+  const orden_compra =
+    t.match(/ORDEN\s+(?:DE\s+)?COMPRA\s*:?\s*([A-Z0-9\-\/]{2,40})/i)?.[1]?.trim() || null;
+
   // ── Descripción del ítem principal ──
-  const descMatch = t.match(/(?:DESCRIPCI[OÓ]N|DETALLE)\s*:?\s*(.{10,200}?)(?=\s+(?:CANTIDAD|PRECIO|VALOR|UNIDAD|TOTAL))/i);
-  const descripcion = descMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+  // No usamos la palabra "DESCRIPCION" como ancla porque en el PDF real es
+  // solo el header de la tabla (y seguido vienen "Cantidad Precio..."). En
+  // vez de eso, armamos la descripción desde los datos del vehículo.
+  const descripcion = [
+    'MOTOCICLETA',
+    brand,
+    model,
+    color && `COLOR ${color}`,
+    year && `AÑO ${year}`,
+  ].filter(Boolean).join(' ') || null;
 
-  // Emisor Maosracing/Maosbike. Si el emisor es otro, → pestaña "Otras".
   const isMaos = rut_emisor && normalizeRut(rut_emisor) === MAOS_RUT;
-
   let category;
   if (!isMaos) category = 'otras';
   else if (chassis || motor_num || brand) category = 'motos';
   else category = 'otros';
 
-  // Truncación defensiva al largo de cada columna. pdf-parse escupe el texto
-  // desordenado en layouts de 2 columnas y los regex perezosos a veces
-  // capturan cientos de caracteres. Preferimos truncar silenciosamente
-  // a reventar el INSERT con "value too long".
+  // Truncación defensiva al largo de columna.
   const clip = (s, n) => (s == null ? null : String(s).slice(0, n));
+
+  // Observaciones: concatenamos extras que valga la pena persistir sin migración.
+  const notesBits = [
+    forma_pago    && `Forma pago: ${forma_pago}`,
+    vendedor      && `Vendedor: ${vendedor}`,
+    orden_compra  && `OC: ${orden_compra}`,
+    cliente_ciudad && `Ciudad: ${cliente_ciudad}`,
+  ].filter(Boolean);
+  const notes = notesBits.length ? notesBits.join(' · ') : null;
 
   return {
     source: 'emitida',
@@ -236,6 +316,7 @@ function extractEmitida(text, fileName = '') {
     ref_folio:       clip(ref_folio, 50),
     ref_rut_emisor:  clip(ref_folio ? rut_emisor : null, 20),
     ref_fecha,
+    notes,                                             // TEXT — extras útiles
   };
 }
 
@@ -655,6 +736,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                pdf_url, drive_file_id,
                lead_id, inventory_id, sale_note_id, link_status,
                ref_folio, ref_rut_emisor, ref_fecha,
+               notes,
                created_by
              ) VALUES (
                $1,$2,$3,$4,$5,$6,
@@ -665,7 +747,8 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                $24,$25,
                $26,$27,$28,$29,
                $30,$31,$32,
-               $33
+               $33,
+               $34
              ) RETURNING id`,
             [
               parsed.source, parsed.doc_type, parsed.category,
@@ -678,6 +761,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               pdf_url, file.id,
               links.lead_id, links.inventory_id, links.sale_note_id, links.link_status,
               parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
+              parsed.notes,
               req.user.id,
             ]
           );
