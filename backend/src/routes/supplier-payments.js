@@ -252,16 +252,36 @@ function extractReceipt(text) {
   const due_date = dueDateMatch ? toISODate(dueDateMatch[1], dueDateMatch[2], dueDateMatch[3]) : null;
 
   // ── Monto pagado ──
-  // Prioridad 1: label explícito "Monto: $ 2.205.800" o "Monto 2.205.800" ($ puede faltar en pdf-parse)
+  // Importante: NO permitir \s dentro del monto — si pdf-parse colapsa filas
+  // de una tabla (ej: "$ 3.561.500 2 390.841 26 de Marzo..."), \s deja que el
+  // regex glotón se coma "3.561.500 2 390.841 26" como si fuera un número →
+  // parseAmt entrega 3561500239084126. Montos chilenos nunca tienen espacio
+  // interno, solo `.` como separador de miles.
+  // Prioridad 1: label explícito "Monto: $ 2.205.800" o "Monto 2.205.800"
   const montoLabelMatch =
-    t.match(/\bMonto\b(?:\s+(?:pagado|a\s+pagar))?\s*:?\s*\$?\s*([\d][\d\.\s,]{3,15})/i);
+    t.match(/\bMonto\b(?:\s+(?:pagado|a\s+pagar))?\s*:?\s*\$?\s*(\d[\d\.]{3,15})(?!\d)/i);
   // Prioridad 2: monto justo después de una fecha (tabla BCI concatenada: "del 2026$ 2.205.800")
-  const tableAmtMatch = t.match(/del?\s+\d{4}\s*\$\s*([\d\.\s,]+)/i);
+  const tableAmtMatch = t.match(/del?\s+\d{4}\s*\$\s*(\d[\d\.]+)(?!\d)/i);
   // Prioridad 3: último $ del documento (el total final suele estar al final, no al principio)
-  const allAmounts = [...t.matchAll(/\$\s*([\d\.\s,]+)/g)].map(m => parseAmt(m[1])).filter(Boolean);
+  const allAmounts = [...t.matchAll(/\$\s*(\d[\d\.]+)(?!\d)/g)].map(m => parseAmt(m[1])).filter(Boolean);
   const total_amount = (montoLabelMatch ? parseAmt(montoLabelMatch[1]) : null)
                     || (tableAmtMatch ? parseAmt(tableAmtMatch[1]) : null)
                     || allAmounts[allAmounts.length - 1] || null;  // último $ en vez del primero
+
+  // ── Detalle de múltiples facturas (comprobante Yamaha / Banco de Chile) ──
+  // El recibo puede pagar VARIAS facturas en una sola transacción; la tabla
+  // "Detalle Facturas Pagadas" tiene una fila por factura:
+  //   "1 390.840 26 de Marzo del 2026 25 de Abril del 2026 $ 3.561.500"
+  //   "2 390.841 26 de Marzo del 2026 25 de Abril del 2026 $ 3.561.500"
+  // Cada factura debe recibir SU monto, no el total del comprobante.
+  const detailLines = [];
+  const rowRe = /(\d{3,7}(?:\.\d{3})*)\s+\d{1,2}\s+de\s+[a-záéíóúñ]+\s+(?:del?\s+)?\d{4}\s+\d{1,2}\s+de\s+[a-záéíóúñ]+\s+(?:del?\s+)?\d{4}\s*\$\s*(\d[\d\.]+)(?!\d)/gi;
+  let rowM;
+  while ((rowM = rowRe.exec(t)) !== null) {
+    const invNum = rowM[1].replace(/\./g, '');
+    const amt    = parseAmt(rowM[2]);
+    if (invNum && amt) detailLines.push({ invoice_number: invNum, amount: amt });
+  }
 
   // ── Pagador/cliente ──
   const payer_name = t.match(/Cliente\s*:?\s*(.+?)(?=\s+Fecha)/i)?.[1]?.trim() || null;
@@ -288,6 +308,7 @@ function extractReceipt(text) {
     invoice_ref:     invRef,
     banco,
     payment_method:  payMethod,
+    detail_lines:    detailLines,
   };
 }
 
@@ -307,6 +328,16 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
         receiptData = extractReceipt(txt);
       }
 
+      // Si el comprobante paga múltiples facturas (detail_lines) y tenemos el
+      // número de factura, tomamos el monto de SU fila del detalle en vez del
+      // total del comprobante.
+      let paidForMerge = receiptData?.total_amount ?? null;
+      if (receiptData?.detail_lines?.length && invoiceData?.invoice_number) {
+        const invCanon = String(invoiceData.invoice_number).replace(/\./g, '');
+        const hit = receiptData.detail_lines.find(d => d.invoice_number === invCanon);
+        if (hit) paidForMerge = hit.amount;
+      }
+
       const merged = {
         ...(invoiceData || {}),
         ...(receiptData ? {
@@ -317,7 +348,7 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
           banco:           receiptData.banco,
           payment_method:  receiptData.payment_method,
           total_amount:    invoiceData?.total_amount || receiptData.total_amount,
-          paid_amount:     receiptData.total_amount,   // monto del comprobante = lo que se pagó
+          paid_amount:     paidForMerge,
           invoice_number:  invoiceData?.invoice_number || receiptData.invoice_ref || null,
         } : {}),
       };
@@ -656,15 +687,27 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           // Descripción del item del DTE → notes. En UPDATE cae al camino
           // COALESCE (no está en ALWAYS) para no pisar ediciones manuales.
           notes:           inv.description,
-          ...(recData ? {
-            receipt_number:  recData.receipt_number,
-            payment_date:    recData.payment_date,
-            payer_name:      recData.payer_name,
-            banco:           recData.banco,
-            payment_method:  recData.payment_method,
-            paid_amount:     recData.total_amount,   // monto del comprobante = lo pagado
-            receipt_url:     recUrl,
-          } : {}),
+          ...(recData ? (() => {
+            // Un comprobante puede pagar varias facturas en la misma operación
+            // (ej. comprobantes Banco de Chile con "Detalle Facturas Pagadas").
+            // En ese caso, asignar a cada factura el monto de SU fila del detalle;
+            // si no hay detalle, el total del comprobante = lo pagado.
+            let paid = recData.total_amount;
+            if (recData.detail_lines?.length) {
+              const invCanon = String(inv.invoice_number).replace(/\./g, '');
+              const hit = recData.detail_lines.find(d => d.invoice_number === invCanon);
+              if (hit) paid = hit.amount;
+            }
+            return {
+              receipt_number:  recData.receipt_number,
+              payment_date:    recData.payment_date,
+              payer_name:      recData.payer_name,
+              banco:           recData.banco,
+              payment_method:  recData.payment_method,
+              paid_amount:     paid,
+              receipt_url:     recUrl,
+            };
+          })() : {}),
         };
 
         if (existing[0]) {
