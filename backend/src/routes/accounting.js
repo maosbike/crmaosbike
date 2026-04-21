@@ -101,9 +101,12 @@ function extractEmitida(text, fileName = '') {
   }
 
   // ── RUTs (por formato, no por label) ──
-  const rutRe = /\b(\d{1,2}(?:\.\d{3}){2}-[0-9Kk]|\d{7,8}-[0-9Kk])\b/g;
-  const rawRuts   = [...t.matchAll(rutRe)].map(m => m[1]);
-  const normedRuts = [...new Set(rawRuts.map(r => r.replace(/\./g, '')))]
+  // pdf-parse inserta un espacio antes del dígito verificador en el layout
+  // real ("76.405.840- 2", "25.579.582- 1") — toleramos espacios en el dash.
+  const rutRe = /\b(\d{1,2}(?:\.\d{3}){2}\s*-\s*[0-9Kk]|\d{7,8}\s*-\s*[0-9Kk])\b/g;
+  const rawRuts    = [...t.matchAll(rutRe)].map(m => m[1]);
+  const cleanRuts  = rawRuts.map(r => r.replace(/\s+/g, ''));
+  const normedRuts = [...new Set(cleanRuts.map(r => r.replace(/\./g, '')))]
     .map(raw => ({ raw, norm: normalizeRut(raw) }));
 
   const emisorHit  = normedRuts.find(r => r.norm === MAOS_RUT);
@@ -167,7 +170,7 @@ function extractEmitida(text, fileName = '') {
   // 2) Línea que contenga el RUT cliente: a menudo el nombre está en la misma
   //    línea (antes o después), o en la línea inmediatamente previa.
   if (!cliente_nombre && rut_cliente) {
-    const rutRawFound = rawRuts.find(r => r.replace(/\./g,'') === rut_cliente) || rut_cliente;
+    const rutRawFound = rawRuts.find(r => r.replace(/[\.\s]/g,'') === rut_cliente) || rut_cliente;
     for (let i = 0; i < lines.length && !cliente_nombre; i++) {
       if (!lines[i].includes(rutRawFound)) continue;
       // misma línea: lo que hay antes del RUT y después de un eventual label.
@@ -188,7 +191,7 @@ function extractEmitida(text, fileName = '') {
   // 3) Ventana alrededor del RUT cliente (±300 chars) — candidatos MAYÚSCULAS
   //    largos, filtrando ruido.
   if (!cliente_nombre && rut_cliente) {
-    const rutRawFound = rawRuts.find(r => r.replace(/\./g,'') === rut_cliente) || rut_cliente;
+    const rutRawFound = rawRuts.find(r => r.replace(/[\.\s]/g,'') === rut_cliente) || rut_cliente;
     const idx = t.indexOf(rutRawFound);
     if (idx >= 0) {
       const win = t.slice(Math.max(0, idx - 300), idx + 300);
@@ -204,7 +207,7 @@ function extractEmitida(text, fileName = '') {
   // Truco: buscamos a partir del RUT cliente (más adelante en el texto),
   // para no confundir con campos del emisor que aparecen antes.
   const afterRut = rut_cliente
-    ? t.slice(t.indexOf(rawRuts.find(r => r.replace(/\./g,'') === rut_cliente) || rut_cliente))
+    ? t.slice(t.indexOf(rawRuts.find(r => r.replace(/[\.\s]/g,'') === rut_cliente) || rut_cliente))
     : t;
 
   const afterLabel = (base, re) => {
