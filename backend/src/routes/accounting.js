@@ -613,9 +613,18 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
           WHERE i.brand IS NOT NULL
             AND i.model IS NOT NULL
             AND UPPER(m.brand) = UPPER(i.brand)
-            AND UPPER(m.model) = UPPER(i.model)
-            AND (i.commercial_year IS NULL OR m.year = i.commercial_year)
-          ORDER BY (m.year = i.commercial_year) DESC NULLS LAST, m.year DESC
+            AND (
+              UPPER(m.model) = UPPER(i.model)
+              OR UPPER(i.model) LIKE UPPER(m.model) || '%'
+              OR UPPER(m.model) LIKE UPPER(i.model) || '%'
+              OR UPPER(regexp_replace(m.model, '[^A-Za-z0-9]', '', 'g'))
+                 = UPPER(regexp_replace(i.model, '[^A-Za-z0-9]', '', 'g'))
+            )
+          ORDER BY
+            (UPPER(m.model) = UPPER(i.model)) DESC,
+            (m.year = i.commercial_year) DESC NULLS LAST,
+            ABS(COALESCE(m.year, 0) - COALESCE(i.commercial_year, m.year, 0)) ASC,
+            m.year DESC
           LIMIT 1
        ) mm_text ON true
        ${where}
@@ -659,9 +668,18 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
           WHERE i.brand IS NOT NULL
             AND i.model IS NOT NULL
             AND UPPER(m.brand) = UPPER(i.brand)
-            AND UPPER(m.model) = UPPER(i.model)
-            AND (i.commercial_year IS NULL OR m.year = i.commercial_year)
-          ORDER BY (m.year = i.commercial_year) DESC NULLS LAST, m.year DESC
+            AND (
+              UPPER(m.model) = UPPER(i.model)
+              OR UPPER(i.model) LIKE UPPER(m.model) || '%'
+              OR UPPER(m.model) LIKE UPPER(i.model) || '%'
+              OR UPPER(regexp_replace(m.model, '[^A-Za-z0-9]', '', 'g'))
+                 = UPPER(regexp_replace(i.model, '[^A-Za-z0-9]', '', 'g'))
+            )
+          ORDER BY
+            (UPPER(m.model) = UPPER(i.model)) DESC,
+            (m.year = i.commercial_year) DESC NULLS LAST,
+            ABS(COALESCE(m.year, 0) - COALESCE(i.commercial_year, m.year, 0)) ASC,
+            m.year DESC
           LIMIT 1
        ) mm_text ON true
        WHERE i.id = $1`,

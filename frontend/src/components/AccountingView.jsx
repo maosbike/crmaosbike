@@ -319,9 +319,9 @@ function InvoiceCard({ inv, onOpen }) {
             )}
             {inv.chassis && (
               <span style={{
-                fontSize:10, fontWeight:600, color:'#6B7280',
+                fontSize:10, fontWeight:700, color:'#6B7280',
                 background:'#F3F4F6', padding:'2px 8px', borderRadius:20,
-                fontFamily:'monospace',
+                letterSpacing:'0.03em',
               }}>
                 {inv.chassis}
               </span>
@@ -375,7 +375,7 @@ function InvoiceCard({ inv, onOpen }) {
               padding:'3px 8px', borderRadius:6,
             }}
           >
-            <Ic.file size={11} color="#F28100" /> Drive
+            <Ic.file size={11} color="#F28100" /> PDF
           </a>
         ) : <span/>}
       </div>
@@ -520,7 +520,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
               padding:'10px 14px', borderRadius:10, alignSelf:'flex-start',
             }}>
-            <Ic.file size={14} color="#fff" /> Ver factura en Drive
+            <Ic.file size={14} color="#fff" /> Ver PDF
           </a>
         )}
 
