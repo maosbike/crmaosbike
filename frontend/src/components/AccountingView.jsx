@@ -194,6 +194,72 @@ function pdfViewerUrl(inv) {
   return inv.pdf_url || null;
 }
 
+/* ── Color-aware image helper ─────────────────────────────────────────────── */
+// Mismo patrón que SupplierPaymentsView.motoImg: si el catálogo tiene
+// color_photos y el color de la factura matchea uno del array, devolvemos la
+// foto específica para ese color. Si no, fallback a la imagen genérica del
+// modelo (model_image_url). Esto arregla casos donde la factura dice "AZUL"
+// pero la foto mostrada era la "NEGRA" genérica.
+function motoImg(inv) {
+  if (inv.model_color_photos && inv.color) {
+    const cp = typeof inv.model_color_photos === 'string'
+      ? (() => { try { return JSON.parse(inv.model_color_photos); } catch { return []; } })()
+      : (inv.model_color_photos || []);
+    if (Array.isArray(cp)) {
+      const want = String(inv.color).toLowerCase().trim();
+      // Exact match primero; si no, por prefijo (por si color en DTE dice
+      // "AZUL PERLA" y el catalogo tiene "AZUL").
+      const match = cp.find(c => c.color && String(c.color).toLowerCase().trim() === want)
+                  || cp.find(c => c.color && want.startsWith(String(c.color).toLowerCase().trim()))
+                  || cp.find(c => c.color && String(c.color).toLowerCase().trim().startsWith(want));
+      if (match?.url) return match.url;
+    }
+  }
+  return inv.model_image_url || null;
+}
+
+/* ── Catalog model/color pickers (copiados de SupplierPaymentsView) ───────── */
+function CatalogModelPicker({ brand, modelId, onSelect }) {
+  const [brands, setBrands] = useState([]);
+  const [models, setModels] = useState([]);
+  const [selBrand, setSelBrand] = useState(brand || '');
+  useEffect(() => {
+    api.getBrands().then(r => setBrands(Array.isArray(r) ? r : r.brands || [])).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!selBrand) { setModels([]); return; }
+    api.getModels({ brand: selBrand }).then(r => setModels(Array.isArray(r) ? r : r.data || [])).catch(() => {});
+  }, [selBrand]);
+  const sel = { height:36, borderRadius:8, border:'1px solid #D1D5DB', background:'#F9FAFB', color:'#374151', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+      <div>
+        <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>Marca</label>
+        <select value={selBrand} onChange={e => { setSelBrand(e.target.value); onSelect(null); }} style={sel}>
+          <option value="">— Seleccionar —</option>
+          {brands.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+      </div>
+      <div>
+        <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>Modelo del catálogo</label>
+        <select value={modelId || ''} onChange={e => { const m = models.find(x => x.id === e.target.value); onSelect(m || null); }} style={sel} disabled={!selBrand}>
+          <option value="">— Seleccionar —</option>
+          {models.map(m => <option key={m.id} value={m.id}>{m.commercial_name || m.model} {m.year ? `(${m.year})` : ''}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function catalogColorsFromRow(modelRow) {
+  if (!modelRow) return [];
+  const parseJson = (v) => typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return []; } })() : (v || []);
+  const out = new Set();
+  (parseJson(modelRow.colors) || []).forEach(c => { const v = typeof c === 'string' ? c : (c?.name || c?.color); if (v) out.add(String(v).trim()); });
+  (parseJson(modelRow.color_photos) || []).forEach(c => { if (c?.color) out.add(String(c.color).trim()); });
+  return Array.from(out);
+}
+
 /* ── InvoiceCard (RowCard estilo SupplierPayments) ────────────────────────── */
 function InvoiceCard({ inv, onOpen }) {
   const [hov, setHov] = useState(false);
@@ -201,7 +267,7 @@ function InvoiceCard({ inv, onOpen }) {
   const isNC     = inv.doc_type === 'nota_credito';
   const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
   const folioLbl = isNC ? `NC ${inv.folio || '—'}` : (inv.folio || '—');
-  const img      = inv.model_image_url || null;
+  const img      = motoImg(inv);
   const pdfUrl   = pdfViewerUrl(inv);
 
   return (
@@ -411,184 +477,294 @@ function DetailRow({ label, value, bold, danger, span }) {
 }
 
 /* ── InvoiceDetail modal ──────────────────────────────────────────────────── */
+// Layout de 2 columnas — aprovecha ancho de 1100px:
+//   Izquierda  (420px): foto grande (color-aware) + identidad + montos.
+//   Derecha   (1fr):    bloques informativos (cliente, vinculaciones, ref NC)
+//                       + editor de vínculo con catálogo (model/color) + notas.
 function InvoiceDetail({ inv, onClose, onUpdated }) {
-  const [saving, setSaving] = useState(false);
-  const [notes, setNotes]   = useState(inv.notes || '');
+  const [saving, setSaving]   = useState(false);
+  const [notes, setNotes]     = useState(inv.notes || '');
+  // Estado del editor manual de catálogo/color. Si el usuario elige un
+  // modelo del catálogo lo guardamos en selModel (el row completo); de ahí
+  // sacamos los colores disponibles. `colorEdit` es el color crudo a persistir.
+  const [modelId, setModelId] = useState(inv.model_id_resolved || null);
+  const [selModel, setSelModel] = useState(null);
+  const [colorEdit, setColorEdit] = useState(inv.color || '');
+  // Cuando cambia el modelo elegido, precargamos la lista de colores y, si
+  // el color actual no está en la lista, lo dejamos como "libre".
+  useEffect(() => {
+    if (!modelId) { setSelModel(null); return; }
+    api.getModels({ brand: inv.brand || '' })
+      .then(r => {
+        const arr = Array.isArray(r) ? r : (r?.data || []);
+        const m = arr.find(x => x.id === modelId);
+        setSelModel(m || null);
+      })
+      .catch(() => {});
+  }, [modelId, inv.brand]);
 
   async function saveNotes() {
     setSaving(true);
     try {
       const r = await api.patchAccounting(inv.id, { notes, link_status: inv.link_status });
       onUpdated(r);
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setSaving(false);
-    }
+    } catch (e) { alert(e.message); }
+    finally { setSaving(false); }
   }
 
-  const st     = invoiceStatus(inv);
-  const isNC   = inv.doc_type === 'nota_credito';
-  const pdfUrl = pdfViewerUrl(inv);
-  const img    = inv.model_image_url || null;
-  const modelo = [inv.brand, inv.model].filter(Boolean).join(' ');
+  async function saveModelColor() {
+    setSaving(true);
+    try {
+      const payload = { model_id: modelId, color: colorEdit || null };
+      if (selModel) {
+        if (selModel.brand) payload.brand = selModel.brand;
+        if (selModel.model) payload.model = selModel.model;
+        if (selModel.year)  payload.commercial_year = selModel.year;
+      }
+      const r = await api.patchAccounting(inv.id, payload);
+      onUpdated(r);
+    } catch (e) { alert(e.message); }
+    finally { setSaving(false); }
+  }
+
+  const st       = invoiceStatus(inv);
+  const isNC     = inv.doc_type === 'nota_credito';
+  const pdfUrl   = pdfViewerUrl(inv);
+  const img      = motoImg(inv);
+  const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
+  const colorOpts = catalogColorsFromRow(selModel);
+
+  const selStyle = { height:36, borderRadius:8, border:'1px solid #D1D5DB', background:'#F9FAFB', color:'#374151', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
 
   return (
-    <Modal onClose={onClose} title={`${isNC ? 'Nota de crédito' : 'Factura'} N° ${inv.folio || '—'}`}>
-      <div style={{ maxWidth: 620, width: '100%', display:'flex', flexDirection:'column', gap:12 }}>
+    <Modal onClose={onClose} maxWidth={1100}
+      title={`${isNC ? 'Nota de crédito' : 'Factura'} N° ${inv.folio || '—'}`}>
+      <div style={{
+        display:'grid',
+        gridTemplateColumns:'420px 1fr',
+        gap:16,
+        width:'100%',
+      }}>
 
-        {/* Hero: foto + folio + cliente + total */}
-        <div style={{
-          display:'flex', alignItems:'stretch', minHeight:140,
-          background:'#FFFFFF', border:'1px solid #E5E7EB',
-          borderLeft:`4px solid ${st.c}`,
-          borderRadius:12, overflow:'hidden',
-          boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
-        }}>
+        {/* ── Columna IZQ: hero vertical ─────────────────────────────────── */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{
-            width:170, flexShrink:0,
-            background: STATUS_BG[st.k] || '#F3F4F6',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            overflow:'hidden',
+            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            borderLeft:`4px solid ${st.c}`,
+            borderRadius:14, overflow:'hidden',
+            boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
           }}>
-            {img
-              ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-              : <Ic.bike size={48} color={STATUS_ICON[st.k] || '#9CA3AF'}/>
-            }
-          </div>
-          <div style={{
-            flex:1, padding:'14px 18px',
-            display:'flex', justifyContent:'space-between', alignItems:'center',
-            gap:14, flexWrap:'wrap', minWidth:0,
-          }}>
-            <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', marginBottom:2 }}>
-                {isNC ? 'Nota de crédito' : 'Factura'}
-              </div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#0F172A', letterSpacing:'-0.5px', marginBottom:4 }}>
-                #{inv.folio || '—'}
-              </div>
-              <div style={{
-                fontSize:13, fontWeight:700, color:'#111827',
-                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:280,
-              }}>
-                {inv.cliente_nombre || <span style={{ color:'#9CA3AF', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
-              </div>
-              {modelo && (
-                <div style={{ fontSize:11, color:'#6B7280', marginTop:2 }}>
-                  {modelo}{inv.commercial_year ? ` · ${inv.commercial_year}` : ''}{inv.color ? ` · ${inv.color}` : ''}
-                </div>
+            {/* Foto grande: ocupa todo el ancho de la columna */}
+            <div style={{
+              width:'100%', aspectRatio:'4/3',
+              background: STATUS_BG[st.k] || '#F3F4F6',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              overflow:'hidden', position:'relative',
+            }}>
+              {img
+                ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                : <Ic.bike size={80} color={STATUS_ICON[st.k] || '#9CA3AF'}/>
+              }
+              {st.k === 'anulada' && (
+                <span style={{
+                  position:'absolute', top:10, left:10,
+                  fontSize:10, fontWeight:800, color:'#991B1B',
+                  background:'rgba(254,226,226,0.95)', borderRadius:4, padding:'3px 9px',
+                  letterSpacing:'0.06em', border:'1px solid #FCA5A5',
+                }}>ANULADA</span>
               )}
             </div>
-            <div style={{ textAlign:'right', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
-              <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
+
+            {/* Identidad + total */}
+            <div style={{ padding:'16px 18px', display:'flex', flexDirection:'column', gap:8 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', marginBottom:2 }}>
+                    {isNC ? 'Nota de crédito' : 'Factura'}
+                  </div>
+                  <div style={{ fontSize:24, fontWeight:800, color:'#0F172A', letterSpacing:'-0.5px', marginBottom:2 }}>
+                    #{inv.folio || '—'}
+                  </div>
+                  <div style={{ fontSize:11, fontWeight:600, color:'#6B7280' }}>
+                    {fd(inv.fecha_emision)}
+                  </div>
+                </div>
+                <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
+              </div>
+
+              {modelo && (
+                <div style={{ fontSize:13, fontWeight:700, color:'#111827', letterSpacing:'-0.2px' }}>
+                  {modelo}
+                  {inv.commercial_year && <span style={{ color:'#6B7280', fontWeight:500 }}> · {inv.commercial_year}</span>}
+                  {inv.color && <span style={{ color:'#6B7280', fontWeight:500 }}> · {inv.color}</span>}
+                </div>
+              )}
+
               <div style={{
-                fontSize:22, fontWeight:800,
-                color: isNC ? '#DC2626' : '#0F172A',
-                letterSpacing:'-0.5px',
+                borderTop:'1px dashed #E5E7EB', paddingTop:10, marginTop:4,
+                display:'flex', justifyContent:'space-between', alignItems:'baseline',
               }}>
-                {isNC ? '−' : ''}{$(inv.total)}
+                <span style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                  Total
+                </span>
+                <span style={{
+                  fontSize:26, fontWeight:800,
+                  color: isNC ? '#DC2626' : '#0F172A',
+                  letterSpacing:'-0.5px',
+                }}>
+                  {isNC ? '−' : ''}{$(inv.total)}
+                </span>
               </div>
-              <div style={{ fontSize:11, fontWeight:600, color:'#6B7280' }}>
-                {fd(inv.fecha_emision)}
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#6B7280' }}>
+                <span>Neto {$(inv.monto_neto)}</span>
+                <span>IVA {$(inv.iva)}</span>
+                {inv.monto_exento > 0 && <span>Exento {$(inv.monto_exento)}</span>}
               </div>
+
+              {pdfUrl && (
+                <a href={pdfUrl} target="_blank" rel="noreferrer"
+                  style={{
+                    fontSize:13, fontWeight:700, color:'#fff', background:'#F28100',
+                    textDecoration:'none',
+                    display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
+                    padding:'10px 14px', borderRadius:10, marginTop:6,
+                  }}>
+                  <Ic.file size={14} color="#fff" /> Ver PDF
+                </a>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Acción PDF */}
-        {pdfUrl && (
-          <a href={pdfUrl} target="_blank" rel="noreferrer"
-            style={{
-              fontSize:13, fontWeight:700, color:'#fff', background:'#F28100',
-              textDecoration:'none',
-              display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
-              padding:'10px 14px', borderRadius:10, alignSelf:'flex-start',
-            }}>
-            <Ic.file size={14} color="#fff" /> Ver PDF
-          </a>
-        )}
+        {/* ── Columna DER: bloques ──────────────────────────────────────── */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
-        {/* Ref NC */}
-        {isNC && inv.ref_folio && (
-          <DetailCard title="ANULA FACTURA" accent="#DC2626">
-            <DetailRow label="Folio factura" value={`#${inv.ref_folio}`} bold/>
-            <DetailRow label="Fecha factura" value={fd(inv.ref_fecha)} />
+          {/* Ref NC */}
+          {isNC && inv.ref_folio && (
+            <DetailCard title="ANULA FACTURA" accent="#DC2626">
+              <DetailRow label="Folio factura" value={`#${inv.ref_folio}`} bold/>
+              <DetailRow label="Fecha factura" value={fd(inv.ref_fecha)} />
+            </DetailCard>
+          )}
+
+          {/* Cliente */}
+          <DetailCard title="CLIENTE" accent="#4F46E5">
+            <DetailRow label="Nombre" value={inv.cliente_nombre} bold span/>
+            <DetailRow label="RUT" value={inv.rut_cliente ? rutFmt(inv.rut_cliente) : null} />
+            <DetailRow label="Comuna" value={inv.cliente_comuna} />
+            <DetailRow label="Dirección" value={inv.cliente_direccion} span/>
           </DetailCard>
-        )}
 
-        {/* Cliente */}
-        <DetailCard title="CLIENTE" accent="#4F46E5">
-          <DetailRow label="Nombre" value={inv.cliente_nombre} bold span/>
-          <DetailRow label="RUT" value={inv.rut_cliente ? rutFmt(inv.rut_cliente) : null} />
-          <DetailRow label="Comuna" value={inv.cliente_comuna} />
-          <DetailRow label="Dirección" value={inv.cliente_direccion} span/>
-        </DetailCard>
+          {/* Vehículo (datos crudos del DTE) */}
+          {(inv.brand || inv.model || inv.chassis) && (
+            <DetailCard title="VEHÍCULO (DTE)" accent="#F28100">
+              <DetailRow label="Marca" value={inv.brand} bold/>
+              <DetailRow label="Modelo" value={inv.model} bold/>
+              <DetailRow label="Color" value={inv.color} />
+              <DetailRow label="Año" value={inv.commercial_year} />
+              <DetailRow label="Chasis" value={inv.chassis} />
+              <DetailRow label="Motor" value={inv.motor_num} />
+            </DetailCard>
+          )}
 
-        {/* Vehículo */}
-        {(inv.brand || inv.model || inv.chassis) && (
-          <DetailCard title="VEHÍCULO" accent="#F28100">
-            <DetailRow label="Marca" value={inv.brand} bold/>
-            <DetailRow label="Modelo" value={inv.model} bold/>
-            <DetailRow label="Color" value={inv.color} />
-            <DetailRow label="Año" value={inv.commercial_year} />
-            <DetailRow label="Chasis" value={inv.chassis} />
-            <DetailRow label="Motor" value={inv.motor_num} />
-          </DetailCard>
-        )}
-
-        {/* Montos */}
-        <DetailCard title="MONTOS" accent="#15803D">
-          <DetailRow label="Fecha emisión" value={fd(inv.fecha_emision)} />
-          <DetailRow label="Neto" value={$(inv.monto_neto)} />
-          <DetailRow label="IVA" value={$(inv.iva)} />
-          {inv.monto_exento > 0 && <DetailRow label="Exento" value={$(inv.monto_exento)} />}
-          <DetailRow label="Total" value={$(inv.total)} bold danger={isNC} span/>
-        </DetailCard>
-
-        {/* Vinculaciones */}
-        {(inv.ticket_num || inv.inv_chassis || inv.sn_model) && (
-          <DetailCard title="VINCULADO CON" accent="#F28100">
-            {inv.ticket_num && (
-              <DetailRow
-                label="Lead"
-                value={`#${inv.ticket_num} — ${[inv.first_name, inv.last_name].filter(Boolean).join(' ')}`.trim()}
-                span
-              />
-            )}
-            {inv.inv_chassis && (
-              <DetailRow label="Inventario" value={`${inv.inv_chassis} (${inv.inv_status || '—'})`} span/>
-            )}
-            {inv.sn_model && (
-              <DetailRow label="Nota de venta" value={`${inv.sn_brand || ''} ${inv.sn_model || ''} — ${fd(inv.sold_at)}`} span/>
-            )}
-          </DetailCard>
-        )}
-
-        {/* Notas internas */}
-        <div style={{
-          background:'#FFFFFF', border:'1px solid #E5E7EB',
-          borderRadius:12, overflow:'hidden',
-        }}>
+          {/* Vincular con catálogo — manual */}
           <div style={{
-            padding:'10px 16px', background:'#F9FAFB',
-            borderBottom:'1px solid #F3F4F6',
-            display:'flex', alignItems:'center', gap:8,
+            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            borderRadius:12, overflow:'hidden',
           }}>
-            <span style={{ width:3, height:14, background:'#6B7280', borderRadius:2 }}/>
-            <span style={{ fontSize:12, fontWeight:700, color:'#111827' }}>NOTAS INTERNAS</span>
+            <div style={{
+              padding:'10px 16px', background:'#FFF7ED',
+              borderBottom:'1px solid #FED7AA',
+              display:'flex', alignItems:'center', gap:8,
+            }}>
+              <span style={{ width:3, height:14, background:'#F28100', borderRadius:2 }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'#9A3412', letterSpacing:'0.02em' }}>
+                VINCULAR CON CATÁLOGO
+              </span>
+              <span style={{ fontSize:10, fontWeight:500, color:'#B45309', marginLeft:'auto' }}>
+                controla qué foto se muestra
+              </span>
+            </div>
+            <div style={{ padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
+              <CatalogModelPicker
+                brand={inv.brand || ''}
+                modelId={modelId}
+                onSelect={(m) => { setModelId(m?.id || null); setSelModel(m || null); }}
+              />
+              <div>
+                <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>
+                  Color
+                </label>
+                {colorOpts.length > 0 ? (
+                  <select value={colorOpts.find(c => c.toLowerCase() === colorEdit.toLowerCase()) || ''}
+                    onChange={e => setColorEdit(e.target.value)}
+                    style={selStyle}>
+                    <option value="">— Color del catálogo —</option>
+                    {colorOpts.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : (
+                  <input value={colorEdit} onChange={e => setColorEdit(e.target.value)}
+                    placeholder="Color (ej: NEGRO, AZUL PERLA)"
+                    style={{ ...S.inp, width:'100%' }}/>
+                )}
+                {colorEdit && colorOpts.length > 0 &&
+                  !colorOpts.find(c => c.toLowerCase() === colorEdit.toLowerCase()) && (
+                  <div style={{ fontSize:10, color:'#B45309', marginTop:4 }}>
+                    "{colorEdit}" no coincide con ningún color del modelo — elige uno válido para ver la foto correcta.
+                  </div>
+                )}
+              </div>
+              <button onClick={saveModelColor} disabled={saving}
+                style={{ ...S.btn, width:'100%' }}>
+                {saving ? 'Guardando...' : 'Guardar modelo y color'}
+              </button>
+            </div>
           </div>
-          <div style={{ padding:'12px 16px' }}>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:13 }}
-            />
-            <button onClick={saveNotes} disabled={saving}
-              style={{ ...S.btn, marginTop:8, width:'100%' }}>
-              {saving ? 'Guardando...' : 'Guardar notas'}
-            </button>
+
+          {/* Vinculaciones automáticas */}
+          {(inv.ticket_num || inv.inv_chassis || inv.sn_model) && (
+            <DetailCard title="VINCULADO CON" accent="#15803D">
+              {inv.ticket_num && (
+                <DetailRow
+                  label="Lead"
+                  value={`#${inv.ticket_num} — ${[inv.first_name, inv.last_name].filter(Boolean).join(' ')}`.trim()}
+                  span
+                />
+              )}
+              {inv.inv_chassis && (
+                <DetailRow label="Inventario" value={`${inv.inv_chassis} (${inv.inv_status || '—'})`} span/>
+              )}
+              {inv.sn_model && (
+                <DetailRow label="Nota de venta" value={`${inv.sn_brand || ''} ${inv.sn_model || ''} — ${fd(inv.sold_at)}`} span/>
+              )}
+            </DetailCard>
+          )}
+
+          {/* Notas internas */}
+          <div style={{
+            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            borderRadius:12, overflow:'hidden',
+          }}>
+            <div style={{
+              padding:'10px 16px', background:'#F9FAFB',
+              borderBottom:'1px solid #F3F4F6',
+              display:'flex', alignItems:'center', gap:8,
+            }}>
+              <span style={{ width:3, height:14, background:'#6B7280', borderRadius:2 }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'#111827' }}>NOTAS INTERNAS</span>
+            </div>
+            <div style={{ padding:'12px 16px' }}>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={3}
+                style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:13 }}
+              />
+              <button onClick={saveNotes} disabled={saving}
+                style={{ ...S.btn, marginTop:8, width:'100%' }}>
+                {saving ? 'Guardando...' : 'Guardar notas'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
