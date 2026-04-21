@@ -423,10 +423,20 @@ router.get('/stats', roleCheck(...ADMIN_ROLES), async (req, res) => {
 });
 
 // ─── GET /api/accounting ─────────────────────────────────────────────────────
+// Tabs:
+//   · facturas — facturas (tipo 33) con moto asociada y no anuladas. Vista
+//     principal: acá entran las ventas reales de motos.
+//   · notas    — notas de crédito (tipo 61). Traen `anula_folio` del DTE.
+//   · otras    — facturas sin moto (accesorios, servicios, refacturaciones)
+//     y facturas anuladas por NC. Siguen siendo contables pero no son ventas
+//     de unidad.
+// Se mantienen category/doc_type como overrides legacy por si algún link
+// externo los usa; si viene `tab`, tiene prioridad.
 router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
   try {
     const {
       source = 'emitida',
+      tab,
       category,
       doc_type,
       link_status,
@@ -441,8 +451,25 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
     const params = [source];
     let idx = 2;
 
-    if (category) { conds.push(`i.category = $${idx++}`); params.push(category); }
-    if (doc_type) { conds.push(`i.doc_type = $${idx++}`); params.push(doc_type); }
+    // Heurística "tiene moto": marca/modelo parseados, chasis, o vínculo a
+    // inventory. Si el parser falló pero el humano vinculó a mano, respetamos
+    // el vínculo.
+    const hasMotoExpr = `(i.brand IS NOT NULL OR i.chassis IS NOT NULL OR i.inventory_id IS NOT NULL OR i.sale_note_id IS NOT NULL)`;
+
+    if (tab === 'facturas') {
+      conds.push(`i.doc_type = 'factura'`);
+      conds.push(`i.anulada_por_id IS NULL`);
+      conds.push(hasMotoExpr);
+    } else if (tab === 'notas') {
+      conds.push(`i.doc_type = 'nota_credito'`);
+    } else if (tab === 'otras') {
+      conds.push(`i.doc_type = 'factura'`);
+      conds.push(`(i.anulada_por_id IS NOT NULL OR NOT ${hasMotoExpr})`);
+    } else {
+      if (category) { conds.push(`i.category = $${idx++}`); params.push(category); }
+      if (doc_type) { conds.push(`i.doc_type = $${idx++}`); params.push(doc_type); }
+    }
+
     if (link_status) { conds.push(`i.link_status = $${idx++}`); params.push(link_status); }
     if (desde) { conds.push(`i.fecha_emision >= $${idx++}`); params.push(desde); }
     if (hasta) { conds.push(`i.fecha_emision <= $${idx++}`); params.push(hasta); }
@@ -460,16 +487,35 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
     const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
     const off = (parseInt(page) - 1) * parseInt(limit);
 
+    // Foto de catálogo: prioridad (1) inventario → moto_models por model_id,
+    // (2) nota de venta → moto_models por model_id, (3) LATERAL que matchea
+    // moto_models por brand+model+year del texto de la factura. El LATERAL
+    // limita a 1 resultado para evitar duplicar filas.
     const { rows } = await db.query(
       `SELECT
          i.*,
          t.ticket_num, t.first_name, t.last_name,
          inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
-         sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status
+         sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
+         COALESCE(mm_inv.image_url, mm_sn.image_url, mm_text.image_url) AS model_image_url,
+         COALESCE(mm_inv.gallery,   mm_sn.gallery,   mm_text.gallery)   AS model_gallery,
+         COALESCE(mm_inv.id,        mm_sn.id,        mm_text.id)        AS model_id_resolved
        FROM invoices i
-       LEFT JOIN tickets   t   ON t.id   = i.lead_id
-       LEFT JOIN inventory inv ON inv.id = i.inventory_id
-       LEFT JOIN sales_notes sn ON sn.id = i.sale_note_id
+       LEFT JOIN tickets     t   ON t.id   = i.lead_id
+       LEFT JOIN inventory   inv ON inv.id = i.inventory_id
+       LEFT JOIN sales_notes sn  ON sn.id  = i.sale_note_id
+       LEFT JOIN moto_models mm_inv ON mm_inv.id = inv.model_id
+       LEFT JOIN moto_models mm_sn  ON mm_sn.id  = sn.model_id
+       LEFT JOIN LATERAL (
+         SELECT id, image_url, gallery FROM moto_models m
+          WHERE i.brand IS NOT NULL
+            AND i.model IS NOT NULL
+            AND UPPER(m.brand) = UPPER(i.brand)
+            AND UPPER(m.model) = UPPER(i.model)
+            AND (i.commercial_year IS NULL OR m.year = i.commercial_year)
+          ORDER BY (m.year = i.commercial_year) DESC NULLS LAST, m.year DESC
+          LIMIT 1
+       ) mm_text ON true
        ${where}
        ORDER BY i.fecha_emision DESC NULLS LAST, i.created_at DESC
        LIMIT $${idx} OFFSET $${idx+1}`,
@@ -496,11 +542,26 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
          t.ticket_num, t.first_name, t.last_name, t.rut, t.phone, t.email, t.status AS lead_status,
          inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
          sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
-         sn.sold_at, sn.sale_price
+         sn.sold_at, sn.sale_price,
+         COALESCE(mm_inv.image_url, mm_sn.image_url, mm_text.image_url) AS model_image_url,
+         COALESCE(mm_inv.gallery,   mm_sn.gallery,   mm_text.gallery)   AS model_gallery,
+         COALESCE(mm_inv.id,        mm_sn.id,        mm_text.id)        AS model_id_resolved
        FROM invoices i
-       LEFT JOIN tickets   t   ON t.id   = i.lead_id
-       LEFT JOIN inventory inv ON inv.id = i.inventory_id
-       LEFT JOIN sales_notes sn ON sn.id = i.sale_note_id
+       LEFT JOIN tickets     t   ON t.id   = i.lead_id
+       LEFT JOIN inventory   inv ON inv.id = i.inventory_id
+       LEFT JOIN sales_notes sn  ON sn.id  = i.sale_note_id
+       LEFT JOIN moto_models mm_inv ON mm_inv.id = inv.model_id
+       LEFT JOIN moto_models mm_sn  ON mm_sn.id  = sn.model_id
+       LEFT JOIN LATERAL (
+         SELECT id, image_url, gallery FROM moto_models m
+          WHERE i.brand IS NOT NULL
+            AND i.model IS NOT NULL
+            AND UPPER(m.brand) = UPPER(i.brand)
+            AND UPPER(m.model) = UPPER(i.model)
+            AND (i.commercial_year IS NULL OR m.year = i.commercial_year)
+          ORDER BY (m.year = i.commercial_year) DESC NULLS LAST, m.year DESC
+          LIMIT 1
+       ) mm_text ON true
        WHERE i.id = $1`,
       [req.params.id]
     );

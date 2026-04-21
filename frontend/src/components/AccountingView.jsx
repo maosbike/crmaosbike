@@ -161,88 +161,147 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
   );
 }
 
-/* ── InvoiceCard (unificado mobile+desktop) ───────────────────────────────── */
+/* ── Drive viewer URL helper ──────────────────────────────────────────────── */
+// El PDF del DTE vive en Drive (carpeta Maosbike/Facturas Emitidas). Usamos la
+// URL del visor de Drive para abrir sin descargar, evitando el Cloudinary URL
+// (que dispara download). Si no tenemos drive_file_id — sync antiguo, etc. —
+// caemos a pdf_url.
+function pdfViewerUrl(inv) {
+  if (inv.drive_file_id) return `https://drive.google.com/file/d/${inv.drive_file_id}/view`;
+  return inv.pdf_url || null;
+}
+
+/* ── InvoiceCard (unificado mobile+desktop, con foto de catálogo) ─────────── */
 function InvoiceCard({ inv, onOpen }) {
   const isNC     = inv.doc_type === 'nota_credito';
   const anulada  = !!inv.anulada_por_id;
-  const modelo   = [inv.brand, inv.model, inv.commercial_year].filter(Boolean).join(' ');
+  const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
   const folioLbl = isNC ? `NC ${inv.folio || '-'}` : inv.folio || '-';
+  const accent   = isNC ? '#DC2626' : (anulada ? '#9CA3AF' : '#F28100');
+  const img      = inv.model_image_url || null;
+  const pdfUrl   = pdfViewerUrl(inv);
 
   return (
     <div onClick={() => onOpen(inv)} style={{
-      background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12,
-      padding: '14px 16px', cursor: 'pointer',
-      display: 'grid',
-      gridTemplateColumns: 'minmax(0,1fr) auto',
-      gap: 12, alignItems: 'center',
-      opacity: anulada ? 0.6 : 1,
-      transition: 'all 0.15s',
-      position: 'relative',
+      display: 'flex', alignItems: 'stretch',
+      minHeight: 128,
+      background: '#FFFFFF',
+      border: '1px solid #E5E7EB',
+      borderLeft: `4px solid ${accent}`,
+      borderRadius: 14, overflow: 'hidden',
+      cursor: 'pointer',
+      opacity: anulada ? 0.7 : 1,
+      transition: 'all 0.15s ease',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
     }}
     className="acc-card"
     >
-      {/* Left: info */}
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+      {/* Thumbnail */}
+      <div style={{
+        width: 150, flexShrink: 0,
+        background: img ? '#F3F4F6' : (isNC ? 'rgba(220,38,38,0.04)' : 'rgba(242,129,0,0.04)'),
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', position: 'relative',
+      }}>
+        {img
+          ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+          : <Ic.bike size={48} color={isNC ? '#DC2626' : '#F28100'} />
+        }
+        {anulada && (
           <span style={{
-            fontSize: 11, fontWeight: 800,
-            color: isNC ? '#DC2626' : '#F28100',
-            background: isNC ? 'rgba(220,38,38,0.08)' : 'rgba(242,129,0,0.08)',
-            padding: '2px 8px', borderRadius: 6,
-            letterSpacing: '0.02em',
+            position: 'absolute', top: 8, left: 8,
+            fontSize: 9, fontWeight: 800, color: '#DC2626',
+            background: 'rgba(254,226,226,0.95)', border: '1px solid #FCA5A5',
+            borderRadius: 4, padding: '2px 7px', letterSpacing: '0.06em',
           }}>
-            {folioLbl}
+            ANULADA
           </span>
-          {anulada && (
-            <span style={{ fontSize: 9, fontWeight: 800, color: '#DC2626', background: 'rgba(220,38,38,0.1)', borderRadius: 20, padding: '2px 8px', letterSpacing: '0.04em' }}>
-              ANULADA
-            </span>
-          )}
-          {isNC && inv.ref_folio && (
-            <span style={{ fontSize: 10, color: '#6B7280' }}>→ factura #{inv.ref_folio}</span>
-          )}
-          <LinkBadge status={inv.link_status} />
-        </div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {inv.cliente_nombre || <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontWeight: 500 }}>Sin cliente</span>}
-        </div>
-        <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {inv.rut_cliente && <span>{rutFmt(inv.rut_cliente)}</span>}
-          {modelo && <span>·  {modelo}</span>}
-          {inv.chassis && <span style={{ fontFamily: 'monospace', fontSize: 11 }}>· {inv.chassis}</span>}
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-          {fd(inv.fecha_emision)}
-        </div>
+        )}
       </div>
 
-      {/* Right: amount + actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-        <div style={{
-          fontSize: 16, fontWeight: 800,
-          color: isNC ? '#DC2626' : '#111827',
-          letterSpacing: '-0.01em',
-          whiteSpace: 'nowrap',
-        }}>
-          {isNC ? '−' : ''}{$(inv.total)}
+      {/* Contenido */}
+      <div style={{
+        flex: 1, minWidth: 0,
+        padding: '14px 18px',
+        display: 'flex', justifyContent: 'space-between', gap: 14,
+      }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: 13, fontWeight: 800,
+              color: accent,
+              background: isNC ? 'rgba(220,38,38,0.08)' : 'rgba(242,129,0,0.08)',
+              border: `1px solid ${isNC ? 'rgba(220,38,38,0.2)' : 'rgba(242,129,0,0.2)'}`,
+              padding: '2px 10px', borderRadius: 8,
+              letterSpacing: '-0.01em',
+            }}>
+              #{folioLbl}
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: '#6B7280',
+              background: '#F9FAFB', padding: '2px 8px',
+              borderRadius: 20, border: '1px solid #E5E7EB',
+            }}>
+              {fd(inv.fecha_emision)}
+            </span>
+            {isNC && inv.ref_folio && (
+              <span style={{ fontSize: 10, color: '#6B7280' }}>→ anula #{inv.ref_folio}</span>
+            )}
+          </div>
+          <div style={{
+            fontSize: 14, fontWeight: 700, color: '#111827',
+            marginBottom: 4,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {inv.cliente_nombre || <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontWeight: 500 }}>Sin cliente</span>}
+          </div>
+          {modelo && (
+            <div style={{
+              fontSize: 12, fontWeight: 600, color: '#374151',
+              marginBottom: 2,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {modelo}{inv.commercial_year ? ` · ${inv.commercial_year}` : ''}{inv.color ? ` · ${inv.color}` : ''}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: '#6B7280', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {inv.rut_cliente && <span>{rutFmt(inv.rut_cliente)}</span>}
+            {inv.chassis && <span style={{ fontFamily: 'monospace' }}>· {inv.chassis}</span>}
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <LinkBadge status={inv.link_status} />
+          </div>
         </div>
-        {inv.pdf_url && (
-          <a
-            href={inv.pdf_url}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              fontSize: 11, color: '#F28100', textDecoration: 'none',
-              display: 'flex', alignItems: 'center', gap: 4,
-              background: 'rgba(242,129,0,0.08)',
-              padding: '4px 10px', borderRadius: 6,
-              fontWeight: 600,
-            }}
-          >
-            <Ic.file size={12} color="#F28100" /> PDF
-          </a>
-        )}
+
+        {/* Monto + PDF */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, flexShrink: 0 }}>
+          <div style={{
+            fontSize: 18, fontWeight: 800,
+            color: isNC ? '#DC2626' : '#0F172A',
+            letterSpacing: '-0.02em',
+            whiteSpace: 'nowrap',
+          }}>
+            {isNC ? '−' : ''}{$(inv.total)}
+          </div>
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                fontSize: 11, color: '#F28100', textDecoration: 'none',
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'rgba(242,129,0,0.08)',
+                border: '1px solid rgba(242,129,0,0.2)',
+                padding: '4px 10px', borderRadius: 6,
+                fontWeight: 700,
+              }}
+            >
+              <Ic.file size={12} color="#F28100" /> Ver en Drive
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -273,10 +332,24 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
   ) : null;
 
   const isNC = inv.doc_type === 'nota_credito';
+  const pdfUrl = pdfViewerUrl(inv);
+  const img = inv.model_image_url || null;
 
   return (
     <Modal onClose={onClose} title={`${isNC ? 'Nota de crédito' : 'Factura'} N° ${inv.folio || '-'}`}>
       <div style={{ maxWidth: 560, width: '100%' }}>
+        {/* Foto de catálogo (si hay) */}
+        {img && (
+          <div style={{
+            width: '100%', height: 180, marginBottom: 12,
+            borderRadius: 10, overflow: 'hidden',
+            background: '#F3F4F6',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+          </div>
+        )}
+
         {/* Status row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <LinkBadge status={inv.link_status} />
@@ -285,12 +358,12 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               ANULADA POR NC
             </span>
           )}
-          {inv.pdf_url && (
-            <a href={inv.pdf_url} target="_blank" rel="noreferrer"
+          {pdfUrl && (
+            <a href={pdfUrl} target="_blank" rel="noreferrer"
               style={{ fontSize: 12, color: '#fff', background: '#F28100', textDecoration: 'none',
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '6px 14px', borderRadius: 8, fontWeight: 600, marginLeft: 'auto' }}>
-              <Ic.file size={13} color="#fff" /> Ver PDF
+              <Ic.file size={13} color="#fff" /> Ver en Drive
             </a>
           )}
         </div>
@@ -413,10 +486,7 @@ export function AccountingView() {
     setLoading(true);
     setError('');
     try {
-      const params = { source: 'emitida', page, limit: LIMIT, desde, hasta };
-      if (tab === 'otras')      params.category = 'otras';
-      else if (tab === 'notas') params.doc_type = 'nota_credito';
-      else                      params.doc_type = 'factura';
+      const params = { source: 'emitida', page, limit: LIMIT, desde, hasta, tab };
       if (q)          params.q = q;
       if (linkStatus) params.link_status = linkStatus;
       const r = await api.getAccounting(params);
@@ -516,9 +586,9 @@ export function AccountingView() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
         {[
-          { key: 'facturas', label: 'Facturas' },
+          { key: 'facturas', label: 'Ventas de motos' },
           { key: 'notas',    label: 'Notas de crédito' },
-          { key: 'otras',    label: 'Otras' },
+          { key: 'otras',    label: 'Otras / anuladas' },
         ].map(t => (
           <button
             key={t.key}
@@ -569,7 +639,7 @@ export function AccountingView() {
       {!loading && !error && data.length === 0 && (
         <Empty
           icon={Ic.invoice}
-          title={`Sin ${tab === 'notas' ? 'notas de crédito' : tab === 'otras' ? 'otras facturas' : 'facturas'} en ${ymLabel(ym)}`}
+          title={`Sin ${tab === 'notas' ? 'notas de crédito' : tab === 'otras' ? 'otras facturas' : 'ventas de motos'} en ${ymLabel(ym)}`}
           hint={syncing ? 'Sincronizando...' : 'Probá con otro mes o sincroniza desde Drive.'}
         />
       )}
