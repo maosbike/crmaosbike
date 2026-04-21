@@ -537,16 +537,17 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
   const selStyle = { height:36, borderRadius:8, border:'1px solid #D1D5DB', background:'#F9FAFB', color:'#374151', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
 
   return (
-    <Modal onClose={onClose} maxWidth={1100}
+    <Modal onClose={onClose} maxWidth={1500}
       title={`${isNC ? 'Nota de crédito' : 'Factura'} N° ${inv.folio || '—'}`}>
       <div style={{
         display:'grid',
-        gridTemplateColumns:'420px 1fr',
+        gridTemplateColumns:'380px 1fr 1fr',
         gap:16,
         width:'100%',
+        alignItems:'start',
       }}>
 
-        {/* ── Columna IZQ: hero vertical ─────────────────────────────────── */}
+        {/* ── Columna IZQ: hero vertical (foto + identidad + total) ──────── */}
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{
             background:'#FFFFFF', border:'1px solid #E5E7EB',
@@ -636,7 +637,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
           </div>
         </div>
 
-        {/* ── Columna DER: bloques ──────────────────────────────────────── */}
+        {/* ── Columna CENTRO: info del DTE (cliente + vehículo + NC + vinculaciones auto) ── */}
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
           {/* Ref NC */}
@@ -666,6 +667,29 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               <DetailRow label="Motor" value={inv.motor_num} />
             </DetailCard>
           )}
+
+          {/* Vinculaciones automáticas */}
+          {(inv.ticket_num || inv.inv_chassis || inv.sn_model) && (
+            <DetailCard title="VINCULADO CON" accent="#15803D">
+              {inv.ticket_num && (
+                <DetailRow
+                  label="Lead"
+                  value={`#${inv.ticket_num} — ${[inv.first_name, inv.last_name].filter(Boolean).join(' ')}`.trim()}
+                  span
+                />
+              )}
+              {inv.inv_chassis && (
+                <DetailRow label="Inventario" value={`${inv.inv_chassis} (${inv.inv_status || '—'})`} span/>
+              )}
+              {inv.sn_model && (
+                <DetailRow label="Nota de venta" value={`${inv.sn_brand || ''} ${inv.sn_model || ''} — ${fd(inv.sold_at)}`} span/>
+              )}
+            </DetailCard>
+          )}
+        </div>
+
+        {/* ── Columna DER: acciones (editor catálogo + notas) ──────────── */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
           {/* Vincular con catálogo — manual */}
           <div style={{
@@ -721,25 +745,6 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
             </div>
           </div>
 
-          {/* Vinculaciones automáticas */}
-          {(inv.ticket_num || inv.inv_chassis || inv.sn_model) && (
-            <DetailCard title="VINCULADO CON" accent="#15803D">
-              {inv.ticket_num && (
-                <DetailRow
-                  label="Lead"
-                  value={`#${inv.ticket_num} — ${[inv.first_name, inv.last_name].filter(Boolean).join(' ')}`.trim()}
-                  span
-                />
-              )}
-              {inv.inv_chassis && (
-                <DetailRow label="Inventario" value={`${inv.inv_chassis} (${inv.inv_status || '—'})`} span/>
-              )}
-              {inv.sn_model && (
-                <DetailRow label="Nota de venta" value={`${inv.sn_brand || ''} ${inv.sn_model || ''} — ${fd(inv.sold_at)}`} span/>
-              )}
-            </DetailCard>
-          )}
-
           {/* Notas internas */}
           <div style={{
             background:'#FFFFFF', border:'1px solid #E5E7EB',
@@ -757,7 +762,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                rows={3}
+                rows={6}
                 style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:13 }}
               />
               <button onClick={saveNotes} disabled={saving}
