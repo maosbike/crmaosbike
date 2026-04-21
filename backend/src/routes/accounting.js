@@ -659,6 +659,7 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
          sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
          COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url) AS model_image_url,
          COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery)   AS model_gallery,
+         COALESCE(mm_own.color_photos, mm_inv.color_photos, mm_sn.color_photos) AS model_color_photos,
          COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id)        AS model_id_resolved
        FROM invoices i
        LEFT JOIN tickets     t   ON t.id   = i.lead_id
@@ -696,6 +697,7 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
          sn.sold_at, sn.sale_price,
          COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url) AS model_image_url,
          COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery)   AS model_gallery,
+         COALESCE(mm_own.color_photos, mm_inv.color_photos, mm_sn.color_photos) AS model_color_photos,
          COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id)        AS model_id_resolved
        FROM invoices i
        LEFT JOIN tickets     t   ON t.id   = i.lead_id
@@ -778,12 +780,31 @@ router.get('/:id/debug', roleCheck('super_admin'), async (req, res) => {
 });
 
 // ─── PATCH /api/accounting/:id ────────────────────────────────────────────────
+// Permite editar manualmente: vinculaciones (lead/inv/sale_note/link_status),
+// metadata del vehiculo (brand/model/color/year/chassis) y FK al catalogo
+// (model_id). Si el usuario cambia brand/model sin pasar model_id explicito,
+// intentamos auto-resolver con resolveModelId() — mismo patron que supplier-
+// payments.js. Devolvemos la fila con JOINs a moto_models para que el
+// frontend reciba image_url + color_photos al toque.
 router.patch('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
   try {
-    const allowed = ['lead_id','inventory_id','sale_note_id','link_status','notes','category','doc_type'];
+    const allowed = [
+      'lead_id','inventory_id','sale_note_id','link_status','notes','category','doc_type',
+      'brand','model','color','commercial_year','chassis','model_id',
+    ];
+    const body = { ...req.body };
+
+    // Auto-resolver model_id si cambian brand/model sin FK explicito.
+    if ((body.brand !== undefined || body.model !== undefined) && body.model_id === undefined) {
+      const cur = await db.query(`SELECT brand, model FROM invoices WHERE id=$1`, [req.params.id]);
+      const nb = body.brand  !== undefined ? body.brand  : cur.rows[0]?.brand;
+      const nm = body.model  !== undefined ? body.model  : cur.rows[0]?.model;
+      body.model_id = await resolveModelId(nb, nm);
+    }
+
     const sets = [], params = [];
     let idx = 1;
-    for (const [k, v] of Object.entries(req.body)) {
+    for (const [k, v] of Object.entries(body)) {
       if (allowed.includes(k)) {
         sets.push(`${k} = $${idx++}`);
         params.push(v === '' ? null : v);
@@ -791,13 +812,36 @@ router.patch('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
     }
     if (!sets.length) return res.status(400).json({ error: 'Nada que actualizar' });
     params.push(req.params.id);
-    const { rows } = await db.query(
-      `UPDATE invoices SET ${sets.join(', ')}, updated_at=NOW() WHERE id=$${idx} RETURNING *`,
+    await db.query(
+      `UPDATE invoices SET ${sets.join(', ')}, updated_at=NOW() WHERE id=$${idx}`,
       params
+    );
+
+    // Devolver fila enriquecida (mismo SELECT que GET /:id).
+    const { rows } = await db.query(
+      `SELECT i.*,
+         t.ticket_num, t.first_name, t.last_name, t.rut, t.phone, t.email, t.status AS lead_status,
+         inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
+         sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
+         sn.sold_at, sn.sale_price,
+         COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url)     AS model_image_url,
+         COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery)       AS model_gallery,
+         COALESCE(mm_own.color_photos, mm_inv.color_photos, mm_sn.color_photos) AS model_color_photos,
+         COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id)            AS model_id_resolved
+       FROM invoices i
+       LEFT JOIN tickets     t   ON t.id   = i.lead_id
+       LEFT JOIN inventory   inv ON inv.id = i.inventory_id
+       LEFT JOIN sales_notes sn  ON sn.id  = i.sale_note_id
+       LEFT JOIN moto_models mm_own ON mm_own.id = i.model_id
+       LEFT JOIN moto_models mm_inv ON mm_inv.id = inv.model_id
+       LEFT JOIN moto_models mm_sn  ON mm_sn.id  = sn.model_id
+       WHERE i.id = $1`,
+      [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
     res.json(rows[0]);
   } catch (e) {
+    logger.error({ err: e }, '[Accounting/PATCH]');
     res.status(500).json({ error: e.message });
   }
 });

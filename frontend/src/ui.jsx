@@ -316,9 +316,9 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
     </div>
   );
 };
-export const Modal=({onClose,title,children,wide,headerContent})=>(
+export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>(
   <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
-    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'#FFFFFF',borderRadius:16,width:'100%',maxWidth:wide?680:480,maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
+    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'#FFFFFF',borderRadius:16,width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
       {headerContent ? headerContent : (
         <div style={{padding:'18px 20px 14px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <h2 style={{fontSize:15,fontWeight:700,color:'#111827',margin:0}}>{title}</h2>
