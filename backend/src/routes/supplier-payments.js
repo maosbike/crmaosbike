@@ -175,6 +175,18 @@ function extractInvoice(text) {
 
   const internalCode = model;
 
+  // ── Descripción del item (línea de la tabla del DTE) ──
+  // Para pagos que NO son de moto (arriendos, servicios, honorarios) este
+  // texto es lo único que identifica el gasto. El PDF trae la tabla así:
+  //   Codigo Descripcion Cantidad Precio %Impto ... %Desc. Valor
+  //   INT1-OTRCSERADM  Arriendo Mall Plaza Enero 2026   1 Unid   1.592.217   1.592.217
+  // Capturamos el texto entre el código del ítem y la cantidad "N Unid"
+  // (o, si no hay "Unid", hasta el primer monto con separador de miles).
+  const descMatch =
+    t.match(/\bValor\s+[A-Z0-9][A-Z0-9\-\.]{2,}\s+(.+?)\s+\d+\s*Unid/i) ||
+    t.match(/\bValor\s+[A-Z0-9][A-Z0-9\-\.]{2,}\s+(.+?)\s+\d+[,\.]\d{3}/i);
+  const description = descMatch?.[1]?.trim().replace(/\s+/g, ' ') || null;
+
   // Proveedor = marca (YAMAHA), no el nombre del importador
   const resolvedProvider = brand || provider;
 
@@ -193,6 +205,7 @@ function extractInvoice(text) {
     model,
     brand,
     internal_code:   internalCode,
+    description,
   };
 }
 
@@ -640,6 +653,9 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
           internal_code:   inv.internal_code,
           invoice_url:     factFile.webViewLink,
           model_id:        matchedModelId,
+          // Descripción del item del DTE → notes. En UPDATE cae al camino
+          // COALESCE (no está en ALWAYS) para no pisar ediciones manuales.
+          notes:           inv.description,
           ...(recData ? {
             receipt_number:  recData.receipt_number,
             payment_date:    recData.payment_date,
@@ -687,14 +703,14 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
                brand, model, color, commercial_year, motor_num, chassis, internal_code,
                invoice_url, receipt_number, payment_date, payer_name,
                banco, payment_method, receipt_url,
-               model_id, status, created_by
+               model_id, notes, status, created_by
              ) VALUES (
                $1,$2,$3,$4,$5,
                $6,$7,$8,
                $9,$10,$11,$12,$13,$14,$15,
                $16,$17,$18,$19,
                $20,$21,$22,
-               $23,'pendiente',$24
+               $23,$24,'pendiente',$25
              )`,
             [
               payload.invoice_number, payload.provider||null,
@@ -710,6 +726,7 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
               payload.banco||null, payload.payment_method||null,
               payload.receipt_url||null,
               payload.model_id||null,
+              payload.notes||null,
               req.user.id,
             ]
           );
