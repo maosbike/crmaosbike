@@ -658,7 +658,39 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
 
   try {
     const files = await listPDFs(FOLDER_ID);
-    const results = { created: 0, updated: 0, skipped: 0, errors: [] };
+    const results = { created: 0, updated: 0, skipped: 0, deduped: 0, errors: [] };
+
+    // ── Limpieza de duplicados previos ───────────────────────────────────────
+    // Syncs anteriores crearon filas duplicadas por (source, folio, doc_type)
+    // porque el match previo incluía rut_emisor (que el parser viejo a veces
+    // dejaba NULL). Conservamos la fila "ganadora" por cada par — la que tiene
+    // más campos rellenos (cliente, RUT, marca) y la más reciente como
+    // desempate — y borramos el resto. Preserva los vínculos manuales (por eso
+    // priorizamos tener lead_id/inventory_id).
+    const dedupe = await db.query(`
+      DELETE FROM invoices
+      WHERE source = 'emitida'
+        AND id IN (
+          SELECT id FROM (
+            SELECT id,
+              ROW_NUMBER() OVER (
+                PARTITION BY source, doc_type, folio
+                ORDER BY
+                  (cliente_nombre IS NOT NULL)::int DESC,
+                  (rut_cliente    IS NOT NULL)::int DESC,
+                  (brand          IS NOT NULL)::int DESC,
+                  (lead_id        IS NOT NULL)::int DESC,
+                  (inventory_id   IS NOT NULL)::int DESC,
+                  updated_at DESC, created_at DESC
+              ) AS rn
+            FROM invoices
+            WHERE source = 'emitida'
+              AND folio IS NOT NULL
+          ) x
+          WHERE rn > 1
+        )
+    `);
+    results.deduped = dedupe.rowCount || 0;
 
     for (const file of files) {
       try {
@@ -684,9 +716,15 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
           pdf_url = uploadResult.secure_url;
         } catch (_) { /* si Cloudinary falla usamos Drive link */ }
 
+        // Match por (source, folio, doc_type) — el emisor en esta carpeta es
+        // siempre Maosbike, así que folio+doc_type identifican el documento
+        // inequívocamente. Incluir rut_emisor rompía el match cuando el
+        // parser viejo lo dejaba NULL.
         const { rows: existing } = await db.query(
-          `SELECT id FROM invoices WHERE source='emitida' AND folio=$1 AND rut_emisor=$2 LIMIT 1`,
-          [parsed.folio, parsed.rut_emisor || '']
+          `SELECT id FROM invoices
+           WHERE source='emitida' AND folio=$1 AND doc_type=$2
+           ORDER BY updated_at DESC LIMIT 1`,
+          [parsed.folio, parsed.doc_type]
         );
 
         const links = await resolveLinks(parsed);
@@ -697,21 +735,25 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
           await db.query(
             `UPDATE invoices SET
                doc_type=$1, category=$2,
-               fecha_emision=$3, rut_cliente=$4, cliente_nombre=$5,
-               cliente_direccion=$6, cliente_comuna=$7, cliente_giro=$8,
-               monto_neto=$9, iva=$10, monto_exento=$11, total=$12,
-               brand=$13, model=$14, color=$15, commercial_year=$16,
-               motor_num=$17, chassis=$18, descripcion=$19,
-               pdf_url=$20, drive_file_id=$21,
-               lead_id=COALESCE(lead_id,$22),
-               inventory_id=COALESCE(inventory_id,$23),
-               sale_note_id=COALESCE(sale_note_id,$24),
-               link_status=$25,
-               ref_folio=$26, ref_rut_emisor=$27, ref_fecha=$28,
+               rut_emisor=COALESCE($3, rut_emisor),
+               emisor_nombre=COALESCE($4, emisor_nombre),
+               fecha_emision=$5, rut_cliente=$6, cliente_nombre=$7,
+               cliente_direccion=$8, cliente_comuna=$9, cliente_giro=$10,
+               monto_neto=$11, iva=$12, monto_exento=$13, total=$14,
+               brand=$15, model=$16, color=$17, commercial_year=$18,
+               motor_num=$19, chassis=$20, descripcion=$21,
+               pdf_url=$22, drive_file_id=$23,
+               lead_id=COALESCE(lead_id,$24),
+               inventory_id=COALESCE(inventory_id,$25),
+               sale_note_id=COALESCE(sale_note_id,$26),
+               link_status=$27,
+               ref_folio=$28, ref_rut_emisor=$29, ref_fecha=$30,
+               notes=COALESCE(notes, $31),
                updated_at=NOW()
-             WHERE id=$29`,
+             WHERE id=$32`,
             [
               parsed.doc_type, parsed.category,
+              parsed.rut_emisor, parsed.emisor_nombre,
               parsed.fecha_emision, parsed.rut_cliente, parsed.cliente_nombre,
               parsed.cliente_direccion, parsed.cliente_comuna, parsed.cliente_giro,
               parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
@@ -721,6 +763,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               links.lead_id, links.inventory_id, links.sale_note_id,
               links.link_status,
               parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
+              parsed.notes,
               invoiceId,
             ]
           );
