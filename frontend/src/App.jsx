@@ -63,6 +63,36 @@ export default function App(){
     setUser(null);
   };
 
+  // Caducidad por inactividad — una pestaña olvidada con sesión activa se cierra
+  // sola tras INACTIVITY_MS sin interacción del usuario. Evita que otra persona
+  // tome la cuenta de alguien ausente y previene sesiones perpetuas vía refresh
+  // cookie. Sólo cuenta interacción real (mouse/teclado/scroll/touch); actividad
+  // de red en segundo plano no reinicia el contador.
+  useEffect(()=>{
+    if(!user)return;
+    const INACTIVITY_MS = 30*60*1000; // 30 minutos
+    let lastActivity = Date.now();
+    const bump = () => { lastActivity = Date.now(); };
+    const EVENTS = ['mousedown','keydown','touchstart','scroll','wheel'];
+    EVENTS.forEach(e=>window.addEventListener(e,bump,{passive:true}));
+    const expireIfIdle = () => {
+      if(Date.now() - lastActivity > INACTIVITY_MS){
+        handleLogout();
+      }
+    };
+    const onVisibility = () => {
+      if(document.visibilityState==='visible') expireIfIdle();
+      else bump(); // al irse a background, marcamos "última actividad" ahora
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    const iv = setInterval(expireIfIdle, 30*1000);
+    return () => {
+      EVENTS.forEach(e=>window.removeEventListener(e,bump));
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearInterval(iv);
+    };
+  },[user?.id]);
+
   // Carga paginada: trae todas las páginas en chunks de 200 — escala sin tope artificial.
   // Una sola falla silenciosa aquí es aceptable (loader de fondo; errores puntuales
   // se ven cuando el usuario interactúa con un ticket concreto).
