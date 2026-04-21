@@ -218,10 +218,84 @@ function extractEmitida(text, fileName = '') {
   // si no encuentra, caemos al texto completo.
   const field = (re) => afterLabel(afterRut, re) || afterLabel(t, re);
 
-  let cliente_direccion = field(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*([^|\n\r]{3,200}?)(?=\s+(?:CIUDAD|COMUNA|GIRO|R\.?U\.?T|TEL[EÉ]F|FONO|FAX|FECHA|VENCIMIENTO|FORMA\s+DE\s+PAGO|ORDEN\s+COMPRA|VENDEDOR|CONTACTO|TIPO\s+DE\s+COMPRA|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk]|\d{7,8}-[0-9Kk])|\s*[|\n\r]|$)/i);
-  let cliente_comuna    = field(/\bCOMUNA\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|CIUDAD|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
-  let cliente_ciudad    = field(/\bCIUDAD\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|COMUNA|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
-  let cliente_giro      = field(/\bGIRO\s*[:\.]?\s*([^|\n\r]{3,160}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i);
+  // Estrategia por-línea: pdf-parse desordena columnas pero suele preservar
+  // las líneas individuales. "Comuna: San Bernardo" en el PDF queda en una
+  // línea sola cuando está en una celda, así que extraer todo después del
+  // label en esa línea es más fiable que el regex sobre texto colapsado
+  // (que se corta en "SAN" porque "CIUDAD:" de la columna derecha aparece
+  // justo después tras el colapso).
+  // stopWordsRe: corta el valor si aparece otro label en la misma línea
+  // (caso columna doble aplanada en una sola línea).
+  const findInLine = (labelRe, stopWordsRe) => {
+    for (const line of lines) {
+      const m = line.match(labelRe);
+      if (!m) continue;
+      let val = m[1] || '';
+      if (stopWordsRe) {
+        const s = val.search(stopWordsRe);
+        if (s > 0) val = val.slice(0, s);
+      }
+      val = val.trim().replace(/\s+/g, ' ').replace(/[|,;:\-–\.]+$/, '');
+      if (val.length >= 3 && !isJunkCliente(val)) return val;
+    }
+    return null;
+  };
+
+  const stopLabels = /\s+(?:CIUDAD|COMUNA|GIRO|DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T\.?|RUT|FONO|TEL[EÉ]F|FAX|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|FORMA\s+DE\s+PAGO|ORDEN\s+(?:DE\s+)?COMPRA|VENDEDOR|OBSERVAC|CONDICI)\s*[:\.]/i;
+
+  let cliente_direccion = findInLine(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*([^|\n\r]{3,200}?)(?=\s+(?:CIUDAD|COMUNA|GIRO|R\.?U\.?T|TEL[EÉ]F|FONO|FAX|FECHA|VENCIMIENTO|FORMA\s+DE\s+PAGO|ORDEN\s+COMPRA|VENDEDOR|CONTACTO|TIPO\s+DE\s+COMPRA|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk]|\d{7,8}-[0-9Kk])|\s*[|\n\r]|$)/i);
+
+  let cliente_comuna = findInLine(/\bCOMUNA\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/\bCOMUNA\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|CIUDAD|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
+
+  let cliente_ciudad = findInLine(/\bCIUDAD\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/\bCIUDAD\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|COMUNA|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
+
+  let cliente_giro = findInLine(/\bGIRO\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/\bGIRO\s*[:\.]?\s*([^|\n\r]{3,160}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i);
+
+  // Si la comuna quedó suspechosamente corta (prefijo común chileno sin
+  // sufijo: "SAN", "LAS", "PUENTE"…), intentamos extenderla. pdf-parse a
+  // veces mete el sufijo ("BERNARDO") en la siguiente línea porque la otra
+  // columna del DTE lo empujó.
+  if (cliente_comuna) {
+    const words = cliente_comuna.trim().split(/\s+/);
+    const PREFIX_RE = /^(SAN|SANTA|SANTO|LAS|LOS|EL|LA|VILLA|PUENTE|PUERTO|ALTO|BAJO|CERRO|ISLA|NUEVA|NUEVO|PADRE|GENERAL|ESTACI[OÓ]N|LO|MAR[IÍ]A|JUAN)$/i;
+    // Palabras que NO son parte de un nombre de comuna real — son labels
+    // del DTE que pdf-parse intercaló al colapsar columnas.
+    const LABEL_WORDS_RE = /^(?:CIUDAD|COMUNA|GIRO|DIRECCI[OÓ]N|DOMICILIO|RUT|FONO|TEL[EÉ]F|FAX|FECHA|VENCIMIENTO|CONTACTO|TIPO|FORMA|ORDEN|VENDEDOR|OBSERVAC|CONDICI|NETO|IVA|TOTAL|EXENTO|MONTO|CLIENTE|NOMBRE|RECEPTOR|EMISOR|SE[ÑN]OR(?:ES)?|FACTURA|NOTA|ELECTR[OÓ]NICA)$/i;
+
+    if (words.length === 1 && PREFIX_RE.test(words[0])) {
+      const prefix = words[0];
+      let fixed = null;
+
+      // (1) Buscá la línea que contenía "COMUNA" — puede que el sufijo esté
+      //     en la siguiente línea si pdf-parse partió el cell.
+      for (let i = 0; i < lines.length; i++) {
+        if (!/COMUNA/i.test(lines[i])) continue;
+        const next = (lines[i + 1] || '').trim();
+        if (!next) continue;
+        const mNext = next.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ]{2,30})/);
+        if (mNext && !LABEL_WORDS_RE.test(mNext[1])) {
+          fixed = `${prefix} ${mNext[1]}`;
+          break;
+        }
+      }
+
+      // (2) Fallback al colapsado: en "COMUNA: SAN X Y Z…" tomá el primer X
+      //     que no sea un label conocido.
+      if (!fixed) {
+        const mCol = t.match(new RegExp(`COMUNA\\s*[:\\.]?\\s*${prefix}\\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ]{2,30})`, 'i'));
+        if (mCol && !LABEL_WORDS_RE.test(mCol[1])) {
+          fixed = `${prefix} ${mCol[1]}`;
+        }
+      }
+
+      if (fixed) cliente_comuna = fixed;
+    }
+  }
+
 
   // ── Montos ──
   const neto  = parseAmt(t.match(/(?:MONTO\s+)?NETO\s*:?\s*\$?\s*([\d\.,]+)/i)?.[1]);
