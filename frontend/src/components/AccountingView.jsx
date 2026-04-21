@@ -311,7 +311,6 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
           <Row label="RUT" val={rutFmt(inv.rut_cliente)} />
           <Row label="Dirección" val={inv.cliente_direccion} />
           <Row label="Comuna" val={inv.cliente_comuna} />
-          <Row label="Giro" val={inv.cliente_giro} />
         </div>
 
         {/* Vehículo */}
