@@ -427,6 +427,69 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
   }
 });
 
+// ─── GET /api/accounting/:id/debug ───────────────────────────────────────────
+// Re-descarga el PDF y devuelve el texto crudo de pdf-parse + el resultado
+// actual del parser. Sirve para depurar casos donde cliente_nombre/rut_cliente
+// no se extrae: sin ver qué escupe pdf-parse (que desordena layouts de 2
+// columnas) estamos adivinando regex a ciegas.
+router.get('/:id/debug', roleCheck('super_admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT id, folio, source, drive_file_id, pdf_url FROM invoices WHERE id = $1',
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
+    const inv = rows[0];
+
+    let buf = null;
+
+    // 1) Intentar por Drive (más confiable; devuelve PDF binario real).
+    if (inv.drive_file_id && process.env.GCLOUD_CREDS) {
+      try {
+        const creds = JSON.parse(process.env.GCLOUD_CREDS);
+        const { google } = require('googleapis');
+        const driveAuth = new google.auth.GoogleAuth({
+          credentials: creds,
+          scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+        });
+        const drive = google.drive({ version: 'v3', auth: driveAuth });
+        const r = await drive.files.get(
+          { fileId: inv.drive_file_id, alt: 'media' },
+          { responseType: 'arraybuffer' }
+        );
+        buf = Buffer.from(r.data);
+      } catch (e) {
+        logger.warn({ err: e.message }, '[Accounting/debug] Drive falló, probando pdf_url');
+      }
+    }
+
+    // 2) Fallback: pdf_url (Cloudinary o Drive webViewLink).
+    if (!buf && inv.pdf_url) {
+      const r = await fetch(inv.pdf_url);
+      if (r.ok) buf = Buffer.from(await r.arrayBuffer());
+    }
+
+    if (!buf) return res.status(404).json({ error: 'No se pudo descargar el PDF' });
+
+    const parsed    = await pdfParse(buf);
+    const rawText   = parsed.text;
+    const collapsed = rawText.replace(/\r/g, ' ').replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ');
+    const result    = extractEmitida(rawText, `${inv.folio || ''}.pdf`);
+
+    res.json({
+      folio: inv.folio,
+      drive_file_id: inv.drive_file_id,
+      raw_text:       rawText,
+      collapsed_text: collapsed,
+      raw_lines:      rawText.split('\n').map((l, i) => ({ i, l })),
+      parsed: result,
+    });
+  } catch (e) {
+    logger.error({ err: e }, '[Accounting/debug]');
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── PATCH /api/accounting/:id ────────────────────────────────────────────────
 router.patch('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
   try {
