@@ -243,17 +243,38 @@ function extractEmitida(text, fileName = '') {
 
   const stopLabels = /\s+(?:CIUDAD|COMUNA|GIRO|DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T\.?|RUT|FONO|TEL[EÉ]F|FAX|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|FORMA\s+DE\s+PAGO|ORDEN\s+(?:DE\s+)?COMPRA|VENDEDOR|OBSERVAC|CONDICI)\s*[:\.]/i;
 
-  let cliente_direccion = findInLine(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*(.+)$/i, stopLabels)
-    || field(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*([^|\n\r]{3,200}?)(?=\s+(?:CIUDAD|COMUNA|GIRO|R\.?U\.?T|TEL[EÉ]F|FONO|FAX|FECHA|VENCIMIENTO|FORMA\s+DE\s+PAGO|ORDEN\s+COMPRA|VENDEDOR|CONTACTO|TIPO\s+DE\s+COMPRA|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk]|\d{7,8}-[0-9Kk])|\s*[|\n\r]|$)/i);
+  // Labels del DTE que pdf-parse a veces pega DIRECTO al final del valor
+  // anterior, sin espacio ("BERNARDOCIUDAD:SANTIAGO"). Si detectamos uno,
+  // cortamos el valor justo antes.
+  const embeddedLabel = /(CIUDAD|COMUNA|GIRO|DIRECCI[OÓ]N|DOMICILIO|FONO|TEL[EÉ]FONO|TEL[EÉ]F|FAX|FECHA|VENCIMIENTO|CONTACTO|VENDEDOR|OBSERVAC|CONDICI|NETO|IVA|TOTAL|EXENTO|RECEPTOR|EMISOR|TIPO\s*DE\s*COMPRA|FORMA\s*DE\s*PAGO|ORDEN\s*(?:DE\s*)?COMPRA)\s*[:\.]/i;
+  const cutEmbedded = (v) => {
+    if (!v) return v;
+    const m = v.match(embeddedLabel);
+    if (m && m.index > 0) {
+      return v.slice(0, m.index).replace(/[\s,;:.\-]+$/, '').trim();
+    }
+    return v;
+  };
 
-  let cliente_comuna = findInLine(/\bCOMUNA\s*[:\.]?\s*(.+)$/i, stopLabels)
-    || field(/\bCOMUNA\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|CIUDAD|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
+  let cliente_direccion = cutEmbedded(
+    findInLine(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/(?:DIRECCI[OÓ]N|DOMICILIO)\s*[:\.]?\s*([^|\n\r]{3,200}?)(?=\s+(?:CIUDAD|COMUNA|GIRO|R\.?U\.?T|TEL[EÉ]F|FONO|FAX|FECHA|VENCIMIENTO|FORMA\s+DE\s+PAGO|ORDEN\s+COMPRA|VENDEDOR|CONTACTO|TIPO\s+DE\s+COMPRA|\d{1,2}\.\d{3}\.\d{3}-[0-9Kk]|\d{7,8}-[0-9Kk])|\s*[|\n\r]|$)/i)
+  );
 
-  let cliente_ciudad = findInLine(/\bCIUDAD\s*[:\.]?\s*(.+)$/i, stopLabels)
-    || field(/\bCIUDAD\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|COMUNA|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i);
+  let cliente_comuna = cutEmbedded(
+    findInLine(/\bCOMUNA\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/\bCOMUNA\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|CIUDAD|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i)
+  );
 
-  let cliente_giro = findInLine(/\bGIRO\s*[:\.]?\s*(.+)$/i, stopLabels)
-    || field(/\bGIRO\s*[:\.]?\s*([^|\n\r]{3,160}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i);
+  let cliente_ciudad = cutEmbedded(
+    findInLine(/\bCIUDAD\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/\bCIUDAD\s*[:\.]?\s*([A-ZÁÉÍÓÚÑ][A-Za-záéíóúñ\s]{2,50}?)(?=\s+(?:GIRO|COMUNA|R\.?U\.?T|FONO|TEL[EÉ]F|DIRECCI|FECHA|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{3,}\s*:)|\s*[|\n\r]|$)/i)
+  );
+
+  let cliente_giro = cutEmbedded(
+    findInLine(/\bGIRO\s*[:\.]?\s*(.+)$/i, stopLabels)
+    || field(/\bGIRO\s*[:\.]?\s*([^|\n\r]{3,160}?)(?=\s+(?:DIRECCI[OÓ]N|DOMICILIO|R\.?U\.?T|CIUDAD|COMUNA|FECHA|TEL[EÉ]F|FONO|VENCIMIENTO|CONTACTO|TIPO\s+DE\s+COMPRA|[A-Z]{4,}\s*:)|\s*[|\n\r]|$)/i)
+  );
 
   // Si la comuna quedó suspechosamente corta (prefijo común chileno sin
   // sufijo: "SAN", "LAS", "PUENTE"…), intentamos extenderla. pdf-parse a
@@ -277,8 +298,12 @@ function extractEmitida(text, fileName = '') {
         const next = (lines[i + 1] || '').trim();
         if (!next) continue;
         const mNext = next.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ]{2,30})/);
-        if (mNext && !LABEL_WORDS_RE.test(mNext[1])) {
-          fixed = `${prefix} ${mNext[1]}`;
+        if (!mNext) continue;
+        // pdf-parse a veces pega el siguiente label acá también:
+        // "BERNARDOCIUDAD" → cortá en "CIUDAD".
+        const word = cutEmbedded(mNext[1]);
+        if (word && word.length >= 3 && !LABEL_WORDS_RE.test(word)) {
+          fixed = `${prefix} ${word}`;
           break;
         }
       }
@@ -287,8 +312,11 @@ function extractEmitida(text, fileName = '') {
       //     que no sea un label conocido.
       if (!fixed) {
         const mCol = t.match(new RegExp(`COMUNA\\s*[:\\.]?\\s*${prefix}\\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ]{2,30})`, 'i'));
-        if (mCol && !LABEL_WORDS_RE.test(mCol[1])) {
-          fixed = `${prefix} ${mCol[1]}`;
+        if (mCol) {
+          const word = cutEmbedded(mCol[1]);
+          if (word && word.length >= 3 && !LABEL_WORDS_RE.test(word)) {
+            fixed = `${prefix} ${word}`;
+          }
         }
       }
 
