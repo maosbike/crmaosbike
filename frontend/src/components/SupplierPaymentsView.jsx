@@ -330,10 +330,25 @@ function NewModal({ onClose, onCreated }) {
 }
 
 /* ── Detail view (lectura) ──────────────────────────────────────────────── */
-function DetailView({ p, dv, overdue }) {
+function DetailView({ p, dv, overdue, onUpdated }) {
   const img = motoImg(p);
   const st  = pagoStatus(p);
   const saldo = Math.max(0, (parseInt(p.total_amount)||0) - (parseInt(p.paid_amount)||0));
+  // Notas editables inline — para pagos sin moto (arriendo, servicios) este
+  // es el único texto que describe el gasto. Obligar a abrir Editar para
+  // poner "Arriendo Marzo" es un paso extra innecesario.
+  const [notes, setNotes]         = useState(p.notes || '');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesErr, setNotesErr]   = useState('');
+  const notesDirty = (notes || '') !== (p.notes || '');
+  async function saveNotes() {
+    setSavingNotes(true); setNotesErr('');
+    try {
+      const u = await api.updateSupplierPayment(p.id, { notes });
+      onUpdated?.(u);
+    } catch (e) { setNotesErr(e.message); }
+    finally { setSavingNotes(false); }
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -418,17 +433,50 @@ function DetailView({ p, dv, overdue }) {
         <DetailRow label="N° Chasis" value={p.chassis}/>
       </DetailCard>
 
-      {p.notes && (
+      {/* Notas / Detalle — edición inline */}
+      <div style={{
+        padding:'12px 14px', borderRadius:10,
+        background:'#FFFBEB', border:'1px solid #FDE68A', borderLeft:'3px solid #D97706',
+      }}>
         <div style={{
-          padding:'12px 14px', borderRadius:10, fontSize:13, color:'#374151',
-          background:'#FFFBEB', border:'1px solid #FDE68A', borderLeft:'3px solid #D97706',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          marginBottom:6, gap:8,
         }}>
-          <div style={{ fontSize:10, fontWeight:700, color:'#B45309', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>
-            Notas
+          <div style={{ fontSize:10, fontWeight:700, color:'#B45309', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+            Notas / Detalle del pago
           </div>
-          {p.notes}
+          <span style={{ fontSize:10, color:'#92400E', fontStyle:'italic' }}>
+            aparece en la card
+          </span>
         </div>
-      )}
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          rows={2}
+          placeholder='Ej: "Arriendo Marzo", "Cuenta de luz", "Honorarios contador"…'
+          style={{
+            width:'100%', resize:'vertical', fontSize:13, fontFamily:'inherit',
+            padding:'8px 10px', borderRadius:8, border:'1px solid #FDE68A',
+            background:'#FFFFFF', color:'#374151', outline:'none',
+          }}
+        />
+        {notesErr && (
+          <div style={{ fontSize:11, color:'#DC2626', marginTop:6 }}>{notesErr}</div>
+        )}
+        {notesDirty && (
+          <div style={{ display:'flex', gap:8, marginTop:8 }}>
+            <button onClick={saveNotes} disabled={savingNotes}
+              style={{ ...S.btn, flex:1, fontSize:12, padding:'8px 12px' }}>
+              {savingNotes ? 'Guardando...' : 'Guardar detalle'}
+            </button>
+            <button onClick={() => { setNotes(p.notes || ''); setNotesErr(''); }}
+              disabled={savingNotes}
+              style={{ ...S.btn2, fontSize:12, padding:'8px 12px' }}>
+              Cancelar
+            </button>
+          </div>
+        )}
+      </div>
 
       {(p.invoice_url || p.receipt_url) && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -654,7 +702,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
             </div>
           </div>
         ) : (
-          <DetailView p={p} dv={dv} overdue={overdue}/>
+          <DetailView p={p} dv={dv} overdue={overdue} onUpdated={u=>{setP(u);onUpdated(u);}}/>
         )}
       </div>
     </Modal>
