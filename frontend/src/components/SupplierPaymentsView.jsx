@@ -815,7 +815,7 @@ function RowCard({ p, onClick }) {
           </div>
           <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:6,
                         whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-            {p.catalog_name || p.model || '—'}
+            {p.catalog_name || p.model || p.notes || '—'}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
             {p.color && <ColorChip color={p.color}/>}
