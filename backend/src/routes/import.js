@@ -603,8 +603,9 @@ router.post('/confirm', async (req, res) => {
     const { rows: models } = await db.query('SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true');
 
     // ── Least-loaded + round-robin por sucursal ────────────────
-    // Usa SLAService.assignSeller como lógica oficial (branch_id + extra_branches)
-    // El caché local evita queries repetidas durante importaciones masivas
+    // Usa la misma política que SLAService.assignSeller (branch_id + extra_branches,
+    // excluyendo vendedores con día libre hoy). El caché local evita queries
+    // repetidas durante importaciones masivas.
     const { TERMINAL_STATUSES } = require('../config/leadStatus');
     const NOT_TERMINAL_SQL = `NOT IN (${TERMINAL_STATUSES.map(s => `'${s}'`).join(',')})`;
     const sellerCache = {};
@@ -617,6 +618,11 @@ router.post('/confirm', async (req, res) => {
            LEFT JOIN tickets t ON t.assigned_to = u.id
            WHERE u.role = 'vendedor' AND u.active = true
              AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
+             AND NOT EXISTS (
+               SELECT 1 FROM user_time_off o
+                WHERE o.user_id = u.id
+                  AND o.off_date = (NOW() AT TIME ZONE 'America/Santiago')::date
+             )
            GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
            ORDER BY active_tickets ASC`,
           [branch_id]
