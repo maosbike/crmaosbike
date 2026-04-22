@@ -1200,11 +1200,14 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         discount_amt: discountAmtPayload || null,
       };
 
+      // Modalidad = chargeType (las 3 tarjetas de Documentación son la única fuente)
+      const saleTypeForPayload = chargeType || null;
+
       if (selUnit && !isReserva) {
         await api.sellInventory(selUnit.id, {
           sold_by: form.sold_by, sold_at: form.sold_at || null,
           ticket_id: form.ticket_id || null, payment_method: payMode || null,
-          sale_type: form.sale_type || null, sale_notes: clientExtra || null,
+          sale_type: saleTypeForPayload, sale_notes: clientExtra || null,
           client_name: form.client_name || null, client_rut: form.client_rut || null,
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
           ...extrasPayload,
@@ -1213,6 +1216,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         // Referencia comercial sin unidad de inventario — NO crea stock
         await api.createSale({
           ...form,
+          sale_type: saleTypeForPayload,
           payment_method: payMode || null,
           sale_notes: clientExtra || null,
           status: isReserva ? 'reservada' : 'vendida',
@@ -1226,6 +1230,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           sold_by: form.sold_by || null,
           sale_price: form.sale_price ? parseInt(form.sale_price) : null,
           invoice_amount: abono ? parseInt(abono) : null,
+          sale_type: saleTypeForPayload,
           sale_notes: clientExtra || null,
           client_name: form.client_name || null,
           client_rut: form.client_rut || null,
@@ -1462,9 +1467,6 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               opts={[{ v: '', l: '— Sucursal —' }, ...branches.map(b => ({ v: b.id, l: b.name }))]}
               onChange={set('branch_id')} />
             <Field label={isReserva ? 'Fecha reserva' : 'Fecha venta'} value={form.sold_at} onChange={set('sold_at')} type="date" />
-            {!isReserva && (
-              <Field label="Tipo de entrega" value={form.sale_type} onChange={set('sale_type')} opts={SALE_TYPES} />
-            )}
 
             {/* PRECIO */}
             <SEC>Precio</SEC>
