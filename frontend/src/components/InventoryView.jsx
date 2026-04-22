@@ -862,11 +862,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                               ))}
                             </select>
                           )}
-                          <button onClick={()=>toggleHist(x.id)}
-                            style={{ ...miniBtn, background: isHistOpen ? '#EEF2FF' : '#F9FAFB', color: isHistOpen ? '#4F46E5' : '#6B7280', border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}` }}>
-                            {histLoading[x.id]?'…':'Historial'}
-                          </button>
-                          {!isSold && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
+                          {isAdmin && (
+                            <button onClick={()=>toggleHist(x.id)}
+                              style={{ ...miniBtn, background: isHistOpen ? '#EEF2FF' : '#F9FAFB', color: isHistOpen ? '#4F46E5' : '#6B7280', border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}` }}>
+                              {histLoading[x.id]?'…':'Historial'}
+                            </button>
+                          )}
+                          {!isSold && isAdmin && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
                             <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
                               style={{ ...miniBtn, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer', fontFamily:'inherit' }}>
                               <option value="" disabled>Mover a...</option>
@@ -1079,22 +1081,24 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       </div>
                     )}
 
-                    {/* Historial */}
-                    <button onClick={()=>toggleHist(x.id)}
-                      style={{
-                        padding:'6px 10px', borderRadius:8, fontSize:11, fontWeight:700,
-                        cursor:'pointer', fontFamily:'inherit',
-                        background: isHistOpen ? '#0F172A' : '#FFFFFF',
-                        color: isHistOpen ? '#FFFFFF' : '#475569',
-                        border:`1px solid ${isHistOpen?'#0F172A':'#E2E8F0'}`,
-                        display:'flex', alignItems:'center', justifyContent:'center', gap:5,
-                        transition:'all 0.12s',
-                      }}>
-                      {histLoading[x.id]?'…':'Historial'}
-                    </button>
+                    {/* Historial — solo admins */}
+                    {isAdmin && (
+                      <button onClick={()=>toggleHist(x.id)}
+                        style={{
+                          padding:'6px 10px', borderRadius:8, fontSize:11, fontWeight:700,
+                          cursor:'pointer', fontFamily:'inherit',
+                          background: isHistOpen ? '#0F172A' : '#FFFFFF',
+                          color: isHistOpen ? '#FFFFFF' : '#475569',
+                          border:`1px solid ${isHistOpen?'#0F172A':'#E2E8F0'}`,
+                          display:'flex', alignItems:'center', justifyContent:'center', gap:5,
+                          transition:'all 0.12s',
+                        }}>
+                        {histLoading[x.id]?'…':'Historial'}
+                      </button>
+                    )}
 
-                    {/* Mover */}
-                    {!isSold && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
+                    {/* Mover — solo admins */}
+                    {!isSold && isAdmin && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
                       <select defaultValue=""
                         onClick={e=>e.stopPropagation()}
                         onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
