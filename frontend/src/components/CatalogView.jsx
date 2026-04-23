@@ -8,7 +8,7 @@ function catColor(c){return CAT_COLOR[c]||"#4B5563";}
 const BONO_CONDICION={
   todo_medio_pago:     {l:"Todo medio de pago",     c:"#10B981"},
   solo_financiamiento: {l:"Solo financiamiento",     c:"#8B5CF6"},
-  solo_autofin:        {l:"Solo Autofin",             c:"#F28100"},
+  solo_autofin:        {l:"Solo Autofin",             c:"var(--brand)"},
   contado_transferencia:{l:"Contado / Transferencia", c:"#3B82F6"},
   otro:                {l:"Otro (ver requisitos)",    c:"#6B7280"},
 };
@@ -320,7 +320,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                         placeholder="+ nuevo color"
                         style={{...S.inp,width:110,fontSize:11,height:26,padding:"0 8px"}}/>
                       <button onClick={addColorImmediate}
-                        style={{height:26,padding:"0 10px",borderRadius:6,border:"none",background:"#F28100",color:"#ffffff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                        style={{height:26,padding:"0 10px",borderRadius:6,border:"none",background:"var(--brand)",color:"#ffffff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                         +
                       </button>
                     </div>
@@ -350,8 +350,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                           style={{
                             width:44,height:44,borderRadius:22,padding:0,cursor:"pointer",
                             background:css||"#E5E7EB",
-                            border:isActive?"3px solid #F28100":`2px solid ${!css?"#D1D5DB":light?"#D1D5DB":"rgba(0,0,0,0.18)"}`,
-                            boxShadow:isActive?"0 0 0 2px #FFFFFF,0 0 0 4px #F28100":"0 1px 4px rgba(0,0,0,0.15)",
+                            border:isActive?"3px solid var(--brand)":`2px solid ${!css?"#D1D5DB":light?"#D1D5DB":"rgba(0,0,0,0.18)"}`,
+                            boxShadow:isActive?"0 0 0 2px #FFFFFF,0 0 0 4px var(--brand)":"0 1px 4px rgba(0,0,0,0.15)",
                             transition:"all 0.12s",
                             position:"relative",
                           }}>
@@ -360,7 +360,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                             <span style={{position:"absolute",bottom:1,right:1,width:10,height:10,borderRadius:5,background:"#10B981",border:"2px solid #ffffff",display:"block"}}/>
                           )}
                         </button>
-                        <span style={{fontSize:9,fontWeight:isActive?700:500,color:isActive?"#F28100":"#6B7280",textAlign:"center",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        <span style={{fontSize:9,fontWeight:isActive?700:500,color:isActive?"var(--brand)":"#6B7280",textAlign:"center",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                           {c}
                         </span>
                         {/* × quitar color (solo admin) */}
@@ -407,7 +407,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                         </div>
                         {canEdit&&(
                           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                            <label style={{fontSize:11,fontWeight:600,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:7,padding:"5px 12px",background:"#FFFBF0",whiteSpace:"nowrap"}}>
+                            <label style={{fontSize:11,fontWeight:600,color:"var(--brand)",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:7,padding:"5px 12px",background:"#FFFBF0",whiteSpace:"nowrap"}}>
                               {colorPhotoUploading===activeColor?"Subiendo…":(photoUrl?"↺ Cambiar foto":"+ Subir foto")}
                               <input type="file" accept="image/*" style={{display:"none"}} disabled={!!colorPhotoUploading}
                                 onChange={e=>e.target.files[0]&&handleUploadColorPhoto(activeColor,e.target.files[0])}/>
@@ -456,7 +456,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
               {m.spec_url&&(
                 <a href={m.spec_url} target="_blank" rel="noreferrer" download
-                  style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#F28100",textDecoration:"none",border:"1px solid #FDBA74",borderRadius:8,padding:"6px 12px"}}>
+                  style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"var(--brand)",textDecoration:"none",border:"1px solid #FDBA74",borderRadius:8,padding:"6px 12px"}}>
                   Descargar ficha técnica
                 </a>
               )}
@@ -492,7 +492,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {/* FORM EDICIÓN */}
           {editing&&(
             <div style={{borderTop:"1px solid #111827",paddingTop:16,marginTop:4}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#F28100",marginBottom:12}}>Editar modelo</div>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--brand)",marginBottom:12}}>Editar modelo</div>
 
               <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
@@ -565,7 +565,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 <label style={S.lbl}>URL ficha técnica (PDF o página)</label>
                 <input value={form.spec_url} onChange={e=>setForm(f=>({...f,spec_url:e.target.value}))} placeholder="https://..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                 <div style={{marginTop:5,display:"flex",alignItems:"center",gap:8}}>
-                  <label style={{fontSize:11,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 10px"}}>
+                  <label style={{fontSize:11,color:"var(--brand)",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 10px"}}>
                     {specUploading?"Subiendo PDF…":"Subir PDF (máx 15 MB)"}
                     <input type="file" accept="application/pdf,.pdf" style={{display:"none"}}
                       onChange={e=>e.target.files[0]&&handleUploadSpec(e.target.files[0])}/>
@@ -578,7 +578,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                   <div style={{fontSize:10,color:"#6B7280"}}>Galería de fotos ({gallery.length}/{MAX_GALLERY})</div>
                   {gallery.length<MAX_GALLERY&&(
-                    <label style={{fontSize:11,color:"#F28100",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 9px"}}>
+                    <label style={{fontSize:11,color:"var(--brand)",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 9px"}}>
                       {galleryUploading?"Subiendo…":"+ Foto"}
                       <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&handleAddGalleryPhoto(e.target.files[0])}/>
                     </label>
@@ -923,7 +923,7 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
         display:'flex',flexDirection:'column',
         transition:'transform 140ms, box-shadow 140ms, border-color 140ms',
       }}
-      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(16,24,40,0.08)';e.currentTarget.style.borderColor='#F28100';}}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(16,24,40,0.08)';e.currentTarget.style.borderColor='var(--brand)';}}
       onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 1px 3px rgba(16,24,40,0.04)';e.currentTarget.style.borderColor='#E5E7EB';}}
     >
       {/* Logo 16:9 */}

@@ -21,7 +21,7 @@ export function ForceChangeView({user,onChanged}){
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 50%, #F3F4F6 100%)",fontFamily:"'Inter',system-ui,sans-serif",padding:"24px"}}>
       <div style={{width:"100%",maxWidth:400}}>
         <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{width:52,height:52,borderRadius:14,background:"rgba(242,129,0,0.15)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:12}}><Ic.lock size={24} color="#F28100"/></div>
+          <div style={{width:52,height:52,borderRadius:14,background:"var(--brand-muted)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:12}}><Ic.lock size={24} color="var(--brand)"/></div>
           <h1 style={{fontSize:20,fontWeight:800,color:"#111827",margin:0}}>Cambio de contraseña requerido</h1>
           <p style={{color:"#6B7280",fontSize:12,marginTop:6}}>Hola {user.fn}, debes cambiar tu contraseña antes de continuar.</p>
         </div>

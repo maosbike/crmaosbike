@@ -724,7 +724,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 title={hasFilters ? 'Sin resultados con estos filtros' : 'Sin unidades en el inventario'}
                 hint={hasFilters ? undefined : 'Agrega unidades manualmente o impórtalas desde Excel.'}
                 action={hasFilters
-                  ? <button onClick={clearFilters} style={{ background:'none', border:'none', color:'#F28100', fontSize:12, cursor:'pointer', textDecoration:'underline', padding:0, fontFamily:'inherit' }}>Limpiar filtros</button>
+                  ? <button onClick={clearFilters} style={{ background:'none', border:'none', color:'var(--brand)', fontSize:12, cursor:'pointer', textDecoration:'underline', padding:0, fontFamily:'inherit' }}>Limpiar filtros</button>
                   : undefined}
               />
             </div>
@@ -1412,7 +1412,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </div>
               <div style={{ display:'flex',gap:8 }}>
                 <button type="button" onClick={()=>{setShowAdd(false);setNw(BLANK_NW());setAddErr('');}} style={S.btn2}>Cancelar</button>
-                <button type="submit" disabled={adding} style={{ ...S.btn,opacity:adding?0.7:1,background:nw.added_as_sold?'#EF4444':'#F28100' }}>
+                <button type="submit" disabled={adding} style={{ ...S.btn,opacity:adding?0.7:1,background:nw.added_as_sold?'#EF4444':'var(--brand)' }}>
                   {adding?'Guardando...':nw.added_as_sold?'Registrar como vendida':'Agregar al inventario'}
                 </button>
               </div>
@@ -1546,10 +1546,10 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
 const btnOrange = {
   display:'flex', alignItems:'center', gap:6,
-  background:'#F28100', border:'none', color:'#FFFFFF',
+  background:'var(--brand)', border:'none', color:'#FFFFFF',
   borderRadius:9, fontSize:12, fontWeight:700, cursor:'pointer',
   padding:'9px 18px', fontFamily:'inherit',
-  boxShadow:'0 2px 8px rgba(242,129,0,0.35)',
+  boxShadow:'0 2px 8px var(--brand-strong)',
 };
 const btnGhost = {
   display:'flex', alignItems:'center', gap:6,

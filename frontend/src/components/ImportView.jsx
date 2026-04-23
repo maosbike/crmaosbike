@@ -21,7 +21,7 @@ export function ImportView() {
     valid:    { l:'Válido',       c:'#10B981', bg:'rgba(16,185,129,0.1)' },
     error:    { l:'Error',        c:'#EF4444', bg:'rgba(239,68,68,0.1)'  },
     dup_file: { l:'Dup. archivo', c:'#F59E0B', bg:'rgba(245,158,11,0.1)' },
-    dup_db:   { l:'Dup. CRM',     c:'#F28100', bg:'rgba(242,129,0,0.1)'  },
+    dup_db:   { l:'Dup. CRM',     c:'var(--brand)', bg:'var(--brand-soft)'  },
   };
 
   const processFile = async (f) => {
@@ -94,9 +94,9 @@ export function ImportView() {
             {[{k:'import',l:'Importación'},{k:'logs',l:'Historial'}].map(t=>(
               <button key={t.k} onClick={()=>{setActiveTab(t.k);if(t.k==='logs')loadLogs();}}
                 style={{...S.btn2,padding:'6px 14px',fontSize:12,
-                  background:activeTab===t.k?'rgba(242,129,0,0.1)':'transparent',
-                  color:activeTab===t.k?'#F28100':'#6B7280',
-                  border:activeTab===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
+                  background:activeTab===t.k?'var(--brand-soft)':'transparent',
+                  color:activeTab===t.k?'var(--brand)':'#6B7280',
+                  border:activeTab===t.k?'1px solid var(--brand-strong)':'1px solid #D1D5DB'}}>
                 {t.l}
               </button>
             ))}
@@ -144,11 +144,11 @@ export function ImportView() {
                 <div
                   onDragOver={e=>{e.preventDefault();setDragOver(true);}}
                   onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
-                  style={{...S.card,border:`2px dashed ${dragOver?'#F28100':'#D1D5DB'}`,textAlign:'center',
+                  style={{...S.card,border:`2px dashed ${dragOver?'var(--brand)':'#D1D5DB'}`,textAlign:'center',
                     padding:'48px 24px',cursor:'pointer',transition:'border 0.2s',background:'#FAFAFA'}}
                   onClick={()=>document.getElementById('imp-file-input').click()}
                 >
-                  <Ic.dl size={36} color={dragOver?'#F28100':'#1F2937'}/>
+                  <Ic.dl size={36} color={dragOver?'var(--brand)':'#1F2937'}/>
                   <div style={{fontSize:15,fontWeight:600,marginTop:12,marginBottom:6}}>
                     Arrastra tu archivo aquí o haz clic para seleccionar
                   </div>
@@ -159,7 +159,7 @@ export function ImportView() {
                 )}
 
               <div style={{...S.card,display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-                <Ic.file size={20} color='#F28100'/>
+                <Ic.file size={20} color='var(--brand)'/>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:600}}>Plantilla CSV</div>
                   <div style={{fontSize:11,color:'#6B7280'}}>Descarga el formato con las columnas requeridas</div>
@@ -190,7 +190,7 @@ export function ImportView() {
                       ['color_pref','No',  'Color de moto preferido'],
                     ].map(([col,req,desc])=>(
                       <tr key={col} style={{borderBottom:'1px solid #FFFFFF'}}>
-                        <td style={{padding:'5px 10px',fontFamily:'inherit',color:'#F28100'}}>{col}</td>
+                        <td style={{padding:'5px 10px',fontFamily:'inherit',color:'var(--brand)'}}>{col}</td>
                         <td style={{padding:'5px 10px',color:req.includes('Sí')?'#10B981':'#4B5563',fontWeight:req.includes('Sí')?600:400}}>{req}</td>
                         <td style={{padding:'5px 10px',color:'#6B7280'}}>{desc}</td>
                       </tr>
@@ -209,7 +209,7 @@ export function ImportView() {
                   {l:'Válidos',      v:preview.summary.valid,    c:'#10B981'},
                   {l:'Errores',      v:preview.summary.errors,   c:'#EF4444'},
                   {l:'Dup. archivo', v:preview.summary.dup_file, c:'#F59E0B'},
-                  {l:'Dup. CRM',     v:preview.summary.dup_db,   c:'#F28100'},
+                  {l:'Dup. CRM',     v:preview.summary.dup_db,   c:'var(--brand)'},
                 ].map(x=>(
                   <div key={x.l} style={{...S.card,padding:'12px 14px',textAlign:'center'}}>
                     <div style={{fontSize:22,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -221,7 +221,7 @@ export function ImportView() {
               <div style={{...S.card,display:'flex',gap:16,flexWrap:'wrap',alignItems:'center'}}>
                 <span style={{fontSize:12,fontWeight:600,color:'#9CA3AF'}}>Opciones:</span>
                 <label style={{display:'flex',alignItems:'center',gap:7,cursor:'pointer',fontSize:12}}>
-                  <input type="checkbox" checked={skipDups} onChange={e=>setSkipDups(e.target.checked)} style={{accentColor:'#F28100'}}/>
+                  <input type="checkbox" checked={skipDups} onChange={e=>setSkipDups(e.target.checked)} style={{accentColor:'var(--brand)'}}/>
                   Omitir duplicados del CRM
                 </label>
                 <div style={{marginLeft:'auto',fontSize:12,color:'#9CA3AF'}}>
@@ -238,9 +238,9 @@ export function ImportView() {
                 ].map(t=>(
                   <button key={t.k} onClick={()=>setFilter(t.k)}
                     style={{...S.btn2,padding:'5px 12px',fontSize:11,
-                      background:filter===t.k?'rgba(242,129,0,0.1)':'transparent',
-                      color:filter===t.k?'#F28100':'#9CA3AF',
-                      border:filter===t.k?'1px solid rgba(242,129,0,0.3)':'1px solid #D1D5DB'}}>
+                      background:filter===t.k?'var(--brand-soft)':'transparent',
+                      color:filter===t.k?'var(--brand)':'#9CA3AF',
+                      border:filter===t.k?'1px solid var(--brand-strong)':'1px solid #D1D5DB'}}>
                     {t.l}
                   </button>
                 ))}
@@ -339,7 +339,7 @@ export function ImportView() {
                   <h3 style={{fontSize:12,fontWeight:600,margin:'0 0 10px',color:'#9CA3AF'}}>Tickets creados</h3>
                   <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
                     {result.tickets.map(n=>(
-                      <span key={n} style={{padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600,color:'#F28100',background:'rgba(242,129,0,0.1)'}}>{n}</span>
+                      <span key={n} style={{padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600,color:'var(--brand)',background:'var(--brand-soft)'}}>{n}</span>
                     ))}
                   </div>
                 </div>

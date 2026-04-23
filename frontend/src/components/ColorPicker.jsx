@@ -52,7 +52,7 @@ export function ColorPicker({ value = '#111827', onChange }) {
         {PRESET.map(c => (
           <button key={c} type="button" onClick={() => emit(c)} title={c}
             style={{ width:20, height:20, borderRadius:4, background:c,
-              border: hex===c ? '2.5px solid #F28100' : '1.5px solid rgba(0,0,0,0.13)',
+              border: hex===c ? '2.5px solid var(--brand)' : '1.5px solid rgba(0,0,0,0.13)',
               cursor:'pointer', padding:0, flexShrink:0 }} />
         ))}
       </div>

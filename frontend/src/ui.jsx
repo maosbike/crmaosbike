@@ -201,7 +201,7 @@ export const S={
     padding:14,
   },
   btn:{
-    background:'#F28100',
+    background:'var(--brand)',
     color:'#FFFFFF',
     border:'none',
     borderRadius:8,
@@ -348,7 +348,7 @@ export function ViewHeader({ preheader, title, subtitle, count, itemLabel='regis
   const isMobile = useIsMobile();
   const plural = itemLabelPlural ?? `${itemLabel}s`;
   const autoSub = count != null
-    ? <>{count} {count === 1 ? itemLabel : plural}{filtered && <span style={{ color: '#F28100', fontWeight: 700, marginLeft: 4 }}>· filtrado</span>}</>
+    ? <>{count} {count === 1 ? itemLabel : plural}{filtered && <span style={{ color: 'var(--brand)', fontWeight: 700, marginLeft: 4 }}>· filtrado</span>}</>
     : null;
   const sub = subtitle ?? autoSub;
   // size='md': TY.h1 en desktop, 16px en mobile. size='sm': 18px fijo.

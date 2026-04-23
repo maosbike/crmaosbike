@@ -178,7 +178,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
                   <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
                     Lista: {fmt(quoted.price)}
                     {quoted.bonus > 0 && (
-                      <> · Con bono: <span style={{ fontWeight: 600, color: '#F28100' }}>{fmt(quoted.price - quoted.bonus)}</span></>
+                      <> · Con bono: <span style={{ fontWeight: 600, color: 'var(--brand)' }}>{fmt(quoted.price - quoted.bonus)}</span></>
                     )}
                   </div>
                 )}
@@ -439,7 +439,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
           {/* Campos solo admin */}
           {isAdmin && (
-            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'rgba(242,129,0,0.04)', borderRadius: 8, border: '1px solid rgba(242,129,0,0.15)' }}>
+            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--brand-soft)', borderRadius: 8, border: '1px solid var(--brand-muted)' }}>
               <div>
                 <label style={{ ...S.lbl, color: '#9CA3AF' }}>Costo Interno</label>
                 <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Solo visible para admin" min="0" />

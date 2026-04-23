@@ -183,14 +183,14 @@ function TimeOffCalendar({ users }) {
               style={{
                 minHeight:96, borderRadius:8, padding:'6px 7px',
                 background: isToday(d) ? '#FFF7ED' : (isPast ? '#FAFAFA' : '#FFFFFF'),
-                border: isToday(d) ? '1.5px solid #F28100' : '1px solid #E5E7EB',
+                border: isToday(d) ? '1.5px solid var(--brand)' : '1px solid #E5E7EB',
                 cursor:'pointer', transition:'background 0.1s', opacity: isPast ? 0.75 : 1,
                 display:'flex', flexDirection:'column', gap:4, overflow:'hidden',
               }}
               onMouseEnter={e => { if (!isToday(d)) e.currentTarget.style.background = '#F9FAFB'; }}
               onMouseLeave={e => { if (!isToday(d)) e.currentTarget.style.background = isPast ? '#FAFAFA' : '#FFFFFF'; }}
             >
-              <div style={{ fontSize:11, fontWeight:700, color: isToday(d) ? '#F28100' : '#374151' }}>
+              <div style={{ fontSize:11, fontWeight:700, color: isToday(d) ? 'var(--brand)' : '#374151' }}>
                 {d.getDate()}
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
@@ -640,9 +640,9 @@ export function AdminView() {
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{
                             width:30, height:30, borderRadius:'50%', flexShrink:0,
-                            background: u.active ? 'rgba(242,129,0,0.12)' : '#F3F4F6',
+                            background: u.active ? 'var(--brand-soft)' : '#F3F4F6',
                             display:'flex', alignItems:'center', justifyContent:'center',
-                            color: u.active ? '#F28100' : '#9CA3AF',
+                            color: u.active ? 'var(--brand)' : '#9CA3AF',
                             fontSize:10, fontWeight:700,
                           }}>
                             {((u.first_name||'?')[0]+(u.last_name||'?')[0]).toUpperCase()}
@@ -819,7 +819,7 @@ export function AdminView() {
               {aliases.map(a=>(
                 <div key={a.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:'#F9FAFB',borderRadius:8,fontSize:12 }}>
                   <div>
-                    <span style={{ fontWeight:600,color:'#F28100' }}>"{a.alias}"</span>
+                    <span style={{ fontWeight:600,color:'var(--brand)' }}>"{a.alias}"</span>
                     <span style={{ color:'#6B7280',margin:'0 6px' }}>→</span>
                     <span style={{ fontWeight:600 }}>{a.brand} {a.model}</span>
                     {a.commercial_name&&a.commercial_name!==a.model&&<span style={{ color:'#6B7280' }}> ({a.commercial_name})</span>}
@@ -868,7 +868,7 @@ export function AdminView() {
       {editTarget && (
         <Modal onClose={()=>setEditTarget(null)} title={`Editar usuario`}>
           <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#F8F9FB',borderRadius:9,border:'1px solid #E5E7EB',marginBottom:16 }}>
-            <div style={{ width:34,height:34,borderRadius:'50%',background:'rgba(242,129,0,0.12)',display:'flex',alignItems:'center',justifyContent:'center',color:'#F28100',fontSize:12,fontWeight:700,flexShrink:0 }}>
+            <div style={{ width:34,height:34,borderRadius:'50%',background:'var(--brand-soft)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--brand)',fontSize:12,fontWeight:700,flexShrink:0 }}>
               {((editTarget.first_name||'?')[0]+(editTarget.last_name||'?')[0]).toUpperCase()}
             </div>
             <div>
@@ -1064,7 +1064,7 @@ export function AdminView() {
             </div>
             <p style={{ fontWeight:600,marginBottom:4 }}>{resetInfo.name}</p>
             <p style={{ color:'#6B7280',fontSize:12,marginBottom:12 }}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
-            <div style={{ background:'#F9FAFB',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'inherit',fontSize:18,fontWeight:700,letterSpacing:2,color:'#F28100' }}>
+            <div style={{ background:'#F9FAFB',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'inherit',fontSize:18,fontWeight:700,letterSpacing:2,color:'var(--brand)' }}>
               {resetInfo.temp}
             </div>
             <p style={{ color:'#6B7280',fontSize:11,marginBottom:16 }}>Comparte esta contraseña con el usuario de forma segura.</p>

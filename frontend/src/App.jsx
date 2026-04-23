@@ -240,7 +240,7 @@ export default function App(){
           <img src="/logo.png" alt="MaosBike" style={{height:44,objectFit:'contain'}}
             onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
           />
-          <div style={{width:40,height:40,borderRadius:8,background:'#F28100',display:'none',alignItems:'center',justifyContent:'center'}}>
+          <div style={{width:40,height:40,borderRadius:8,background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
             <Ic.bike size={22} color="#fff"/>
           </div>
         </button>
@@ -258,14 +258,14 @@ export default function App(){
                       display:'flex',alignItems:'center',gap:10,
                       padding:'8px 12px 8px 16px',marginBottom:1,
                       borderRadius:8,
-                      background:act?'rgba(242,129,0,0.08)':'transparent',
+                      background:act?'var(--brand-soft)':'transparent',
                       color:act?'#C2680A':'#4B5563',
                       fontSize:13,fontWeight:act?600:500,
                       border:'none',cursor:'pointer',width:'100%',textAlign:'left',
                       userSelect:'none',fontFamily:'inherit',
                       position:'relative',
                     }}>
-                      {act&&<div style={{position:'absolute',left:0,top:'50%',transform:'translateY(-50%)',width:3,height:20,background:'#F28100',borderRadius:'0 3px 3px 0'}}/>}
+                      {act&&<div style={{position:'absolute',left:0,top:'50%',transform:'translateY(-50%)',width:3,height:20,background:'var(--brand)',borderRadius:'0 3px 3px 0'}}/>}
                       <it.icon size={15} color={act?'#C2680A':'#4B5563'}/>
                       {it.label}
                     </button>
@@ -276,7 +276,7 @@ export default function App(){
           })}
         </nav>
         <div style={{padding:'12px 14px',borderTop:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-          <div style={{width:30,height:30,borderRadius:'50%',background:'rgba(242,129,0,0.12)',color:'#C2680A',fontWeight:700,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'inherit'}}>
+          <div style={{width:30,height:30,borderRadius:'50%',background:'var(--brand-soft)',color:'#C2680A',fontWeight:700,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'inherit'}}>
             {(user.fn[0]+(user.ln&&user.ln!=='-'?user.ln[0]:'')).toUpperCase()}
           </div>
           <div style={{flex:1,minWidth:0}}>

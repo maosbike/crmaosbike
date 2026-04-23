@@ -752,7 +752,7 @@ export function TicketView({lead,user,nav,updLead}){
                 {[true,false].map(v=>(
                   <button key={String(v)} type="button" onClick={()=>upd("wantsFin",v)}
                     style={{ ...S.btn2, padding:'4px 14px', fontSize:12,
-                      background:lead.wantsFin===v?(v?"#F28100":"#374151"):"transparent",
+                      background:lead.wantsFin===v?(v?"var(--brand)":"#374151"):"transparent",
                       color:lead.wantsFin===v?"#ffffff":"#9CA3AF",
                       border:lead.wantsFin===v?"none":"1px solid #D1D5DB" }}>
                     {v?"Sí":"No"}
@@ -801,7 +801,7 @@ export function TicketView({lead,user,nav,updLead}){
             return(
               <div style={{ borderTop:'1px solid #F3F4F6', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between', alignItems:'center', position: isDirty?'sticky':'static', bottom:0, background:'var(--surface)', zIndex:10, paddingBottom: isDirty?10:0, boxShadow: isDirty?'0 -2px 8px rgba(0,0,0,0.08)':'none' }}>
                 {isDirty?(
-                  <span style={{ fontSize:11, fontWeight:700, color:'#F28100', background:'#FFF7ED', padding:'3px 10px', borderRadius:6, border:'1px solid #FDBA74' }}>Cambios sin guardar</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:'var(--brand)', background:'#FFF7ED', padding:'3px 10px', borderRadius:6, border:'1px solid #FDBA74' }}>Cambios sin guardar</span>
                 ):<span/>}
                 <button onClick={async()=>{
                   const orig=savedRef.current||{};
@@ -823,7 +823,7 @@ export function TicketView({lead,user,nav,updLead}){
                     }
                     savedRef.current={...orig,...lead};
                   }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
-                }} style={{ ...S.btn, fontSize:12, ...(isDirty?{background:'#F28100',boxShadow:'0 2px 8px rgba(242,129,0,0.28)'}:{}) }}>
+                }} style={{ ...S.btn, fontSize:12, ...(isDirty?{background:'var(--brand)',boxShadow:'0 2px 8px var(--brand-strong)'}:{}) }}>
                   Guardar datos
                 </button>
               </div>
@@ -852,7 +852,7 @@ export function TicketView({lead,user,nav,updLead}){
               const role=t.user_role||'';
               const isAdminRole=['super_admin','admin_comercial'].includes(role);
               const roleLabel=isAdminRole?'Admin':role==='vendedor'?'Vendedor':'Equipo';
-              const roleColor=isAdminRole?'#F28100':role==='vendedor'?'#2563EB':'#6B7280';
+              const roleColor=isAdminRole?'var(--brand)':role==='vendedor'?'#2563EB':'#6B7280';
               return(
                 <div key={t.id||i} style={{ display:'flex', flexDirection:'column', alignItems:isMe?'flex-end':'flex-start' }}>
                   <div style={{ display:'flex', gap:5, alignItems:'center', marginBottom:3 }}>
@@ -943,7 +943,7 @@ export function TicketView({lead,user,nav,updLead}){
               const isContact=t.type==="contact_registered"||t.type==="contact";
               const isNote=t.type==="note_added";
               const isSystem=t.type==="system"||t.type==="status";
-              const dotColor=isEvidence?"#0D9488":isContact?"#3B82F6":isNote?"#10B981":isSystem?"#F28100":t.type==="reminder_created"?"#8B5CF6":"#9CA3AF";
+              const dotColor=isEvidence?"#0D9488":isContact?"#3B82F6":isNote?"#10B981":isSystem?"var(--brand)":t.type==="reminder_created"?"#8B5CF6":"#9CA3AF";
               const userName=t.user||(t.user_fn?`${t.user_fn} ${t.user_ln||''}`.trim():"Sistema");
               const evTypeLabel={screenshot_whatsapp:'WhatsApp',screenshot_llamada:'Llamada',archivo:'Archivo adjunto',nota:'Nota detallada'};
               const meta=[userName,t.method?`vía ${t.method}`:null,isEvidence&&t.evidence_type?(evTypeLabel[t.evidence_type]||t.evidence_type):null].filter(Boolean).join(' · ');
@@ -1025,7 +1025,7 @@ export function TicketView({lead,user,nav,updLead}){
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:5 }}>
                             <div style={{ fontSize:12, fontWeight:700, color:'#111827', lineHeight:1.3 }}>
                               {isInit?<>↳ Asignado a <span style={{ color:dotC }}>{ev.to_name}</span></>:<><span style={{ color:'#6B7280' }}>{ev.from_name}</span> <span style={{ color:dotC, fontWeight:800 }}>→</span> <span style={{ color:'#111827' }}>{ev.to_name}</span></>}
-                              {isCurrent&&<span style={{ marginLeft:8 }}><Bdg l="ACTUAL" c="#ffffff" bg="#F28100" size="sm"/></span>}
+                              {isCurrent&&<span style={{ marginLeft:8 }}><Bdg l="ACTUAL" c="#ffffff" bg="var(--brand)" size="sm"/></span>}
                             </div>
                             <span style={{ fontSize:10, color:'#9CA3AF', whiteSpace:'nowrap', flexShrink:0 }}>{fDT(ev.created_at)}</span>
                           </div>
@@ -1035,7 +1035,7 @@ export function TicketView({lead,user,nav,updLead}){
                             <span style={{ fontSize:11, color:'#6B7280' }}>por {ev.by_name}</span>
                           </div>
                           <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                            <span style={{ fontSize:10, color:isCurrent?"#F28100":"#9CA3AF", padding:'2px 8px', borderRadius:6, background:isCurrent?"rgba(242,129,0,0.08)":"rgba(0,0,0,0.04)", fontWeight:isCurrent?600:400 }}>
+                            <span style={{ fontSize:10, color:isCurrent?"var(--brand)":"#9CA3AF", padding:'2px 8px', borderRadius:6, background:isCurrent?"var(--brand-soft)":"rgba(0,0,0,0.04)", fontWeight:isCurrent?600:400 }}>
                               {isCurrent?"En curso · "+ev.duration_label:ev.duration_label}
                             </span>
                           </div>
@@ -1159,7 +1159,7 @@ export function TicketView({lead,user,nav,updLead}){
         headerContent={
           <div style={{ padding:'16px 20px 14px',borderBottom:'1px solid #E5E7EB',background:'linear-gradient(180deg, #FFFBF5 0%, #FFF4E6 100%)',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
             <div style={{ display:'flex',alignItems:'center',gap:11 }}>
-              <div style={{ width:34,height:34,borderRadius:10,background:'#F28100',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(242,129,0,0.3)' }}>
+              <div style={{ width:34,height:34,borderRadius:10,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px var(--brand-strong)' }}>
                 <Ic.msg size={15} color="#ffffff"/>
               </div>
               <div>
@@ -1343,7 +1343,7 @@ export function TicketView({lead,user,nav,updLead}){
             <div style={{ display:'flex',gap:8,justifyContent:'flex-end',marginTop:4,borderTop:'1px solid #F3F4F6',paddingTop:14 }}>
               <button onClick={closeContact} style={{ ...S.btn2,padding:'10px 20px',fontSize:12,fontWeight:600,borderRadius:9 }}>Cancelar</button>
               <button onClick={submitContact} disabled={cfSaving||!cf.result}
-                style={{ ...S.btn,padding:'10px 22px',fontSize:12,fontWeight:700,borderRadius:9,opacity:(cfSaving||!cf.result)?0.5:1,boxShadow:(cfSaving||!cf.result)?'none':'0 2px 8px rgba(242,129,0,0.3)' }}>
+                style={{ ...S.btn,padding:'10px 22px',fontSize:12,fontWeight:700,borderRadius:9,opacity:(cfSaving||!cf.result)?0.5:1,boxShadow:(cfSaving||!cf.result)?'none':'0 2px 8px var(--brand-strong)' }}>
                 {cfSaving?'Guardando...':'Guardar contacto'}
               </button>
             </div>

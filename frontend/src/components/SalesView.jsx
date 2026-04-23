@@ -346,7 +346,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           </div>
           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
             {sale.sale_price > 0 && (
-              <div style={{ fontSize: 24, fontWeight: 900, color: '#F28100', letterSpacing: '-1px' }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--brand)', letterSpacing: '-1px' }}>
                 {fmt(sale.sale_price)}
               </div>
             )}
@@ -371,10 +371,10 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           style={{ display:'flex', alignItems:'center', gap:10, width:'100%', marginBottom:14,
             padding:'12px 16px', borderRadius:10, border:'none', cursor:'pointer', fontFamily:'inherit',
             background: sale.delivered ? '#ECFDF5' : '#FFF7ED',
-            outline: `2px solid ${sale.delivered ? '#059669' : '#F28100'}`,
+            outline: `2px solid ${sale.delivered ? '#059669' : 'var(--brand)'}`,
             transition:'all 0.15s' }}>
           <div style={{ width:28, height:28, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
-            background: sale.delivered ? '#059669' : '#F28100' }}>
+            background: sale.delivered ? '#059669' : 'var(--brand)' }}>
             <span style={{ color:'#ffffff', fontSize:16, lineHeight:1 }}>{sale.delivered ? '✓' : '○'}</span>
           </div>
           <div style={{ textAlign:'left' }}>
@@ -541,7 +541,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
                             padding: '10px 0 4px', marginTop: 6, fontSize: 14,
                             borderTop: '2px solid #0F172A' }}>
                 <span style={{ fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total</span>
-                <span style={{ fontWeight: 900, color: '#F28100', fontSize: 16 }}>{fmt(total)}</span>
+                <span style={{ fontWeight: 900, color: 'var(--brand)', fontSize: 16 }}>{fmt(total)}</span>
               </div>
             </div>
           </div>
@@ -577,7 +577,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
                       onChange={e => handleDocUpload(field, e.target.files[0])} />
                     <span style={{
                       fontSize: 12, fontWeight: 700,
-                      color: uploading === field ? '#F28100' : (hasDoc ? '#059669' : '#9CA3AF'),
+                      color: uploading === field ? 'var(--brand)' : (hasDoc ? '#059669' : '#9CA3AF'),
                       padding: '4px 8px', borderRadius: 6,
                       background: hasDoc ? 'rgba(5,150,105,0.08)' : '#F9FAFB',
                       border: `1px solid ${hasDoc ? '#A7F3D0' : '#E5E7EB'}`,
@@ -645,7 +645,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           {/* Convertir a venta (solo reservas saldadas o cualquiera) */}
           {isRes && canEdit && (
             <button onClick={() => setShowConfirmConvert(true)} disabled={converting}
-              style={{ ...S.btn, flex: 1, background: saldo === 0 ? '#059669' : '#F28100',
+              style={{ ...S.btn, flex: 1, background: saldo === 0 ? '#059669' : 'var(--brand)',
                        display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
               {converting ? 'Convirtiendo…' : saldo === 0 ? '✓ Pasar a venta (saldado)' : '→ Registrar como venta'}
             </button>
@@ -653,7 +653,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
         </div>
       ) : (
         <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: isRes?'#B45309':'#F28100', textTransform: 'uppercase',
+          <div style={{ fontSize: 11, fontWeight: 700, color: isRes?'#B45309':'var(--brand)', textTransform: 'uppercase',
                         letterSpacing: '0.08em', marginBottom: 2 }}>
             {isRes ? 'Editar reserva' : 'Editar seguimiento'}
           </div>
@@ -1422,7 +1422,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             {filteredUnits.map(u => (
               <button key={u.id} onClick={() => pickUnit(u)}
                 style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#ffffff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#F28100'}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#E5E7EB'}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>{u.brand} {u.model}</div>
@@ -1432,7 +1432,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     <span>{u.branch_name || u.branch_code || '—'}</span>
                   </div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#F28100' }}>Seleccionar →</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand)' }}>Seleccionar →</div>
               </button>
             ))}
           </div>
@@ -1488,9 +1488,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8, marginBottom: 4 }}>
               {['persona', 'empresa'].map(t => (
                 <button key={t} type="button" onClick={() => set('client_type')(t)}
-                  style={{ padding: '5px 16px', borderRadius: 20, border: `1.5px solid ${form.client_type === t ? '#F28100' : '#E5E7EB'}`,
+                  style={{ padding: '5px 16px', borderRadius: 20, border: `1.5px solid ${form.client_type === t ? 'var(--brand)' : '#E5E7EB'}`,
                            background: form.client_type === t ? '#FFF7ED' : '#ffffff',
-                           color: form.client_type === t ? '#F28100' : '#6B7280',
+                           color: form.client_type === t ? 'var(--brand)' : '#6B7280',
                            fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
                   {t === 'persona' ? 'Persona natural' : 'Empresa'}
                 </button>
@@ -1525,9 +1525,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 {[{ v: true, l: 'Sí' }, { v: false, l: 'No' }].map(opt => (
                   <button key={String(opt.v)} type="button" onClick={() => setTitularSame(opt.v)}
                     style={{ padding: '5px 20px', borderRadius: 20,
-                             border: `1.5px solid ${titularSame === opt.v ? '#F28100' : '#E5E7EB'}`,
+                             border: `1.5px solid ${titularSame === opt.v ? 'var(--brand)' : '#E5E7EB'}`,
                              background: titularSame === opt.v ? '#FFF7ED' : '#ffffff',
-                             color: titularSame === opt.v ? '#F28100' : '#6B7280',
+                             color: titularSame === opt.v ? 'var(--brand)' : '#6B7280',
                              fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {opt.l}
                   </button>
@@ -1746,7 +1746,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffffff', fontSize: 15, fontWeight: 900, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 4 }}>
-                  <span>TOTAL</span><span style={{ color: '#F28100' }}>{fmtCLP(totals.grandTotal)}</span>
+                  <span>TOTAL</span><span style={{ color: 'var(--brand)' }}>{fmtCLP(totals.grandTotal)}</span>
                 </div>
                 {totals.saldo > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#FCD34D', fontSize: 11, marginTop: 4 }}>
@@ -1800,7 +1800,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => openNote(savedDoc, noteType)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F28100', border: 'none', color: '#ffffff', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px rgba(242,129,0,.35)', fontFamily: 'inherit' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--brand)', border: 'none', color: '#ffffff', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px var(--brand-strong)', fontFamily: 'inherit' }}>
               Descargar PDF
             </button>
             <button onClick={onClose}
@@ -2003,10 +2003,10 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             </button>
             <button onClick={() => setShowNew('venta')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              background: '#F28100', border: 'none', color: '#FFFFFF',
+              background: 'var(--brand)', border: 'none', color: '#FFFFFF',
               borderRadius: 8, fontSize: 12, fontWeight: 700,
               cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
-              whiteSpace: 'nowrap', boxShadow: '0 2px 6px rgba(242,129,0,0.30)',
+              whiteSpace: 'nowrap', boxShadow: '0 2px 6px var(--brand-strong)',
             }}>
               <Ic.plus size={13} color="#fff" /> Nueva venta
             </button>
@@ -2130,8 +2130,8 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                 padding: '5px 12px', borderRadius: 99, border: '1px solid',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 transition: 'all 0.12s',
-                borderColor: fType === t.v ? '#F28100' : '#E5E7EB',
-                background:  fType === t.v ? 'rgba(242,129,0,0.07)' : '#FFFFFF',
+                borderColor: fType === t.v ? 'var(--brand)' : '#E5E7EB',
+                background:  fType === t.v ? 'var(--brand-soft)' : '#FFFFFF',
                 color:       fType === t.v ? '#C2680A' : '#6B7280',
               }}>
                 {t.l}
@@ -2236,7 +2236,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                         {fD(s.sold_at)}
                       </span>
                       {s.ticket_num && (
-                        <span style={{ fontSize: 10, color: '#F28100', fontWeight: 700, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, color: 'var(--brand)', fontWeight: 700, flexShrink: 0 }}>
                           #{s.ticket_num}
                         </span>
                       )}
@@ -2480,7 +2480,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     )}
                     {s.ticket_num && (
                       <span style={{
-                        fontSize: 10, fontWeight: 700, color: '#F28100',
+                        fontSize: 10, fontWeight: 700, color: 'var(--brand)',
                       }}>
                         #{s.ticket_num}
                       </span>

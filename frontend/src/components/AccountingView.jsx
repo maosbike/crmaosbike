@@ -140,7 +140,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
 
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: serie.length ? 14 : 0, opacity: loading ? 0.4 : 1 }}>
-        <KPI label="Total facturado" value={$(mes.total)} accent="#F28100" />
+        <KPI label="Total facturado" value={$(mes.total)} accent="var(--brand)" />
         <KPI label="Neto" value={$(mes.neto)} />
         <KPI label="IVA 19%" value={$(mes.iva)} />
         <KPI label="Facturas" value={mes.count} />
@@ -160,7 +160,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
                 <div key={r.ym} title={`${ymLabel(r.ym)} — ${$compact(r.total)}`}
                   style={{
                     flex: 1, height: h,
-                    background: isActive ? '#F28100' : 'rgba(255,255,255,0.25)',
+                    background: isActive ? 'var(--brand)' : 'rgba(255,255,255,0.25)',
                     borderRadius: 3,
                     transition: 'height 0.2s',
                   }} />
@@ -171,7 +171,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
             {serie.map(r => (
               <div key={r.ym} style={{
                 flex: 1, textAlign: 'center',
-                fontSize: 8, color: r.ym === ym ? '#F28100' : 'rgba(255,255,255,0.35)',
+                fontSize: 8, color: r.ym === ym ? 'var(--brand)' : 'rgba(255,255,255,0.35)',
                 fontWeight: r.ym === ym ? 700 : 500,
               }}>
                 {ymShort(r.ym).split(' ')[0]}
@@ -419,14 +419,14 @@ function InvoiceCard({ inv, onOpen }) {
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
             style={{
-              fontSize:10, fontWeight:700, color:'#F28100', textDecoration:'none',
+              fontSize:10, fontWeight:700, color:'var(--brand)', textDecoration:'none',
               display:'inline-flex', alignItems:'center', gap:4,
-              background:'rgba(242,129,0,0.08)',
-              border:'1px solid rgba(242,129,0,0.2)',
+              background:'var(--brand-soft)',
+              border:'1px solid var(--brand-muted)',
               padding:'3px 8px', borderRadius:6,
             }}
           >
-            <Ic.file size={11} color="#F28100" /> PDF
+            <Ic.file size={11} color="var(--brand)" /> PDF
           </a>
         ) : <span/>}
       </div>
@@ -625,7 +625,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               {pdfUrl && (
                 <a href={pdfUrl} target="_blank" rel="noreferrer"
                   style={{
-                    fontSize:13, fontWeight:700, color:'#fff', background:'#F28100',
+                    fontSize:13, fontWeight:700, color:'#fff', background:'var(--brand)',
                     textDecoration:'none',
                     display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
                     padding:'10px 14px', borderRadius:10, marginTop:6,
@@ -658,7 +658,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
 
           {/* Vehículo (datos crudos del DTE) */}
           {(inv.brand || inv.model || inv.chassis) && (
-            <DetailCard title="VEHÍCULO (DTE)" accent="#F28100">
+            <DetailCard title="VEHÍCULO (DTE)" accent="var(--brand)">
               <DetailRow label="Marca" value={inv.brand} bold/>
               <DetailRow label="Modelo" value={inv.model} bold/>
               <DetailRow label="Color" value={inv.color} />
@@ -701,7 +701,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               borderBottom:'1px solid #FED7AA',
               display:'flex', alignItems:'center', gap:8,
             }}>
-              <span style={{ width:3, height:14, background:'#F28100', borderRadius:2 }}/>
+              <span style={{ width:3, height:14, background:'var(--brand)', borderRadius:2 }}/>
               <span style={{ fontSize:12, fontWeight:700, color:'#9A3412', letterSpacing:'0.02em' }}>
                 VINCULAR CON CATÁLOGO
               </span>
@@ -927,8 +927,8 @@ export function AccountingView() {
             style={{
               background: 'transparent',
               border: 'none',
-              borderBottom: tab === t.key ? '2px solid #F28100' : '2px solid transparent',
-              color: tab === t.key ? '#F28100' : '#6B7280',
+              borderBottom: tab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
+              color: tab === t.key ? 'var(--brand)' : '#6B7280',
               fontWeight: tab === t.key ? 700 : 500,
               fontSize: 13,
               padding: '8px 14px',

@@ -313,7 +313,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         <Empty
           title={hasFilters ? 'Ningún lead coincide con estos filtros' : 'Sin fichas todavía'}
           hint={!hasFilters ? 'Crea la primera con el botón «Nueva ficha».' : undefined}
-          action={hasFilters ? <button onClick={clearFilters} style={{background:'none',border:'none',color:'#F28100',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button> : undefined}
+          action={hasFilters ? <button onClick={clearFilters} style={{background:'none',border:'none',color:'var(--brand)',fontSize:12,cursor:'pointer',textDecoration:'underline',padding:0,fontFamily:'inherit'}}>Limpiar filtros</button> : undefined}
         />
       ):(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>

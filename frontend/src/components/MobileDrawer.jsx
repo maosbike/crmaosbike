@@ -26,7 +26,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
             <img src="/logo.png" alt="MaosBike" style={{height:28,objectFit:'contain',display:'block'}}
               onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
             />
-            <div style={{width:28,height:28,borderRadius:7,background:'#F28100',display:'none',alignItems:'center',justifyContent:'center'}}>
+            <div style={{width:28,height:28,borderRadius:7,background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
               <Ic.bike size={16} color="#fff"/>
             </div>
           </div>
@@ -47,12 +47,12 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
                       padding:"8px 12px 8px 16px",marginBottom:1,
                       borderRadius:8,border:"none",cursor:"pointer",
                       fontSize:13,fontWeight:act?600:500,fontFamily:"inherit",
-                      background:act?"rgba(242,129,0,0.08)":"transparent",
+                      background:act?"var(--brand-soft)":"transparent",
                       color:act?"#C2680A":"#4B5563",
                       textAlign:"left",userSelect:"none",
                       position:"relative",width:"100%",
                     }}>
-                      {act&&<div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",width:3,height:20,background:"#F28100",borderRadius:"0 3px 3px 0"}}/>}
+                      {act&&<div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",width:3,height:20,background:"var(--brand)",borderRadius:"0 3px 3px 0"}}/>}
                       <it.icon size={16} color={act?"#C2680A":"#4B5563"}/>
                       {it.label}
                     </button>
@@ -64,7 +64,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
         </nav>
         <div style={{borderTop:"1px solid #F3F4F6",padding:"12px 14px",display:"flex",flexDirection:"column",gap:6}}>
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 0 8px"}}>
-            <div style={{width:30,height:30,borderRadius:"50%",background:"rgba(242,129,0,0.12)",display:"flex",alignItems:"center",justifyContent:"center",color:"#C2680A",fontSize:11,fontWeight:700,flexShrink:0,fontFamily:"inherit"}}>{initials}</div>
+            <div style={{width:30,height:30,borderRadius:"50%",background:"var(--brand-soft)",display:"flex",alignItems:"center",justifyContent:"center",color:"#C2680A",fontSize:11,fontWeight:700,flexShrink:0,fontFamily:"inherit"}}>{initials}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{...TY.bodyB,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.fn||user?.first_name} {user?.ln&&user?.ln!=='-'?user?.ln:(user?.last_name&&user?.last_name!=='-'?user?.last_name:'')}</div>
               <div style={{...TY.meta,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.role?.replace(/_/g," ")}</div>

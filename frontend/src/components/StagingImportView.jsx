@@ -114,7 +114,7 @@ export function StagingImportView() {
         }
       />
 
-      <div style={{ background: 'rgba(242,129,0,0.08)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, border: '1px solid rgba(242,129,0,0.3)', fontSize: 12, color: '#F28100' }}>
+      <div style={{ background: 'var(--brand-soft)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, border: '1px solid var(--brand-strong)', fontSize: 12, color: 'var(--brand)' }}>
         <b>Nuevo flujo seguro:</b> los datos no se publican al catálogo hasta que los revises y apruebes explícitamente.
       </div>
 
@@ -237,7 +237,7 @@ export function StagingImportView() {
                             <td style={{ padding: '8px 10px', fontWeight: 600 }}>{row.brand}</td>
                             <td style={{ padding: '8px 10px' }}>{row.commercial_name || row.model}</td>
                             <td style={{ padding: '8px 10px', color: '#6B7280' }}>{row.category || '—'}</td>
-                            <td style={{ padding: '8px 10px', fontWeight: 700, color: '#F28100' }}>{row.price_list ? `$${row.price_list.toLocaleString('es-CL')}` : '—'}</td>
+                            <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--brand)' }}>{row.price_list ? `$${row.price_list.toLocaleString('es-CL')}` : '—'}</td>
                             <td style={{ padding: '8px 10px', color: '#10B981' }}>{row.bonus ? `$${row.bonus.toLocaleString('es-CL')}` : '—'}</td>
                             <td style={{ padding: '8px 10px' }}>
                               <span style={{ fontSize: 10, color: MATCH_COLOR[row.match_type] || '#6B7280' }}>
@@ -290,7 +290,7 @@ export function StagingImportView() {
                     const d = await api.getPriceBatch(b.id);
                     setBatchData({ batch_id: b.id, rows: d.rows, total: d.rows.length, filename: b.filename });
                     setStep('review');
-                  }} style={{ ...S.btn2, padding: '5px 12px', fontSize: 11, color: '#F28100', borderColor: 'rgba(242,129,0,0.3)' }}>
+                  }} style={{ ...S.btn2, padding: '5px 12px', fontSize: 11, color: 'var(--brand)', borderColor: 'var(--brand-strong)' }}>
                     Revisar
                   </button>
                 )}

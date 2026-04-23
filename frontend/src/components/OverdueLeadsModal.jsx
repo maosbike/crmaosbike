@@ -119,7 +119,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
         <div
           style={{
             padding: '18px 22px',
-            background: '#F28100',
+            background: 'var(--brand)',
             borderBottom: '1px solid #D97706',
           }}
         >

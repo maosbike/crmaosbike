@@ -270,10 +270,10 @@ export function CalendarView({user,nav}){
                 return(
                   <div key={i}
                     onClick={()=>day&&openNew(day)}
-                    style={{minHeight:88,padding:5,borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',background:isToday?'rgba(242,129,0,0.04)':'transparent',cursor:day?'pointer':'default'}}
+                    style={{minHeight:88,padding:5,borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',background:isToday?'var(--brand-soft)':'transparent',cursor:day?'pointer':'default'}}
                   >
                     {day&&(
-                      <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'#F28100':'#9CA3AF',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'rgba(242,129,0,0.15)':'transparent',marginBottom:3}}>
+                      <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'var(--brand)':'#9CA3AF',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'var(--brand-muted)':'transparent',marginBottom:3}}>
                         {day}
                       </div>
                     )}

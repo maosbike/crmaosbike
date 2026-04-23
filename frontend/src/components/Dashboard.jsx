@@ -114,8 +114,8 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <div style={{padding:'12px 16px 10px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{fontSize:13,fontWeight:700,color:'#111827'}}>Tareas hoy</span>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:10,fontWeight:600,color:'#F28100',background:'rgba(242,129,0,0.1)',padding:'2px 7px',borderRadius:99}}>{tareasHoy.length}</span>
-              {tareasHoy.length>8&&<Btn variant="ghost" size="sm" onClick={()=>nav('calendar')} style={{fontSize:11,color:'#F28100',padding:'2px 6px'}}>Ver todas →</Btn>}
+              <span style={{fontSize:10,fontWeight:600,color:'var(--brand)',background:'var(--brand-soft)',padding:'2px 7px',borderRadius:99}}>{tareasHoy.length}</span>
+              {tareasHoy.length>8&&<Btn variant="ghost" size="sm" onClick={()=>nav('calendar')} style={{fontSize:11,color:'var(--brand)',padding:'2px 6px'}}>Ver todas →</Btn>}
             </div>
           </div>
           <div style={{maxHeight:280,overflowY:'auto'}}>
@@ -131,7 +131,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
                     <div style={{fontSize:13,fontWeight:600,color:'#111827',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.title||'—'}</div>
                     <div style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{clientName}</div>
                   </div>
-                  <span style={{fontSize:11,fontWeight:600,color:'#F28100',flexShrink:0}}>{timeLabel}</span>
+                  <span style={{fontSize:11,fontWeight:600,color:'var(--brand)',flexShrink:0}}>{timeLabel}</span>
                 </div>
               );
             })}
@@ -146,7 +146,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
       <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:16}}>
         <div style={{padding:'12px 16px 10px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <span style={{fontSize:13,fontWeight:700,color:'#111827'}}>Leads recientes</span>
-          <Btn variant="ghost" size="sm" onClick={()=>nav('leads')} style={{fontSize:12,color:'#F28100'}}>Ver todos →</Btn>
+          <Btn variant="ghost" size="sm" onClick={()=>nav('leads')} style={{fontSize:12,color:'var(--brand)'}}>Ver todos →</Btn>
         </div>
         <div>
           {leads.slice(0,6).map(l=>{

@@ -26,7 +26,7 @@ export function BottomNav({ page, nav, user, onMenuOpen }) {
           if (it.id === 'more') { onMenuOpen && onMenuOpen(); return; }
           nav && nav(it.id);
         };
-        const color = act ? '#F28100' : '#9CA3AF';
+        const color = act ? 'var(--brand)' : '#9CA3AF';
         return (
           <button key={it.id} onClick={onClick}
             style={{
@@ -35,7 +35,7 @@ export function BottomNav({ page, nav, user, onMenuOpen }) {
               gap: 3, border: 'none', background: 'transparent', cursor: 'pointer',
               fontFamily: 'inherit', padding: '6px 4px',
               color,
-              borderTop: act ? '2px solid #F28100' : '2px solid transparent',
+              borderTop: act ? '2px solid var(--brand)' : '2px solid transparent',
             }}>
             <it.icon size={20} color={color}/>
             <span style={{ fontSize: 9, fontWeight: act ? 700 : 600, letterSpacing: 0, textTransform: 'none', fontFamily: 'inherit' }}>{it.label}</span>

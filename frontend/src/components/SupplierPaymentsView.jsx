@@ -160,7 +160,7 @@ function F({ label, value, onChange, type='text', half, hl }) {
 }
 
 /* ── File upload zone ───────────────────────────────────────────────────── */
-function FileZone({ label, file, onFile, url, onUrl, accent='#F28100' }) {
+function FileZone({ label, file, onFile, url, onUrl, accent='var(--brand)' }) {
   const [mode, setMode] = useState(url?'url':'upload');
   const [drag, setDrag] = useState(false);
   return (
@@ -405,7 +405,7 @@ function DetailView({ p, dv, overdue, onUpdated }) {
       </div>
 
       {/* Factura */}
-      <DetailCard title="Factura" accent="#F28100">
+      <DetailCard title="Factura" accent="var(--brand)">
         <DetailRow label="Fecha emisión" value={fd(p.invoice_date)}/>
         <DetailRow label="Vencimiento" value={fd(dv)} danger={overdue}/>
         <DetailRow label="Neto" value={$(p.neto)}/>
