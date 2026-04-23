@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const TelegramService = require('../services/telegramService');
@@ -580,8 +581,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
 });
 
 // ─── POST /api/import/confirm ─────────────────────────────────
-router.post('/confirm', async (req, res) => {
-  try {
+router.post('/confirm', asyncHandler(async (req, res) => {
     const { rows, filename, skip_dups = true } = req.body;
 
     if (!Array.isArray(rows) || rows.length === 0) {
@@ -760,15 +760,10 @@ router.post('/confirm', async (req, res) => {
     );
 
     res.json({ ...stats, tickets: createdNums });
-  } catch (e) {
-    console.error('[Import] Confirm error:', e);
-    res.status(500).json({ error: 'Error al importar leads' });
-  }
-});
+}));
 
 // ─── GET /api/import/logs ─────────────────────────────────────
-router.get('/logs', async (req, res) => {
-  try {
+router.get('/logs', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT l.*, u.first_name, u.last_name
        FROM import_logs l
@@ -777,10 +772,6 @@ router.get('/logs', async (req, res) => {
        LIMIT 50`
     );
     res.json(rows);
-  } catch (e) {
-    console.error('[Import] Logs error:', e);
-    res.status(500).json({ error: 'Error' });
-  }
-});
+}));
 
 module.exports = router;

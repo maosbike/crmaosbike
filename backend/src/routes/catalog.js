@@ -105,8 +105,7 @@ router.delete('/brands/:name/logo', roleCheck('super_admin', 'admin_comercial'),
 }));
 
 // ── Categorías por marca ─────────────────────────────────────────────────────
-router.get('/brands/:name/categories', async (req, res) => {
-  try {
+router.get('/brands/:name/categories', asyncHandler(async (req, res) => {
     const name = decodeURIComponent(req.params.name);
     const { rows } = await db.query(
       `SELECT bc.id, bc.name, bc.sort_order,
@@ -118,11 +117,9 @@ router.get('/brands/:name/categories', async (req, res) => {
       [name]
     );
     res.json(rows);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
-router.post('/brands/:name/categories', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.post('/brands/:name/categories', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const name = decodeURIComponent(req.params.name);
     const { name: catName, sort_order } = req.body;
     if (!catName || !catName.trim()) return res.status(400).json({ error: 'Nombre requerido' });
@@ -133,11 +130,9 @@ router.post('/brands/:name/categories', roleCheck('super_admin', 'admin_comercia
       [name, catName.trim(), sort_order || 0]
     );
     res.status(201).json(rows[0]);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
-router.patch('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.patch('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const name = decodeURIComponent(req.params.name);
     const { name: newName, sort_order } = req.body;
     const { rows: cur } = await db.query('SELECT name FROM brand_categories WHERE id=$1 AND brand=$2', [req.params.id, name]);
@@ -157,20 +152,16 @@ router.patch('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_com
       );
     }
     res.json(rows[0]);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
-router.delete('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.delete('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const name = decodeURIComponent(req.params.name);
     const { rows } = await db.query('DELETE FROM brand_categories WHERE id=$1 AND brand=$2 RETURNING name', [req.params.id, name]);
     if (!rows[0]) return res.status(404).json({ error: 'Categoría no encontrada' });
     res.json({ ok: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
-router.post('/models', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.post('/models', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { brand, model, year, cc, category, colors, price, bonus,
             bono_tipo, bono_condicion, bono_requisitos } = req.body;
     const { rows } = await db.query(
@@ -182,12 +173,10 @@ router.post('/models', roleCheck('super_admin', 'admin_comercial'), async (req, 
        bono_tipo || null, bono_condicion || null, bono_requisitos || null]
     );
     res.status(201).json(rows[0]);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Update model details
-router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const jsonFields = ['colors', 'image_gallery', 'color_photos'];
     const allowed = ['brand', 'model', 'commercial_name', 'description', 'spec_url',
                      'colors', 'image_gallery', 'color_photos', 'category', 'cc', 'year', 'price', 'bonus',
@@ -214,27 +203,23 @@ router.patch('/models/:id', roleCheck('super_admin', 'admin_comercial'), async (
     );
     if (!rows.length) return res.status(404).json({ error: 'Modelo no encontrado' });
     res.json(rows[0]);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Delete model (soft delete — solo super_admin)
-router.delete('/models/:id', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.delete('/models/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `UPDATE moto_models SET active = false, updated_at = NOW() WHERE id = $1 RETURNING id`,
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Modelo no encontrado' });
     res.json({ ok: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Upload model main image
 router.post('/models/:id/image',
   roleCheck('super_admin', 'admin_comercial'),
   (req, res, next) => uploadImg.single('image')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
       const b64 = req.file.buffer.toString('base64');
       const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
@@ -243,16 +228,14 @@ router.post('/models/:id/image',
       });
       await db.query('UPDATE moto_models SET image_url = $1, updated_at = NOW() WHERE id = $2', [result.secure_url, req.params.id]);
       res.json({ url: result.secure_url });
-    } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir imagen' }); }
-  }
+  })
 );
 
 // Add gallery photo (máx MAX_GALLERY fotos)
 router.post('/models/:id/gallery',
   roleCheck('super_admin', 'admin_comercial'),
   (req, res, next) => uploadImg.single('photo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
-  async (req, res) => {
-  try {
+  asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
 
     // Verificar límite de galería
@@ -275,13 +258,11 @@ router.post('/models/:id/gallery',
       [JSON.stringify(updated), req.params.id]
     );
     res.json({ url: result.secure_url, gallery: updated });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
-  }
+  })
 );
 
 // Remove gallery photo
-router.delete('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.delete('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: 'URL requerida' });
 
@@ -295,15 +276,13 @@ router.delete('/models/:id/gallery', roleCheck('super_admin', 'admin_comercial')
       [JSON.stringify(updated), req.params.id]
     );
     res.json({ gallery: updated });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al eliminar foto' }); }
-});
+}));
 
 // Upload photo for a specific color
 router.post('/models/:id/color-photo',
   roleCheck('super_admin', 'admin_comercial'),
   (req, res, next) => uploadImg.single('photo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
-  async (req, res) => {
-  try {
+  asyncHandler(async (req, res) => {
     const { color } = req.body;
     if (!color) return res.status(400).json({ error: 'color requerido' });
     if (!req.file) return res.status(400).json({ error: 'foto requerida' });
@@ -331,13 +310,11 @@ router.post('/models/:id/color-photo',
       [JSON.stringify(updated), req.params.id]
     );
     res.json({ color: color.trim(), url: result.secure_url, color_photos: updated });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto de color' }); }
-  }
+  })
 );
 
 // Remove photo for a specific color
-router.delete('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.delete('/models/:id/color-photo', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { color } = req.body;
     if (!color) return res.status(400).json({ error: 'color requerido' });
 
@@ -355,15 +332,13 @@ router.delete('/models/:id/color-photo', roleCheck('super_admin', 'admin_comerci
       [JSON.stringify(updated), req.params.id]
     );
     res.json({ color_photos: updated });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al eliminar foto de color' }); }
-});
+}));
 
 // Upload spec PDF
 router.post('/models/:id/spec',
   roleCheck('super_admin', 'admin_comercial'),
   (req, res, next) => uploadPdf.single('pdf')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       if (!req.file) return res.status(400).json({ error: 'PDF requerido' });
       const b64 = req.file.buffer.toString('base64');
       const safeName = (req.file.originalname || 'ficha').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.pdf$/i, '');
@@ -378,20 +353,14 @@ router.post('/models/:id/spec',
         [result.secure_url, req.params.id]
       );
       res.json({ url: result.secure_url });
-    } catch (e) {
-      console.error('Spec upload error:', e);
-      res.status(500).json({ error: e.message || 'Error al subir PDF' });
-    }
-  }
+  })
 );
 
 // ── BRANCHES ──
-router.get('/branches', async (req, res) => {
-  try {
+router.get('/branches', asyncHandler(async (req, res) => {
     const { rows } = await db.query('SELECT * FROM branches WHERE active = true ORDER BY name');
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 router.post('/branches', roleCheck('super_admin'), async (req, res) => {
   try {
@@ -460,21 +429,18 @@ router.delete('/branches/:id', roleCheck('super_admin'), async (req, res) => {
 router.post('/branches/:id/photo',
   roleCheck('super_admin', 'admin_comercial'),
   (req, res, next) => uploadImg.single('photo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
       const b64 = req.file.buffer.toString('base64');
       const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, { folder: 'crmaosbike/branches', resource_type: 'image' });
       const { rows } = await db.query('UPDATE branches SET photo_url=$1 WHERE id=$2 RETURNING id, photo_url', [result.secure_url, req.params.id]);
       if (!rows[0]) return res.status(404).json({ error: 'Sucursal no encontrada' });
       res.json({ url: result.secure_url });
-    } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
-  }
+  })
 );
 
 // ── USERS ──
-router.get('/users', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.get('/users', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { role, branch_id } = req.query;
     let where = ['1=1'], params = [], idx = 1;
     if (role) { where.push(`role = $${idx++}`); params.push(role); }
@@ -486,11 +452,9 @@ router.get('/users', roleCheck('super_admin', 'admin_comercial'), async (req, re
        WHERE ${where.join(' AND ')} ORDER BY u.first_name`, params
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
-router.get('/sellers', async (req, res) => {
-  try {
+router.get('/sellers', asyncHandler(async (req, res) => {
     // Incluye vendedores puros + no-vendedores con can_sell (Joaquín, Miguel Ángel)
     // que venden esporádicamente. El round-robin de importación sigue filtrando
     // por role='vendedor' estricto, así que no reciben leads automáticos.
@@ -501,12 +465,10 @@ router.get('/sellers', async (req, res) => {
        ORDER BY u.first_name`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ── MODEL ALIASES ──
-router.get('/aliases', async (req, res) => {
-  try {
+router.get('/aliases', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT a.id, a.alias, a.model_id, a.created_at,
               m.brand, m.model, m.commercial_name
@@ -514,11 +476,9 @@ router.get('/aliases', async (req, res) => {
        ORDER BY a.alias`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
-router.post('/aliases', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.post('/aliases', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { alias, model_id } = req.body;
     if (!alias || !model_id) return res.status(400).json({ error: 'alias y model_id requeridos' });
     const { rows } = await db.query(
@@ -528,19 +488,15 @@ router.post('/aliases', roleCheck('super_admin', 'admin_comercial'), async (req,
       [alias.trim(), model_id, req.user.id]
     );
     res.json(rows[0]);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
-router.delete('/aliases/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.delete('/aliases/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     await db.query('DELETE FROM model_aliases WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Probador: dado un texto (como viene en el lead), dice a qué modelo resolvería el importador.
-router.post('/aliases/test', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.post('/aliases/test', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ error: 'text requerido' });
     // Limpia artefactos comunes ("GIXXER 150 DI -" → "GIXXER 150 DI") para que el tester
@@ -562,30 +518,25 @@ router.post('/aliases/test', roleCheck('super_admin', 'admin_comercial'), async 
       return res.json({ matched: true, via: 'alias', model: rows[0], warning: rows[0].active ? null : 'El modelo del catálogo está INACTIVO — el alias no se aplicará en importación.' });
     }
     res.json({ matched: false, via: null, model: null, note: 'No hay alias exacto. El importador intentará fuzzy-matching contra el catálogo.' });
-  } catch (e) { console.error('Error test alias:', e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Renombrar categoría en todos los modelos
-router.patch('/categories/rename', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
+router.patch('/categories/rename', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
   const { from, to } = req.body;
   if (!from || !to) return res.status(400).json({ error: 'from y to requeridos' });
-  try {
     const { rowCount } = await db.query(
       `UPDATE moto_models SET category = $1 WHERE LOWER(TRIM(category)) = LOWER(TRIM($2))`,
       [to.trim(), from.trim()]
     );
     res.json({ ok: true, updated: rowCount });
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Listar categorías únicas
-router.get('/categories', async (req, res) => {
-  try {
+router.get('/categories', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT category, COUNT(*) AS count FROM moto_models WHERE category IS NOT NULL AND category <> '' GROUP BY category ORDER BY category`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 module.exports = router;

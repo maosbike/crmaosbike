@@ -25,6 +25,7 @@ const router = require('express').Router();
 const db = require('../config/db');
 const logger = require('../config/logger');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
@@ -138,8 +139,7 @@ const COMBINED_FROM = `(
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
 // Acepta ?page&limit (default 100, max 500). Devuelve data + total + page + limit.
 // Compatibilidad: consumidores viejos siguen recibiendo `data` y `total`.
-router.get('/', async (req, res) => {
-  try {
+router.get('/', asyncHandler(async (req, res) => {
     const { from, to, branch_id, seller_id, q, status } = req.query;
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
     const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 100));
@@ -196,15 +196,10 @@ router.get('/', async (req, res) => {
       page,
       limit,
     });
-  } catch (e) {
-    logger.error({err:e},'[Sales] GET /');
-    res.status(500).json({ error: 'Error al obtener ventas' });
-  }
-});
+}));
 
 // ─── GET /api/sales/stats ─────────────────────────────────────────────────────
-router.get('/stats', async (req, res) => {
-  try {
+router.get('/stats', asyncHandler(async (req, res) => {
     const { from, to, branch_id } = req.query;
     const where = [], params = [];
     let idx = 1;
@@ -260,15 +255,10 @@ router.get('/stats', async (req, res) => {
     }
 
     res.json(base);
-  } catch (e) {
-    logger.error({err:e},'[Sales] GET /stats');
-    res.status(500).json({ error: 'Error al obtener estadísticas' });
-  }
-});
+}));
 
 // ─── GET /api/sales/:id ───────────────────────────────────────────────────────
-router.get('/:id', async (req, res) => {
-  try {
+router.get('/:id', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT * FROM ${COMBINED_FROM} WHERE c.id = $1`,
       [req.params.id]
@@ -281,11 +271,7 @@ router.get('/:id', async (req, res) => {
     }
 
     res.json(sanitizeSale(sale, req.user.role));
-  } catch (e) {
-    logger.error({err:e},'[Sales] GET /:id');
-    res.status(500).json({ error: 'Error' });
-  }
-});
+}));
 
 // ─── POST /api/sales ──────────────────────────────────────────────────────────
 // Siempre inserta en sales_notes — nunca crea filas en inventory.
@@ -445,8 +431,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
 // ─── PATCH /api/sales/:id ─────────────────────────────────────────────────────
 // is_note_only en el body → UPDATE sales_notes
 // sin is_note_only (o false) → UPDATE inventory
-router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
-  try {
+router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), asyncHandler(async (req, res) => {
     const isNoteOnly = req.body.is_note_only === true || req.body.is_note_only === 'true';
 
     // Vendedor: ownership check y bloqueo de campos sensibles
@@ -512,11 +497,7 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
     if (!rows[0]) return res.status(404).json({ error: 'Venta no encontrada' });
 
     res.json({ ...rows[0], is_note_only: isNoteOnly });
-  } catch (e) {
-    logger.error({err:e},'[Sales] PATCH /:id');
-    res.status(500).json({ error: `Error al actualizar venta: ${e.message || 'desconocido'}` });
-  }
-});
+}));
 
 // ─── DELETE /api/sales/:id — solo super_admin ─────────────────────────────────
 // ?note=1  → DELETE de sales_notes (fila eliminada definitivamente)
@@ -621,8 +602,7 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
 
 // ─── POST /api/sales/:id/doc ──────────────────────────────────────────────────
 // ?note=1 → sube doc a sales_notes; sin flag → a inventory
-router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadDoc.single('file'), async (req, res) => {
-  try {
+router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadDoc.single('file'), asyncHandler(async (req, res) => {
     const { field } = req.body;
     const isNoteOnly = req.query.note === '1';
 
@@ -661,10 +641,6 @@ router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice'
     );
 
     res.json({ url: result.secure_url });
-  } catch (e) {
-    logger.error({err:e},'[Sales] POST /:id/doc');
-    res.status(500).json({ error: 'Error al subir documento' });
-  }
-});
+}));
 
 module.exports = router;

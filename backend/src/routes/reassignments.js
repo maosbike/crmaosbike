@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const SLAService = require('../services/slaService');
 const { calcSlaDeadline } = require('../utils/slaUtils');
 
@@ -28,8 +29,7 @@ function formatDuration(ms) {
   return `${min}min`;
 }
 
-router.get('/ticket/:ticketId', async (req, res) => {
-  try {
+router.get('/ticket/:ticketId', asyncHandler(async (req, res) => {
     // 1. Datos base del ticket (vendedor actual)
     const { rows: tRows } = await db.query(
       `SELECT t.created_at, t.assigned_to, t.seller_id, t.sla_status,
@@ -129,11 +129,7 @@ router.get('/ticket/:ticketId', async (req, res) => {
     }
 
     res.json(history);
-  } catch (e) {
-    console.error('Error historial asignación:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 function buildEvent(r) {
   return {
@@ -153,8 +149,7 @@ function buildEvent(r) {
 // REASIGNACIÓN MANUAL (solo admins)
 // POST /api/reassignments/manual
 // ═══════════════════════════════════════════════════
-router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.post('/manual', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { ticket_id, to_user_id } = req.body;
 
     if (!ticket_id || !to_user_id) {
@@ -236,18 +231,13 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), async (req, 
     }
 
     res.json({ ok: true, message: `Reasignado a ${toName}` });
-  } catch (e) {
-    console.error('Error reasignar manual:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // LOG GLOBAL DE REASIGNACIONES (admins)
 // GET /api/reassignments?limit=20
 // ═══════════════════════════════════════════════════
-router.get('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.get('/', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const params = [limit];
     let branchFilter = '';
@@ -273,10 +263,6 @@ router.get('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) =>
       params
     );
     res.json(rows);
-  } catch (e) {
-    console.error('Error listar reasignaciones global:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 module.exports = router;

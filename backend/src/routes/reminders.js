@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const SLAService = require('../services/slaService');
 
 router.use(auth);
@@ -9,8 +10,7 @@ router.use(auth);
 // LISTAR RECORDATORIOS
 // GET /api/reminders?ticket_id=X&status=pending&my=true
 // ═══════════════════════════════════════════════════
-router.get('/', async (req, res) => {
-  try {
+router.get('/', asyncHandler(async (req, res) => {
     const { ticket_id, status, my, date_from, date_to } = req.query;
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
     const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 200));
@@ -73,18 +73,13 @@ router.get('/', async (req, res) => {
     // `d.reminders` (que nunca existió → siempre caía a []) así que exponemos
     // también `reminders` como alias para no romper nada.
     res.json({ data: rows, reminders: rows, total, page, limit });
-  } catch (e) {
-    console.error('Error listar reminders:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // OBTENER UN RECORDATORIO
 // GET /api/reminders/:id
 // ═══════════════════════════════════════════════════
-router.get('/:id', async (req, res) => {
-  try {
+router.get('/:id', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT r.*,
               u_creator.first_name as creator_first_name,
@@ -106,18 +101,13 @@ router.get('/:id', async (req, res) => {
     }
 
     res.json(rem);
-  } catch (e) {
-    console.error('Error obtener reminder:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // CREAR RECORDATORIO
 // POST /api/reminders
 // ═══════════════════════════════════════════════════
-router.post('/', async (req, res) => {
-  try {
+router.post('/', asyncHandler(async (req, res) => {
     const { ticket_id, title, description, due_date, due_time, priority, reminder_type, assigned_to } = req.body;
 
     if (!title || !due_date) {
@@ -177,18 +167,13 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(rows[0]);
-  } catch (e) {
-    console.error('Error crear reminder:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // EDITAR RECORDATORIO
 // PUT /api/reminders/:id
 // ═══════════════════════════════════════════════════
-router.put('/:id', async (req, res) => {
-  try {
+router.put('/:id', asyncHandler(async (req, res) => {
     const { title, description, due_date, due_time, priority, reminder_type, assigned_to } = req.body;
 
     // Verificar que existe y que el usuario puede editarlo
@@ -231,18 +216,13 @@ router.put('/:id', async (req, res) => {
     );
 
     res.json(rows[0]);
-  } catch (e) {
-    console.error('Error editar reminder:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // COMPLETAR RECORDATORIO
 // PUT /api/reminders/:id/complete
 // ═══════════════════════════════════════════════════
-router.put('/:id/complete', async (req, res) => {
-  try {
+router.put('/:id/complete', asyncHandler(async (req, res) => {
     const check = await db.query('SELECT * FROM reminders WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Recordatorio no encontrado' });
 
@@ -273,18 +253,13 @@ router.put('/:id/complete', async (req, res) => {
     }
 
     res.json(rows[0]);
-  } catch (e) {
-    console.error('Error completar reminder:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // ELIMINAR RECORDATORIO
 // DELETE /api/reminders/:id
 // ═══════════════════════════════════════════════════
-router.delete('/:id', async (req, res) => {
-  try {
+router.delete('/:id', asyncHandler(async (req, res) => {
     const check = await db.query('SELECT * FROM reminders WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Recordatorio no encontrado' });
 
@@ -295,10 +270,6 @@ router.delete('/:id', async (req, res) => {
 
     await db.query('DELETE FROM reminders WHERE id = $1', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) {
-    console.error('Error eliminar reminder:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 module.exports = router;

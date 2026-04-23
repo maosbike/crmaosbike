@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 
 router.use(auth);
 
@@ -10,8 +11,7 @@ const TZ_SQL = `(NOW() AT TIME ZONE 'America/Santiago')::date`;
 
 // Listar días libres en un rango (por default el mes en curso + siguiente)
 // Incluye el nombre del vendedor para render directo en la UI.
-router.get('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.get('/', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { from, to, user_id } = req.query;
     const where = [];
     const params = [];
@@ -30,17 +30,12 @@ router.get('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) =>
       params
     );
     res.json(rows);
-  } catch (e) {
-    console.error('Error listar time-off:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // Marcar uno o varios días libres para un vendedor.
 // Body: { user_id, dates: ['2026-04-22', ...], note? }
 // Upsert por (user_id, off_date) — idempotente.
-router.post('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.post('/', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { user_id, dates, note } = req.body;
     if (!user_id || !Array.isArray(dates) || !dates.length) {
       return res.status(400).json({ error: 'user_id y dates[] son requeridos' });
@@ -63,27 +58,17 @@ router.post('/', roleCheck('super_admin', 'admin_comercial'), async (req, res) =
       inserted.push(rows[0]);
     }
     res.status(201).json({ inserted, count: inserted.length });
-  } catch (e) {
-    console.error('Error crear time-off:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // Borrar un día libre específico
-router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { rowCount } = await db.query('DELETE FROM user_time_off WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'No encontrado' });
     res.json({ ok: true });
-  } catch (e) {
-    console.error('Error borrar time-off:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // Quiénes están libres HOY (útil para debug/banner en dashboard)
-router.get('/today', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.get('/today', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT t.user_id, t.note, u.first_name, u.last_name, u.role, u.branch_id
          FROM user_time_off t
@@ -92,10 +77,6 @@ router.get('/today', roleCheck('super_admin', 'admin_comercial'), async (req, re
         ORDER BY u.first_name`
     );
     res.json(rows);
-  } catch (e) {
-    console.error('Error listar libres de hoy:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 module.exports = router;

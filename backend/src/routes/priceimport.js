@@ -10,6 +10,7 @@ const multer = require('multer');
 const xlsx   = require('xlsx');
 const db     = require('../config/db');
 const { auth, roleCheck }          = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const { extractFromPDF, normalizeModel } = require('../services/pdfExtractor');
 
 router.use(auth);
@@ -131,8 +132,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 // ── GET /api/priceimport/batches ──────────────────────────────────────────────
-router.get('/batches', async (req, res) => {
-  try {
+router.get('/batches', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT b.*, u.first_name||' '||u.last_name as uploaded_by_name,
               (SELECT COUNT(*) FROM price_staging WHERE batch_id=b.id AND status='pending')  as pending_rows,
@@ -143,12 +143,10 @@ router.get('/batches', async (req, res) => {
        ORDER BY b.created_at DESC LIMIT 20`
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ── GET /api/priceimport/batches/:id ─────────────────────────────────────────
-router.get('/batches/:id', async (req, res) => {
-  try {
+router.get('/batches/:id', asyncHandler(async (req, res) => {
     const batch = await db.query(`SELECT * FROM price_staging_batches WHERE id=$1`, [req.params.id]);
     if (!batch.rows.length) return res.status(404).json({ error: 'Batch no encontrado' });
     const { rows } = await db.query(
@@ -158,12 +156,10 @@ router.get('/batches/:id', async (req, res) => {
       [req.params.id]
     );
     res.json({ batch: batch.rows[0], rows });
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ── PATCH /api/priceimport/rows/:id ──────────────────────────────────────────
-router.patch('/rows/:id', async (req, res) => {
-  try {
+router.patch('/rows/:id', asyncHandler(async (req, res) => {
     const existing = await db.query(`SELECT * FROM price_staging WHERE id=$1`, [req.params.id]);
     if (!existing.rows.length) return res.status(404).json({ error: 'Fila no encontrada' });
     const merged   = { ...existing.rows[0], ...req.body };
@@ -184,16 +180,13 @@ router.patch('/rows/:id', async (req, res) => {
     params.push(req.params.id);
     const { rows } = await db.query(`UPDATE price_staging SET ${sets.join(',')} WHERE id=$${idx} RETURNING *`, params);
     res.json(rows[0]);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ── DELETE /api/priceimport/rows/:id ─────────────────────────────────────────
-router.delete('/rows/:id', async (req, res) => {
-  try {
+router.delete('/rows/:id', asyncHandler(async (req, res) => {
     await db.query(`UPDATE price_staging SET status='rejected', updated_at=NOW() WHERE id=$1`, [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ── POST /api/priceimport/batches/:id/publish — solo super_admin ──────────────
 router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) => {
@@ -268,12 +261,10 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
 });
 
 // ── DELETE /api/priceimport/batches/:id ───────────────────────────────────────
-router.delete('/batches/:id', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.delete('/batches/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     await db.query(`DELETE FROM price_staging_batches WHERE id=$1`, [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ── GET /api/priceimport/template ─────────────────────────────────────────────
 router.get('/template', (req, res) => {

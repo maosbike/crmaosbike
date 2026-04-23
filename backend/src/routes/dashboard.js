@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 
 router.use(auth);
 
@@ -8,8 +9,7 @@ router.use(auth);
 // STATS DE GESTIÓN COMERCIAL
 // GET /api/dashboard/commercial
 // ═══════════════════════════════════════════════════
-router.get('/commercial', async (req, res) => {
-  try {
+router.get('/commercial', asyncHandler(async (req, res) => {
     const isVendedor = req.user.role === 'vendedor';
     const userId = req.user.id;
 
@@ -105,10 +105,6 @@ router.get('/commercial', async (req, res) => {
       leads_urgentes: urgentes,
       recordatorios_hoy: remHoyList
     });
-  } catch (e) {
-    console.error('Error dashboard commercial:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 
 router.use(auth);
 
@@ -8,8 +9,7 @@ router.use(auth);
 // LISTAR NOTIFICACIONES DEL USUARIO
 // GET /api/notifications?unread_only=true&limit=30
 // ═══════════════════════════════════════════════════
-router.get('/', async (req, res) => {
-  try {
+router.get('/', asyncHandler(async (req, res) => {
     const { unread_only, limit = 30 } = req.query;
     let query = `
       SELECT * FROM notifications
@@ -36,61 +36,42 @@ router.get('/', async (req, res) => {
       notifications: rows,
       unread_count: parseInt(countRows[0].unread)
     });
-  } catch (e) {
-    console.error('Error listar notificaciones:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // CONTAR NO LEÍDAS (para badge)
 // GET /api/notifications/unread-count
 // ═══════════════════════════════════════════════════
-router.get('/unread-count', async (req, res) => {
-  try {
+router.get('/unread-count', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false`,
       [req.user.id]
     );
     res.json({ count: parseInt(rows[0].count) });
-  } catch (e) {
-    console.error('Error contar notificaciones:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // MARCAR UNA COMO LEÍDA
 // PUT /api/notifications/:id/read
 // ═══════════════════════════════════════════════════
-router.put('/:id/read', async (req, res) => {
-  try {
+router.put('/:id/read', asyncHandler(async (req, res) => {
     await db.query(
       `UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2`,
       [req.params.id, req.user.id]
     );
     res.json({ ok: true });
-  } catch (e) {
-    console.error('Error marcar leída:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 // ═══════════════════════════════════════════════════
 // MARCAR TODAS COMO LEÍDAS
 // PUT /api/notifications/read-all
 // ═══════════════════════════════════════════════════
-router.put('/read-all', async (req, res) => {
-  try {
+router.put('/read-all', asyncHandler(async (req, res) => {
     const { rowCount } = await db.query(
       `UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false`,
       [req.user.id]
     );
     res.json({ ok: true, marked: rowCount });
-  } catch (e) {
-    console.error('Error marcar todas leídas:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 module.exports = router;

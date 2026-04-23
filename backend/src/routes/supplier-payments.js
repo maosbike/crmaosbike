@@ -6,6 +6,7 @@ const router  = require('express').Router();
 const db      = require('../config/db');
 const logger  = require('../config/logger');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const multer  = require('multer');
 const cloudinary = require('../config/cloudinary');
 const pdfParse   = require('pdf-parse');
@@ -315,8 +316,7 @@ function extractReceipt(text) {
 // ─── POST /extract ────────────────────────────────────────────────────────────
 router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
   upload.fields([{ name:'invoice', maxCount:1 }, { name:'receipt', maxCount:1 }]),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       let invoiceData = null, receiptData = null;
 
       if (req.files?.invoice?.[0]) {
@@ -360,18 +360,13 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
       }
 
       res.json({ invoice: invoiceData, receipt: receiptData, merged });
-    } catch (e) {
-      logger.error({err:e},'[SupPay/extract]');
-      res.status(500).json({ error: 'Error al procesar PDFs: ' + e.message });
-    }
-  }
+  })
 );
 
 // ─── POST / — crear registro ──────────────────────────────────────────────────
 router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
   upload.fields([{ name:'invoice', maxCount:1 }, { name:'receipt', maxCount:1 }]),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       const {
         provider, invoice_number, invoice_date, due_date, payment_date,
         total_amount, neto, iva, paid_amount, receipt_number, payer_name,
@@ -444,19 +439,14 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
         [rows[0].id]
       );
       res.status(201).json(full[0] || rows[0]);
-    } catch (e) {
-      logger.error({err:e},'[SupPay] POST');
-      res.status(500).json({ error: 'Error al crear registro: ' + e.message });
-    }
-  }
+  })
 );
 
 // ─── GET / ────────────────────────────────────────────────────────────────────
 // Acepta ?page&limit (default 500, max 1000) para compatibilidad con la vista
 // actual, que carga todo el listado y aplica filtros/orden en cliente.
 // Devuelve {data, total, page, limit}. Mantiene filtros (q/status/from/to).
-router.get('/', async (req, res) => {
-  try {
+router.get('/', asyncHandler(async (req, res) => {
     const { q, status, from, to } = req.query;
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
     const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 500));
@@ -491,12 +481,10 @@ router.get('/', async (req, res) => {
       [...params, limit, offset]
     );
     res.json({ data: rows, total, page, limit });
-  } catch (e) { logger.error({err:e},'[SupPay] GET'); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ─── GET /:id ─────────────────────────────────────────────────────────────────
-router.get('/:id', async (req, res) => {
-  try {
+router.get('/:id', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT sp.*,
         mm.image_url AS catalog_image,
@@ -507,12 +495,10 @@ router.get('/:id', async (req, res) => {
        WHERE sp.id=$1`, [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
     res.json(rows[0]);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ─── PATCH /:id ───────────────────────────────────────────────────────────────
-router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), async (req, res) => {
-  try {
+router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), asyncHandler(async (req, res) => {
     // model_id incluido para permitir asociación manual al catálogo desde la ficha.
     const FIELDS = [
       'provider','invoice_number','invoice_date','due_date','payment_date',
@@ -558,17 +544,14 @@ router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), as
     );
     if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
     res.json(rows[0]);
-  } catch (e) { logger.error({err:e},'[SupPay] PATCH'); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ─── DELETE /:id ──────────────────────────────────────────────────────────────
-router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query('DELETE FROM supplier_payments WHERE id=$1 RETURNING id', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ─── POST /sync-drive ─────────────────────────────────────────────────────────
 router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {

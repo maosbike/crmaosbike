@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 
 router.use(auth);
 router.use(roleCheck('super_admin', 'admin_comercial', 'vendedor'));
@@ -9,8 +10,7 @@ router.use(roleCheck('super_admin', 'admin_comercial', 'vendedor'));
 // GET /api/reports?from=&to=&branch_id=&seller_id=&brand=&model=&status=&fin_status=&color=
 // Un solo endpoint optimizado que devuelve TODOS los datos de reportes
 // ═══════════════════════════════════════════════════
-router.get('/', async (req, res) => {
-  try {
+router.get('/', asyncHandler(async (req, res) => {
     const { from, to, branch_id, seller_id, brand, model, status, fin_status, color } = req.query;
     const isVendedor = req.user.role === 'vendedor';
 
@@ -164,10 +164,6 @@ router.get('/', async (req, res) => {
       by_status: statuses.rows,
       timeline: timeline.rows,
     });
-  } catch (e) {
-    console.error('Error reports:', e);
-    res.status(500).json({ error: 'Error generando reportes' });
-  }
-});
+}));
 
 module.exports = router;

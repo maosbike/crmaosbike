@@ -3,11 +3,11 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 
 router.use(auth);
 
-router.put('/change-password', async (req, res) => {
-  try {
+router.put('/change-password', asyncHandler(async (req, res) => {
     const { current_password, new_password, confirm_password } = req.body;
     if (!current_password || !new_password) return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
     if (confirm_password !== undefined && new_password !== confirm_password) return res.status(400).json({ error: 'Las contraseñas nuevas no coinciden' });
@@ -23,11 +23,9 @@ router.put('/change-password', async (req, res) => {
       [newHash, req.user.id]
     );
     res.json({ message: 'Contraseña actualizada correctamente' });
-  } catch (e) { console.error('Error cambiar contraseña:', e); res.status(500).json({ error: 'Error del servidor' }); }
-});
+}));
 
-router.get('/', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.get('/', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT u.id, u.email, u.username, u.first_name, u.last_name, u.phone, u.role,
               u.branch_id, u.active, u.created_at,
@@ -35,11 +33,9 @@ router.get('/', roleCheck('super_admin'), async (req, res) => {
        FROM users u LEFT JOIN branches b ON u.branch_id = b.id ORDER BY u.first_name`
     );
     res.json(rows);
-  } catch (e) { console.error('Error listar usuarios:', e); res.status(500).json({ error: 'Error del servidor' }); }
-});
+}));
 
-router.post('/', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.post('/', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { email, username, password, first_name, last_name, phone, role, branch_id } = req.body;
     if ((!email && !username) || !password || !first_name || !last_name || !role)
       return res.status(400).json({ error: 'Faltan campos obligatorios (username o email, password, nombre, rol)' });
@@ -63,11 +59,9 @@ router.post('/', roleCheck('super_admin'), async (req, res) => {
       [username?.trim() || null, email?.toLowerCase().trim() || null, hash, first_name, last_name, phone || null, role, branch_id || null]
     );
     res.status(201).json(rows[0]);
-  } catch (e) { console.error('Error crear usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }
-});
+}));
 
-router.put('/:id', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.put('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { first_name, last_name, email, phone, role, branch_id, active, telegram_chat_id } = req.body;
     const check = await db.query('SELECT id FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -89,24 +83,20 @@ router.put('/:id', roleCheck('super_admin'), async (req, res) => {
       [first_name, last_name, email?.toLowerCase().trim(), phone, role, branch_id || null, active, telegram_chat_id || null, req.params.id]
     );
     res.json(rows[0]);
-  } catch (e) { console.error('Error editar usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }
-});
+}));
 
 // Returns count of open tickets assigned to this user (pre-deactivation warning)
-router.get('/:id/active-tickets', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.get('/:id/active-tickets', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT COUNT(*) AS count FROM tickets
        WHERE assigned_to = $1 AND status NOT IN ('ganado','perdido')`,
       [req.params.id]
     );
     res.json({ count: parseInt(rows[0].count) });
-  } catch (e) { res.status(500).json({ error: 'Error del servidor' }); }
-});
+}));
 
 // Deactivate user + optionally bulk-reassign their open tickets
-router.post('/:id/deactivate', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.post('/:id/deactivate', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { reassign_to } = req.body; // optional UUID to receive tickets
     const check = await db.query('SELECT id, first_name, last_name, active FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -130,8 +120,7 @@ router.post('/:id/deactivate', roleCheck('super_admin'), async (req, res) => {
     );
     const u = check.rows[0];
     res.json({ message: `${u.first_name} ${u.last_name} desactivado`, reassigned });
-  } catch (e) { console.error('Error desactivar usuario:', e); res.status(500).json({ error: 'Error del servidor' }); }
-});
+}));
 
 // Hard-delete: solo se permite si el usuario no tiene ninguna huella en el sistema.
 // Si tiene tickets/ventas/reminders/etc., se bloquea y se recomienda desactivar.
@@ -184,8 +173,7 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
   }
 });
 
-router.put('/:id/reset-password', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.put('/:id/reset-password', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -198,7 +186,6 @@ router.put('/:id/reset-password', roleCheck('super_admin'), async (req, res) => 
     );
     const u = check.rows[0];
     res.json({ message: `Contraseña de ${u.first_name} ${u.last_name} reseteada`, temp_password: tempPassword });
-  } catch (e) { console.error('Error resetear contraseña:', e); res.status(500).json({ error: 'Error del servidor' }); }
-});
+}));
 
 module.exports = router;

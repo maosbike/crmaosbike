@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 const { normalizeChassis, normalizeColor, normalizeModel } = require('../utils/normalize');
@@ -34,8 +35,7 @@ const uploadFile = multer({
 });
 
 // List inventory
-router.get('/', async (req, res) => {
-  try {
+router.get('/', asyncHandler(async (req, res) => {
     const { branch_id, status, search } = req.query;
     let where = ['1=1'], params = [], idx = 1;
 
@@ -82,20 +82,17 @@ router.get('/', async (req, res) => {
     res.json(isVendedor
       ? rows.map(r => { const out = { ...r }; delete out.cost_price; delete out.invoice_amount; delete out.sale_price; return out; })
       : rows);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Inventory counts
-router.get('/counts', async (req, res) => {
-  try {
+router.get('/counts', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT status, COUNT(*) as count FROM inventory GROUP BY status`
     );
     const counts = { disponible: 0, reservada: 0, vendida: 0, preinscrita: 0 };
     rows.forEach(r => { counts[r.status] = parseInt(r.count); });
     res.json(counts);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Create inventory unit
 router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
@@ -239,8 +236,7 @@ router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
 });
 
 // Update inventory unit (edición completa para admin; vendedor acotado a reserva)
-router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
-  try {
+router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), asyncHandler(async (req, res) => {
     let { branch_id, status, color, color_hex, price, notes, brand, model, model_id, year, chassis, motor_num,
           sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method,
           accessories, charge_type, charge_amt, discount_amt } = req.body;
@@ -391,14 +387,12 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     }
 
     res.json(rows[0]);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ─── SELL ─────────────────────────────────────────────────────────────────────
 
 // GET /inventory/:id/history
-router.get('/:id/history', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
-  try {
+router.get('/:id/history', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT h.*,
               u.first_name as user_fn, u.last_name as user_ln,
@@ -412,12 +406,10 @@ router.get('/:id/history', roleCheck('super_admin', 'admin_comercial', 'backoffi
       [req.params.id]
     );
     res.json(rows);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // POST /inventory/:id/sell — registrar venta de una unidad existente
-router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
-  try {
+router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), asyncHandler(async (req, res) => {
     let {
       sold_by, sold_at, ticket_id, payment_method, sale_type, sale_notes,
       // Nuevos campos (migración 024)
@@ -536,14 +528,12 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     })();
 
     res.json(updated[0]);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al registrar venta: ' + e.message }); }
-});
+}));
 
 // ─── IMPORT XLSX ──────────────────────────────────────────────────────────────
 
 // Preview: parse xlsx, return rows with status (ok/duplicate/error)
-router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uploadFile.single('file'), async (req, res) => {
-  try {
+router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uploadFile.single('file'), asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
     const XLSX = require('xlsx');
@@ -685,12 +675,10 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
       errors:     preview.filter(r => r._status==='error').length,
       rows: preview,
     });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al procesar: ' + e.message }); }
-});
+}));
 
 // Confirm: insert ok rows
-router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { rows, filename } = req.body;
     if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'Sin filas' });
     let inserted = 0, skipped = 0;
@@ -731,12 +719,10 @@ router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), asyn
       } catch (e) { if (e.code==='23505') skipped++; else throw e; }
     }
     res.json({ inserted, skipped });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al importar: ' + e.message }); }
-});
+}));
 
 // Upload photo (chassis or motor) — mismo scope que la edición de unidades (PUT /:id)
-router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadPhoto.single('photo'), async (req, res) => {
-  try {
+router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadPhoto.single('photo'), asyncHandler(async (req, res) => {
     const { field } = req.body; // 'chassis_photo', 'motor_photo', or 'unit_photo'
     if (!['chassis_photo', 'motor_photo', 'unit_photo'].includes(field))
       return res.status(400).json({ error: 'Campo inválido' });
@@ -759,12 +745,10 @@ router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffic
     );
 
     res.json({ url: result.secure_url });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir foto' }); }
-});
+}));
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
-router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { rows: cur } = await db.query(
       'SELECT id, status FROM inventory WHERE id = $1',
       [req.params.id]
@@ -779,12 +763,10 @@ router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), async (req, r
     );
     if (!rows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
     res.json({ ok: true, deleted: rows[0] });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error al eliminar' }); }
-});
+}));
 
 // ─── EXPORT — genera XLSX con todo el inventario ──────────────────────────────
-router.get('/export', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
-  try {
+router.get('/export', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
     const { branch_id, status } = req.query;
     let where = ['1=1'], params = [], idx = 1;
     if (branch_id) { where.push(`i.branch_id = $${idx++}`); params.push(branch_id); }
@@ -873,10 +855,6 @@ router.get('/export', roleCheck('super_admin', 'admin_comercial', 'backoffice'),
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buf);
-  } catch (e) {
-    console.error('[inventory/export]', e);
-    res.status(500).json({ error: 'Error al generar exportación' });
-  }
-});
+}));
 
 module.exports = router;
