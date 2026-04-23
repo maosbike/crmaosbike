@@ -209,193 +209,74 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
 
   const specInfo=m.cc?`${m.cc}cc`:(m.category==="Eléctrica"?"Eléctrica":"—");
 
-  // ─── Vista para vendedores ──────────────────────────────────────────────
-  // Simplificada y orientada a la cotización: precio final grande, condición
-  // del bono, colores disponibles con swatches grandes, ficha técnica. Nada
-  // de edición, ni hex, ni "tono visual", ni "Quitar foto".
-  if(!canEdit){
-    const hasBono=m.bonus>0&&m.bonus<m.price;
-    const finalPrice=hasBono?m.price-m.bonus:m.price;
-    const condColor=hasBono?bonoCondColor(m.bono_condicion):"#111827";
-    const condLabel=hasBono?bonoCondLabel(m.bono_condicion):null;
-    return(
-      <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-        <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto",border:"1px solid #E5E7EB"}}>
-          {/* Hero: foto grande */}
-          <div style={{position:"relative",height:240,background:"#F9FAFB",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            {displayPhoto
-              ?<img key={displayPhoto} src={displayPhoto} alt={m.model}
-                  style={{maxWidth:"calc(100% - 32px)",maxHeight:"calc(100% - 24px)",objectFit:"contain",transition:"opacity 0.2s"}}/>
-              :<div style={{color:"#D1D5DB",fontSize:13,fontWeight:500,letterSpacing:"0.05em"}}>SIN IMAGEN</div>
-            }
-            {activeColor&&(
-              <div style={{position:"absolute",bottom:12,left:14,display:"flex",alignItems:"center",gap:7,background:"rgba(0,0,0,0.6)",borderRadius:20,padding:"5px 12px",backdropFilter:"blur(4px)"}}>
-                {(()=>{const css=getColorCss(activeColor);return css?<span style={{width:11,height:11,borderRadius:6,background:css,border:"1px solid rgba(255,255,255,0.5)",display:"inline-block"}}/>:null;})()}
-                <span style={{fontSize:11,fontWeight:700,color:"#FFFFFF",letterSpacing:"0.03em"}}>{activeColor}</span>
-              </div>
-            )}
-            <button onClick={onClose} style={{position:"absolute",top:12,right:12,background:"rgba(255,255,255,0.95)",border:"none",borderRadius:20,width:30,height:30,color:"#374151",cursor:"pointer",fontSize:16,lineHeight:"30px",textAlign:"center"}}>×</button>
-          </div>
-
-          <div style={{padding:"20px 22px 22px"}}>
-            {/* Marca + categoría */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em"}}>{m.brand}</div>
-              {m.category&&<span style={{fontSize:10,padding:"2px 9px",borderRadius:10,background:catColor(m.category)+"1A",color:catColor(m.category),fontWeight:600,border:`1px solid ${catColor(m.category)}33`}}>{m.category}</span>}
-            </div>
-
-            {/* Nombre comercial */}
-            <div style={{fontSize:22,fontWeight:800,lineHeight:1.2,marginBottom:m.commercial_name&&m.commercial_name!==m.model?2:12,letterSpacing:"-0.01em"}}>{m.commercial_name||m.model}</div>
-            {m.commercial_name&&m.commercial_name!==m.model&&<div style={{fontSize:12,color:"#9CA3AF",marginBottom:14}}>{m.model}</div>}
-
-            {/* Bloque PRECIO — la info que el vendedor le muestra al cliente */}
-            {m.price>0&&(
-              <div style={{background:"#0F172A",borderRadius:12,padding:"16px 18px",marginBottom:14,color:"#FFFFFF"}}>
-                <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap"}}>
-                  <div style={{fontSize:28,fontWeight:900,color:hasBono?"#F28100":"#FFFFFF",letterSpacing:"-0.02em",lineHeight:1}}>
-                    {fmt(finalPrice)}
-                  </div>
-                  {hasBono&&(
-                    <div style={{fontSize:13,color:"#94A3B8",textDecoration:"line-through",fontWeight:600}}>
-                      {fmt(m.price)}
-                    </div>
-                  )}
-                </div>
-                {hasBono&&condLabel&&(
-                  <div style={{marginTop:8,fontSize:10,fontWeight:700,color:"#FDBA74",textTransform:"uppercase",letterSpacing:"0.08em"}}>
-                    {condLabel}
-                  </div>
-                )}
-                {!hasBono&&(
-                  <div style={{marginTop:8,fontSize:10,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:"0.08em"}}>
-                    Precio lista
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Specs compactas */}
-            <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-              {m.year&&<div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:8,padding:"7px 12px",fontSize:11}}>
-                <span style={{color:"#9CA3AF",fontWeight:600,marginRight:6}}>Año</span>
-                <span style={{fontWeight:700,color:"#111827"}}>{m.year}</span>
-              </div>}
-              {specInfo&&specInfo!=="—"&&<div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:8,padding:"7px 12px",fontSize:11}}>
-                <span style={{color:"#9CA3AF",fontWeight:600,marginRight:6}}>Cilindrada</span>
-                <span style={{fontWeight:700,color:"#111827"}}>{specInfo}</span>
-              </div>}
-            </div>
-
-            {/* Bono: detalle y requisitos (si hay) */}
-            {hasBono&&(m.bono_tipo||m.bono_requisitos)&&(
-              <div style={{background:condColor+"0D",border:`1px solid ${condColor}2A`,borderLeft:`3px solid ${condColor}`,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#374151",lineHeight:1.5}}>
-                {m.bono_tipo&&<div style={{fontWeight:700,color:condColor,marginBottom:m.bono_requisitos?4:0}}>{m.bono_tipo}</div>}
-                {m.bono_requisitos&&<div style={{fontSize:11,color:"#6B7280"}}>{m.bono_requisitos}</div>}
-              </div>
-            )}
-
-            {/* Colores disponibles — sólo visuales, cambian la foto del hero */}
-            {colors.length>0&&(
-              <div style={{marginBottom:14,borderTop:"1px solid #F3F4F6",paddingTop:14}}>
-                <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>
-                  Colores disponibles · {colors.length}
-                </div>
-                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                  {colors.map(c=>{
-                    const css=getColorCss(c);
-                    const isActive=activeColor===c;
-                    const light=isLightColor(css);
-                    return(
-                      <div key={c} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-                        <button
-                          onClick={()=>setActiveColor(isActive?null:c)}
-                          title={c}
-                          style={{
-                            width:46,height:46,borderRadius:23,padding:0,cursor:"pointer",
-                            background:css||"#E5E7EB",
-                            border:isActive?"3px solid #F28100":`2px solid ${!css?"#D1D5DB":light?"#D1D5DB":"rgba(0,0,0,0.18)"}`,
-                            boxShadow:isActive?"0 0 0 2px #FFFFFF,0 0 0 4px #F28100":"0 1px 4px rgba(0,0,0,0.15)",
-                            transition:"all 0.12s",
-                          }}/>
-                        <span style={{fontSize:10,fontWeight:isActive?700:500,color:isActive?"#F28100":"#6B7280",textAlign:"center",maxWidth:56,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                          {c}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Descripción */}
-            {m.description&&(
-              <div style={{marginBottom:14,borderTop:"1px solid #F3F4F6",paddingTop:14}}>
-                <div style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>Descripción</div>
-                <div style={{fontSize:13,color:"#4B5563",lineHeight:1.55}}>{m.description}</div>
-              </div>
-            )}
-
-            {/* Ficha técnica */}
-            {m.spec_url&&(
-              <a href={m.spec_url} target="_blank" rel="noreferrer" download
-                style={{display:"inline-flex",alignItems:"center",gap:8,fontSize:12,fontWeight:700,color:"#F28100",textDecoration:"none",border:"1px solid #FDBA74",borderRadius:8,padding:"9px 14px",background:"#FFFBF0"}}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Descargar ficha técnica
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto",border:"1px solid #E5E7EB"}}>
+      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:680,maxHeight:"92vh",overflowY:"auto",border:"1px solid #E5E7EB",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
         {/* Header imagen — cambia según color seleccionado */}
-        <div style={{position:"relative",height:220,background:"#F9FAFB",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{position:"relative",height:260,background:"linear-gradient(180deg,#FAFAFA 0%,#F3F4F6 100%)",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
           {displayPhoto
             ?<img key={displayPhoto} src={displayPhoto} alt={m.model}
-                style={{maxWidth:"calc(100% - 32px)",maxHeight:"calc(100% - 24px)",width:"auto",height:"auto",display:"block",objectFit:"contain",transition:"opacity 0.2s"}}/>
+                style={{maxWidth:"calc(100% - 48px)",maxHeight:"calc(100% - 40px)",width:"auto",height:"auto",display:"block",objectFit:"contain",transition:"opacity 0.2s"}}/>
             :<div style={{color:"#D1D5DB",fontSize:13,fontWeight:500,letterSpacing:"0.05em"}}>SIN IMAGEN</div>
           }
           {/* Badge del color activo */}
           {activeColor&&(
-            <div style={{position:"absolute",bottom:10,left:12,display:"flex",alignItems:"center",gap:6,background:"rgba(0,0,0,0.55)",borderRadius:20,padding:"4px 10px",backdropFilter:"blur(4px)"}}>
-              {(()=>{const css=getColorCss(activeColor);return css?<span style={{width:10,height:10,borderRadius:5,background:css,border:"1px solid rgba(255,255,255,0.4)",display:"inline-block",flexShrink:0}}/>:null;})()}
-              <span style={{fontSize:11,fontWeight:600,color:"#FFFFFF"}}>{activeColor}</span>
+            <div style={{position:"absolute",bottom:14,left:16,display:"flex",alignItems:"center",gap:7,background:"rgba(15,23,42,0.78)",borderRadius:20,padding:"5px 12px",backdropFilter:"blur(6px)"}}>
+              {(()=>{const css=getColorCss(activeColor);return css?<span style={{width:11,height:11,borderRadius:6,background:css,border:"1px solid rgba(255,255,255,0.5)",display:"inline-block",flexShrink:0}}/>:null;})()}
+              <span style={{fontSize:11,fontWeight:700,color:"#FFFFFF",letterSpacing:"0.04em"}}>{activeColor}</span>
             </div>
           )}
           {/* Botón cambiar foto principal (solo sin color activo) */}
           {canEdit&&!activeColor&&(
-            <label style={{position:"absolute",bottom:10,right:10,background:"rgba(255,255,255,0.9)",border:"1px solid #D1D5DB",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer",color:"#374151"}}>
+            <label style={{position:"absolute",bottom:14,right:14,background:"rgba(255,255,255,0.95)",border:"1px solid #D1D5DB",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",color:"#374151",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>
               {imgUploading?"Subiendo…":"Cambiar foto"}
               <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&uploadMainImg(e.target.files[0])}/>
             </label>
           )}
-          <button onClick={onClose} style={{position:"absolute",top:10,right:10,background:"rgba(255,255,255,0.9)",border:"none",borderRadius:20,width:30,height:30,color:"#374151",cursor:"pointer",fontSize:16,lineHeight:"30px",textAlign:"center"}}>×</button>
+          <button onClick={onClose} style={{position:"absolute",top:12,right:12,background:"rgba(255,255,255,0.95)",border:"none",borderRadius:20,width:32,height:32,color:"#374151",cursor:"pointer",fontSize:18,lineHeight:"32px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.1)"}}>×</button>
         </div>
 
-        <div style={{padding:20}}>
+        <div style={{padding:"22px 24px"}}>
           {errMsg&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><ErrorMsg msg={errMsg}/><button onClick={()=>setErrMsg('')} style={{background:'none',border:'none',color:'#DC2626',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px',marginLeft:8,flexShrink:0}}>×</button></div>}
-          {/* Marca + categoría */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-            <div style={{fontSize:11,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{m.brand}</div>
-            {m.category&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:catColor(m.category)+"22",color:catColor(m.category),fontWeight:600}}>{m.category}</span>}
+          {/* Identidad: marca + categoría */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:10,color:"#9CA3AF",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.14em"}}>{m.brand}</div>
+            {m.category&&<span style={{fontSize:10,padding:"3px 10px",borderRadius:10,background:catColor(m.category)+"18",color:catColor(m.category),fontWeight:700,border:`1px solid ${catColor(m.category)}33`,letterSpacing:"0.02em"}}>{m.category}</span>}
           </div>
 
-          {/* Nombre */}
-          <div style={{fontSize:22,fontWeight:800,lineHeight:1.2,marginBottom:2}}>{m.commercial_name||m.model}</div>
-          {m.commercial_name&&m.commercial_name!==m.model&&<div style={{fontSize:12,color:"#6B7280",marginBottom:8}}>{m.model}</div>}
+          {/* Nombre comercial */}
+          <div style={{fontSize:24,fontWeight:800,lineHeight:1.15,marginBottom:m.commercial_name&&m.commercial_name!==m.model?2:16,letterSpacing:"-0.015em",color:"#0F172A"}}>{m.commercial_name||m.model}</div>
+          {m.commercial_name&&m.commercial_name!==m.model&&<div style={{fontSize:12,color:"#9CA3AF",marginBottom:16,fontWeight:500}}>{m.model}</div>}
 
-          {/* Specs rápidas */}
-          <div style={{display:"flex",gap:16,marginTop:10,marginBottom:14}}>
-            {m.year&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{m.year}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase"}}>Año</div></div>}
-            <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700}}>{specInfo}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase"}}>Motor</div></div>
-            {m.price>0&&m.bonus<m.price&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:"#F28100"}}>{fmt(m.price)}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase"}}>Precio lista</div></div>}
-            {m.bonus>0&&m.bonus<m.price&&<div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:bonoCondColor(m.bono_condicion)}}>{fmt(m.price-m.bonus)}</div><div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase",maxWidth:80,lineHeight:1.2}}>{bonoCondLabel(m.bono_condicion)}</div></div>}
+          {/* Price bar — precio lista · bono · precio final */}
+          {m.price>0&&(()=>{
+            const hasBono=m.bonus>0&&m.bonus<m.price;
+            const finalPrice=hasBono?m.price-m.bonus:m.price;
+            const condColor=hasBono?bonoCondColor(m.bono_condicion):"#111827";
+            return(
+              <div style={{display:"flex",alignItems:"stretch",gap:1,marginBottom:14,border:"1px solid #E5E7EB",borderRadius:10,overflow:"hidden",background:"#E5E7EB"}}>
+                <div style={{flex:1,background:"#FFFFFF",padding:"10px 14px"}}>
+                  <div style={{fontSize:9,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Precio lista</div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#374151",textDecoration:hasBono?"line-through":"none",textDecorationColor:"#CBD5E1"}}>{fmt(m.price)}</div>
+                </div>
+                {hasBono&&(
+                  <div style={{flex:1.2,background:condColor,padding:"10px 14px",color:"#FFFFFF"}}>
+                    <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3,opacity:0.85}}>Con bono</div>
+                    <div style={{fontSize:18,fontWeight:900,letterSpacing:"-0.01em"}}>{fmt(finalPrice)}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Chips de specs */}
+          <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+            {m.year&&<span style={{background:"#F3F4F6",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:600,color:"#374151"}}>
+              <span style={{color:"#9CA3AF",marginRight:5}}>Año</span>{m.year}
+            </span>}
+            {specInfo&&specInfo!=="—"&&<span style={{background:"#F3F4F6",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:600,color:"#374151"}}>
+              <span style={{color:"#9CA3AF",marginRight:5}}>Cilindrada</span>{specInfo}
+            </span>}
           </div>
 
           {/* Bono detalle — condición explícita */}
@@ -403,22 +284,18 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
             const cond=m.bono_condicion;
             const condLabel=bonoCondLabel(cond);
             const condColor=bonoCondColor(cond);
-            const isConditional=cond&&cond!=="todo_medio_pago";
             return(
-              <div style={{background:condColor+"0F",border:`1px solid ${condColor}33`,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:m.bono_tipo||m.bono_requisitos?6:0}}>
-                  <span style={{color:condColor,fontWeight:700}}>
-                    {m.bono_tipo?`${m.bono_tipo}: `:"Bono "}
-                    {fmt(m.bonus)}
-                  </span>
-                  <span style={{color:"#6B7280"}}>→ precio final {fmt(m.price-m.bonus)}</span>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2}}>
-                  <span style={{fontSize:10,fontWeight:700,color:condColor,background:condColor+"18",padding:"2px 8px",borderRadius:10,border:`1px solid ${condColor}33`}}>
+              <div style={{background:condColor+"0D",border:`1px solid ${condColor}2A`,borderLeft:`3px solid ${condColor}`,borderRadius:8,padding:"11px 14px",marginBottom:16,fontSize:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:10,fontWeight:800,color:condColor,background:condColor+"1A",padding:"3px 9px",borderRadius:10,textTransform:"uppercase",letterSpacing:"0.04em"}}>
                     {condLabel}
                   </span>
+                  <span style={{color:"#374151",fontWeight:600}}>
+                    {m.bono_tipo?`${m.bono_tipo}: `:"Bono "}
+                    <span style={{color:condColor,fontWeight:700}}>{fmt(m.bonus)}</span>
+                  </span>
                 </div>
-                {m.bono_requisitos&&<div style={{marginTop:6,fontSize:11,color:"#6B7280",lineHeight:1.4}}>{m.bono_requisitos}</div>}
+                {m.bono_requisitos&&<div style={{marginTop:6,fontSize:11,color:"#6B7280",lineHeight:1.45}}>{m.bono_requisitos}</div>}
               </div>
             );
           })()}
