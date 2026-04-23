@@ -455,6 +455,56 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
         </div>
       )}
 
+      {/* ── Desglose de la venta (accesorios + documentación + descuento) ── */}
+      {(() => {
+        const accList = Array.isArray(sale.accessories)
+          ? sale.accessories.filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
+          : [];
+        const chargeAmt   = Number(sale.charge_amt)   || 0;
+        const discountAmt = Number(sale.discount_amt) || 0;
+        if (accList.length === 0 && chargeAmt === 0 && discountAmt === 0) return null;
+        const chargeLabel = sale.charge_type === 'completa'      ? 'Documentación completa'
+                          : sale.charge_type === 'transferencia' ? 'Transferencia vehicular'
+                          : sale.charge_type === 'inscripcion'   ? 'Inscripción vehicular'
+                          : 'Documentación';
+        return (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
+                          letterSpacing: '0.09em', marginBottom: 10 }}>Desglose de la venta</div>
+            <div style={{ background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 10, padding: '10px 14px' }}>
+              {accList.length > 0 && (
+                <div style={{ marginBottom: (chargeAmt || discountAmt) ? 10 : 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
+                                letterSpacing: '0.06em', marginBottom: 6 }}>Accesorios</div>
+                  {accList.map((a, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                                          padding: '4px 0', fontSize: 13 }}>
+                      <span style={{ color: '#374151' }}>{a.description || a.name}</span>
+                      <span style={{ fontWeight: 700, color: '#0F172A' }}>{fmt(Number(a.amount))}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {chargeAmt > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                              padding: '4px 0', fontSize: 13, borderTop: accList.length > 0 ? '1px dashed #E5E7EB' : 'none',
+                              paddingTop: accList.length > 0 ? 8 : 4 }}>
+                  <span style={{ color: '#374151' }}>{chargeLabel}</span>
+                  <span style={{ fontWeight: 700, color: '#0F172A' }}>{fmt(chargeAmt)}</span>
+                </div>
+              )}
+              {discountAmt > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                              padding: '4px 0', fontSize: 13 }}>
+                  <span style={{ color: '#059669' }}>Descuento</span>
+                  <span style={{ fontWeight: 700, color: '#059669' }}>− {fmt(discountAmt)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Documentos ── */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
