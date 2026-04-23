@@ -117,7 +117,7 @@ export function ImportView() {
                   <th key={h} style={{textAlign:'left',padding:'7px 10px',borderBottom:'1px solid var(--border)',color:'var(--text-subtle)',fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{h}</th>
                 ))}</tr></thead>
                 <tbody>{logs.map(l=>(
-                  <tr key={l.id} style={{borderBottom:'1px solid #FFFFFF'}}>
+                  <tr key={l.id} style={{borderBottom:'1px solid var(--surface)'}}>
                     <td style={{padding:'7px 10px',color:'var(--text-disabled)'}}>{fDT(l.created_at)}</td>
                     <td style={{padding:'7px 10px'}}>{l.filename}</td>
                     <td style={{padding:'7px 10px'}}>{l.first_name} {l.last_name}</td>
@@ -189,7 +189,7 @@ export function ImportView() {
                       ['comuna',    'No',  'Ciudad o comuna'],
                       ['color_pref','No',  'Color de moto preferido'],
                     ].map(([col,req,desc])=>(
-                      <tr key={col} style={{borderBottom:'1px solid #FFFFFF'}}>
+                      <tr key={col} style={{borderBottom:'1px solid var(--surface)'}}>
                         <td style={{padding:'5px 10px',fontFamily:'inherit',color:'var(--brand)'}}>{col}</td>
                         <td style={{padding:'5px 10px',color:req.includes('Sí')?'#10B981':'var(--text-muted)',fontWeight:req.includes('Sí')?600:400}}>{req}</td>
                         <td style={{padding:'5px 10px',color:'var(--text-subtle)'}}>{desc}</td>

@@ -20,7 +20,7 @@ function Initials({fn,ln,size=30}){
   const colors=['#2563EB','#059669','#D97706','#7C3AED','#DB2777','#0891B2'];
   const idx=((a.charCodeAt(0)||0)+(b.charCodeAt(0)||0))%colors.length;
   return(
-    <div style={{width:size,height:size,borderRadius:'50%',background:colors[idx],display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.37,fontWeight:700,color:'#ffffff',flexShrink:0,letterSpacing:'-0.5px'}}>
+    <div style={{width:size,height:size,borderRadius:'50%',background:colors[idx],display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.37,fontWeight:700,color:'var(--text-on-dark)',flexShrink:0,letterSpacing:'-0.5px'}}>
       {a}{b||'?'}
     </div>
   );
@@ -132,7 +132,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             <button onClick={()=>setAttF(!attF)} style={{
               display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:12,
               border:attF?'2px solid #EF4444':'1.5px solid #FECACA',
-              background:attF?'#FEF2F2':'#FFFFFF',cursor:'pointer',fontFamily:'inherit',
+              background:attF?'#FEF2F2':'var(--surface)',cursor:'pointer',fontFamily:'inherit',
               boxShadow:attF?'0 3px 14px rgba(239,68,68,0.18)':'0 1px 3px rgba(0,0,0,0.04)'}}>
               <div style={{width:32,height:32,borderRadius:8,background:'rgba(239,68,68,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                 <Ic.alert size={18} color="#DC2626"/>
@@ -156,7 +156,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             <button onClick={()=>setOrpF(!orpF)} style={{
               display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:12,
               border:orpF?'2px solid #F59E0B':'1.5px solid #FCD34D',
-              background:orpF?'#FFFBEB':'#FFFFFF',cursor:'pointer',fontFamily:'inherit',
+              background:orpF?'#FFFBEB':'var(--surface)',cursor:'pointer',fontFamily:'inherit',
               boxShadow:orpF?'0 3px 14px rgba(245,158,11,0.18)':'0 1px 3px rgba(0,0,0,0.04)'}}>
               <div style={{width:32,height:32,borderRadius:8,background:'rgba(245,158,11,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                 <Ic.user size={18} color="#B45309"/>
@@ -181,7 +181,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               padding:'5px 12px',borderRadius:99,
               border:active?'1.5px solid var(--text)':'1.5px solid transparent',
               background:active?'var(--text)':'var(--surface-sunken)',
-              color:active?'#FFFFFF':'var(--text-subtle)',
+              color:active?'var(--text-on-dark)':'var(--text-subtle)',
               fontSize:12,fontWeight:active?700:500,
               cursor:'pointer',flexShrink:0,
               display:'inline-flex',alignItems:'center',gap:5,
@@ -191,7 +191,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               <span style={{
                 fontSize:10,fontWeight:700,
                 background:active?'rgba(255,255,255,0.2)':'var(--border)',
-                color:active?'#FFFFFF':'var(--text-disabled)',
+                color:active?'var(--text-on-dark)':'var(--text-disabled)',
                 padding:'1px 5px',borderRadius:99,
               }}>
                 {totalCnt}
@@ -238,7 +238,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               <button key={s.id} onClick={()=>setSelF(isSel?'':s.id)}
                 style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,
                   border:isSel?`2px solid ${col.c}`:'1px solid var(--border)',
-                  background:isSel?col.bg:'#FFFFFF',
+                  background:isSel?col.bg:'var(--surface)',
                   borderLeft:`4px solid ${col.c}`,
                   cursor:'pointer',fontFamily:'inherit',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',transition:'all 0.12s'}}>
                 <span style={{fontSize:22,fontWeight:900,color:col.c,lineHeight:1}}>{active}</span>
@@ -254,7 +254,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
       {/* ── Bloque de filtros ── */}
       <div style={{
-        background:'#FFFFFF',
+        background:'var(--surface)',
         border:'1px solid var(--border)',
         borderRadius:12,
         padding:'12px 16px',
@@ -327,7 +327,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               return (
                 <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                   display:'flex',alignItems:'stretch',
-                  background:'#FFFFFF',
+                  background:'var(--surface)',
                   border:'1px solid var(--border)',borderRadius:14,
                   overflow:'hidden',
                   cursor:'pointer',minHeight:130,
@@ -348,7 +348,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                     {x.needs_attention&&(
                       <span title="Necesita atención" style={{
                         position:'absolute',top:6,left:6,
-                        fontSize:9,fontWeight:800,color:'#fff',
+                        fontSize:9,fontWeight:800,color:'var(--text-on-dark)',
                         background:'#DC2626',padding:'2px 6px',borderRadius:5,
                       }}>!</span>
                     )}
@@ -383,7 +383,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             return (
               <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                 display:'flex',alignItems:'stretch',
-                background:'#FFFFFF',
+                background:'var(--surface)',
                 border:'1px solid var(--border)',borderRadius:14,
                 overflow:'hidden',
                 cursor:'pointer',
@@ -420,7 +420,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   {x.needs_attention&&(
                     <span title="Necesita atención · 48h sin gestión" style={{
                       position:'absolute',top:8,right:8,
-                      fontSize:10,fontWeight:800,color:'#fff',
+                      fontSize:10,fontWeight:800,color:'var(--text-on-dark)',
                       background:'#DC2626',padding:'3px 7px',borderRadius:6,
                       boxShadow:'0 2px 6px rgba(220,38,38,0.35)',
                     }}>! Atención</span>

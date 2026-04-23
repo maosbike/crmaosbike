@@ -120,7 +120,7 @@ export function PipelineView({leads,user,nav,updLead}){
                 border:'none', cursor:'pointer', fontFamily:'inherit',
                 fontSize:13, fontWeight:600,
                 background: act ? x.c  : 'var(--surface-sunken)',
-                color:      act ? '#fff': 'var(--text-subtle)',
+                color:      act ? 'var(--text-on-dark)': 'var(--text-subtle)',
                 display:'flex', alignItems:'center', gap:6,
                 transition:'all 0.15s',
               }}>
@@ -128,7 +128,7 @@ export function PipelineView({leads,user,nav,updLead}){
                 <span style={{
                   fontSize:11, fontWeight:700,
                   background: act ? 'rgba(255,255,255,0.25)' : 'var(--border)',
-                  color:      act ? '#fff' : 'var(--text-disabled)',
+                  color:      act ? 'var(--text-on-dark)' : 'var(--text-disabled)',
                   padding:'1px 7px', borderRadius:99,
                 }}>
                   {cnt}
@@ -156,7 +156,7 @@ export function PipelineView({leads,user,nav,updLead}){
 
             return (
               <div key={l.id} style={{
-                background:'#FFFFFF', borderRadius:14,
+                background:'var(--surface)', borderRadius:14,
                 border:'1px solid var(--border)',
                 overflow:'hidden',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
@@ -235,7 +235,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   </button>
                   <button onClick={() => goToSale(l)} style={{
                     flex:1, padding:'9px 0', fontSize:12, fontWeight:700,
-                    background:'#10B981', color:'#fff',
+                    background:'#10B981', color:'var(--text-on-dark)',
                     border:'none', borderRadius:8,
                     cursor:'pointer', fontFamily:'inherit',
                   }}>
@@ -327,7 +327,7 @@ export function PipelineView({leads,user,nav,updLead}){
               {/* ── Header de columna — suave, sin barra gruesa ── */}
               <div style={{
                 padding:'14px 16px',
-                background: sc?.bg || '#FFFFFF',
+                background: sc?.bg || 'var(--surface)',
                 borderBottom:'1px solid var(--border)',
                 display:'flex', alignItems:'center', justifyContent:'space-between',
                 flexShrink:0,
@@ -344,7 +344,7 @@ export function PipelineView({leads,user,nav,updLead}){
                 <span style={{
                   fontSize:12, fontWeight:700,
                   padding:'3px 10px', borderRadius:99,
-                  background:'#FFFFFF', color:sc?.c,
+                  background:'var(--surface)', color:sc?.c,
                   border:`1px solid ${sc?.c}30`,
                   minWidth:28, textAlign:'center',
                 }}>
@@ -394,7 +394,7 @@ export function PipelineView({leads,user,nav,updLead}){
                       onMouseLeave={() => setHoverId(null)}
                       onClick={() => nav('ticket', l.id)}
                       style={{
-                        background:'#FFFFFF',
+                        background:'var(--surface)',
                         borderRadius:14,
                         border:'1px solid var(--border)',
                         cursor:'grab',
@@ -514,7 +514,7 @@ export function PipelineView({leads,user,nav,updLead}){
                             style={{
                               flexShrink:0,
                               padding:'5px 10px', fontSize:10, fontWeight:700,
-                              background:'#10B981', color:'#fff',
+                              background:'#10B981', color:'var(--text-on-dark)',
                               border:'none',
                               borderRadius:6, cursor:'pointer', fontFamily:'inherit',
                               letterSpacing:'0.02em',

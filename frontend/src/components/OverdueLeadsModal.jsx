@@ -105,7 +105,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
     >
       <div
         style={{
-          background: '#FFFFFF',
+          background: 'var(--surface)',
           borderRadius: 16,
           width: '100%',
           maxWidth: 540,
@@ -126,7 +126,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
           <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
             Seguimiento pendiente — {idx + 1} de {total} leads
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF', marginBottom: 2 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-on-brand)', marginBottom: 2 }}>
             Registrar seguimiento obligatorio
           </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>

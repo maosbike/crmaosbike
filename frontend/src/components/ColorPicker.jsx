@@ -32,7 +32,7 @@ export function ColorPicker({ value = 'var(--text)', onChange }) {
       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
         <div style={{ width:28, height:28, borderRadius:6, background:hex, border:'1.5px solid var(--border)', flexShrink:0 }} />
         <input type="color" value={hex} onChange={e=>emit(e.target.value)}
-          style={{ width:28, height:28, padding:2, border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', background:'#ffffff' }} />
+          style={{ width:28, height:28, padding:2, border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', background:'var(--surface)' }} />
         <input value={hex} onChange={e=>handleText(e.target.value)}
           placeholder="#000000" maxLength={7}
           style={{ width:82, padding:'3px 7px', border:'1px solid var(--border)', borderRadius:6, fontSize:12, fontFamily:'inherit', color:'var(--text)' }} />

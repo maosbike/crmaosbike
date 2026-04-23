@@ -234,14 +234,14 @@ export default function App(){
   return(
     <div style={{display:"flex",height:"100vh",background:"var(--surface-muted)",color:"var(--text)",fontFamily:"'Inter',system-ui,sans-serif",fontSize:14,overflow:"hidden"}}>
       <MobileDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)} items={items} page={page} nav={(pg,lid)=>{setDrawerOpen(false);nav(pg,lid);}} user={user} onChangePw={()=>{setDrawerOpen(false);setShowChangePw(true);}} onLogout={handleLogout}/>
-      <aside className="crm-sidebar" style={{width:220,minWidth:220,height:'100vh',background:'#FFFFFF',borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',overflow:'hidden',flexShrink:0}}>
+      <aside className="crm-sidebar" style={{width:220,minWidth:220,height:'100vh',background:'var(--surface)',borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',overflow:'hidden',flexShrink:0}}>
         <button onClick={()=>nav('dashboard')} title="Ir al dashboard"
           style={{height:72,display:'flex',alignItems:'center',justifyContent:'flex-start',padding:'0 20px',borderBottom:'1px solid var(--surface-sunken)',flexShrink:0,background:'transparent',border:'none',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--surface-sunken)',cursor:'pointer',width:'100%',fontFamily:'inherit'}}>
           <img src="/logo.png" alt="MaosBike" style={{height:44,objectFit:'contain'}}
             onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
           />
           <div style={{width:40,height:40,borderRadius:8,background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
-            <Ic.bike size={22} color="#fff"/>
+            <Ic.bike size={22} color="var(--text-on-brand)"/>
           </div>
         </button>
         <nav style={{flex:1,padding:'8px 8px',display:'flex',flexDirection:'column',overflowY:'auto'}}>
@@ -288,7 +288,7 @@ export default function App(){
         </div>
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
-        <header className="crm-mobile-hdr" style={{display:"none",height:64,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid var(--border)",background:"#FFFFFF",flexShrink:0,gap:10}}>
+        <header className="crm-mobile-hdr" style={{display:"none",height:64,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid var(--border)",background:"var(--surface)",flexShrink:0,gap:10}}>
           <button onClick={()=>nav('dashboard')} title="Ir al dashboard"
             style={{display:"flex",alignItems:"center",gap:8,background:'transparent',border:'none',padding:0,cursor:'pointer',fontFamily:'inherit'}}>
             <img src="/logo.png" alt="MaosBike" style={{height:36}}/>
@@ -296,7 +296,7 @@ export default function App(){
           </button>
           <NotifBell nav={nav}/>
         </header>
-        <header className="crm-desktop-hdr" style={{height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',background:'#FFFFFF',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+        <header className="crm-desktop-hdr" style={{height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',background:'var(--surface)',borderBottom:'1px solid var(--border)',flexShrink:0}}>
           <span style={{...TY.h3,color:'var(--text-subtle)'}}>{getCurrentPageLabel(page)}</span>
           <div style={{display:'flex',alignItems:'center',gap:8}}><NotifBell nav={nav}/></div>
         </header>

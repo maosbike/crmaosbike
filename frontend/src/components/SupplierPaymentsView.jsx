@@ -169,7 +169,7 @@ function FileZone({ label, file, onFile, url, onUrl, accent='var(--brand)' }) {
       <div style={{ display:'flex',gap:6,marginBottom:10 }}>
         {[['upload','Subir PDF'],['url','URL Drive']].map(([m,l])=>(
           <button key={m} type="button" onClick={()=>setMode(m)}
-            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:20,cursor:'pointer',border:`1.5px solid ${mode===m?accent:'var(--border-strong)'}`,background:mode===m?accent:'#ffffff',color:mode===m?'#ffffff':'var(--text-subtle)' }}>{l}</button>
+            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:20,cursor:'pointer',border:`1.5px solid ${mode===m?accent:'var(--border-strong)'}`,background:mode===m?accent:'var(--surface)',color:mode===m?'var(--text-on-dark)':'var(--text-subtle)' }}>{l}</button>
         ))}
       </div>
       {mode==='upload' ? (
@@ -356,7 +356,7 @@ function DetailView({ p, dv, overdue, onUpdated }) {
       {/* Hero: foto + factura + estado + totales */}
       <div style={{
         display:'flex', alignItems:'stretch', minHeight:120,
-        background:'#FFFFFF', border:'1px solid var(--border)',
+        background:'var(--surface)', border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
         borderRadius:12, overflow:'hidden',
         boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
@@ -457,7 +457,7 @@ function DetailView({ p, dv, overdue, onUpdated }) {
           style={{
             width:'100%', resize:'vertical', fontSize:13, fontFamily:'inherit',
             padding:'8px 10px', borderRadius:8, border:'1px solid #FDE68A',
-            background:'#FFFFFF', color:'var(--text-body)', outline:'none',
+            background:'var(--surface)', color:'var(--text-body)', outline:'none',
           }}
         />
         {notesErr && (
@@ -505,7 +505,7 @@ function DetailView({ p, dv, overdue, onUpdated }) {
 function DetailCard({ title, accent='var(--text-body)', children }) {
   return (
     <div style={{
-      background:'#FFFFFF', border:'1px solid var(--border)',
+      background:'var(--surface)', border:'1px solid var(--border)',
       borderRadius:12, overflow:'hidden',
     }}>
       <div style={{
@@ -719,7 +719,7 @@ function MobileCard({ p, onClick }) {
   const amountColor = paid ? '#059669' : st.l === 'Vencido' ? '#DC2626' : 'var(--text)';
   return (
     <div onClick={onClick} style={{
-      background:'#FFFFFF',
+      background:'var(--surface)',
       borderRadius:14,
       border:'1px solid var(--border)',
       borderLeft:`4px solid ${st.c}`,
@@ -807,7 +807,7 @@ function RowCard({ p, onClick }) {
       style={{
         display:'flex', alignItems:'stretch',
         minHeight:148, marginBottom:10,
-        background:'#FFFFFF',
+        background:'var(--surface)',
         border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
         borderRadius:14, overflow:'hidden',
@@ -1063,7 +1063,7 @@ export function SupplierPaymentsView({ user }) {
     fontSize:13,
     fontWeight:500,
     color:'var(--text)',
-    background:'#fff',
+    background:'var(--surface)',
     border:'1px solid var(--border)',
     borderRadius:8,
     fontFamily:'inherit',
@@ -1112,7 +1112,7 @@ export function SupplierPaymentsView({ user }) {
           { label:'Vencidas',  val:sum.overdue,      color:sum.overdue>0?'#DC2626':'var(--text-body)', isMoney:false },
         ].map(k=>(
           <div key={k.label} style={{
-            background:'#FFFFFF', border:'1px solid var(--border)',
+            background:'var(--surface)', border:'1px solid var(--border)',
             borderRadius:10, padding:'10px 16px',
             flex: isMobile ? '1 1 calc(50% - 5px)' : '1 1 100px',
           }}>
@@ -1178,7 +1178,7 @@ export function SupplierPaymentsView({ user }) {
         /* Desktop: barra de filtros */
         <div style={{
           display:'flex', flexDirection:'column', gap:10,
-          background:'#FFFFFF', border:'1px solid var(--border)',
+          background:'var(--surface)', border:'1px solid var(--border)',
           borderRadius:12, padding:'12px 14px', marginBottom:14,
         }}>
           {/* Fila 1: buscador + limpiar */}
@@ -1199,7 +1199,7 @@ export function SupplierPaymentsView({ user }) {
               <button onClick={clearFilters}
                 style={{
                   height:28, padding:'0 12px', fontSize:12, fontWeight:600,
-                  color:'var(--text-subtle)', background:'#fff', border:'1px solid var(--border)',
+                  color:'var(--text-subtle)', background:'var(--surface)', border:'1px solid var(--border)',
                   borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                   display:'flex', alignItems:'center', gap:4,
                 }}>
@@ -1256,7 +1256,7 @@ export function SupplierPaymentsView({ user }) {
                   title={sortDir==='asc'?'Ascendente':'Descendente'}
                   style={{
                     padding:'0 12px', height:36, fontSize:14, fontWeight:700,
-                    color:'var(--text-body)', background:'#fff', border:'1px solid var(--border)',
+                    color:'var(--text-body)', background:'var(--surface)', border:'1px solid var(--border)',
                     borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                   }}>
                   {sortDir==='asc'?'↑':'↓'}

@@ -211,7 +211,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
 
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:680,maxHeight:"92vh",overflowY:"auto",border:"1px solid var(--border)",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+      <div style={{background:"var(--surface)",borderRadius:16,width:"100%",maxWidth:680,maxHeight:"92vh",overflowY:"auto",border:"1px solid var(--border)",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
         {/* Header imagen — cambia según color seleccionado */}
         <div style={{position:"relative",height:260,background:"linear-gradient(180deg,#FAFAFA 0%,var(--surface-sunken) 100%)",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
           {displayPhoto
@@ -223,7 +223,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {activeColor&&(
             <div style={{position:"absolute",bottom:14,left:16,display:"flex",alignItems:"center",gap:7,background:"rgba(15,23,42,0.78)",borderRadius:20,padding:"5px 12px",backdropFilter:"blur(6px)"}}>
               {(()=>{const css=getColorCss(activeColor);return css?<span style={{width:11,height:11,borderRadius:6,background:css,border:"1px solid rgba(255,255,255,0.5)",display:"inline-block",flexShrink:0}}/>:null;})()}
-              <span style={{fontSize:11,fontWeight:700,color:"#FFFFFF",letterSpacing:"0.04em"}}>{activeColor}</span>
+              <span style={{fontSize:11,fontWeight:700,color:"var(--text-on-dark)",letterSpacing:"0.04em"}}>{activeColor}</span>
             </div>
           )}
           {/* Botón cambiar foto principal (solo sin color activo) */}
@@ -255,12 +255,12 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
             const condColor=hasBono?bonoCondColor(m.bono_condicion):"var(--text)";
             return(
               <div style={{display:"flex",alignItems:"stretch",gap:1,marginBottom:14,border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",background:"var(--surface-sunken)"}}>
-                <div style={{flex:1,background:"#FFFFFF",padding:"10px 14px"}}>
+                <div style={{flex:1,background:"var(--surface)",padding:"10px 14px"}}>
                   <div style={{fontSize:9,color:"var(--text-disabled)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Precio lista</div>
                   <div style={{fontSize:16,fontWeight:800,color:"var(--text-body)",textDecoration:hasBono?"line-through":"none",textDecorationColor:"#CBD5E1"}}>{fmt(m.price)}</div>
                 </div>
                 {hasBono&&(
-                  <div style={{flex:1.2,background:condColor,padding:"10px 14px",color:"#FFFFFF"}}>
+                  <div style={{flex:1.2,background:condColor,padding:"10px 14px",color:"var(--text-on-dark)"}}>
                     <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3,opacity:0.85}}>Con bono</div>
                     <div style={{fontSize:18,fontWeight:900,letterSpacing:"-0.01em"}}>{fmt(finalPrice)}</div>
                   </div>
@@ -320,7 +320,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                         placeholder="+ nuevo color"
                         style={{...S.inp,width:110,fontSize:11,height:26,padding:"0 8px"}}/>
                       <button onClick={addColorImmediate}
-                        style={{height:26,padding:"0 10px",borderRadius:6,border:"none",background:"var(--brand)",color:"#ffffff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                        style={{height:26,padding:"0 10px",borderRadius:6,border:"none",background:"var(--brand)",color:"var(--text-on-brand)",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                         +
                       </button>
                     </div>
@@ -351,13 +351,13 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                             width:44,height:44,borderRadius:22,padding:0,cursor:"pointer",
                             background:css||"var(--border)",
                             border:isActive?"3px solid var(--brand)":`2px solid ${!css?"var(--border-strong)":light?"var(--border-strong)":"rgba(0,0,0,0.18)"}`,
-                            boxShadow:isActive?"0 0 0 2px #FFFFFF,0 0 0 4px var(--brand)":"0 1px 4px rgba(0,0,0,0.15)",
+                            boxShadow:isActive?"0 0 0 2px var(--surface),0 0 0 4px var(--brand)":"0 1px 4px rgba(0,0,0,0.15)",
                             transition:"all 0.12s",
                             position:"relative",
                           }}>
                           {/* Dot verde si tiene foto */}
                           {hasPhoto&&(
-                            <span style={{position:"absolute",bottom:1,right:1,width:10,height:10,borderRadius:5,background:"#10B981",border:"2px solid #ffffff",display:"block"}}/>
+                            <span style={{position:"absolute",bottom:1,right:1,width:10,height:10,borderRadius:5,background:"#10B981",border:"2px solid var(--surface)",display:"block"}}/>
                           )}
                         </button>
                         <span style={{fontSize:9,fontWeight:isActive?700:500,color:isActive?"var(--brand)":"var(--text-subtle)",textAlign:"center",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
@@ -366,7 +366,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                         {/* × quitar color (solo admin) */}
                         {canEdit&&(
                           <button onClick={()=>removeColorImmediate(c)} title="Quitar color"
-                            style={{position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",background:"var(--text-body)",border:"2px solid #ffffff",color:"#ffffff",cursor:"pointer",fontSize:9,lineHeight:"11px",textAlign:"center",padding:0,opacity:0.8}}>
+                            style={{position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",background:"var(--text-body)",border:"2px solid var(--surface)",color:"var(--text-on-dark)",cursor:"pointer",fontSize:9,lineHeight:"11px",textAlign:"center",padding:0,opacity:0.8}}>
                             ×
                           </button>
                         )}
@@ -392,7 +392,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                               style={{width:90,height:66,objectFit:"cover",borderRadius:10,border:"1.5px solid var(--border)",display:"block",cursor:"pointer"}}
                               onClick={()=>window.open(photoUrl,'_blank')}/>
                           :<div style={{width:90,height:66,borderRadius:10,background:css||"var(--surface-sunken)",border:`1.5px dashed ${css?"rgba(0,0,0,0.15)":"var(--border-strong)"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:0.6}}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?"#ffffff":"var(--text-disabled)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?"var(--text-on-dark)":"var(--text-disabled)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                             </div>
                         }
                       </div>
@@ -428,7 +428,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                         <div style={{fontSize:10,color:"var(--text-subtle)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Tono visual</div>
                         <ColorPicker value={activeColorHex} onChange={setActiveColorHex}/>
                         <button type="button" onClick={saveActiveColorHex} disabled={savingHex}
-                          style={{marginTop:8,height:28,padding:"0 14px",borderRadius:7,border:"none",background:"var(--text)",color:"#ffffff",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                          style={{marginTop:8,height:28,padding:"0 14px",borderRadius:7,border:"none",background:"var(--text)",color:"var(--text-on-dark)",fontSize:11,fontWeight:700,cursor:"pointer"}}>
                           {savingHex?"Guardando…":"Guardar tono"}
                         </button>
                       </div>
@@ -592,7 +592,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                           style={{width:76,height:58,objectFit:"cover",borderRadius:7,border:"1px solid var(--border)",display:"block"}}/>
                         <button onClick={()=>handleRemoveGalleryPhoto(url)}
                           title="Quitar foto"
-                          style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",background:"#EF4444",border:"2px solid #FFFFFF",color:"#ffffff",cursor:"pointer",fontSize:11,lineHeight:"14px",textAlign:"center",padding:0,fontWeight:700}}>
+                          style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",background:"#EF4444",border:"2px solid var(--surface)",color:"var(--text-on-dark)",cursor:"pointer",fontSize:11,lineHeight:"14px",textAlign:"center",padding:0,fontWeight:700}}>
                           ×
                         </button>
                       </div>
@@ -622,7 +622,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                   <div style={{fontSize:12,color:"#EF4444",marginBottom:8,fontWeight:600}}>¿Eliminar {m.commercial_name||m.model}?</div>
                   <div style={{fontSize:11,color:"var(--text-subtle)",marginBottom:10}}>Esta acción desactiva el modelo del catálogo. No se puede deshacer desde aquí.</div>
                   <div style={{display:"flex",gap:6}}>
-                    <button onClick={handleDelete} disabled={deleting} style={{flex:1,padding:"7px",borderRadius:7,border:"none",background:"#EF4444",color:"#ffffff",fontSize:12,cursor:"pointer",fontWeight:600}}>{deleting?"Eliminando…":"Sí, eliminar"}</button>
+                    <button onClick={handleDelete} disabled={deleting} style={{flex:1,padding:"7px",borderRadius:7,border:"none",background:"#EF4444",color:"var(--text-on-dark)",fontSize:12,cursor:"pointer",fontWeight:600}}>{deleting?"Eliminando…":"Sí, eliminar"}</button>
                     <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"7px",borderRadius:7,border:"1px solid var(--border-strong)",background:"transparent",color:"var(--text-muted)",fontSize:12,cursor:"pointer"}}>Cancelar</button>
                   </div>
                 </div>
@@ -656,7 +656,7 @@ function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
   };
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",border:"1px solid var(--border)"}}>
+      <div style={{background:"var(--surface)",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",border:"1px solid var(--border)"}}>
         <div style={{padding:"16px 20px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{fontWeight:700,fontSize:15}}>Agregar moto al catálogo</div>
           <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text-subtle)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
@@ -854,7 +854,7 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
     finally{setSaving(false);}
   };
   return(
-    <div style={{background:"#FFFFFF",border:"1px solid var(--border)",borderRadius:14,padding:"18px 20px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+    <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"18px 20px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>Gestionar categorías</div>
         <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text-disabled)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
@@ -914,7 +914,7 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
   return(
     <div onClick={onClick}
       style={{
-        background:'#FFFFFF',
+        background:'var(--surface)',
         border:'1px solid var(--border)',
         borderRadius:14,
         overflow:'hidden',
@@ -944,7 +944,7 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
         {canEdit&&(
           <label onClick={e=>e.stopPropagation()} style={{
             position:'absolute',top:10,right:10,
-            background:'rgba(17,24,39,0.82)',color:'#FFFFFF',
+            background:'rgba(17,24,39,0.82)',color:'var(--text-on-dark)',
             fontSize:11,fontWeight:700,padding:'6px 10px',borderRadius:8,
             cursor:'pointer',display:'flex',alignItems:'center',gap:5,
             backdropFilter:'blur(4px)',
@@ -1009,7 +1009,7 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
   };
 
   return(
-    <div style={{background:'#FFFFFF',border:'1px solid var(--border)',borderRadius:14,padding:'16px 18px',marginBottom:18,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+    <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:14,padding:'16px 18px',marginBottom:18,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:800,color:'var(--text)'}}>Categorías de {brand}</div>
         <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-disabled)',cursor:'pointer',fontSize:18,lineHeight:1}}>×</button>
@@ -1231,7 +1231,7 @@ export function CatalogView({user}){
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
           <button onClick={()=>setActiveCat(null)}
             style={{padding:"6px 16px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
-                    background:!activeCat?"var(--text)":"var(--surface-sunken)",color:!activeCat?"#FFFFFF":"var(--text-muted)",transition:"all 0.12s"}}>
+                    background:!activeCat?"var(--text)":"var(--surface-sunken)",color:!activeCat?"var(--text-on-dark)":"var(--text-muted)",transition:"all 0.12s"}}>
             Todos ({brandModels.length})
           </button>
           {allBrandCatNames.map(c=>{
@@ -1240,7 +1240,7 @@ export function CatalogView({user}){
             return(
               <button key={c} onClick={()=>setActiveCat(c)}
                 style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${active?catColor(c):"var(--border)"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
-                        background:active?catColor(c):"#FFFFFF",color:active?"#FFFFFF":catColor(c),transition:"all 0.12s"}}>
+                        background:active?catColor(c):"var(--surface)",color:active?"var(--text-on-dark)":catColor(c),transition:"all 0.12s"}}>
                 {c} <span style={{fontWeight:400,opacity:0.75}}>({cnt})</span>
               </button>
             );
@@ -1248,7 +1248,7 @@ export function CatalogView({user}){
           {uncategorized.length>0&&(
             <button onClick={()=>setActiveCat("__sin_categoria")}
               style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${activeCat==="__sin_categoria"?"var(--text-subtle)":"var(--border)"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,
-                      background:activeCat==="__sin_categoria"?"var(--text-subtle)":"#FFFFFF",color:activeCat==="__sin_categoria"?"#FFFFFF":"var(--text-subtle)"}}>
+                      background:activeCat==="__sin_categoria"?"var(--text-subtle)":"var(--surface)",color:activeCat==="__sin_categoria"?"var(--text-on-dark)":"var(--text-subtle)"}}>
               Sin categoría ({uncategorized.length})
             </button>
           )}

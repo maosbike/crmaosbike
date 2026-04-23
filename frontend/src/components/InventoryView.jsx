@@ -433,7 +433,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       {reloadErr && (
         <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', color:'#B91C1C', padding:'10px 14px', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span>{reloadErr}</span>
-          <button onClick={()=>reload()} style={{ background:'#DC2626', color:'#ffffff', border:'none', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Reintentar</button>
+          <button onClick={()=>reload()} style={{ background:'#DC2626', color:'var(--text-on-dark)', border:'none', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Reintentar</button>
         </div>
       )}
       {inlineErr && (
@@ -469,7 +469,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             {isAdmin && (
               <button onClick={()=>{ setNw({...BLANK_NW(), branch_id: brF||''}); setShowAdd(true); }}
                 style={{...btnOrange, justifyContent:'center', padding: isMobile ? '10px 14px' : '9px 18px'}}>
-                <Ic.plus size={14} color="#ffffff"/> Nueva unidad
+                <Ic.plus size={14} color="var(--text-on-brand)"/> Nueva unidad
               </button>
             )}
           </>
@@ -489,7 +489,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 flex:'1 1 80px', minWidth: isMobile ? 72 : 100,
                 position:'relative', overflow:'hidden',
                 padding: isMobile ? '10px 10px 8px' : '10px 16px 8px', borderRadius:10, border:'none',
-                background: active ? v.bg : '#FFFFFF',
+                background: active ? v.bg : 'var(--surface)',
                 cursor:'pointer', textAlign:'left', fontFamily:'inherit',
                 outline: active ? `2px solid ${v.color}` : '1px solid var(--border)',
                 outlineOffset: active ? 1 : 0,
@@ -553,7 +553,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600,
                       cursor:'pointer', border:'none', fontFamily:'inherit',
                       background: stF===k ? v.color : 'var(--surface-sunken)',
-                      color: stF===k ? '#fff' : 'var(--text-subtle)',
+                      color: stF===k ? 'var(--text-on-dark)' : 'var(--text-subtle)',
                       transition:'all 0.15s',
                     }}>
                     {v.label}
@@ -562,7 +562,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </div>
               {hasFilters && (
                 <button onClick={clearFilters}
-                  style={{ alignSelf:'flex-start', padding:'4px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'var(--text-subtle)', fontFamily:'inherit' }}>
+                  style={{ alignSelf:'flex-start', padding:'4px 12px', borderRadius:7, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, cursor:'pointer', color:'var(--text-subtle)', fontFamily:'inherit' }}>
                   Limpiar · {f.length} resultado{f.length!==1?'s':''}
                 </button>
               )}
@@ -581,7 +581,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <Ic.search size={13} color="var(--text-disabled)" style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}/>
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Buscar modelo, chasis, color..."
-              style={{ ...selectCtrl, paddingLeft:28, width:'100%', boxSizing:'border-box', background:'#fff' }}/>
+              style={{ ...selectCtrl, paddingLeft:28, width:'100%', boxSizing:'border-box', background:'var(--surface)' }}/>
           </div>
           <div style={{ width:1, height:22, background:'var(--border)', flexShrink:0 }}/>
           {/* Sucursal */}
@@ -602,7 +602,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600,
                 cursor:'pointer', border:'none', fontFamily:'inherit',
                 background: stF===k ? v.color : 'var(--surface-sunken)',
-                color: stF===k ? '#fff' : 'var(--text-subtle)',
+                color: stF===k ? 'var(--text-on-dark)' : 'var(--text-subtle)',
                 transition:'all 0.15s',
               }}>
               {v.label}
@@ -613,7 +613,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <>
               <div style={{ width:1, height:22, background:'var(--border)', flexShrink:0 }}/>
               <button onClick={clearFilters}
-                style={{ padding:'4px 10px', height:32, borderRadius:7, border:'1px solid var(--border)', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'var(--text-subtle)', display:'flex', alignItems:'center', gap:5, fontWeight:500, fontFamily:'inherit' }}>
+                style={{ padding:'4px 10px', height:32, borderRadius:7, border:'1px solid var(--border)', background:'var(--surface)', fontSize:11, cursor:'pointer', color:'var(--text-subtle)', display:'flex', alignItems:'center', gap:5, fontWeight:500, fontFamily:'inherit' }}>
                 <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
               </button>
             </>
@@ -640,7 +640,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             return (
               <button key={code} onClick={() => id && setBrF(id)}
                 style={{
-                  background:'#FFFFFF', border:`1.5px solid ${cfg.color}28`,
+                  background:'var(--surface)', border:`1.5px solid ${cfg.color}28`,
                   borderRadius:16, padding:0,
                   cursor: id ? 'pointer' : 'default',
                   textAlign:'left', fontFamily:'inherit',
@@ -661,11 +661,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.12) 55%, transparent 100%)' }}/>
                         {/* Nombre sobre la foto */}
                         <div style={{ position:'absolute', bottom:10, left:12, right:40 }}>
-                          <div style={{ fontSize:16, fontWeight:700, color:'#FFFFFF', textShadow:'0 1px 4px rgba(0,0,0,0.4)', lineHeight:1.2 }}>{cfg.label}</div>
+                          <div style={{ fontSize:16, fontWeight:700, color:'var(--text-on-dark)', textShadow:'0 1px 4px rgba(0,0,0,0.4)', lineHeight:1.2 }}>{cfg.label}</div>
                         </div>
                         {isAdmin && (
                           <button onClick={()=>id && handleBranchPhoto(id)} title="Cambiar foto"
-                            style={{ position:'absolute', bottom:7, right:8, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'#ffffff', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
+                            style={{ position:'absolute', bottom:7, right:8, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:5, color:'var(--text-on-dark)', fontSize:10, fontWeight:700, cursor:'pointer', padding:'3px 7px' }}>
                             Editar
                           </button>
                         )}
@@ -718,7 +718,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           )}
 
           {f.length === 0 ? (
-            <div style={{ background:'#FFFFFF', borderRadius:14, border:'1px dashed var(--border)' }}>
+            <div style={{ background:'var(--surface)', borderRadius:14, border:'1px dashed var(--border)' }}>
               <Empty
                 icon={Ic.box}
                 title={hasFilters ? 'Sin resultados con estos filtros' : 'Sin unidades en el inventario'}
@@ -756,7 +756,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               return (
                 <div key={x.id}>
                   <div style={{
-                    background:'#FFFFFF',
+                    background:'var(--surface)',
                     borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
                     border:`1px solid ${isSold ? 'var(--border)' : stCfg.border}`,
                     overflow:'hidden',
@@ -777,8 +777,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                                 style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid var(--border)', display:'block' }}
                               />
                               <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'unit_photo');}} title="Cambiar foto"
-                                style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:12, padding:0 }}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-on-dark)', fontSize:12, padding:0 }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-on-dark)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                               </button>
                             </>
                           : <button
@@ -899,7 +899,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             const uName = h.user_fn ? `${h.user_fn} ${h.user_ln||''}`.trim() : 'Sistema';
                             const isSaleEv = h.event_type==='sold';
                             return (
-                              <div key={h.id} style={{ display:'flex', gap:8, padding:'8px 10px', background:'#FFFFFF', borderRadius:8, border:`1px solid ${isSaleEv?'#C4B5FD':'#E0E0F5'}`, borderLeft:`3px solid ${isSaleEv?'#7C3AED':'#6366F1'}` }}>
+                              <div key={h.id} style={{ display:'flex', gap:8, padding:'8px 10px', background:'var(--surface)', borderRadius:8, border:`1px solid ${isSaleEv?'#C4B5FD':'#E0E0F5'}`, borderLeft:`3px solid ${isSaleEv?'#7C3AED':'#6366F1'}` }}>
                                 <div style={{ flexShrink:0,marginTop:1,width:20,height:20,borderRadius:4,background:isSaleEv?'rgba(124,58,237,0.1)':'rgba(99,102,241,0.08)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:7,fontWeight:900,color:isSaleEv?'#7C3AED':'#6366F1' }}>
                                   {HIST_ICONS[h.event_type]||'·'}
                                 </div>
@@ -935,7 +935,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 {/* ── CARD — rediseño limpio: foto grande · info · acciones ── */}
                 <div className="crm-inv-card" style={{
                   display:'flex', alignItems:'stretch',
-                  background:'#FFFFFF',
+                  background:'var(--surface)',
                   borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
                   border:`1px solid ${isSold ? 'var(--border)' : '#EAECEF'}`,
                   overflow:'hidden',
@@ -959,8 +959,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             style={{ width:'100%', height:'100%', objectFit:'cover', cursor:'pointer', display:'block', position:'absolute', inset:0 }}
                           />
                           <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Cambiar foto"
-                            style={{ position:'absolute', bottom:6, right:6, width:24, height:24, borderRadius:6, background:'rgba(15,23,42,0.75)', backdropFilter:'blur(4px)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', padding:0, zIndex:1 }}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            style={{ position:'absolute', bottom:6, right:6, width:24, height:24, borderRadius:6, background:'rgba(15,23,42,0.75)', backdropFilter:'blur(4px)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-on-dark)', padding:0, zIndex:1 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-on-dark)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
                         </>
                       : <button onClick={()=>handlePhoto(x.id,'unit_photo')} title="Agregar foto"
@@ -1012,7 +1012,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             ? <img src={x.chassis_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`});}}
                                 style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1px solid #E2E8F0' }}/>
                             : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'chassis_photo');}} title="Agregar foto chasis"
-                                style={{ width:22,height:22,borderRadius:5,border:'1px dashed #CBD5E1',background:'#FFFFFF',cursor:'pointer',fontSize:13,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
+                                style={{ width:22,height:22,borderRadius:5,border:'1px dashed #CBD5E1',background:'var(--surface)',cursor:'pointer',fontSize:13,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
                           }
                         </div>
                       )}
@@ -1024,7 +1024,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             ? <img src={x.motor_photo} onClick={e=>{e.stopPropagation();setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`});}}
                                 style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1px solid #E2E8F0' }}/>
                             : <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'motor_photo');}} title="Agregar foto motor"
-                                style={{ width:22,height:22,borderRadius:5,border:'1px dashed #CBD5E1',background:'#FFFFFF',cursor:'pointer',fontSize:13,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
+                                style={{ width:22,height:22,borderRadius:5,border:'1px dashed #CBD5E1',background:'var(--surface)',cursor:'pointer',fontSize:13,color:'#94A3B8',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1 }}>+</button>
                           }
                         </div>
                       )}
@@ -1087,8 +1087,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         style={{
                           padding:'6px 10px', borderRadius:8, fontSize:11, fontWeight:700,
                           cursor:'pointer', fontFamily:'inherit',
-                          background: isHistOpen ? 'var(--text)' : '#FFFFFF',
-                          color: isHistOpen ? '#FFFFFF' : '#475569',
+                          background: isHistOpen ? 'var(--text)' : 'var(--surface)',
+                          color: isHistOpen ? 'var(--text-on-dark)' : '#475569',
                           border:`1px solid ${isHistOpen?'var(--text)':'#E2E8F0'}`,
                           display:'flex', alignItems:'center', justifyContent:'center', gap:5,
                           transition:'all 0.12s',
@@ -1105,7 +1105,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         style={{
                           padding:'6px 10px', borderRadius:8, fontSize:11, fontWeight:600,
                           cursor:'pointer', fontFamily:'inherit',
-                          background:'#FFFFFF', color:'#475569',
+                          background:'var(--surface)', color:'#475569',
                           border:'1px solid #E2E8F0', width:'100%',
                         }}>
                         <option value="" disabled>Mover a...</option>
@@ -1150,7 +1150,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           return (
                             <div key={h.id} style={{
                               display:'flex', gap:10, padding:'10px 12px',
-                              background:'#FFFFFF', borderRadius:8,
+                              background:'var(--surface)', borderRadius:8,
                               border:`1px solid ${isSaleEv?'#C4B5FD':'#E0E0F5'}`,
                               borderLeft:`3px solid ${isSaleEv?'#7C3AED':'#6366F1'}`,
                             }}>
@@ -1190,7 +1190,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
       ══════════════════════════════════════════════════════════ */}
       {viewPhoto && (
         <div onClick={()=>setViewPhoto(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.78)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:500,cursor:'pointer',backdropFilter:'blur(4px)' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:'#FFFFFF',borderRadius:16,padding:20,maxWidth:600,width:'90%',boxShadow:'0 32px 80px rgba(0,0,0,0.35)' }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:'var(--surface)',borderRadius:16,padding:20,maxWidth:600,width:'90%',boxShadow:'0 32px 80px rgba(0,0,0,0.35)' }}>
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14 }}>
               <span style={{ fontSize:14,fontWeight:700 }}>{viewPhoto.title}</span>
               <button onClick={()=>setViewPhoto(null)} style={{ ...S.gh,padding:6,borderRadius:8 }}><Ic.x size={16}/></button>
@@ -1299,7 +1299,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     <select
                       value={eForm.sold_by}
                       onChange={e=>setEForm({...eForm,sold_by:e.target.value})}
-                      style={{ width:'100%', height:38, borderRadius:8, border:'1px solid var(--border)', background:'#ffffff', fontSize:13, color:'var(--text-body)', padding:'0 8px', fontFamily:'inherit' }}>
+                      style={{ width:'100%', height:38, borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', fontSize:13, color:'var(--text-body)', padding:'0 8px', fontFamily:'inherit' }}>
                       <option value="">Seleccionar…</option>
                       {sellers.map(s=><option key={s.id} value={s.id}>{`${s.first_name||''} ${s.last_name||''}`.trim()}</option>)}
                     </select>
@@ -1321,7 +1321,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   ? <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       <span style={{ fontSize:12, color:'#DC2626', fontWeight:600 }}>¿Eliminar definitivamente?</span>
                       <button type="button" disabled={deletingUnit} onClick={handleDelete}
-                        style={{ background:'#DC2626', color:'#ffffff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                        style={{ background:'#DC2626', color:'var(--text-on-dark)', border:'none', borderRadius:7, padding:'6px 14px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                         {deletingUnit ? 'Eliminando…' : 'Sí, eliminar'}
                       </button>
                       <button type="button" onClick={()=>setDeleteConfirm(false)}
@@ -1338,12 +1338,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 </button>
                 {editTarget?.status === 'reservada' && (
                   <button type="button" onClick={handleConvertToSale} disabled={convSaving || eSaving}
-                    style={{ background:'#059669', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 18px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                    style={{ background:'#059669', color:'var(--text-on-dark)', border:'none', borderRadius:8, padding:'8px 18px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                     {convSaving ? 'Convirtiendo…' : 'Convertir a venta'}
                   </button>
                 )}
                 <button type="submit" disabled={eSaving}
-                  style={{ background:'var(--text)', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                  style={{ background:'var(--text)', color:'var(--text-on-dark)', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                   {eSaving ? 'Guardando…' : 'Guardar cambios'}
                 </button>
               </div>
@@ -1520,7 +1520,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         <div onClick={()=>setShowPhotoPicker(false)}
           style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1001,display:'flex',flexDirection:'column',justifyContent:'flex-end' }}>
           <div onClick={e=>e.stopPropagation()}
-            style={{ background:'#ffffff',borderRadius:'18px 18px 0 0',padding:'12px 16px 32px' }}>
+            style={{ background:'var(--surface)',borderRadius:'18px 18px 0 0',padding:'12px 16px 32px' }}>
             <div style={{ width:36,height:4,borderRadius:2,background:'var(--border-strong)',margin:'0 auto 18px' }}/>
             <div style={{ fontSize:13,fontWeight:700,color:'var(--text-body)',marginBottom:14,textAlign:'center' }}>Agregar foto</div>
             <button onClick={()=>{ setShowPhotoPicker(false); setTimeout(()=>{ cameraInputRef.current.value=''; cameraInputRef.current.click(); },50); }}
@@ -1546,14 +1546,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
 const btnOrange = {
   display:'flex', alignItems:'center', gap:6,
-  background:'var(--brand)', border:'none', color:'#FFFFFF',
+  background:'var(--brand)', border:'none', color:'var(--text-on-brand)',
   borderRadius:9, fontSize:12, fontWeight:700, cursor:'pointer',
   padding:'9px 18px', fontFamily:'inherit',
   boxShadow:'0 2px 8px var(--brand-strong)',
 };
 const btnGhost = {
   display:'flex', alignItems:'center', gap:6,
-  background:'#FFFFFF', border:'1.5px solid var(--border)', color:'var(--text-body)',
+  background:'var(--surface)', border:'1.5px solid var(--border)', color:'var(--text-body)',
   borderRadius:9, fontSize:12, fontWeight:500, cursor:'pointer',
   padding:'8px 14px', fontFamily:'inherit',
 };

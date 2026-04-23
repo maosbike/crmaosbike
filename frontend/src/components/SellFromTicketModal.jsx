@@ -199,13 +199,13 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <button type="button" onClick={() => setNoStock(false)}
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
-                background: !noStock ? '#1E40AF' : 'var(--surface-sunken)', color: !noStock ? '#ffffff' : 'var(--text-subtle)',
+                background: !noStock ? '#1E40AF' : 'var(--surface-sunken)', color: !noStock ? 'var(--text-on-dark)' : 'var(--text-subtle)',
                 border: !noStock ? 'none' : '1px solid var(--border)' }}>
               Del inventario real
             </button>
             <button type="button" onClick={() => setNoStock(true)}
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
-                background: noStock ? '#D97706' : 'var(--surface-sunken)', color: noStock ? '#ffffff' : 'var(--text-subtle)',
+                background: noStock ? '#D97706' : 'var(--surface-sunken)', color: noStock ? 'var(--text-on-dark)' : 'var(--text-subtle)',
                 border: noStock ? 'none' : '1px solid var(--border)' }}>
               Nota sin stock
             </button>
@@ -396,7 +396,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
                   </div>
                 </div>
                 {total > 0 && (
-                  <div style={{ background: '#FFFFFF', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12' }}>
+                  <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12' }}>
                     <div>Pie inicial: <strong>{fmt(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
                     <div>Saldo a financiar: <strong>{fmt(saldoFin)}</strong></div>
                   </div>

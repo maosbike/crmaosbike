@@ -20,14 +20,14 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
   return(
     <>
       {open&&<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",zIndex:88}}/>}
-      <div className={`crm-drawer${open?" open":""}`} style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:"#FFFFFF",borderRight:"1px solid var(--border)",display:"flex",flexDirection:"column",zIndex:89,overflowY:"auto"}}>
+      <div className={`crm-drawer${open?" open":""}`} style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:"var(--surface)",borderRight:"1px solid var(--border)",display:"flex",flexDirection:"column",zIndex:89,overflowY:"auto"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px 0 20px",height:56,borderBottom:"1px solid var(--surface-sunken)",flexShrink:0}}>
           <div>
             <img src="/logo.png" alt="MaosBike" style={{height:28,objectFit:'contain',display:'block'}}
               onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
             />
             <div style={{width:28,height:28,borderRadius:7,background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
-              <Ic.bike size={16} color="#fff"/>
+              <Ic.bike size={16} color="var(--text-on-brand)"/>
             </div>
           </div>
           <button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18} color="var(--text-subtle)"/></button>

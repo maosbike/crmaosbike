@@ -32,7 +32,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Sin atender</div>
         </div>
         {/* Leads activos */}
-        <div style={{background:'#FFFFFF',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
           <div style={{fontSize:28,fontWeight:800,color:'var(--text)',lineHeight:1,marginBottom:4}}>
             {active.length}
           </div>
@@ -53,14 +53,14 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Atender ya</div>
         </div>
         {/* Stock disponible */}
-        <div style={{background:'#FFFFFF',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
           <div style={{fontSize:28,fontWeight:800,color:'var(--text-body)',lineHeight:1,marginBottom:4}}>
             {avail}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Stock disp.</div>
         </div>
         {/* Tareas hoy */}
-        <div style={{background:'#FFFFFF',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
           <div style={{fontSize:28,fontWeight:800,color:'var(--text-body)',lineHeight:1,marginBottom:4}}>
             {tareasHoy.length||kpi("recordatorios_hoy")}
           </div>

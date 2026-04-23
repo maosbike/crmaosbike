@@ -188,7 +188,7 @@ export const Ic={
 // Styles
 export const S={
   card:{
-    background:'#FFFFFF',
+    background:'var(--surface)',
     border:'1px solid var(--border)',
     borderRadius:12,
     padding:16,
@@ -202,7 +202,7 @@ export const S={
   },
   btn:{
     background:'var(--brand)',
-    color:'#FFFFFF',
+    color:'var(--text-on-brand)',
     border:'none',
     borderRadius:8,
     padding:'8px 16px',
@@ -218,7 +218,7 @@ export const S={
     fontFamily:'inherit',
   },
   btn2:{
-    background:'#FFFFFF',
+    background:'var(--surface)',
     color:'var(--text-body)',
     border:'1px solid var(--border-strong)',
     borderRadius:8,
@@ -255,7 +255,7 @@ export const S={
     padding:'8px 12px',
     fontSize:13,
     color:'var(--text)',
-    background:'#FFFFFF',
+    background:'var(--surface)',
     outline:'none',
     width:'100%',
     boxSizing:'border-box',
@@ -293,11 +293,11 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
   const v=val!==undefined?val:value;
   const isAlert=al||alert||false;
   const fg=color||undefined;
-  const cardBg=bg||(isAlert?bg:'#FFFFFF');
+  const cardBg=bg||(isAlert?bg:'var(--surface)');
   const cardBd=border||'var(--border)';
   return(
     <div style={{...S.card,display:"flex",flexDirection:"column",gap:4,
-      background:isAlert?cardBg:'#FFFFFF',
+      background:isAlert?cardBg:'var(--surface)',
       border:`1px solid ${isAlert?cardBd:'var(--border)'}`,
       boxShadow:isAlert?`0 2px 8px ${cardBd}44`:'0 1px 4px rgba(0,0,0,0.06)',
       ...style,
@@ -318,7 +318,7 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
 };
 export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>(
   <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
-    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'#FFFFFF',borderRadius:16,width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
+    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'var(--surface)',borderRadius:16,width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
       {headerContent ? headerContent : (
         <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--surface-sunken)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <h2 style={{fontSize:15,fontWeight:700,color:'var(--text)',margin:0}}>{title}</h2>
@@ -460,7 +460,7 @@ export function Loader({ label='Cargando…' }) {
 // Importar en LeadsList, InventoryView, SupplierPaymentsView en lugar de definir local.
 export const selectCtrl = {
   height:34, border:'1px solid #E2E8F0', borderRadius:8,
-  fontSize:12.5, fontWeight:500, padding:'0 10px', background:'#fff',
+  fontSize:12.5, fontWeight:500, padding:'0 10px', background:'var(--surface)',
   color:'var(--text)', outline:'none', cursor:'pointer',
   fontFamily:'inherit',
 };
@@ -577,7 +577,7 @@ export function AccordionSection({ title, icon, isOpen, onToggle, children }) {
           width:'100%', display:'flex', alignItems:'center',
           justifyContent:'space-between',
           padding:'10px 14px',
-          background: isOpen ? 'var(--surface-muted)' : '#FFFFFF',
+          background: isOpen ? 'var(--surface-muted)' : 'var(--surface)',
           border:'none', cursor:'pointer', textAlign:'left',
           borderBottom: isOpen ? '1px solid var(--surface-sunken)' : 'none',
           fontFamily:'inherit',

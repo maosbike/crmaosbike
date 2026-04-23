@@ -99,7 +99,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
       <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 4 }}>
         {label}
       </div>
-      <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: accent || '#fff', letterSpacing: '-0.01em' }}>
+      <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color: accent || 'var(--text-on-dark)', letterSpacing: '-0.01em' }}>
         {value}
       </div>
     </div>
@@ -111,13 +111,13 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
       borderRadius: 16,
       padding: isMobile ? '16px' : '20px 24px',
       marginBottom: 16,
-      color: '#fff',
+      color: 'var(--text-on-dark)',
       boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
     }}>
       {/* Month nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <button onClick={onPrev} style={{
-          background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff',
+          background: 'rgba(255,255,255,0.08)', border: 'none', color: 'var(--text-on-dark)',
           width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'inherit',
@@ -131,7 +131,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
           </div>
         </div>
         <button onClick={onNext} style={{
-          background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff',
+          background: 'rgba(255,255,255,0.08)', border: 'none', color: 'var(--text-on-dark)',
           width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'inherit',
@@ -278,7 +278,7 @@ function InvoiceCard({ inv, onOpen }) {
       style={{
         display:'flex', alignItems:'stretch',
         minHeight:148, marginBottom:10,
-        background:'#FFFFFF',
+        background:'var(--surface)',
         border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
         borderRadius:14, overflow:'hidden',
@@ -438,7 +438,7 @@ function InvoiceCard({ inv, onOpen }) {
 function DetailCard({ title, accent='var(--text-body)', children }) {
   return (
     <div style={{
-      background:'#FFFFFF', border:'1px solid var(--border)',
+      background:'var(--surface)', border:'1px solid var(--border)',
       borderRadius:12, overflow:'hidden',
     }}>
       <div style={{
@@ -550,7 +550,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
         {/* ── Columna IZQ: hero vertical (foto + identidad + total) ──────── */}
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{
-            background:'#FFFFFF', border:'1px solid var(--border)',
+            background:'var(--surface)', border:'1px solid var(--border)',
             borderLeft:`4px solid ${st.c}`,
             borderRadius:14, overflow:'hidden',
             boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
@@ -625,12 +625,12 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               {pdfUrl && (
                 <a href={pdfUrl} target="_blank" rel="noreferrer"
                   style={{
-                    fontSize:13, fontWeight:700, color:'#fff', background:'var(--brand)',
+                    fontSize:13, fontWeight:700, color:'var(--text-on-brand)', background:'var(--brand)',
                     textDecoration:'none',
                     display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
                     padding:'10px 14px', borderRadius:10, marginTop:6,
                   }}>
-                  <Ic.file size={14} color="#fff" /> Ver PDF
+                  <Ic.file size={14} color="var(--text-on-brand)" /> Ver PDF
                 </a>
               )}
             </div>
@@ -693,7 +693,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
 
           {/* Vincular con catálogo — manual */}
           <div style={{
-            background:'#FFFFFF', border:'1px solid var(--border)',
+            background:'var(--surface)', border:'1px solid var(--border)',
             borderRadius:12, overflow:'hidden',
           }}>
             <div style={{
@@ -747,7 +747,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
 
           {/* Notas internas */}
           <div style={{
-            background:'#FFFFFF', border:'1px solid var(--border)',
+            background:'var(--surface)', border:'1px solid var(--border)',
             borderRadius:12, overflow:'hidden',
           }}>
             <div style={{
@@ -866,7 +866,7 @@ export function AccountingView() {
         actions={
           <button onClick={syncDrive} disabled={syncing}
             style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <Ic.refresh size={14} color="#fff" />
+            <Ic.refresh size={14} color="var(--text-on-brand)" />
             {syncing ? 'Sincronizando...' : 'Sincronizar Drive'}
           </button>
         }

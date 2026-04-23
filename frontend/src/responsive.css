@@ -278,7 +278,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     display: flex !important;
     position: fixed; left: 0; right: 0; bottom: 0;
     height: 60px;
-    background: #FFFFFF;
+    background: var(--surface);
     border-top: 1px solid var(--border);
     z-index: var(--z-bottom-nav);
     padding-bottom: env(safe-area-inset-bottom, 0);

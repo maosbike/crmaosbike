@@ -5,12 +5,12 @@ import { S, TICKET_STATUS, FIN_STATUS, fmt, ViewHeader, Loader } from '../ui.jsx
 const TABS = ['General','Marca','Modelo','Sucursal','Vendedor','Financiamiento','Color','Estado','Tiempo'];
 
 const card = { ...S.card, padding: 16 };
-const kpiBox = { background:'#FFFFFF', border:'1px solid var(--border)', borderRadius:10, padding:'12px 16px', display:'flex', flexDirection:'column', gap:2, minWidth:120, flex:1 };
+const kpiBox = { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px 16px', display:'flex', flexDirection:'column', gap:2, minWidth:120, flex:1 };
 const kpiVal = { fontSize:22, fontWeight:800, lineHeight:1 };
 const kpiLbl = { fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.07em' };
 const thS = { textAlign:'left', padding:'10px 14px', color:'var(--text-disabled)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', background:'var(--surface-muted)', borderBottom:'2px solid var(--border)', whiteSpace:'nowrap' };
 const tdS = { padding:'10px 14px', fontSize:12, borderBottom:'1px solid var(--surface-sunken)' };
-const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'var(--brand)':'var(--border-strong)'), background:active?'var(--brand)':'#FFFFFF', color:active?'#FFFFFF':'var(--text-body)', fontSize:11, fontWeight:600, cursor:'pointer' });
+const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'var(--brand)':'var(--border-strong)'), background:active?'var(--brand)':'var(--surface)', color:active?'var(--text-on-brand)':'var(--text-body)', fontSize:11, fontWeight:600, cursor:'pointer' });
 const selectS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
 const inputS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
 
@@ -166,7 +166,7 @@ export function ReportsView({ branches = [] }) {
           border:'none',
           fontSize:12, fontWeight: tab===t ? 700 : 500,
           cursor:'pointer', flexShrink:0,
-          background: tab===t ? '#FFFFFF' : 'transparent',
+          background: tab===t ? 'var(--surface)' : 'transparent',
           color: tab===t ? 'var(--brand)' : 'var(--text-subtle)',
           borderBottom: tab===t ? '2px solid var(--brand)' : '2px solid transparent',
           marginBottom:'-2px',

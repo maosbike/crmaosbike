@@ -277,7 +277,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
 
       {/* ── Hero: foto + datos unidad + precio ── */}
       <div style={{
-        background: '#FFFFFF',
+        background: 'var(--surface)',
         borderRadius: 14, marginBottom: 18,
         overflow: 'hidden',
         display: 'flex', alignItems: 'stretch',
@@ -303,7 +303,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           {sale.added_as_sold && (
             <span style={{
               position:'absolute', top:8, left:8,
-              fontSize:9, fontWeight:800, color:'#FFFFFF',
+              fontSize:9, fontWeight:800, color:'var(--text-on-dark)',
               background:'rgba(124,58,237,0.9)', borderRadius:4, padding:'2px 7px',
               letterSpacing:'0.06em',
             }}>
@@ -375,7 +375,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
             transition:'all 0.15s' }}>
           <div style={{ width:28, height:28, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
             background: sale.delivered ? '#059669' : 'var(--brand)' }}>
-            <span style={{ color:'#ffffff', fontSize:16, lineHeight:1 }}>{sale.delivered ? '✓' : '○'}</span>
+            <span style={{ color:'var(--text-on-dark)', fontSize:16, lineHeight:1 }}>{sale.delivered ? '✓' : '○'}</span>
           </div>
           <div style={{ textAlign:'left' }}>
             <div style={{ fontSize:13, fontWeight:700, color: sale.delivered ? '#065F46' : '#92400E' }}>
@@ -392,7 +392,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
       <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Cliente */}
         <div style={{
-          background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 12,
+          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 12,
           padding: '14px 16px',
         }}>
           <div style={{
@@ -417,7 +417,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
 
         {/* Operación */}
         <div style={{
-          background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 12,
+          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 12,
           padding: '14px 16px',
         }}>
           <div style={{
@@ -496,7 +496,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)', textTransform: 'uppercase',
                           letterSpacing: '0.09em', marginBottom: 10 }}>Desglose de la venta</div>
-            <div style={{ background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 10, padding: '12px 16px' }}>
               {motoAmt > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
                               padding: '6px 0', fontSize: 13 }}>
@@ -557,7 +557,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
             const hasDoc = !!sale[field];
             return (
               <div key={field} style={{
-                background: hasDoc ? '#F0FDF4' : '#FFFFFF',
+                background: hasDoc ? '#F0FDF4' : 'var(--surface)',
                 border: `1px solid ${hasDoc ? '#A7F3D0' : '#EAECEF'}`,
                 borderRadius: 10, padding: '10px 12px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
@@ -1392,7 +1392,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button onClick={() => { setHasInvUnit(true); setStep(1); }}
               style={{ padding: '12px 28px', borderRadius: 10, border: '2px solid var(--text)',
-                       background: 'var(--text)', color: '#ffffff', fontSize: 14, fontWeight: 700,
+                       background: 'var(--text)', color: 'var(--text-on-dark)', fontSize: 14, fontWeight: 700,
                        cursor: 'pointer', fontFamily: 'inherit' }}>
               Sí, está en stock
             </button>
@@ -1421,7 +1421,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             )}
             {filteredUnits.map(u => (
               <button key={u.id} onClick={() => pickUnit(u)}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: '#ffffff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                 <div style={{ flex: 1 }}>
@@ -1489,7 +1489,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               {['persona', 'empresa'].map(t => (
                 <button key={t} type="button" onClick={() => set('client_type')(t)}
                   style={{ padding: '5px 16px', borderRadius: 20, border: `1.5px solid ${form.client_type === t ? 'var(--brand)' : 'var(--border)'}`,
-                           background: form.client_type === t ? '#FFF7ED' : '#ffffff',
+                           background: form.client_type === t ? '#FFF7ED' : 'var(--surface)',
                            color: form.client_type === t ? 'var(--brand)' : 'var(--text-subtle)',
                            fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
                   {t === 'persona' ? 'Persona natural' : 'Empresa'}
@@ -1526,7 +1526,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                   <button key={String(opt.v)} type="button" onClick={() => setTitularSame(opt.v)}
                     style={{ padding: '5px 20px', borderRadius: 20,
                              border: `1.5px solid ${titularSame === opt.v ? 'var(--brand)' : 'var(--border)'}`,
-                             background: titularSame === opt.v ? '#FFF7ED' : '#ffffff',
+                             background: titularSame === opt.v ? '#FFF7ED' : 'var(--surface)',
                              color: titularSame === opt.v ? 'var(--brand)' : 'var(--text-subtle)',
                              fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {opt.l}
@@ -1684,7 +1684,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                       const pieAmt = Number(finAmt) || 0;
                       const saldoFin = Math.max(0, totals.grandTotal - pieAmt);
                       return (
-                        <div style={{ background: '#FFFFFF', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <div>Pie inicial: <strong>{fmtCLP(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
                           <div>Saldo a financiar: <strong>{fmtCLP(saldoFin)}</strong></div>
                         </div>
@@ -1745,7 +1745,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     <span>{lbl}</span><span style={{ color: clr }}>{val}</span>
                   </div>
                 ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ffffff', fontSize: 15, fontWeight: 900, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-on-dark)', fontSize: 15, fontWeight: 900, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 4 }}>
                   <span>TOTAL</span><span style={{ color: 'var(--brand)' }}>{fmtCLP(totals.grandTotal)}</span>
                 </div>
                 {totals.saldo > 0 && (
@@ -1800,11 +1800,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => openNote(savedDoc, noteType)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--brand)', border: 'none', color: '#ffffff', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px var(--brand-strong)', fontFamily: 'inherit' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px var(--brand-strong)', fontFamily: 'inherit' }}>
               Descargar PDF
             </button>
             <button onClick={onClose}
-              style={{ background: '#ffffff', border: '1.5px solid var(--border-strong)', color: 'var(--text-body)', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '12px 20px', fontFamily: 'inherit' }}>
+              style={{ background: 'var(--surface)', border: '1.5px solid var(--border-strong)', color: 'var(--text-body)', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '12px 20px', fontFamily: 'inherit' }}>
               Cerrar
             </button>
           </div>
@@ -1994,7 +1994,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           <>
             <button onClick={() => setShowNew('reserva')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              background: '#FFFFFF', border: '1.5px solid var(--text-body)', color: 'var(--text-body)',
+              background: 'var(--surface)', border: '1.5px solid var(--text-body)', color: 'var(--text-body)',
               borderRadius: 8, fontSize: 12, fontWeight: 600,
               cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
               whiteSpace: 'nowrap',
@@ -2003,12 +2003,12 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             </button>
             <button onClick={() => setShowNew('venta')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              background: 'var(--brand)', border: 'none', color: '#FFFFFF',
+              background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)',
               borderRadius: 8, fontSize: 12, fontWeight: 700,
               cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
               whiteSpace: 'nowrap', boxShadow: '0 2px 6px var(--brand-strong)',
             }}>
-              <Ic.plus size={13} color="#fff" /> Nueva venta
+              <Ic.plus size={13} color="var(--text-on-brand)" /> Nueva venta
             </button>
           </>
         )}
@@ -2074,7 +2074,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             ];
             return cards.map(k => (
               <div key={k.label} style={{
-                background: '#FFFFFF', border: '1px solid #EAECEF',
+                background: 'var(--surface)', border: '1px solid #EAECEF',
                 borderRadius: 12, padding: '16px 18px',
                 boxShadow: '0 1px 3px rgba(16,24,40,0.04), 0 1px 2px rgba(16,24,40,0.02)',
               }}>
@@ -2107,7 +2107,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
 
       {/* ── Filtros ── */}
       <div style={{
-        background: '#FFFFFF', border: '1px solid var(--border)',
+        background: 'var(--surface)', border: '1px solid var(--border)',
         borderRadius: 10, padding: '12px 16px',
         marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8,
       }}>
@@ -2131,7 +2131,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 transition: 'all 0.12s',
                 borderColor: fType === t.v ? 'var(--brand)' : 'var(--border)',
-                background:  fType === t.v ? 'var(--brand-soft)' : '#FFFFFF',
+                background:  fType === t.v ? 'var(--brand-soft)' : 'var(--surface)',
                 color:       fType === t.v ? '#C2680A' : 'var(--text-subtle)',
               }}>
                 {t.l}
@@ -2196,7 +2196,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             const accentColor = isRes ? '#CA8A04' : '#10B981';
             return (
               <div key={s.id} onClick={() => setSelSale(s)} style={{
-                background: '#FFFFFF',
+                background: 'var(--surface)',
                 border: '1px solid #EAECEF',
                 borderLeft: `3px solid ${accentColor}`,
                 borderRadius: 10, overflow: 'hidden',
@@ -2326,7 +2326,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           )}
           {!loading && sales.length === 0 && (
             <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-disabled)', fontFamily: 'inherit',
-              background:'#FFFFFF', border:'1px solid #EAECEF', borderRadius:14 }}>
+              background:'var(--surface)', border:'1px solid #EAECEF', borderRadius:14 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-body)', marginBottom: 4 }}>Sin ventas</div>
               <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba con otros filtros' : 'No hay ventas registradas aún'}</div>
             </div>
@@ -2348,7 +2348,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                 onClick={() => setSelSale(s)}
                 style={{
                   display: 'flex', alignItems: 'stretch',
-                  background: '#FFFFFF',
+                  background: 'var(--surface)',
                   border: '1px solid var(--border)', borderRadius: 14,
                   overflow: 'hidden',
                   cursor: 'pointer',
@@ -2576,7 +2576,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                         onClick={() => openNoteFromSale(s)}
                         style={{
                           padding: '5px 7px', borderRadius: 7,
-                          border: '1px solid var(--border)', background: '#FFFFFF',
+                          border: '1px solid var(--border)', background: 'var(--surface)',
                           color: 'var(--text-subtle)', cursor: 'pointer',
                           display: 'inline-flex', alignItems: 'center',
                         }}
@@ -2592,7 +2592,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                         <>
                           <button onClick={() => handleDeleteRow(s)} disabled={deleting} style={{
                             padding: '5px 9px', borderRadius: 7, border: 'none',
-                            background: '#EF4444', color: '#fff',
+                            background: '#EF4444', color: 'var(--text-on-dark)',
                             fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                           }}>
                             {deleting ? '…' : 'Borrar'}
@@ -2608,7 +2608,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                       ) : isSuperAdmin ? (
                         <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar" style={{
                           padding: '5px 7px', borderRadius: 7,
-                          border: '1px solid #FECACA', background: '#FFFFFF',
+                          border: '1px solid #FECACA', background: 'var(--surface)',
                           color: '#F87171', cursor: 'pointer',
                           display: 'inline-flex', alignItems: 'center',
                         }}>

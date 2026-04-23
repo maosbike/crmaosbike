@@ -292,7 +292,7 @@ export function TicketView({lead,user,nav,updLead}){
         <button onClick={()=>nav("leads")}
           style={{ ...S.gh, display:'flex', alignItems:'center', gap:5, padding:'4px 10px',
             fontSize:12, fontWeight:500, color:'var(--text-subtle)',
-            border:'1px solid var(--border)', background:'#FFFFFF', borderRadius:7 }}>
+            border:'1px solid var(--border)', background:'var(--surface)', borderRadius:7 }}>
           <Ic.back size={13} color="var(--text-disabled)"/> Leads
         </button>
         <span style={{ color:'var(--border-strong)' }}>›</span>
@@ -307,22 +307,22 @@ export function TicketView({lead,user,nav,updLead}){
               {!isPerdido&&!isGanado&&(
                 <button onClick={()=>{resetContact();setShowContact(true);}}
                   style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
-                    background:'#2563EB', color:'#ffffff', border:'none', borderRadius:8,
+                    background:'#2563EB', color:'var(--text-on-dark)', border:'none', borderRadius:8,
                     fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                     boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
-                  <Ic.msg size={13} color="#ffffff"/>Registrar contacto
+                  <Ic.msg size={13} color="var(--text-on-dark)"/>Registrar contacto
                 </button>
               )}
               {!isPerdido&&(
                 <button onClick={goToSale}
                   style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
                     background: isGanado||isEarly?'transparent':'#10B981',
-                    color: isGanado?'#10B981':isEarly?'var(--text-subtle)':'#ffffff',
+                    color: isGanado?'#10B981':isEarly?'var(--text-subtle)':'var(--text-on-dark)',
                     border: isGanado?'1.5px solid #6EE7B7':isEarly?'1px solid var(--border-strong)':'none',
                     borderRadius:8, fontSize:12, fontWeight:isEarly?500:700,
                     cursor:'pointer', fontFamily:'inherit',
                     boxShadow: isGanado||isEarly?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
-                  <Ic.sale size={13} color={isGanado?"#10B981":isEarly?"var(--text-subtle)":"#ffffff"}/>
+                  <Ic.sale size={13} color={isGanado?"#10B981":isEarly?"var(--text-subtle)":"var(--text-on-dark)"}/>
                   {isGanado?'Registrar otra unidad':'Registrar venta'}
                 </button>
               )}
@@ -337,21 +337,21 @@ export function TicketView({lead,user,nav,updLead}){
           {!isGanado&&(
             <button onClick={()=>{resetContact();setShowContact(true);}}
               style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-                padding:'10px 14px', background:'#2563EB', color:'#ffffff', border:'none',
+                padding:'10px 14px', background:'#2563EB', color:'var(--text-on-dark)', border:'none',
                 borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                 boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
-              <Ic.msg size={14} color="#ffffff"/>Registrar contacto
+              <Ic.msg size={14} color="var(--text-on-dark)"/>Registrar contacto
             </button>
           )}
           <button onClick={goToSale}
             style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
               padding:'10px 14px',
               background:isGanado?'transparent':'#10B981',
-              color:isGanado?'#10B981':'#ffffff',
+              color:isGanado?'#10B981':'var(--text-on-dark)',
               border:isGanado?'1.5px solid #6EE7B7':'none',
               borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
               boxShadow:isGanado?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
-            <Ic.sale size={14} color={isGanado?"#10B981":"#ffffff"}/>
+            <Ic.sale size={14} color={isGanado?"#10B981":"var(--text-on-dark)"}/>
             {isGanado?'Registrar otra unidad':'Registrar venta'}
           </button>
         </div>
@@ -366,7 +366,7 @@ export function TicketView({lead,user,nav,updLead}){
             <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Registra el seguimiento para continuar gestionando este lead.</div>
           </div>
           <button onClick={()=>{resetFq();setShowFollowup(true);}}
-            style={{ padding:'10px 20px',background:'#DC2626',color:'#ffffff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
+            style={{ padding:'10px 20px',background:'#DC2626',color:'var(--text-on-dark)',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
             Registrar seguimiento
           </button>
         </div>
@@ -441,14 +441,14 @@ export function TicketView({lead,user,nav,updLead}){
               background: m?.image
                 ? 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 60%, transparent 100%)'
                 : 'transparent',
-              color:'#FFFFFF',
+              color:'var(--text-on-dark)',
             }}>
               <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4, flexWrap:'wrap' }}>
                 {m.year && (
                   <span style={{
                     fontSize:10, fontWeight:800, letterSpacing:'0.06em',
                     padding:'2px 8px', borderRadius:99,
-                    background:'rgba(255,255,255,0.2)', color:'#FFFFFF',
+                    background:'rgba(255,255,255,0.2)', color:'var(--text-on-dark)',
                     backdropFilter:'blur(6px)',
                   }}>{m.year}</span>
                 )}
@@ -656,7 +656,7 @@ export function TicketView({lead,user,nav,updLead}){
                   try{await api.updateTicket(lead.id,{priority:k});}
                   catch(err){updLead(lead.id,{priority:prev});alert('Error al cambiar prioridad');}
                 }} style={{ flex:1, padding:'6px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer',
-                  border:'none', background:active?v.c:'var(--surface-sunken)', color:active?'#ffffff':'var(--text-disabled)' }}>
+                  border:'none', background:active?v.c:'var(--surface-sunken)', color:active?'var(--text-on-dark)':'var(--text-disabled)' }}>
                   {v.l}
                 </button>
               );
@@ -670,7 +670,7 @@ export function TicketView({lead,user,nav,updLead}){
             {[true,false].map(v=>(
               <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});alert('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
                 style={{ padding:'6px 14px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer', border:'none',
-                  background: lead.testRide===v?(v?'#10B981':'var(--text-body)'):'var(--surface-sunken)', color: lead.testRide===v?'#ffffff':'var(--text-disabled)' }}>
+                  background: lead.testRide===v?(v?'#10B981':'var(--text-body)'):'var(--surface-sunken)', color: lead.testRide===v?'var(--text-on-dark)':'var(--text-disabled)' }}>
                 {v?'Sí':'No'}
               </button>
             ))}
@@ -753,7 +753,7 @@ export function TicketView({lead,user,nav,updLead}){
                   <button key={String(v)} type="button" onClick={()=>upd("wantsFin",v)}
                     style={{ ...S.btn2, padding:'4px 14px', fontSize:12,
                       background:lead.wantsFin===v?(v?"var(--brand)":"var(--text-body)"):"transparent",
-                      color:lead.wantsFin===v?"#ffffff":"var(--text-disabled)",
+                      color:lead.wantsFin===v?"var(--text-on-dark)":"var(--text-disabled)",
                       border:lead.wantsFin===v?"none":"1px solid var(--border-strong)" }}>
                     {v?"Sí":"No"}
                   </button>
@@ -1025,7 +1025,7 @@ export function TicketView({lead,user,nav,updLead}){
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:5 }}>
                             <div style={{ fontSize:12, fontWeight:700, color:'var(--text)', lineHeight:1.3 }}>
                               {isInit?<>↳ Asignado a <span style={{ color:dotC }}>{ev.to_name}</span></>:<><span style={{ color:'var(--text-subtle)' }}>{ev.from_name}</span> <span style={{ color:dotC, fontWeight:800 }}>→</span> <span style={{ color:'var(--text)' }}>{ev.to_name}</span></>}
-                              {isCurrent&&<span style={{ marginLeft:8 }}><Bdg l="ACTUAL" c="#ffffff" bg="var(--brand)" size="sm"/></span>}
+                              {isCurrent&&<span style={{ marginLeft:8 }}><Bdg l="ACTUAL" c="var(--text-on-brand)" bg="var(--brand)" size="sm"/></span>}
                             </div>
                             <span style={{ fontSize:10, color:'var(--text-disabled)', whiteSpace:'nowrap', flexShrink:0 }}>{fDT(ev.created_at)}</span>
                           </div>
@@ -1160,14 +1160,14 @@ export function TicketView({lead,user,nav,updLead}){
           <div style={{ padding:'16px 20px 14px',borderBottom:'1px solid var(--border)',background:'linear-gradient(180deg, #FFFBF5 0%, #FFF4E6 100%)',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
             <div style={{ display:'flex',alignItems:'center',gap:11 }}>
               <div style={{ width:34,height:34,borderRadius:10,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px var(--brand-strong)' }}>
-                <Ic.msg size={15} color="#ffffff"/>
+                <Ic.msg size={15} color="var(--text-on-brand)"/>
               </div>
               <div>
                 <div style={{ fontSize:15,fontWeight:800,color:'var(--text)',letterSpacing:'-0.2px' }}>Registrar contacto</div>
                 <div style={{ fontSize:11,color:'var(--text-subtle)',marginTop:2,fontWeight:500 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
               </div>
             </div>
-            {!cfSaving&&<button onClick={closeContact} style={{ background:'#ffffff',border:'1px solid var(--border)',cursor:'pointer',padding:6,borderRadius:8,color:'var(--text-subtle)',lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center' }}><Ic.x size={16}/></button>}
+            {!cfSaving&&<button onClick={closeContact} style={{ background:'var(--surface)',border:'1px solid var(--border)',cursor:'pointer',padding:6,borderRadius:8,color:'var(--text-subtle)',lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center' }}><Ic.x size={16}/></button>}
           </div>
         }
       >
@@ -1194,8 +1194,8 @@ export function TicketView({lead,user,nav,updLead}){
                   return(
                     <button key={mt} type="button" onClick={()=>setCf(p=>({...p,method:mt}))}
                       style={{ padding:'8px 16px',fontSize:12,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:8,transition:'all 0.12s',
-                        background:active?'var(--text)':'#FFFFFF',
-                        color:active?'#FFFFFF':'var(--text-body)',
+                        background:active?'var(--text)':'var(--surface)',
+                        color:active?'var(--text-on-dark)':'var(--text-body)',
                         border:`1.5px solid ${active?'var(--text)':'var(--border)'}`,
                         boxShadow:active?'0 2px 6px rgba(15,23,42,0.2)':'none' }}>
                       {mt.charAt(0).toUpperCase()+mt.slice(1)}
@@ -1239,12 +1239,12 @@ export function TicketView({lead,user,nav,updLead}){
                   </div>
                 </div>
                 {/* Toggle file/note — segmentado */}
-                <div style={{ display:'flex',background:'#FFFFFF',border:'1px solid var(--border)',borderRadius:9,padding:3,marginBottom:12 }}>
+                <div style={{ display:'flex',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:9,padding:3,marginBottom:12 }}>
                   {[{v:'file',l:'Subir captura'},{v:'note',l:'Nota detallada'}].map(o=>(
                     <button key={o.v} type="button" onClick={()=>setCf(p=>({...p,evMode:o.v}))}
                       style={{ flex:1,padding:'7px 10px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:6,transition:'all 0.12s',
                         background:cf.evMode===o.v?'var(--text)':'transparent',
-                        color:cf.evMode===o.v?'#FFFFFF':'var(--text-subtle)',
+                        color:cf.evMode===o.v?'var(--text-on-dark)':'var(--text-subtle)',
                         border:'none' }}>
                       {o.l}
                     </button>
@@ -1260,7 +1260,7 @@ export function TicketView({lead,user,nav,updLead}){
                         return(
                           <button key={t.v} type="button" onClick={()=>setCf(p=>({...p,evType:t.v}))}
                             style={{ padding:'5px 12px',fontSize:11,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:99,
-                              background:active?'#FFFFFF':'transparent',
+                              background:active?'var(--surface)':'transparent',
                               color:active?'#92400E':'#78716C',
                               border:`1.5px solid ${active?'#F59E0B':'#FDE68A'}`,
                               boxShadow:active?'0 1px 3px rgba(245,158,11,0.2)':'none' }}>
@@ -1273,10 +1273,10 @@ export function TicketView({lead,user,nav,updLead}){
                       <div style={{ position:'relative',marginBottom:4 }}>
                         <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:180,objectFit:'cover',borderRadius:10,border:'1px solid var(--border)' }}/>
                         <button onClick={()=>{setEvFile(null);setEvPreview(null);}}
-                          style={{ position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',color:'#ffffff',border:'none',borderRadius:6,padding:'5px',display:'flex',alignItems:'center',cursor:'pointer' }}><Ic.x size={12} color="#ffffff"/></button>
+                          style={{ position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',color:'var(--text-on-dark)',border:'none',borderRadius:6,padding:'5px',display:'flex',alignItems:'center',cursor:'pointer' }}><Ic.x size={12} color="var(--text-on-dark)"/></button>
                       </div>
                     ):(
-                      <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:'24px 18px',borderRadius:10,border:'2px dashed #F59E0B',background:'#FFFFFF',cursor:'pointer',fontSize:12,color:'var(--text-subtle)',transition:'all 0.12s' }}>
+                      <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:'24px 18px',borderRadius:10,border:'2px dashed #F59E0B',background:'var(--surface)',cursor:'pointer',fontSize:12,color:'var(--text-subtle)',transition:'all 0.12s' }}>
                         <div style={{ width:40,height:40,borderRadius:'50%',background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center' }}>
                           <Ic.upload size={18} color="#B45309"/>
                         </div>

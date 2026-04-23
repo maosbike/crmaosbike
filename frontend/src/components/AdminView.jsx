@@ -182,13 +182,13 @@ function TimeOffCalendar({ users }) {
               onClick={() => setDayModal({ date: key })}
               style={{
                 minHeight:96, borderRadius:8, padding:'6px 7px',
-                background: isToday(d) ? '#FFF7ED' : (isPast ? '#FAFAFA' : '#FFFFFF'),
+                background: isToday(d) ? '#FFF7ED' : (isPast ? '#FAFAFA' : 'var(--surface)'),
                 border: isToday(d) ? '1.5px solid var(--brand)' : '1px solid var(--border)',
                 cursor:'pointer', transition:'background 0.1s', opacity: isPast ? 0.75 : 1,
                 display:'flex', flexDirection:'column', gap:4, overflow:'hidden',
               }}
               onMouseEnter={e => { if (!isToday(d)) e.currentTarget.style.background = 'var(--surface-muted)'; }}
-              onMouseLeave={e => { if (!isToday(d)) e.currentTarget.style.background = isPast ? '#FAFAFA' : '#FFFFFF'; }}
+              onMouseLeave={e => { if (!isToday(d)) e.currentTarget.style.background = isPast ? '#FAFAFA' : 'var(--surface)'; }}
             >
               <div style={{ fontSize:11, fontWeight:700, color: isToday(d) ? 'var(--brand)' : 'var(--text-body)' }}>
                 {d.getDate()}
@@ -697,7 +697,7 @@ export function AdminView() {
                               </button>
                           }
                           <button onClick={() => openDelete(u)} title="Eliminar usuario (solo si no tiene historial)"
-                            style={{ padding:'4px 8px',fontSize:11,borderRadius:6,cursor:'pointer',border:'1px solid var(--border)',background:'#FFFFFF',color:'var(--text-disabled)' }}>
+                            style={{ padding:'4px 8px',fontSize:11,borderRadius:6,cursor:'pointer',border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text-disabled)' }}>
                             <Ic.trash size={12}/>
                           </button>
                         </div>
@@ -732,11 +732,11 @@ export function AdminView() {
                 </div>
                 <div style={{ display:'flex', gap:4, flexShrink:0 }}>
                   <button onClick={() => openBranchEdit(b)} title="Editar sucursal"
-                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'#FFFFFF', color:'var(--text-subtle)' }}>
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-subtle)' }}>
                     <Ic.edit size={12}/>
                   </button>
                   <button onClick={() => openBranchDelete(b)} title="Eliminar sucursal"
-                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'#FFFFFF', color:'var(--text-disabled)' }}>
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-disabled)' }}>
                     <Ic.trash size={12}/>
                   </button>
                 </div>
