@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../services/api';
-import { Ic, S, TY, Bdg, Modal, ViewHeader, Loader, Empty, ErrorMsg, useIsMobile } from '../ui.jsx';
+import { Ic, S, TY, Bdg, Modal, ViewHeader, Loader, Empty, ErrorMsg, useIsMobile, useToast } from '../ui.jsx';
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 function $(n) {
@@ -482,6 +482,7 @@ function DetailRow({ label, value, bold, danger, span }) {
 //   Derecha   (1fr):    bloques informativos (cliente, vinculaciones, ref NC)
 //                       + editor de vínculo con catálogo (model/color) + notas.
 function InvoiceDetail({ inv, onClose, onUpdated }) {
+  const toast=useToast();
   const [saving, setSaving]   = useState(false);
   const [notes, setNotes]     = useState(inv.notes || '');
   // Estado del editor manual de catálogo/color. Si el usuario elige un
@@ -508,7 +509,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
     try {
       const r = await api.patchAccounting(inv.id, { notes, link_status: inv.link_status });
       onUpdated(r);
-    } catch (e) { alert(e.message); }
+    } catch (e) { toast.error(e.message); }
     finally { setSaving(false); }
   }
 
@@ -523,7 +524,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
       }
       const r = await api.patchAccounting(inv.id, payload);
       onUpdated(r);
-    } catch (e) { alert(e.message); }
+    } catch (e) { toast.error(e.message); }
     finally { setSaving(false); }
   }
 

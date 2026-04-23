@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, Loader, ErrorMsg, Empty } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, Loader, ErrorMsg, Empty, useToast, useConfirm } from '../ui.jsx';
 
 export function StagingImportView() {
+  const toast=useToast();
+  const confirm=useConfirm();
   const [step, setStep]           = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [batchData, setBatchData] = useState(null);
@@ -28,7 +30,7 @@ export function StagingImportView() {
       setBatchData(data);
       setStep('review');
     } catch (e) {
-      alert(e.message || 'Error al subir el archivo');
+      toast.error(e.message || 'Error al subir el archivo');
     } finally {
       setUploading(false);
     }
@@ -44,7 +46,7 @@ export function StagingImportView() {
     try {
       await api.rejectPriceRow(rowId);
       setBatchData(bd => ({ ...bd, rows: bd.rows.map(r => r.id === rowId ? { ...r, status: 'rejected' } : r) }));
-    } catch (e) { alert('Error'); }
+    } catch (e) { toast.error('Error'); }
   };
 
   const startEdit = (row) => {
@@ -73,21 +75,22 @@ export function StagingImportView() {
       });
       setBatchData(bd => ({ ...bd, rows: bd.rows.map(r => r.id === editingRow ? updated : r) }));
       setEditingRow(null);
-    } catch (e) { alert('Error al guardar'); }
+    } catch (e) { toast.error('Error al guardar'); }
     finally { setSavingEdit(false); }
   };
 
   const handlePublish = async () => {
     const validRows = batchData.rows.filter(r => r.status === 'pending' && (!r.validation_errors || r.validation_errors.length === 0));
-    if (validRows.length === 0) { alert('No hay filas válidas para publicar'); return; }
-    if (!confirm(`¿Publicar ${validRows.length} modelo(s) al catálogo?\n\nEsta acción actualiza el catálogo real.`)) return;
+    if (validRows.length === 0) { toast.info('No hay filas válidas para publicar'); return; }
+    const ok = await confirm({ title:`¿Publicar ${validRows.length} modelo(s) al catálogo?`, body:'Esta acción actualiza el catálogo real.', confirmLabel:'Publicar' });
+    if (!ok) return;
     setPublishing(true);
     try {
       const res = await api.publishPriceBatch(batchData.batch_id);
       setResult(res);
       loadBatches();
       setStep('done');
-    } catch (e) { alert(e.message || 'Error al publicar'); }
+    } catch (e) { toast.error(e.message || 'Error al publicar'); }
     finally { setPublishing(false); }
   };
 

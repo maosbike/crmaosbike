@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
-import { Ic, S, ago } from '../ui.jsx';
+import { Ic, S, ago, useToast } from '../ui.jsx';
 
 export function NotifBell({nav}){
+  const toast=useToast();
   const[open,setOpen]=useState(false);
   const[notifs,setNotifs]=useState([]);
   const[unread,setUnread]=useState(0);
@@ -17,8 +18,8 @@ export function NotifBell({nav}){
   },[]);
 
   const handleOpen=()=>{setOpen(true);fetchNotifs();};
-  const markAll=async()=>{try{await api.markAllRead();setUnread(0);setNotifs(p=>p.map(n=>({...n,is_read:true})));}catch(ex){alert('No se pudo marcar todo como leído: '+(ex.message||'Error'));}};
-  const markOne=async(id)=>{try{await api.markRead(id);setNotifs(p=>p.map(n=>n.id===id?{...n,is_read:true}:n));setUnread(p=>Math.max(0,p-1));}catch(ex){alert('No se pudo marcar como leído: '+(ex.message||'Error'));}};
+  const markAll=async()=>{try{await api.markAllRead();setUnread(0);setNotifs(p=>p.map(n=>({...n,is_read:true})));}catch(ex){toast.error('No se pudo marcar todo como leído: '+(ex.message||'Error'));}};
+  const markOne=async(id)=>{try{await api.markRead(id);setNotifs(p=>p.map(n=>n.id===id?{...n,is_read:true}:n));setUnread(p=>Math.max(0,p-1));}catch(ex){toast.error('No se pudo marcar como leído: '+(ex.message||'Error'));}};
   const goTicket=(n)=>{markOne(n.id);if(n.ticket_id&&nav)nav("ticket",String(n.ticket_id));setOpen(false);};
 
   return(

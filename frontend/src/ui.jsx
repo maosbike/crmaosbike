@@ -1,5 +1,5 @@
 // ─── Shared UI: constants, styles, icons, utils ───────────────────────────────
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext, useRef, useCallback, createContext } from 'react';
 import { T } from './tokens';
 
 // Breakpoints + hook — fuente única para ramas isMobile en JS.
@@ -599,6 +599,185 @@ export function AccordionSection({ title, icon, isOpen, onToggle, children }) {
           {children}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+const _TOAST_TONES = {
+  success: { bar: T.color.success,        bg: T.color.successSoft,  fg: T.color.successDark,  icon: '✓' },
+  error:   { bar: T.color.danger,         bg: T.color.dangerSoft,   fg: T.color.dangerDark,   icon: '✕' },
+  warning: { bar: T.color.warning,        bg: T.color.warningSoft,  fg: T.color.warningDark,  icon: '!' },
+  info:    { bar: T.color.info,           bg: T.color.infoSoft,     fg: T.color.infoStrong,   icon: 'i' },
+};
+const _DEFAULT_DURATION = { success: 4000, error: 6000, warning: 5000, info: 4000 };
+
+const ToastCtx = createContext(null);
+
+export function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const dismiss = useCallback((id) => {
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t));
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 320);
+  }, []);
+
+  const push = useCallback((opts) => {
+    const tone = opts.tone || 'info';
+    const duration = opts.duration ?? _DEFAULT_DURATION[tone] ?? 4000;
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, tone, title: opts.title, description: opts.description, leaving: false }]);
+    if (duration > 0) setTimeout(() => dismiss(id), duration);
+    return id;
+  }, [dismiss]);
+
+  return (
+    <ToastCtx.Provider value={{ push, dismiss }}>
+      {children}
+      <ToastViewport toasts={toasts} onDismiss={dismiss} />
+    </ToastCtx.Provider>
+  );
+}
+
+export function useToast() {
+  const ctx = useContext(ToastCtx);
+  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');
+  const { push, dismiss } = ctx;
+  const toast = useCallback((opts) => push(typeof opts === 'string' ? { title: opts, tone: 'info' } : opts), [push]);
+  toast.success = useCallback((title, description, extra) => push({ tone: 'success', title, description, ...extra }), [push]);
+  toast.error   = useCallback((title, description, extra) => push({ tone: 'error',   title, description, ...extra }), [push]);
+  toast.warning = useCallback((title, description, extra) => push({ tone: 'warning', title, description, ...extra }), [push]);
+  toast.info    = useCallback((title, description, extra) => push({ tone: 'info',    title, description, ...extra }), [push]);
+  toast.dismiss = dismiss;
+  return toast;
+}
+
+function ToastViewport({ toasts, onDismiss }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div style={{
+      position: 'fixed', bottom: 20, right: 20,
+      display: 'flex', flexDirection: 'column', gap: 10,
+      zIndex: T.z.toast, pointerEvents: 'none',
+      maxWidth: 'min(380px, calc(100vw - 32px))',
+    }}>
+      {toasts.map(t => <_ToastItem key={t.id} toast={t} onDismiss={onDismiss} />)}
+    </div>
+  );
+}
+
+function _ToastItem({ toast, onDismiss }) {
+  const tone = _TOAST_TONES[toast.tone] || _TOAST_TONES.info;
+  return (
+    <div style={{
+      pointerEvents: 'auto',
+      display: 'flex', alignItems: 'stretch',
+      background: tone.bg,
+      border: `1px solid ${tone.bar}44`,
+      borderRadius: T.radius.lg,
+      boxShadow: T.shadow.lg,
+      overflow: 'hidden',
+      opacity: toast.leaving ? 0 : 1,
+      transform: toast.leaving ? 'translateY(8px)' : 'translateY(0)',
+      transition: 'opacity 300ms ease, transform 300ms ease',
+      minWidth: 260,
+    }}>
+      <div style={{ width: 4, flexShrink: 0, background: tone.bar, borderRadius: '8px 0 0 8px' }} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: T.space[2], padding: `${T.space[3]}px ${T.space[3]}px`, flex: 1, minWidth: 0 }}>
+        <span style={{
+          width: 18, height: 18, borderRadius: T.radius.full,
+          background: tone.bar, color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: T.fw.bold, flexShrink: 0, marginTop: 1,
+        }}>{tone.icon}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {toast.title && (
+            <div style={{ fontSize: T.fs.base, fontWeight: T.fw.semi, color: tone.fg, lineHeight: T.lh.tight, fontFamily: 'inherit' }}>
+              {toast.title}
+            </div>
+          )}
+          {toast.description && (
+            <div style={{ fontSize: T.fs.sm, color: tone.fg, opacity: 0.85, marginTop: 2, lineHeight: T.lh.normal, fontFamily: 'inherit' }}>
+              {toast.description}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => onDismiss(toast.id)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: tone.fg, opacity: 0.6, padding: 2, flexShrink: 0,
+            lineHeight: 1, fontSize: 16, borderRadius: T.radius.sm,
+          }}
+          aria-label="Cerrar"
+        >×</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── ConfirmDialog ────────────────────────────────────────────────────────────
+const ConfirmCtx = createContext(null);
+
+export function ConfirmProvider({ children }) {
+  const [state, setState] = useState(null);
+  const resolveRef = useRef(null);
+
+  const confirm = useCallback((opts) => new Promise((resolve) => {
+    resolveRef.current = resolve;
+    setState(typeof opts === 'string' ? { title: opts } : opts);
+  }), []);
+
+  const close = useCallback((result) => {
+    setState(null);
+    if (resolveRef.current) { resolveRef.current(result); resolveRef.current = null; }
+  }, []);
+
+  return (
+    <ConfirmCtx.Provider value={confirm}>
+      {children}
+      {state && <_ConfirmDialog opts={state} onClose={close} />}
+    </ConfirmCtx.Provider>
+  );
+}
+
+export function useConfirm() {
+  const ctx = useContext(ConfirmCtx);
+  if (!ctx) throw new Error('useConfirm must be used inside <ConfirmProvider>');
+  return ctx;
+}
+
+function _ConfirmDialog({ opts, onClose }) {
+  const { title, body, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', tone = 'primary' } = opts;
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={() => onClose(false)}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 16 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--surface)', borderRadius: T.radius.xl, width: '100%', maxWidth: 400, boxShadow: T.shadow.lg, overflow: 'hidden' }}
+      >
+        <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--surface-sunken)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: 15, fontWeight: T.fw.bold, color: 'var(--text)', margin: 0 }}>{title}</h2>
+          <button onClick={() => onClose(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-disabled)', fontSize: 20, lineHeight: 1, borderRadius: T.radius.sm }}><Ic.x size={18} /></button>
+        </div>
+        {body && (
+          <div style={{ padding: '16px 20px 4px', fontSize: T.fs.base, color: 'var(--text-body)', lineHeight: T.lh.normal, fontFamily: 'inherit' }}>
+            {body}
+          </div>
+        )}
+        <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'flex-end', gap: T.space[2] }}>
+          <Btn variant="secondary" size="md" onClick={() => onClose(false)}>{cancelLabel}</Btn>
+          <Btn variant={tone === 'danger' ? 'danger' : 'primary'} size="md" onClick={() => onClose(true)}>{confirmLabel}</Btn>
+        </div>
+      </div>
     </div>
   );
 }

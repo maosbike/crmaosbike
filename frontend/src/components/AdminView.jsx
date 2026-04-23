@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, Bdg, Empty, Loader, ErrorMsg, ROLES as ROLE_KEYS, ViewHeader } from '../ui.jsx';
+import { Ic, S, Modal, Field, Bdg, Empty, Loader, ErrorMsg, ROLES as ROLE_KEYS, ViewHeader, useToast, useConfirm } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -306,6 +306,8 @@ function ActiveToggle({ value, onChange }) {
 // ─── Componente principal ──────────────────────────────────────────────────────
 
 export function AdminView() {
+  const toast=useToast();
+  const confirm=useConfirm();
   // ── Usuarios ────────────────────────────────────────────────────────────────
   const [users,    setUsers]   = useState([]);
   const [loading,  setLoading] = useState(true);
@@ -423,11 +425,12 @@ export function AdminView() {
 
   // Activar — simple, no necesita modal
   const handleActivate = async u => {
-    if (!confirm(`¿Activar a ${u.first_name} ${u.last_name}?\n\nEl usuario podrá volver a iniciar sesión.`)) return;
+    const ok = await confirm({ title:`¿Activar a ${u.first_name} ${u.last_name}?`, body:'El usuario podrá volver a iniciar sesión.', confirmLabel:'Activar' });
+    if (!ok) return;
     try {
       const updated = await api.editUser(u.id, { active: true });
       setUsers(prev => prev.map(x => x.id === u.id ? { ...x, active: updated.active } : x));
-    } catch(ex) { alert(ex.message || 'Error al activar usuario'); }
+    } catch(ex) { toast.error(ex.message || 'Error al activar usuario'); }
   };
 
   // Desactivar — abre modal con info de leads activos
@@ -531,11 +534,12 @@ export function AdminView() {
   };
 
   const handleReset = async u => {
-    if (!confirm(`¿Restablecer contraseña de ${u.first_name} ${u.last_name}?\n\nSe generará una contraseña temporal y el usuario deberá cambiarla al ingresar.`)) return;
+    const ok = await confirm({ title:`¿Restablecer contraseña de ${u.first_name} ${u.last_name}?`, body:'Se generará una contraseña temporal y el usuario deberá cambiarla al ingresar.', confirmLabel:'Restablecer' });
+    if (!ok) return;
     try {
       const r = await api.resetPassword(u.id);
       setResetInfo({ name:`${u.first_name} ${u.last_name}`, temp: r.temp_password });
-    } catch(ex) { alert(ex.message || 'Error al restablecer contraseña'); }
+    } catch(ex) { toast.error(ex.message || 'Error al restablecer contraseña'); }
   };
 
   // ── Handlers existentes ──────────────────────────────────────────────────────
@@ -548,43 +552,49 @@ export function AdminView() {
       const a = await api.createAlias({ alias:aliasForm.alias.trim(), model_id:aliasForm.model_id });
       setAliases(prev => [...prev.filter(x => x.alias !== a.alias), { ...a, ...catalogModels.find(m => m.id === a.model_id) }]);
       setAliasForm({ alias:'', model_id:'' });
-    } catch(ex) { alert(ex.message); }
+    } catch(ex) { toast.error(ex.message); }
     finally { setAliasSaving(false); }
   };
 
   const handleDeleteAlias = async id => {
-    if (!window.confirm('¿Eliminar este alias? No se puede deshacer.')) return;
+    const ok = await confirm({ title:'¿Eliminar este alias?', body:'No se puede deshacer.', confirmLabel:'Eliminar', tone:'danger' });
+    if (!ok) return;
     try {
       await api.deleteAlias(id);
       setAliases(prev => prev.filter(a => a.id !== id));
     } catch (ex) {
-      alert('No se pudo eliminar el alias: ' + (ex.message || 'Error'));
+      toast.error('No se pudo eliminar el alias: ' + (ex.message || 'Error'));
     }
   };
 
   const handleCleanData = async () => {
-    if (!confirm('ATENCIÓN: Esto eliminará TODOS los tickets, leads, importaciones e inventario.\n\nUsuarios, sucursales y catálogo de motos se conservan.\n\n¿Confirmar?')) return;
-    if (!confirm('Segunda confirmación: ¿Estás seguro? Esta acción NO se puede deshacer.')) return;
+    const ok1 = await confirm({ title:'ATENCIÓN: ¿Limpiar datos de demo?', body:'Esto eliminará TODOS los tickets, leads, importaciones e inventario.\n\nUsuarios, sucursales y catálogo de motos se conservan.', confirmLabel:'Confirmar', tone:'danger' });
+    if (!ok1) return;
+    const ok2 = await confirm({ title:'Segunda confirmación', body:'¿Estás seguro? Esta acción NO se puede deshacer.', confirmLabel:'Sí, eliminar', tone:'danger' });
+    if (!ok2) return;
     setCleaning(true);
     try { await api.resetDemoData(); setCleanDone(true); }
-    catch(ex) { alert('Error: '+(ex.message||'No se pudo limpiar')); }
+    catch(ex) { toast.error('Error: '+(ex.message||'No se pudo limpiar')); }
     finally { setCleaning(false); }
   };
 
   const handleCleanCatalog = async () => {
-    if (!confirm('ATENCIÓN: Esto eliminará TODO el catálogo de motos y todos los precios importados.\n\nTickets, inventario y usuarios se conservan.\n\n¿Confirmar?')) return;
-    if (!confirm('Segunda confirmación: ¿Seguro? Esta acción NO se puede deshacer.')) return;
+    const ok1 = await confirm({ title:'ATENCIÓN: ¿Limpiar catálogo?', body:'Esto eliminará TODO el catálogo de motos y todos los precios importados.\n\nTickets, inventario y usuarios se conservan.', confirmLabel:'Confirmar', tone:'danger' });
+    if (!ok1) return;
+    const ok2 = await confirm({ title:'Segunda confirmación', body:'¿Seguro? Esta acción NO se puede deshacer.', confirmLabel:'Sí, eliminar', tone:'danger' });
+    if (!ok2) return;
     setCleaningCatalog(true);
     try { const r = await api.resetCatalog(); setCleanCatalogDone(r.deleted ?? 0); }
-    catch(ex) { alert('Error: '+(ex.message||'No se pudo limpiar catálogo')); }
+    catch(ex) { toast.error('Error: '+(ex.message||'No se pudo limpiar catálogo')); }
     finally { setCleaningCatalog(false); }
   };
 
   const handleCleanImports = async () => {
-    if (!confirm('¿Eliminar todos los tickets importados (source=importacion) y los logs de importación?\n\nLos tickets creados manualmente se conservan.')) return;
+    const ok = await confirm({ title:'¿Eliminar tickets importados?', body:'Esto eliminará todos los tickets importados (source=importacion) y los logs de importación.\n\nLos tickets creados manualmente se conservan.', confirmLabel:'Eliminar', tone:'danger' });
+    if (!ok) return;
     setCleaningImports(true);
     try { const r = await api.resetImports(); setCleanImportsDone(r.deleted ?? 0); }
-    catch(ex) { alert('Error: '+(ex.message||'No se pudo limpiar')); }
+    catch(ex) { toast.error('Error: '+(ex.message||'No se pudo limpiar')); }
     finally { setCleaningImports(false); }
   };
 

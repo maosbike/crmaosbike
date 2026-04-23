@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile, Btn, Empty, hasRole, ROLE_ADMIN_READ } from '../ui.jsx';
+import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile, Btn, Empty, hasRole, ROLE_ADMIN_READ, useToast } from '../ui.jsx';
 
 const EVENT_TYPES={
   follow_up:'Seguimiento',call:'Llamada',meeting:'Reunión',
@@ -16,6 +16,7 @@ const BLANK_FORM=(userId,date)=>({
 });
 
 export function CalendarView({user,nav}){
+  const toast=useToast();
   const isMobile=useIsMobile();
   const[date,setDate]=useState(new Date());
   const[events,setEvents]=useState([]);
@@ -111,7 +112,7 @@ export function CalendarView({user,nav}){
       }
       closeForm();
       loadEvents();
-    }catch(ex){alert(ex.message||'Error al guardar evento');}
+    }catch(ex){toast.error(ex.message||'Error al guardar evento');}
     finally{setSaving(false);}
   };
 
@@ -121,7 +122,7 @@ export function CalendarView({user,nav}){
       await api.deleteReminder(editEv.reminder_id);
       closeForm();
       loadEvents();
-    }catch(ex){alert(ex.message||'Error al eliminar evento');}
+    }catch(ex){toast.error(ex.message||'Error al eliminar evento');}
   };
 
   const handleComplete=async()=>{
@@ -130,7 +131,7 @@ export function CalendarView({user,nav}){
       await api.completeReminder(editEv.reminder_id);
       closeForm();
       loadEvents();
-    }catch(ex){alert(ex.message||'Error');}
+    }catch(ex){toast.error(ex.message||'Error');}
   };
 
   // Calendar grid

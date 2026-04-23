@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { ColorPicker } from './ColorPicker.jsx';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg, hasRole, ROLES } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg, hasRole, ROLES, useConfirm } from '../ui.jsx';
 
 function catColor(c){return CAT_COLOR[c]||"var(--text-muted)";}
 
@@ -979,6 +979,7 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
 
 /* ── BrandCategoriesPanel: CRUD per-brand categories ─────────────────────── */
 function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
+  const confirm=useConfirm();
   const[newName,setNewName]=useState('');
   const[editId,setEditId]=useState(null);
   const[editVal,setEditVal]=useState('');
@@ -1001,7 +1002,8 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
     finally{setSaving(false);}
   };
   const del=async(c)=>{
-    if(!confirm(`¿Eliminar categoría "${c.name}"?${c.model_count?` (${c.model_count} modelos la usan)`:''}`))return;
+    const ok=await confirm({title:`¿Eliminar categoría "${c.name}"?`,body:c.model_count?`${c.model_count} modelos la usan. Esta acción no se puede deshacer.`:'Esta acción no se puede deshacer.',confirmLabel:'Eliminar',tone:'danger'});
+    if(!ok)return;
     setSaving(true); setErr('');
     try{await api.deleteBrandCategory(brand,c.id);onChanged&&onChanged();}
     catch(e){setErr(e?.message||'Error');}

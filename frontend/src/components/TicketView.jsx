@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, AccordionSection, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, AccordionSection, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile, useToast } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
 
 // Formatea teléfono para display: "912345678" → "+56 9 1234 5678"
@@ -43,6 +43,7 @@ const EV_TYPES=[
 ];
 
 export function TicketView({lead,user,nav,updLead}){
+  const toast=useToast();
   const isMobile=useIsMobile();
   const[histOpen,setHistOpen]=useState(false);
   // ── Acordeón "Datos del Cliente" ──
@@ -215,7 +216,7 @@ export function TicketView({lead,user,nav,updLead}){
       setChatMsg('');
     }catch(ex){
       // Sin fallback fantasma: conservamos el texto en el input para reintentar.
-      alert('No se pudo enviar el comentario: '+(ex?.message||'Error de conexión'));
+      toast.error('No se pudo enviar el comentario: '+(ex?.message||'Error de conexión'));
     }finally{setChatSending(false);}
   };
   // Cambio de estado con persistencia real y revert en error
@@ -231,13 +232,13 @@ export function TicketView({lead,user,nav,updLead}){
       addTimelineLocal(e);
     }catch(err){
       updLead(lead.id,{status:prev});
-      alert('No se pudo cambiar el estado: '+(err.message||'Error desconocido. Revisa la conexión.'));
+      toast.error('No se pudo cambiar el estado: '+(err.message||'Error desconocido. Revisa la conexión.'));
     }
   };
 
   // Confirmar pérdida con motivo
   const confirmPerdido=async()=>{
-    if(!perdidoMotivo){alert('Selecciona un motivo antes de continuar.');return;}
+    if(!perdidoMotivo){toast.error('Selecciona un motivo antes de continuar.');return;}
     setPerdidoSaving(true);
     const prev=lead.status;
     try{
@@ -249,7 +250,7 @@ export function TicketView({lead,user,nav,updLead}){
       setPerdidoModal(false);
     }catch(err){
       updLead(lead.id,{status:prev});
-      alert('Error al marcar como perdido: '+(err.message||'Error desconocido'));
+      toast.error('Error al marcar como perdido: '+(err.message||'Error desconocido'));
     }finally{setPerdidoSaving(false);}
   };
 
@@ -654,7 +655,7 @@ export function TicketView({lead,user,nav,updLead}){
                   const prev=lead.priority;
                   updLead(lead.id,{priority:k});
                   try{await api.updateTicket(lead.id,{priority:k});}
-                  catch(err){updLead(lead.id,{priority:prev});alert('Error al cambiar prioridad');}
+                  catch(err){updLead(lead.id,{priority:prev});toast.error('Error al cambiar prioridad');}
                 }} style={{ flex:1, padding:'6px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer',
                   border:'none', background:active?v.c:'var(--surface-sunken)', color:active?'var(--text-on-dark)':'var(--text-disabled)' }}>
                   {v.l}
@@ -668,7 +669,7 @@ export function TicketView({lead,user,nav,updLead}){
           <label style={S.lbl}>Test Ride</label>
           <div style={{ display:'flex', gap:4 }}>
             {[true,false].map(v=>(
-              <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});alert('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
+              <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});toast.error('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
                 style={{ padding:'6px 14px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer', border:'none',
                   background: lead.testRide===v?(v?'#10B981':'var(--text-body)'):'var(--surface-sunken)', color: lead.testRide===v?'var(--text-on-dark)':'var(--text-disabled)' }}>
                 {v?'Sí':'No'}
@@ -697,7 +698,7 @@ export function TicketView({lead,user,nav,updLead}){
                   }catch{}
                 }catch(ex){
                   updLead(lead.id,{seller:prevId,seller_id:prevId});
-                  alert('No se pudo reasignar: '+(ex.message||'Error'));
+                  toast.error('No se pudo reasignar: '+(ex.message||'Error'));
                 }
               }}
               style={{ ...S.inp, width:'100%', fontSize:12 }}>
@@ -822,7 +823,7 @@ export function TicketView({lead,user,nav,updLead}){
                       addTimelineLocal(e);
                     }
                     savedRef.current={...orig,...lead};
-                  }catch(err){alert('Error al guardar: '+(err.message||'Error desconocido'));}
+                  }catch(err){toast.error('Error al guardar: '+(err.message||'Error desconocido'));}
                 }} style={{ ...S.btn, fontSize:12, ...(isDirty?{background:'var(--brand)',boxShadow:'0 2px 8px var(--brand-strong)'}:{}) }}>
                   Guardar datos
                 </button>
