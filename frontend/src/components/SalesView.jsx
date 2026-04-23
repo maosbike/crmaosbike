@@ -431,7 +431,14 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
               ['Vendedor',   sellerName],
               ['Sucursal',   sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega' : (sale.branch_name || '—')],
               ['Forma pago', sale.payment_method || '—'],
-              ['Modalidad',  SALE_TYPES.find(s => s.v === sale.sale_type)?.l || sale.sale_type || '—'],
+              ['Modalidad',  (() => {
+                const t = sale.charge_type || sale.sale_type || (sale.status === 'reservada' ? null : 'inscripcion');
+                return SALE_TYPES.find(s => s.v === t)?.l
+                    || (t === 'inscripcion' ? 'Inscripción vehicular'
+                      : t === 'transferencia' ? 'Transferencia vehicular'
+                      : t === 'completa' ? 'Documentación completa'
+                      : '—');
+              })()],
               ...(isAdmin && sale.cost_price > 0 ? [['Precio lista', fmt(sale.price)]] : []),
             ].map(([label, val]) => (
               <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
@@ -457,14 +464,20 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
 
       {/* ── Desglose de la venta (siempre visible) ── */}
       {(() => {
+        const isRes = sale.status === 'reservada';
         const motoAmt  = Number(sale.sale_price) || 0;
         const accList = Array.isArray(sale.accessories)
           ? sale.accessories.filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
           : [];
         const accTotal = accList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
-        // Tipo de cargo: charge_type es la fuente nueva; sale_type queda como fallback
-        const chargeType = sale.charge_type || sale.sale_type || null;
-        // Monto: usar charge_amt persistido; si falta (ventas viejas), inferir del tipo.
+        // Tipo de cargo: charge_type es la fuente nueva; sale_type es compat.
+        // Para ventas (no reservas) sin info — ventas viejas o guardadas antes
+        // del fix del dropdown — asumimos 'inscripcion' porque ES la baseline
+        // mínima de cualquier venta: siempre se cobra al menos la inscripción
+        // vehicular ($90.000). Así la ficha deja de mentir por omisión.
+        const rawType = sale.charge_type || sale.sale_type || null;
+        const chargeType = rawType || (isRes ? null : 'inscripcion');
+        // Monto: usar charge_amt persistido; si falta, inferir del tipo.
         let chargeAmt = Number(sale.charge_amt) || 0;
         if (!chargeAmt && chargeType) {
           if (chargeType === 'inscripcion')        chargeAmt = INSCRIPCION_AMT;
