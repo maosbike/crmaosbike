@@ -9,6 +9,7 @@ const logger   = require('../config/logger');
 const cloudinary = require('../config/cloudinary');
 const pdfParse   = require('pdf-parse');
 const { auth, roleCheck }  = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const {
   toISODate,
   parseChileanInt,
@@ -534,8 +535,7 @@ async function resolveLinks(parsed) {
 // ─── GET /api/accounting/stats ───────────────────────────────────────────────
 // Totales mensuales (facturas emitidas, excluye notas de crédito).
 // Devuelve (a) resumen del mes pedido y (b) breakdown de los últimos 12 meses.
-router.get('/stats', roleCheck(...ADMIN_ROLES), async (req, res) => {
-  try {
+router.get('/stats', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
     const { month, source = 'emitida' } = req.query;
     // month: 'YYYY-MM' (default: mes actual)
     const ym = /^\d{4}-\d{2}$/.test(month || '')
@@ -576,11 +576,7 @@ router.get('/stats', roleCheck(...ADMIN_ROLES), async (req, res) => {
     );
 
     res.json({ month: ym, mes: mes[0], serie });
-  } catch (e) {
-    logger.error({ err: e }, '[Accounting/stats]');
-    res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 // ─── GET /api/accounting ─────────────────────────────────────────────────────
 // Tabs:
@@ -592,8 +588,7 @@ router.get('/stats', roleCheck(...ADMIN_ROLES), async (req, res) => {
 //     de unidad.
 // Se mantienen category/doc_type como overrides legacy por si algún link
 // externo los usa; si viene `tab`, tiene prioridad.
-router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
-  try {
+router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
     const {
       source = 'emitida',
       tab,
@@ -680,15 +675,10 @@ router.get('/', roleCheck(...ADMIN_ROLES), async (req, res) => {
     );
 
     res.json({ data: rows, total: parseInt(cnt[0].count) });
-  } catch (e) {
-    logger.error({ err: e }, '[Accounting/GET]');
-    res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 // ─── GET /api/accounting/:id ─────────────────────────────────────────────────
-router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
-  try {
+router.get('/:id', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT i.*,
          t.ticket_num, t.first_name, t.last_name, t.rut, t.phone, t.email, t.status AS lead_status,
@@ -711,18 +701,14 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
     );
     if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
     res.json(rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 // ─── GET /api/accounting/:id/debug ───────────────────────────────────────────
 // Re-descarga el PDF y devuelve el texto crudo de pdf-parse + el resultado
 // actual del parser. Sirve para depurar casos donde cliente_nombre/rut_cliente
 // no se extrae: sin ver qué escupe pdf-parse (que desordena layouts de 2
 // columnas) estamos adivinando regex a ciegas.
-router.get('/:id/debug', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.get('/:id/debug', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       'SELECT id, folio, source, drive_file_id, pdf_url FROM invoices WHERE id = $1',
       [req.params.id]
@@ -773,11 +759,7 @@ router.get('/:id/debug', roleCheck('super_admin'), async (req, res) => {
       raw_lines:      rawText.split('\n').map((l, i) => ({ i, l })),
       parsed: result,
     });
-  } catch (e) {
-    logger.error({ err: e }, '[Accounting/debug]');
-    res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 // ─── PATCH /api/accounting/:id ────────────────────────────────────────────────
 // Permite editar manualmente: vinculaciones (lead/inv/sale_note/link_status),
@@ -786,8 +768,7 @@ router.get('/:id/debug', roleCheck('super_admin'), async (req, res) => {
 // intentamos auto-resolver con resolveModelId() — mismo patron que supplier-
 // payments.js. Devolvemos la fila con JOINs a moto_models para que el
 // frontend reciba image_url + color_photos al toque.
-router.patch('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
-  try {
+router.patch('/:id', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
     const allowed = [
       'lead_id','inventory_id','sale_note_id','link_status','notes','category','doc_type',
       'brand','model','color','commercial_year','chassis','model_id',
@@ -840,22 +821,14 @@ router.patch('/:id', roleCheck(...ADMIN_ROLES), async (req, res) => {
     );
     if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
     res.json(rows[0]);
-  } catch (e) {
-    logger.error({ err: e }, '[Accounting/PATCH]');
-    res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 // ─── DELETE /api/accounting/:id ───────────────────────────────────────────────
-router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
-  try {
+router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query('DELETE FROM invoices WHERE id=$1 RETURNING id', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'No encontrada' });
     res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 // ─── POST /api/accounting/sync-drive ─────────────────────────────────────────
 router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {

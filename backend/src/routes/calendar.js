@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 
 router.use(auth);
 
@@ -8,8 +9,7 @@ router.use(auth);
 // EVENTOS DEL CALENDARIO
 // GET /api/calendar/events?start=2026-03-01&end=2026-03-31&user_id=5&branch_id=1
 // ═══════════════════════════════════════════════════
-router.get('/events', async (req, res) => {
-  try {
+router.get('/events', asyncHandler(async (req, res) => {
     const { start, end, user_id, branch_id } = req.query;
 
     if (!start || !end) {
@@ -151,10 +151,6 @@ router.get('/events', async (req, res) => {
     }
 
     res.json(events);
-  } catch (e) {
-    console.error('Error calendar events:', e);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
+}));
 
 module.exports = router;

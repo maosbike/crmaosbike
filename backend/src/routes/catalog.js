@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
@@ -46,21 +47,18 @@ function handleUploadError(err, _req, res, next) {
 }
 
 // ── CATALOG ──
-router.get('/models', async (req, res) => {
-  try {
+router.get('/models', asyncHandler(async (req, res) => {
     const { brand, search } = req.query;
     let where = ['active = true'], params = [], idx = 1;
     if (brand) { where.push(`brand = $${idx++}`); params.push(brand); }
     if (search) { where.push(`(brand ILIKE $${idx} OR model ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
     const { rows } = await db.query(`SELECT * FROM moto_models WHERE ${where.join(' AND ')} ORDER BY brand, model`, params);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Lista de marcas: devuelve array de strings (backwards compat) o objetos con logo
 // si se pasa ?withLogos=1
-router.get('/brands', async (req, res) => {
-  try {
+router.get('/brands', asyncHandler(async (req, res) => {
     if (req.query.withLogos) {
       // Merge: marcas de moto_models (distinct) + metadata de tabla brands
       const { rows } = await db.query(`
@@ -77,15 +75,13 @@ router.get('/brands', async (req, res) => {
     }
     const { rows } = await db.query('SELECT DISTINCT brand FROM moto_models WHERE active = true ORDER BY brand');
     res.json(rows.map(r => r.brand));
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // Upload brand logo
 router.post('/brands/:name/logo',
   roleCheck('super_admin', 'admin_comercial'),
   (req, res, next) => uploadImg.single('logo')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       if (!req.file) return res.status(400).json({ error: 'Logo requerido' });
       const name = decodeURIComponent(req.params.name);
       const b64 = req.file.buffer.toString('base64');
@@ -99,17 +95,14 @@ router.post('/brands/:name/logo',
         [name, result.secure_url]
       );
       res.json({ url: result.secure_url });
-    } catch (e) { console.error(e); res.status(500).json({ error: 'Error al subir logo' }); }
-  }
+  })
 );
 
-router.delete('/brands/:name/logo', roleCheck('super_admin', 'admin_comercial'), async (req, res) => {
-  try {
+router.delete('/brands/:name/logo', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const name = decodeURIComponent(req.params.name);
     await db.query('UPDATE brands SET logo_url = NULL, updated_at = NOW() WHERE name = $1', [name]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Error' }); }
-});
+}));
 
 // ── Categorías por marca ─────────────────────────────────────────────────────
 router.get('/brands/:name/categories', async (req, res) => {
