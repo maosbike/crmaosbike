@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ViewHeader, ErrorMsg, selectCtrl, useIsMobile, colorFor } from '../ui.jsx';
+import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ROLES, hasRole, ViewHeader, ErrorMsg, selectCtrl, useIsMobile, colorFor } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -93,12 +93,12 @@ function DistributorBadge({ paid }) {
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
 function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onUpdated }) {
-  const isAdmin    = CAN_ADMIN.includes(user.role);
-  const isVendedor = user.role === 'vendedor';
+  const isAdmin    = hasRole(user, ...CAN_ADMIN);
+  const isVendedor = hasRole(user, ROLES.VEND);
   const isRes      = sale.status === 'reservada';
   const isOwner    = sale.seller_id === user.id;
   // Vendedor: solo puede editar sus propias notas. Admins pueden editar todo.
-  const canEdit    = isVendedor ? isOwner : (isRes ? true : CAN_CREATE.includes(user.role));
+  const canEdit    = isVendedor ? isOwner : (isRes ? true : hasRole(user, ...CAN_CREATE));
 
   const [editing,           setEditing]           = useState(false);
   const [form,              setForm]              = useState({});
@@ -1880,9 +1880,9 @@ async function openNoteFromSale(s) {
 // ─── Vista principal ──────────────────────────────────────────────────────────
 
 export function SalesView({ user, realBranches, prefillClient = null, prefillNoteType = null, onPrefillConsumed }) {
-  const isAdmin      = CAN_ADMIN.includes(user.role);
-  const canCreate    = CAN_CREATE.includes(user.role);
-  const isSuperAdmin = user.role === 'super_admin';
+  const isAdmin      = hasRole(user, ...CAN_ADMIN);
+  const canCreate    = hasRole(user, ...CAN_CREATE);
+  const isSuperAdmin = hasRole(user, ROLES.SUPER);
   const isMobile     = useIsMobile();
 
   const [sales,    setSales]    = useState([]);
@@ -1944,7 +1944,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
   useEffect(() => {
     if (isAdmin) {
       api.getSellers().then(s => setSellers(s || [])).catch(() => {});
-    } else if (user.role === 'vendedor') {
+    } else if (hasRole(user, ROLES.VEND)) {
       setSellers([{ id: user.id, first_name: user.fn, last_name: user.ln }]);
     }
   }, [isAdmin, user.id]);

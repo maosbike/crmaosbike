@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { ColorPicker } from './ColorPicker.jsx';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg, hasRole, ROLES } from '../ui.jsx';
 
 function catColor(c){return CAT_COLOR[c]||"#4B5563";}
 
@@ -1068,8 +1068,8 @@ export function CatalogView({user}){
   const[activeCat,setActiveCat]=useState(null);
   // búsqueda global (solo en vista todas)
   const[search,setSearch]=useState("");
-  const canEdit=user&&(user.role==="super_admin"||user.role==="admin_comercial");
-  const canDelete=user&&user.role==="super_admin";
+  const canEdit=hasRole(user, ROLES.SUPER, ROLES.ADMIN);
+  const canDelete=hasRole(user, ROLES.SUPER);
   const isMobile=useIsMobile();
   const isTablet=useIsMobile(1024);
   const gridCols=isMobile?'1fr':isTablet?'repeat(2,1fr)':'repeat(auto-fill, minmax(220px,1fr))';

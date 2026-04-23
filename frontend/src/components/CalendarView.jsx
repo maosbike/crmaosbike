@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile, Btn, Empty } from '../ui.jsx';
+import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile, Btn, Empty, hasRole, ROLE_ADMIN_READ } from '../ui.jsx';
 
 const EVENT_TYPES={
   follow_up:'Seguimiento',call:'Llamada',meeting:'Reunión',
@@ -31,7 +31,7 @@ export function CalendarView({user,nav}){
   const yr=date.getFullYear();const mo=date.getMonth();
   const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-  const isAdmin=['super_admin','admin_comercial'].includes(user.role);
+  const isAdmin=hasRole(user, ...ROLE_ADMIN_READ);
 
   const loadEvents=()=>{
     setLoading(true);
