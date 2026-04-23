@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { ColorPicker } from './ColorPicker.jsx';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg, hasRole, ROLES, useConfirm } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg, hasRole, ROLES, useConfirm, Btn } from '../ui.jsx';
 
 function catColor(c){return CAT_COLOR[c]||"var(--text-muted)";}
 
@@ -603,14 +603,14 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               </div>
               {/* Los colores se gestionan en la sección superior (siempre visible) */}
               <div style={{display:"flex",gap:8}}>
-                <button onClick={save} disabled={saving} style={{...S.btn,flex:1}}>{saving?"Guardando…":"Guardar"}</button>
-                <button onClick={()=>setEditing(false)} style={{...S.btnSec,flex:1}}>Cancelar</button>
+                <Btn variant='primary' onClick={save} disabled={saving} style={{flex:1}}>{saving?"Guardando…":"Guardar"}</Btn>
+                <Btn variant='secondary' onClick={()=>setEditing(false)} style={{flex:1}}>Cancelar</Btn>
               </div>
             </div>
           )}
 
           {canEdit&&!editing&&(
-            <button onClick={startEdit} style={{...S.btnSec,width:"100%",marginTop:8,fontSize:12}}>Editar modelo</button>
+            <Btn variant='secondary' size='sm' onClick={startEdit} style={{width:"100%",marginTop:8}}>Editar modelo</Btn>
           )}
 
           {/* Eliminar — solo super_admin */}
@@ -622,8 +622,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                   <div style={{fontSize:12,color:"#EF4444",marginBottom:8,fontWeight:600}}>¿Eliminar {m.commercial_name||m.model}?</div>
                   <div style={{fontSize:11,color:"var(--text-subtle)",marginBottom:10}}>Esta acción desactiva el modelo del catálogo. No se puede deshacer desde aquí.</div>
                   <div style={{display:"flex",gap:6}}>
-                    <button onClick={handleDelete} disabled={deleting} style={{flex:1,padding:"7px",borderRadius:7,border:"none",background:"#EF4444",color:"var(--text-on-dark)",fontSize:12,cursor:"pointer",fontWeight:600}}>{deleting?"Eliminando…":"Sí, eliminar"}</button>
-                    <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"7px",borderRadius:7,border:"1px solid var(--border-strong)",background:"transparent",color:"var(--text-muted)",fontSize:12,cursor:"pointer"}}>Cancelar</button>
+                    <Btn variant='danger' size='sm' onClick={handleDelete} disabled={deleting} style={{flex:1}}>{deleting?"Eliminando…":"Sí, eliminar"}</Btn>
+                    <Btn variant='secondary' size='sm' onClick={()=>setConfirmDel(false)} style={{flex:1}}>Cancelar</Btn>
                   </div>
                 </div>
               }
@@ -741,13 +741,13 @@ function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
             </div>
             <div style={{display:"flex",gap:6}}>
               <input value={colorInput} onChange={e=>setColorInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addColor();}}} placeholder="Agregar color..." style={{...S.inp,flex:1}}/>
-              <button type="button" onClick={addColor} style={{...S.btn,padding:"6px 12px",fontSize:12}}>+</button>
+              <Btn variant='primary' size='sm' type="button" onClick={addColor}>+</Btn>
             </div>
           </div>
           <ErrorMsg msg={errMsg}/>
           <div style={{display:"flex",gap:8}}>
-            <button type="submit" disabled={saving} style={{...S.btn,flex:1}}>{saving?"Guardando…":"Agregar al catálogo"}</button>
-            <button type="button" onClick={onClose} style={{...S.btnSec,flex:1}}>Cancelar</button>
+            <Btn variant='primary' type="submit" disabled={saving} style={{flex:1}}>{saving?"Guardando…":"Agregar al catálogo"}</Btn>
+            <Btn variant='secondary' type="button" onClick={onClose} style={{flex:1}}>Cancelar</Btn>
           </div>
         </form>
       </div>
@@ -1025,14 +1025,14 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
               <>
                 <input value={editVal} onChange={e=>setEditVal(e.target.value)} autoFocus
                   style={{...S.inp,flex:1,padding:'5px 8px',fontSize:12}}/>
-                <button onClick={saveEdit} disabled={saving||!editVal.trim()} style={{...S.btn,padding:'5px 12px',fontSize:11}}>Guardar</button>
-                <button onClick={()=>setEditId(null)} style={{...S.gh,padding:'5px 10px',fontSize:11}}>Cancelar</button>
+                <Btn variant='primary' size='sm' onClick={saveEdit} disabled={saving||!editVal.trim()}>Guardar</Btn>
+                <Btn variant='ghost' size='sm' onClick={()=>setEditId(null)}>Cancelar</Btn>
               </>
             ):(
               <>
                 <span style={{fontSize:12,padding:'2px 10px',borderRadius:20,background:catColor(c.name)+'20',color:catColor(c.name),fontWeight:700,border:`1px solid ${catColor(c.name)}40`}}>{c.name}</span>
                 <span style={{fontSize:11,color:'var(--text-disabled)',flex:1}}>{c.model_count} modelo{c.model_count!==1?'s':''}</span>
-                <button onClick={()=>startEdit(c)} style={{...S.gh,padding:'4px 10px',fontSize:11}}>Renombrar</button>
+                <Btn variant='ghost' size='sm' onClick={()=>startEdit(c)}>Renombrar</Btn>
                 <button onClick={()=>del(c)} disabled={saving} style={{background:'none',border:'none',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer',padding:'4px 8px'}}>Eliminar</button>
               </>
             )}
@@ -1045,9 +1045,9 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
         <input value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()}
           placeholder="Nueva categoría (ej: Naked, Scooter, Enduro)..."
           style={{...S.inp,flex:1,padding:'8px 12px',fontSize:13}}/>
-        <button onClick={add} disabled={saving||!newName.trim()} style={{...S.btn,padding:'8px 16px',fontSize:12,opacity:saving||!newName.trim()?0.6:1}}>
+        <Btn variant='primary' size='sm' onClick={add} disabled={saving||!newName.trim()}>
           + Agregar
-        </button>
+        </Btn>
       </div>
       {err&&<div style={{marginTop:10,fontSize:11,color:'#DC2626'}}>{err}</div>}
     </div>

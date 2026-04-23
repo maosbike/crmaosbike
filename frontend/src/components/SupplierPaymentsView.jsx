@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, Loader, Empty, ErrorMsg, useIsMobile } from '../ui.jsx';
+import { Ic, S, Modal, Bdg, ROLES, hasRole, ROLE_ADMIN_WRITE, ViewHeader, Loader, Empty, ErrorMsg, useIsMobile, Btn } from '../ui.jsx';
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 const EMPTY = () => ({
@@ -253,7 +253,7 @@ function NewModal({ onClose, onCreated }) {
       <div style={{textAlign:'center',padding:'30px 0'}}>
         <div style={{width:44,height:44,borderRadius:'50%',background:'#DCFCE7',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}><Ic.check size={22} color="#15803D"/></div>
         <div style={{fontFamily:'inherit',fontSize:15,fontWeight:700,color:'var(--text)',marginBottom:12}}>Pago registrado</div>
-        <button onClick={onClose} style={{...S.btn,padding:'8px 28px'}}>Cerrar</button>
+        <Btn variant='primary' onClick={onClose} style={{padding:'8px 28px'}}>Cerrar</Btn>
       </div>
     </Modal>
   );
@@ -269,8 +269,8 @@ function NewModal({ onClose, onCreated }) {
           </div>
           <ErrorMsg msg={err}/>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            <button onClick={extract} disabled={busy} style={{...S.btn,flex:2,minWidth:140,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>{busy?'Analizando...':'Analizar y extraer datos'}</button>
-            <button onClick={()=>{const nf={...EMPTY()};if(invUrl)nf.invoice_url=invUrl;if(recUrl)nf.receipt_url=recUrl;setForm(f=>({...f,...nf}));setHl({});setStep(2);}} style={{...S.btn2,flex:1,minWidth:100}}>Manual</button>
+            <Btn variant='primary' onClick={extract} disabled={busy} style={{flex:2,minWidth:140}}>{busy?'Analizando...':'Analizar y extraer datos'}</Btn>
+            <Btn variant='secondary' onClick={()=>{const nf={...EMPTY()};if(invUrl)nf.invoice_url=invUrl;if(recUrl)nf.receipt_url=recUrl;setForm(f=>({...f,...nf}));setHl({});setStep(2);}} style={{flex:1,minWidth:100}}>Manual</Btn>
           </div>
         </div>
       )}
@@ -320,8 +320,8 @@ function NewModal({ onClose, onCreated }) {
           </Sec>
           <ErrorMsg msg={err}/>
           <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
-            <button onClick={()=>setStep(1)} style={{...S.btn2,flex:1,minWidth:80}}>Volver</button>
-            <button onClick={save} disabled={saving} style={{...S.btn,flex:2,minWidth:140}}>{saving?'Guardando...':'Guardar registro'}</button>
+            <Btn variant='secondary' onClick={()=>setStep(1)} style={{flex:1,minWidth:80}}>Volver</Btn>
+            <Btn variant='primary' onClick={save} disabled={saving} style={{flex:2,minWidth:140}}>{saving?'Guardando...':'Guardar registro'}</Btn>
           </div>
         </div>
       )}
@@ -631,9 +631,9 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
         {/* Acciones */}
         {!editing && (
           <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-            <button onClick={startEdit} style={{...S.btn2,padding:'6px 14px',fontSize:12}}>
+            <Btn variant='secondary' size='sm' onClick={startEdit}>
               <Ic.file size={13}/> Editar
-            </button>
+            </Btn>
             {canDel && (
               <button onClick={()=>setCD(true)} style={{...S.btn2,padding:'6px 14px',fontSize:12,color:'#DC2626',borderColor:'#FECACA'}}>
                 Eliminar
@@ -647,8 +647,8 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
           <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:12,marginBottom:14}}>
             <div style={{fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:8}}>¿Eliminar este registro?</div>
             <div style={{display:'flex',gap:8}}>
-              <button onClick={del} disabled={deleting} style={{...S.btn,background:'#DC2626',padding:'6px 14px',fontSize:12}}>{deleting?'Eliminando...':'Eliminar'}</button>
-              <button onClick={()=>setCD(false)} style={{...S.btn2,padding:'6px 14px',fontSize:12}}>Cancelar</button>
+              <Btn variant='danger' size='sm' onClick={del} disabled={deleting}>{deleting?'Eliminando...':'Eliminar'}</Btn>
+              <Btn variant='secondary' size='sm' onClick={()=>setCD(false)}>Cancelar</Btn>
             </div>
           </div>
         )}
@@ -697,8 +697,8 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
               </div>
             </Sec>
             <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
-              <button onClick={save} disabled={saving} style={{...S.btn,flex:2,minWidth:120}}>{saving?'Guardando...':'Guardar'}</button>
-              <button onClick={()=>setEditing(false)} style={{...S.btn2,flex:1,minWidth:80}}>Cancelar</button>
+              <Btn variant='primary' onClick={save} disabled={saving} style={{flex:2,minWidth:120}}>{saving?'Guardando...':'Guardar'}</Btn>
+              <Btn variant='secondary' onClick={()=>setEditing(false)} style={{flex:1,minWidth:80}}>Cancelar</Btn>
             </div>
           </div>
         ) : (
@@ -1081,12 +1081,12 @@ export function SupplierPaymentsView({ user }) {
         subtitle={pending > 0 ? `${pending} sin monto pagado registrado` : null}
         actions={canCreate && (
           <>
-            <button onClick={sync} disabled={syncing} style={S.btn2}>
+            <Btn variant='secondary' onClick={sync} disabled={syncing}>
               <Ic.refresh size={14} color={syncing?'var(--text-disabled)':'var(--text-body)'}/>{syncing?'Sincronizando...':'Sincronizar con Drive'}
-            </button>
-            <button onClick={()=>setShowNew(true)} style={S.btn}>
+            </Btn>
+            <Btn variant='primary' onClick={()=>setShowNew(true)}>
               <Ic.plus size={14}/> Nuevo pago
-            </button>
+            </Btn>
           </>
         )}
       />
@@ -1095,7 +1095,7 @@ export function SupplierPaymentsView({ user }) {
       {syncRes&&(
         <div style={{marginBottom:12,padding:'10px 14px',borderRadius:8,fontSize:12,fontFamily:'inherit',background:syncRes.ok?'#F0FDF4':'#FEF2F2',border:`1px solid ${syncRes.ok?'#BBF7D0':'#FECACA'}`,color:syncRes.ok?'#166534':'#991B1B',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
           {syncRes.ok?`Sincronización exitosa: ${syncRes.created} nuevos, ${syncRes.updated} actualizados`:syncRes.error}
-          <button onClick={()=>setSyncRes(null)} style={{...S.gh,marginLeft:'auto',padding:4,lineHeight:1}}><Ic.x size={14}/></button>
+          <Btn variant='ghost' onClick={()=>setSyncRes(null)} style={{marginLeft:'auto',padding:4,lineHeight:1}}><Ic.x size={14}/></Btn>
         </div>
       )}
 
@@ -1167,9 +1167,9 @@ export function SupplierPaymentsView({ user }) {
                 </div>
               </div>
               {hasFilters&&(
-                <button onClick={clearFilters} style={{...S.gh,justifyContent:'center',width:'100%',fontSize:12}}>
+                <Btn variant='ghost' size='sm' onClick={clearFilters} style={{justifyContent:'center',width:'100%'}}>
                   <Ic.x size={13}/> Limpiar filtros
-                </button>
+                </Btn>
               )}
             </div>
           )}
@@ -1276,7 +1276,7 @@ export function SupplierPaymentsView({ user }) {
               icon={Ic.invoice}
               title={hasFilters?'Sin resultados':'Sin registros'}
               hint={hasFilters?'Prueba ajustando los filtros':'Registra el primer pago con Drive o manualmente.'}
-              action={hasFilters&&<button onClick={clearFilters} style={S.btn2}>Limpiar filtros</button>}
+              action={hasFilters&&<Btn variant='secondary' onClick={clearFilters}>Limpiar filtros</Btn>}
             />
           )}
           {!loading && sorted.map(p=>(
@@ -1293,7 +1293,7 @@ export function SupplierPaymentsView({ user }) {
                 icon={Ic.invoice}
                 title={hasFilters?'Sin resultados con estos filtros':'Sin registros de pagos'}
                 hint={hasFilters?'Prueba ajustando los filtros o limpiando la búsqueda.':'Registra el primer pago con Drive o manualmente.'}
-                action={hasFilters&&<button onClick={clearFilters} style={S.btn2}>Limpiar filtros</button>}
+                action={hasFilters&&<Btn variant='secondary' onClick={clearFilters}>Limpiar filtros</Btn>}
               />
             </div>
           )}

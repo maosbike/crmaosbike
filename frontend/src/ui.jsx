@@ -402,6 +402,7 @@ export function Btn({ variant='primary', size='md', disabled, loading, children,
       disabled={isOff}
       {...rest}
       style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         background: v.bg, color: v.fg, border: v.border,
         borderRadius: T.radius.md, padding: z.padding,
         fontSize: z.fs, fontWeight: z.fw, fontFamily: 'inherit',

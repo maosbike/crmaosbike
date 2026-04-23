@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ROLES, hasRole, ViewHeader, ErrorMsg, selectCtrl, useIsMobile, colorFor } from '../ui.jsx';
+import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ROLES, hasRole, ViewHeader, ErrorMsg, selectCtrl, useIsMobile, colorFor, Btn } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -746,10 +746,10 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           <Field label="Observaciones" value={form.sale_notes} onChange={set('sale_notes')} rows={2} />
           <ErrorMsg msg={err} />
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleSave} disabled={saving} style={{ ...S.btn, flex: 1 }}>
+            <Btn variant='primary' onClick={handleSave} disabled={saving} style={{ flex: 1 }}>
               {saving ? 'Guardando…' : 'Guardar cambios'}
-            </button>
-            <button onClick={() => setEditing(false)} style={{ ...S.btn2, flex: 1 }}>Cancelar</button>
+            </Btn>
+            <Btn variant='secondary' onClick={() => setEditing(false)} style={{ flex: 1 }}>Cancelar</Btn>
           </div>
         </div>
       )}
@@ -760,8 +760,8 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
             Esta acción convertirá el registro a nota de venta y <strong>no se puede deshacer</strong>.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-            <button style={{ ...S.btn2 }} onClick={() => setShowConfirmConvert(false)}>Cancelar</button>
-            <button style={{ ...S.btn }} onClick={() => { setShowConfirmConvert(false); doConvert(); }}>Convertir a venta</button>
+            <Btn variant='secondary' onClick={() => setShowConfirmConvert(false)}>Cancelar</Btn>
+            <Btn variant='primary' onClick={() => { setShowConfirmConvert(false); doConvert(); }}>Convertir a venta</Btn>
           </div>
         </Modal>
       )}
@@ -1764,10 +1764,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
           <ErrorMsg msg={err} />
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <button onClick={handleCreate} disabled={saving} style={{ ...S.btn, flex: 1 }}>
+            <Btn variant='primary' onClick={handleCreate} disabled={saving} style={{ flex: 1 }}>
               {saving ? 'Registrando…' : isReserva ? 'Registrar reserva' : 'Registrar venta'}
-            </button>
-            <button onClick={onClose} style={{ ...S.btn2, flex: 1 }}>Cancelar</button>
+            </Btn>
+            <Btn variant='secondary' onClick={onClose} style={{ flex: 1 }}>Cancelar</Btn>
           </div>
         </div>
       )}

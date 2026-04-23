@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Modal, Field, Bdg, Empty, Loader, ErrorMsg, ROLES as ROLE_KEYS, ViewHeader, useToast, useConfirm } from '../ui.jsx';
+import { Ic, S, Modal, Field, Bdg, Empty, Loader, ErrorMsg, ROLES as ROLE_KEYS, ViewHeader, useToast, useConfirm, Btn } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -774,7 +774,7 @@ export function AdminView() {
           }
           {cleanDone
             ? <div style={{ display:'flex',alignItems:'center',gap:8,color:'#10B981',fontSize:12,fontWeight:600 }}><Ic.check size={16} color="#10B981"/>Todo borrado. Recarga la página.</div>
-            : <button onClick={handleCleanData} disabled={cleaning} style={{ ...S.btn,background:'#EF4444',opacity:cleaning?0.7:1,fontSize:12 }}>{cleaning?'Limpiando...':'Borrar TODO (tickets + inventario)'}</button>
+            : <Btn variant='danger' size='sm' onClick={handleCleanData} disabled={cleaning}>{cleaning?'Limpiando...':'Borrar TODO (tickets + inventario)'}</Btn>
           }
         </div>
       </div>
@@ -865,10 +865,10 @@ export function AdminView() {
             <ActiveToggle value={cForm.active} onChange={v=>setCForm(p=>({...p,active:v}))}/>
             <ErrorMsg msg={cErr}/>
             <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
-              <button type="button" onClick={()=>setShowCreate(false)} style={S.btn2}>Cancelar</button>
-              <button type="submit" disabled={cSaving} style={{ ...S.btn,opacity:cSaving?0.7:1 }}>
+              <Btn variant='secondary' type="button" onClick={()=>setShowCreate(false)}>Cancelar</Btn>
+              <Btn variant='primary' type="submit" disabled={cSaving}>
                 {cSaving?'Creando...':'Crear usuario'}
-              </button>
+              </Btn>
             </div>
           </form>
         </Modal>
@@ -903,10 +903,10 @@ export function AdminView() {
             <ActiveToggle value={eForm.active} onChange={v=>setEForm(p=>({...p,active:v}))}/>
             <ErrorMsg msg={eErr}/>
             <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
-              <button type="button" onClick={()=>setEditTarget(null)} style={S.btn2}>Cancelar</button>
-              <button type="submit" disabled={eSaving} style={{ ...S.btn,opacity:eSaving?0.7:1 }}>
+              <Btn variant='secondary' type="button" onClick={()=>setEditTarget(null)}>Cancelar</Btn>
+              <Btn variant='primary' type="submit" disabled={eSaving}>
                 {eSaving?'Guardando...':'Guardar cambios'}
-              </button>
+              </Btn>
             </div>
           </form>
         </Modal>
@@ -1035,10 +1035,10 @@ export function AdminView() {
             )}
             <ErrorMsg msg={bErr}/>
             <div style={{ display:'flex',justifyContent:'flex-end',gap:8 }}>
-              <button type="button" onClick={()=>setBranchEditTarget(null)} style={S.btn2}>Cancelar</button>
-              <button type="submit" disabled={bSaving} style={{ ...S.btn, opacity:bSaving?0.7:1 }}>
+              <Btn variant='secondary' type="button" onClick={()=>setBranchEditTarget(null)}>Cancelar</Btn>
+              <Btn variant='primary' type="submit" disabled={bSaving}>
                 {bSaving ? 'Guardando...' : (branchEditTarget.__new ? 'Crear sucursal' : 'Guardar cambios')}
-              </button>
+              </Btn>
             </div>
           </form>
         </Modal>
