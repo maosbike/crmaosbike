@@ -29,7 +29,7 @@ router.delete('/reset-data', async (req, res) => {
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('reset-data error:', e);
-    res.status(500).json({ error: 'Error al limpiar datos: ' + e.message });
+    res.status(500).json({ error: 'Error al limpiar datos' });
   } finally {
     client.release();
   }
@@ -67,7 +67,7 @@ router.delete('/reset-imports', async (req, res) => {
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('reset-imports error:', e);
-    res.status(500).json({ error: 'Error al limpiar imports: ' + e.message });
+    res.status(500).json({ error: 'Error al limpiar imports' });
   } finally {
     client.release();
   }
@@ -88,7 +88,7 @@ router.delete('/reset-catalog', async (req, res) => {
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('reset-catalog error:', e);
-    res.status(500).json({ error: 'Error al limpiar catálogo: ' + e.message });
+    res.status(500).json({ error: 'Error al limpiar catálogo' });
   } finally {
     client.release();
   }

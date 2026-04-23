@@ -1081,7 +1081,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
         service_account_email: creds.client_email,
       });
     }
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

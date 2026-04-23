@@ -777,7 +777,7 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
         service_account_email: creds.client_email,
       });
     }
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

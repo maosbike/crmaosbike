@@ -169,7 +169,7 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
       return res.status(409).json({ error: 'No se puede eliminar: el usuario tiene datos referenciados. Desactívalo.' });
     }
     console.error('Error eliminar usuario:', e);
-    res.status(500).json({ error: `Error del servidor: ${e.message || 'desconocido'}` });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

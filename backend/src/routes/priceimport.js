@@ -127,7 +127,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
   } catch (e) {
     console.error('[priceimport/upload]', e);
-    res.status(500).json({ error: e.message || 'Error al procesar el archivo' });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -256,7 +256,7 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
     }
   } catch (e) {
     console.error('[priceimport/publish]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
