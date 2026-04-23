@@ -1458,7 +1458,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       const bg=r._status==='ok'?'rgba(16,185,129,0.04)':r._status==='warning'?'rgba(249,115,22,0.05)':r._status==='duplicate'?'rgba(245,158,11,0.06)':'rgba(239,68,68,0.06)';
                       const ic=r._status==='ok'?'#10B981':r._status==='warning'?'#F97316':r._status==='duplicate'?'#F59E0B':'#EF4444';
                       return(
-                        <tr key={i} style={{ borderBottom:'1px solid var(--surface-sunken)',background:bg }}>
+                        <tr key={r._row||i} style={{ borderBottom:'1px solid var(--surface-sunken)',background:bg }}>
                           <td style={{ padding:'5px 8px',color:'var(--text-disabled)' }}>{r._row}</td>
                           <td style={{ padding:'5px 8px' }}>{r.branch_raw||'-'}</td>
                           <td style={{ padding:'5px 8px' }}>{r.year}</td>

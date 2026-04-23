@@ -92,7 +92,7 @@ function DistributorBadge({ paid }) {
 
 // ─── Modal: detalle / edición de venta ────────────────────────────────────────
 
-function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onUpdated }) {
+function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onSaved }) {
   const isAdmin    = hasRole(user, ...CAN_ADMIN);
   const isVendedor = hasRole(user, ROLES.VEND);
   const isRes      = sale.status === 'reservada';
@@ -192,7 +192,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           is_note_only: !!sale.is_note_only,
         });
       }
-      onUpdated();
+      onSaved();
       setEditing(false);
     } catch (e) { setErr(e.message || 'Error al guardar'); }
     finally { setSaving(false); }
@@ -228,7 +228,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
           sold_at:        new Date().toISOString(),
         });
       }
-      onUpdated();
+      onSaved();
     } catch (e) { setErr(e.message || 'Error al convertir'); }
     finally { setConverting(false); }
   }
@@ -237,7 +237,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
     setToggling(true);
     try {
       await api.updateSale(sale.id, { delivered: !sale.delivered });
-      onUpdated();
+      onSaved();
     } catch(e) { setErr(e.message || 'Error'); }
     finally { setToggling(false); }
   }
@@ -253,7 +253,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
       const newNotes = (sale.sale_notes || '') + append;
       await api.updateSale(sale.id, { sale_notes: newNotes });
       setPostItems([]);
-      onUpdated();
+      onSaved();
     } catch(e) { setErr(e.message || 'Error'); }
     finally { setSavingItems(false); }
   }
@@ -263,7 +263,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
     setUploading(field);
     try {
       await api.uploadSaleDoc(sale.id, field, file);
-      onUpdated();
+      onSaved();
     } catch (e) { setErr(e.message); }
     finally { setUploading(''); }
   }
@@ -2647,7 +2647,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           sellers={sellers}
           branches={realBranches || []}
           onClose={() => setSelSale(null)}
-          onUpdated={() => { load(); setSelSale(null); }}
+          onSaved={() => { load(); setSelSale(null); }}
         />
       )}
       {showNew && (

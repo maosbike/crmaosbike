@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ErrorMsg } from '../ui.jsx';
 
-export function ForceChangeView({user,onChanged}){
+export function ForceChangeView({user,onSaved}){
   const[form,setForm]=useState({current:"",next:"",confirm:""});
   const[err,setErr]=useState("");
   const[loading,setLoading]=useState(false);
@@ -13,7 +13,7 @@ export function ForceChangeView({user,onChanged}){
     setLoading(true);
     try{
       await api.changePassword(form.current,form.next,form.confirm);
-      onChanged({...user,forceChange:false});
+      onSaved({...user,forceChange:false});
     }catch(ex){setErr(ex.message||"Error al cambiar contraseña");}
     finally{setLoading(false);}
   };

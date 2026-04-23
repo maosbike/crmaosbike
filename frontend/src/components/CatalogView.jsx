@@ -978,7 +978,7 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
 }
 
 /* ── BrandCategoriesPanel: CRUD per-brand categories ─────────────────────── */
-function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
+function BrandCategoriesPanel({brand,cats,onClose,onSaved}){
   const confirm=useConfirm();
   const[newName,setNewName]=useState('');
   const[editId,setEditId]=useState(null);
@@ -989,7 +989,7 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
   const add=async()=>{
     if(!newName.trim())return;
     setSaving(true); setErr('');
-    try{await api.createBrandCategory(brand,newName.trim());setNewName('');onChanged&&onChanged();}
+    try{await api.createBrandCategory(brand,newName.trim());setNewName('');onSaved&&onSaved();}
     catch(e){setErr(e?.message||'Error');}
     finally{setSaving(false);}
   };
@@ -997,7 +997,7 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
   const saveEdit=async()=>{
     if(!editVal.trim())return;
     setSaving(true); setErr('');
-    try{await api.updateBrandCategory(brand,editId,{name:editVal.trim()});setEditId(null);setEditVal('');onChanged&&onChanged();}
+    try{await api.updateBrandCategory(brand,editId,{name:editVal.trim()});setEditId(null);setEditVal('');onSaved&&onSaved();}
     catch(e){setErr(e?.message||'Error');}
     finally{setSaving(false);}
   };
@@ -1005,7 +1005,7 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
     const ok=await confirm({title:`¿Eliminar categoría "${c.name}"?`,body:c.model_count?`${c.model_count} modelos la usan. Esta acción no se puede deshacer.`:'Esta acción no se puede deshacer.',confirmLabel:'Eliminar',tone:'danger'});
     if(!ok)return;
     setSaving(true); setErr('');
-    try{await api.deleteBrandCategory(brand,c.id);onChanged&&onChanged();}
+    try{await api.deleteBrandCategory(brand,c.id);onSaved&&onSaved();}
     catch(e){setErr(e?.message||'Error');}
     finally{setSaving(false);}
   };
@@ -1226,7 +1226,7 @@ export function CatalogView({user}){
       </div>
 
       {/* Panel de categorías de la marca */}
-      {canEdit&&showBrandCats&&<BrandCategoriesPanel brand={activeBrand} cats={brandCats} onClose={()=>setShowBrandCats(false)} onChanged={refreshBrandCats}/>}
+      {canEdit&&showBrandCats&&<BrandCategoriesPanel brand={activeBrand} cats={brandCats} onClose={()=>setShowBrandCats(false)} onSaved={refreshBrandCats}/>}
 
       {/* Pills de categoría */}
       {allBrandCatNames.length>0&&(

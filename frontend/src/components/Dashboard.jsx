@@ -87,7 +87,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
               const lbl=(st==='breached'||st==='vencido'||horasLeft!=null&&horasLeft<=0)?'Vencido':horasLeft!=null&&horasLeft<2?`${Math.ceil(horasLeft)}h`:horasLeft!=null?`${Math.ceil(horasLeft)}h`:'Sin gestionar';
               const lc=(st==='breached'||st==='vencido'||horasLeft!=null&&horasLeft<=0)?'#EF4444':horasLeft!=null&&horasLeft<2?'#F97316':'var(--text-subtle)';
               return(
-                <div key={i} onClick={()=>nav('ticket',String(l.id||l.ticket_id))}
+                <div key={l.id||l.ticket_id||i} onClick={()=>nav('ticket',String(l.id||l.ticket_id))}
                   style={{padding:'9px 16px',borderBottom:'1px solid var(--surface-muted)',cursor:'pointer',display:'flex',alignItems:'center',gap:10}}
                   onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
@@ -123,7 +123,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
               const clientName=[t.client_first,t.client_last].filter(Boolean).join(' ').trim()||t.client_name||'';
               const timeLabel=t.due_time?t.due_time.slice(0,5):fD(t.due_date);
               return(
-                <div key={i} onClick={()=>t.ticket_id&&nav('ticket',String(t.ticket_id))}
+                <div key={t.id||t.ticket_id||i} onClick={()=>t.ticket_id&&nav('ticket',String(t.ticket_id))}
                   style={{padding:'9px 16px',borderBottom:'1px solid var(--surface-muted)',cursor:'pointer',display:'flex',alignItems:'center',gap:10}}
                   onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>

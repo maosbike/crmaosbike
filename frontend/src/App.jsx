@@ -132,7 +132,7 @@ export default function App(){
 
   if(sessionLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--surface-muted)"}}><img src="/logo.png" alt="MaosBike" style={{height:48,opacity:0.5}}/></div>;
   if(!user)return<Login onLogin={setUser}/>;
-  if(user.forceChange)return<ForceChangeView user={user} onChanged={u=>{setUser(u);}}/>;
+  if(user.forceChange)return<ForceChangeView user={user} onSaved={u=>{setUser(u);}}/>;
 
   const reloadLeads=()=>fetchAllTickets().then(all=>setLeads(all.map(mapTicket))).catch(()=>{});
 

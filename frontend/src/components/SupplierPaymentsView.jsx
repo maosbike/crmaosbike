@@ -330,7 +330,7 @@ function NewModal({ onClose, onCreated }) {
 }
 
 /* ── Detail view (lectura) ──────────────────────────────────────────────── */
-function DetailView({ p, dv, overdue, onUpdated }) {
+function DetailView({ p, dv, overdue, onSaved }) {
   const img = motoImg(p);
   const st  = pagoStatus(p);
   const saldo = Math.max(0, (parseInt(p.total_amount)||0) - (parseInt(p.paid_amount)||0));
@@ -345,7 +345,7 @@ function DetailView({ p, dv, overdue, onUpdated }) {
     setSavingNotes(true); setNotesErr('');
     try {
       const u = await api.updateSupplierPayment(p.id, { notes });
-      onUpdated?.(u);
+      onSaved?.(u);
     } catch (e) { setNotesErr(e.message); }
     finally { setSavingNotes(false); }
   }
@@ -544,7 +544,7 @@ function DetailRow({ label, value, bold, danger, span }) {
 }
 
 /* ── Detail / edit modal ────────────────────────────────────────────────── */
-function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startInEdit }) {
+function DetailModal({ payment:p0, onClose, onSaved, onDeleted, canDel, startInEdit }) {
   const [p,setP]=useState(p0);
   const [editing,setEditing]=useState(!!startInEdit);
   const [form,setForm]=useState(()=> startInEdit ? {
@@ -596,7 +596,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
         notes: form.notes, provider: form.provider,
       };
       const u=await api.updateSupplierPayment(p.id,payload);
-      setP(u);onUpdated(u);setEditing(false);
+      setP(u);onSaved(u);setEditing(false);
     }catch(e){setErr(e.message);}finally{setSaving(false);}
   };
   const del=async()=>{setDel(true);try{await api.deleteSupplierPayment(p.id);onDeleted(p.id);onClose();}catch(e){setErr(e.message);setDel(false);setCD(false);}};
@@ -702,7 +702,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
             </div>
           </div>
         ) : (
-          <DetailView p={p} dv={dv} overdue={overdue} onUpdated={u=>{setP(u);onUpdated(u);}}/>
+          <DetailView p={p} dv={dv} overdue={overdue} onSaved={u=>{setP(u);onSaved(u);}}/>
         )}
       </div>
     </Modal>
@@ -1322,7 +1322,7 @@ export function SupplierPaymentsView({ user }) {
       {showNew&&<NewModal onClose={()=>setShowNew(false)} onCreated={p=>{setData(d=>[p,...d]);setShowNew(false);}}/>}
       {sel&&<DetailModal payment={sel} canDel={canDel} startInEdit={editFromList}
         onClose={()=>{setSel(null);setEditFromList(false);}}
-        onUpdated={p=>{setData(d=>d.map(x=>x.id===p.id?p:x));setSel(p);}}
+        onSaved={p=>{setData(d=>d.map(x=>x.id===p.id?p:x));setSel(p);}}
         onDeleted={id=>{setData(d=>d.filter(x=>x.id!==id));setSel(null);}}/>}
     </div>
   );

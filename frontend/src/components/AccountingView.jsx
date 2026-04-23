@@ -481,7 +481,7 @@ function DetailRow({ label, value, bold, danger, span }) {
 //   Izquierda  (420px): foto grande (color-aware) + identidad + montos.
 //   Derecha   (1fr):    bloques informativos (cliente, vinculaciones, ref NC)
 //                       + editor de vínculo con catálogo (model/color) + notas.
-function InvoiceDetail({ inv, onClose, onUpdated }) {
+function InvoiceDetail({ inv, onClose, onSaved }) {
   const toast=useToast();
   const [saving, setSaving]   = useState(false);
   const [notes, setNotes]     = useState(inv.notes || '');
@@ -508,7 +508,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
     setSaving(true);
     try {
       const r = await api.patchAccounting(inv.id, { notes, link_status: inv.link_status });
-      onUpdated(r);
+      onSaved(r);
     } catch (e) { toast.error(e.message); }
     finally { setSaving(false); }
   }
@@ -523,7 +523,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
         if (selModel.year)  payload.commercial_year = selModel.year;
       }
       const r = await api.patchAccounting(inv.id, payload);
-      onUpdated(r);
+      onSaved(r);
     } catch (e) { toast.error(e.message); }
     finally { setSaving(false); }
   }
@@ -1004,7 +1004,7 @@ export function AccountingView() {
         <InvoiceDetail
           inv={selected}
           onClose={() => setSelected(null)}
-          onUpdated={handleUpdated}
+          onSaved={handleUpdated}
         />
       )}
     </div>
