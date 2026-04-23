@@ -455,31 +455,53 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
         </div>
       )}
 
-      {/* ── Desglose de la venta (accesorios + documentación + descuento) ── */}
+      {/* ── Desglose de la venta (siempre visible) ── */}
       {(() => {
+        const motoAmt  = Number(sale.sale_price) || 0;
         const accList = Array.isArray(sale.accessories)
           ? sale.accessories.filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
           : [];
-        const chargeAmt   = Number(sale.charge_amt)   || 0;
+        const accTotal = accList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+        // Tipo de cargo: charge_type es la fuente nueva; sale_type queda como fallback
+        const chargeType = sale.charge_type || sale.sale_type || null;
+        // Monto: usar charge_amt persistido; si falta (ventas viejas), inferir del tipo.
+        let chargeAmt = Number(sale.charge_amt) || 0;
+        if (!chargeAmt && chargeType) {
+          if (chargeType === 'inscripcion')        chargeAmt = INSCRIPCION_AMT;
+          else if (chargeType === 'transferencia') chargeAmt = TRANSFERENCIA_AMT;
+          else if (chargeType === 'completa')      chargeAmt = docCompletaAmt(motoAmt);
+        }
         const discountAmt = Number(sale.discount_amt) || 0;
-        if (accList.length === 0 && chargeAmt === 0 && discountAmt === 0) return null;
-        const chargeLabel = sale.charge_type === 'completa'      ? 'Documentación completa'
-                          : sale.charge_type === 'transferencia' ? 'Transferencia vehicular'
-                          : sale.charge_type === 'inscripcion'   ? 'Inscripción vehicular'
+        const total = motoAmt + accTotal + chargeAmt - discountAmt;
+        // Si no hay ni precio ni extras, no renderizamos (evita bloque vacío en reservas viejas sin datos)
+        if (!motoAmt && !accTotal && !chargeAmt && !discountAmt) return null;
+        const chargeLabel = chargeType === 'completa'      ? 'Documentación completa'
+                          : chargeType === 'transferencia' ? 'Transferencia vehicular'
+                          : chargeType === 'inscripcion'   ? 'Inscripción vehicular'
                           : 'Documentación';
         return (
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase',
                           letterSpacing: '0.09em', marginBottom: 10 }}>Desglose de la venta</div>
-            <div style={{ background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 10, padding: '10px 14px' }}>
+            <div style={{ background: '#FFFFFF', border: '1px solid #EAECEF', borderRadius: 10, padding: '12px 16px' }}>
+              {motoAmt > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                              padding: '6px 0', fontSize: 13 }}>
+                  <span style={{ color: '#374151' }}>
+                    {sale.brand} {sale.model}{sale.year ? ` · ${sale.year}` : ''}
+                  </span>
+                  <span style={{ fontWeight: 700, color: '#0F172A' }}>{fmt(motoAmt)}</span>
+                </div>
+              )}
               {accList.length > 0 && (
-                <div style={{ marginBottom: (chargeAmt || discountAmt) ? 10 : 0 }}>
+                <div style={{ paddingTop: motoAmt ? 8 : 0, marginTop: motoAmt ? 4 : 0,
+                              borderTop: motoAmt ? '1px dashed #E5E7EB' : 'none' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase',
-                                letterSpacing: '0.06em', marginBottom: 6 }}>Accesorios</div>
+                                letterSpacing: '0.06em', marginBottom: 4 }}>Accesorios</div>
                   {accList.map((a, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
                                           padding: '4px 0', fontSize: 13 }}>
-                      <span style={{ color: '#374151' }}>{a.description || a.name}</span>
+                      <span style={{ color: '#374151', paddingLeft: 4 }}>• {a.description || a.name}</span>
                       <span style={{ fontWeight: 700, color: '#0F172A' }}>{fmt(Number(a.amount))}</span>
                     </div>
                   ))}
@@ -487,19 +509,27 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onU
               )}
               {chargeAmt > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                              padding: '4px 0', fontSize: 13, borderTop: accList.length > 0 ? '1px dashed #E5E7EB' : 'none',
-                              paddingTop: accList.length > 0 ? 8 : 4 }}>
+                              padding: '6px 0', fontSize: 13,
+                              borderTop: (motoAmt || accList.length) ? '1px dashed #E5E7EB' : 'none',
+                              marginTop: (motoAmt || accList.length) ? 4 : 0,
+                              paddingTop: (motoAmt || accList.length) ? 8 : 6 }}>
                   <span style={{ color: '#374151' }}>{chargeLabel}</span>
                   <span style={{ fontWeight: 700, color: '#0F172A' }}>{fmt(chargeAmt)}</span>
                 </div>
               )}
               {discountAmt > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                              padding: '4px 0', fontSize: 13 }}>
+                              padding: '6px 0', fontSize: 13 }}>
                   <span style={{ color: '#059669' }}>Descuento</span>
                   <span style={{ fontWeight: 700, color: '#059669' }}>− {fmt(discountAmt)}</span>
                 </div>
               )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                            padding: '10px 0 4px', marginTop: 6, fontSize: 14,
+                            borderTop: '2px solid #0F172A' }}>
+                <span style={{ fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total</span>
+                <span style={{ fontWeight: 900, color: '#F28100', fontSize: 16 }}>{fmt(total)}</span>
+              </div>
             </div>
           </div>
         );
