@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 
 // Paleta de colores comunes para motos
 const PRESET = [
-  '#111827','#1F2937','#374151','#6B7280','#9CA3AF','#FFFFFF',
+  'var(--text)','var(--text-strong)','var(--text-body)','var(--text-subtle)','var(--text-disabled)','#FFFFFF',
   '#EF4444','#991B1B','#C2410C','#F97316','#D97706','#EAB308',
   '#84CC16','#15803D','#14532D','#0EA5E9','#2563EB','#1E3A8A',
   '#7C3AED','#DB2777','#9F1239','#92400E','#78350F','#D4B896',
 ];
 
-export function ColorPicker({ value = '#111827', onChange }) {
-  const norm = (v) => /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#111827';
+export function ColorPicker({ value = 'var(--text)', onChange }) {
+  const norm = (v) => /^#[0-9a-fA-F]{6}$/.test(v) ? v : 'var(--text)';
   const [hex, setHex] = useState(norm(value));
 
   useEffect(() => { setHex(norm(value)); }, [value]);
@@ -30,17 +30,17 @@ export function ColorPicker({ value = '#111827', onChange }) {
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
       {/* Fila de controles */}
       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-        <div style={{ width:28, height:28, borderRadius:6, background:hex, border:'1.5px solid #E5E7EB', flexShrink:0 }} />
+        <div style={{ width:28, height:28, borderRadius:6, background:hex, border:'1.5px solid var(--border)', flexShrink:0 }} />
         <input type="color" value={hex} onChange={e=>emit(e.target.value)}
-          style={{ width:28, height:28, padding:2, border:'1px solid #E5E7EB', borderRadius:6, cursor:'pointer', background:'#ffffff' }} />
+          style={{ width:28, height:28, padding:2, border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', background:'#ffffff' }} />
         <input value={hex} onChange={e=>handleText(e.target.value)}
           placeholder="#000000" maxLength={7}
-          style={{ width:82, padding:'3px 7px', border:'1px solid #E5E7EB', borderRadius:6, fontSize:12, fontFamily:'inherit', color:'#111827' }} />
+          style={{ width:82, padding:'3px 7px', border:'1px solid var(--border)', borderRadius:6, fontSize:12, fontFamily:'inherit', color:'var(--text)' }} />
         {'EyeDropper' in window && (
           <button type="button" onClick={pickScreen}
             title="Cuentagotas — toma un color de cualquier parte de la pantalla"
-            style={{ border:'1px solid #E5E7EB', borderRadius:6, background:'#F9FAFB', cursor:'pointer', lineHeight:1, padding:'5px 7px', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            style={{ border:'1px solid var(--border)', borderRadius:6, background:'var(--surface-muted)', cursor:'pointer', lineHeight:1, padding:'5px 7px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L3 14.67V20h5.33l10.06-10.06a5.5 5.5 0 0 0 0-7.78z"/>
               <line x1="3" y1="20" x2="7.33" y2="20"/>
             </svg>

@@ -8,11 +8,11 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, STATUS_ORDER
 // Helper thin para mantener el shape legado {color, light} que usaba ST_STRIP.
 const stripFor = (k) => {
   const v = TICKET_STATUS[k];
-  return v ? { color: v.c, light: v.bg || '#F9FAFB' } : { color: '#6B7280', light: '#F9FAFB' };
+  return v ? { color: v.c, light: v.bg || 'var(--surface-muted)' } : { color: 'var(--text-subtle)', light: 'var(--surface-muted)' };
 };
 
 // selectCtrl y filterLabel importados desde ui.jsx (centralizados)
-const divider=<div style={{width:1,height:28,background:'#E5E7EB',flexShrink:0}}/>;
+const divider=<div style={{width:1,height:28,background:'var(--border)',flexShrink:0}}/>;
 
 function Initials({fn,ln,size=30}){
   const a=(fn||'').charAt(0).toUpperCase();
@@ -179,9 +179,9 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           return (
             <button onClick={()=>setStF('')} style={{
               padding:'5px 12px',borderRadius:99,
-              border:active?'1.5px solid #111827':'1.5px solid transparent',
-              background:active?'#111827':'#F3F4F6',
-              color:active?'#FFFFFF':'#6B7280',
+              border:active?'1.5px solid var(--text)':'1.5px solid transparent',
+              background:active?'var(--text)':'var(--surface-sunken)',
+              color:active?'#FFFFFF':'var(--text-subtle)',
               fontSize:12,fontWeight:active?700:500,
               cursor:'pointer',flexShrink:0,
               display:'inline-flex',alignItems:'center',gap:5,
@@ -190,8 +190,8 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               Todos
               <span style={{
                 fontSize:10,fontWeight:700,
-                background:active?'rgba(255,255,255,0.2)':'#E5E7EB',
-                color:active?'#FFFFFF':'#9CA3AF',
+                background:active?'rgba(255,255,255,0.2)':'var(--border)',
+                color:active?'#FFFFFF':'var(--text-disabled)',
                 padding:'1px 5px',borderRadius:99,
               }}>
                 {totalCnt}
@@ -206,8 +206,8 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             <button key={k} onClick={()=>setStF(stF===k?'':k)} style={{
               padding:'5px 12px',borderRadius:99,
               border:active?`1.5px solid ${v.c}`:'1.5px solid transparent',
-              background:active?v.bg:'#F3F4F6',
-              color:active?v.c:'#6B7280',
+              background:active?v.bg:'var(--surface-sunken)',
+              color:active?v.c:'var(--text-subtle)',
               fontSize:12,fontWeight:active?700:500,
               cursor:'pointer',flexShrink:0,
               display:'inline-flex',alignItems:'center',gap:5,
@@ -216,8 +216,8 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               {v.l}
               <span style={{
                 fontSize:10,fontWeight:700,
-                background:active?'rgba(255,255,255,0.5)':'#E5E7EB',
-                color:active?v.c:'#9CA3AF',
+                background:active?'rgba(255,255,255,0.5)':'var(--border)',
+                color:active?v.c:'var(--text-disabled)',
                 padding:'1px 5px',borderRadius:99,
               }}>
                 {cnt}
@@ -237,14 +237,14 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             return(
               <button key={s.id} onClick={()=>setSelF(isSel?'':s.id)}
                 style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,
-                  border:isSel?`2px solid ${col.c}`:'1px solid #E5E7EB',
+                  border:isSel?`2px solid ${col.c}`:'1px solid var(--border)',
                   background:isSel?col.bg:'#FFFFFF',
                   borderLeft:`4px solid ${col.c}`,
                   cursor:'pointer',fontFamily:'inherit',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',transition:'all 0.12s'}}>
                 <span style={{fontSize:22,fontWeight:900,color:col.c,lineHeight:1}}>{active}</span>
                 <div style={{textAlign:'left'}}>
-                  <div style={{fontSize:11,fontWeight:700,color:isSel?col.c:'#374151'}}>{s.first_name} {s.last_name}</div>
-                  <div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>leads activos</div>
+                  <div style={{fontSize:11,fontWeight:700,color:isSel?col.c:'var(--text-body)'}}>{s.first_name} {s.last_name}</div>
+                  <div style={{fontSize:9,color:'var(--text-disabled)',marginTop:1}}>leads activos</div>
                 </div>
               </button>
             );
@@ -255,7 +255,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       {/* ── Bloque de filtros ── */}
       <div style={{
         background:'#FFFFFF',
-        border:'1px solid #E5E7EB',
+        border:'1px solid var(--border)',
         borderRadius:12,
         padding:'12px 16px',
         marginBottom:16,
@@ -263,14 +263,14 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       }}>
         {/* Fila 1: Búsqueda */}
         <div style={{position:'relative',width:'100%'}}>
-          <Ic.search size={14} color="#9CA3AF" style={{
+          <Ic.search size={14} color="var(--text-disabled)" style={{
             position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none',
           }}/>
           <input
             value={search}
             onChange={e=>setSearch(e.target.value)}
             placeholder="Buscar por nombre, RUT, teléfono o N° ficha..."
-            style={{...S.inp,paddingLeft:36,fontSize:13,border:'1px solid #E5E7EB',borderRadius:8}}
+            style={{...S.inp,paddingLeft:36,fontSize:13,border:'1px solid var(--border)',borderRadius:8}}
           />
         </div>
         {/* Fila 2: selects en línea */}
@@ -298,7 +298,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           {hasFilters&&(
             <button onClick={clearFilters} style={{
               ...S.gh,height:34,fontSize:12,fontWeight:600,
-              border:'1px solid #E5E7EB',borderRadius:8,padding:'0 14px',flexShrink:0,
+              border:'1px solid var(--border)',borderRadius:8,padding:'0 14px',flexShrink:0,
             }}>
               Limpiar filtros
             </button>
@@ -308,7 +308,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
 
       {/* ── Lista de registros ── */}
-      {f.length>0&&!stF&&<div style={{fontSize:10,fontWeight:600,color:'#9CA3AF',paddingLeft:2,marginBottom:6,letterSpacing:'0.04em'}}>Ordenado por estado</div>}
+      {f.length>0&&!stF&&<div style={{fontSize:10,fontWeight:600,color:'var(--text-disabled)',paddingLeft:2,marginBottom:6,letterSpacing:'0.04em'}}>Ordenado por estado</div>}
       {f.length===0?(
         <Empty
           title={hasFilters ? 'Ningún lead coincide con estos filtros' : 'Sin fichas todavía'}
@@ -319,7 +319,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {/* Filas de leads — cada una es una card independiente */}
           {(stF?f:[...f].sort((a,b)=>{const ai=STATUS_ORDER.indexOf(a.status);const bi=STATUS_ORDER.indexOf(b.status);return(ai===-1?99:ai)-(bi===-1?99:bi);})).map(x=>{
-            const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'#6B7280',bg:'#F9FAFB'};
+            const stCfg=TICKET_STATUS[x.status]||{l:x.status,c:'var(--text-subtle)',bg:'var(--surface-muted)'};
             const brName=brs.find(b=>String(b.id)===String(x.branch_id))?.name||x.branch_name||x.branch_code||null;
 
             // ── Variante MOBILE ──────────────────────────────────────────
@@ -328,7 +328,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                   display:'flex',alignItems:'stretch',
                   background:'#FFFFFF',
-                  border:'1px solid #E5E7EB',borderRadius:14,
+                  border:'1px solid var(--border)',borderRadius:14,
                   overflow:'hidden',
                   cursor:'pointer',minHeight:130,
                   boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
@@ -336,14 +336,14 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   {/* Foto protagonista */}
                   <div style={{
                     width:130,flexShrink:0,
-                    background:`linear-gradient(135deg, ${stCfg.bg||'#F9FAFB'} 0%, #F3F4F6 100%)`,
+                    background:`linear-gradient(135deg, ${stCfg.bg||'var(--surface-muted)'} 0%, var(--surface-sunken) 100%)`,
                     overflow:'hidden',
                     display:'flex',alignItems:'center',justifyContent:'center',
                     position:'relative',
                   }}>
                     {x.model_image
                       ? <img src={x.model_image} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                      : <Ic.bike size={40} color={stCfg.c||'#D1D5DB'}/>
+                      : <Ic.bike size={40} color={stCfg.c||'var(--border-strong)'}/>
                     }
                     {x.needs_attention&&(
                       <span title="Necesita atención" style={{
@@ -356,11 +356,11 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   {/* Info */}
                   <div style={{flex:1,padding:'10px 12px',minWidth:0,display:'flex',flexDirection:'column',justifyContent:'space-between',gap:4}}>
                     <div style={{display:'flex',flexDirection:'column',gap:3,minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:700,color:'#111827',
+                      <div style={{fontSize:14,fontWeight:700,color:'var(--text)',
                         whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>
                         {x.fn} {x.ln}
                       </div>
-                      <div style={{fontSize:12,color:'#4B5563',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                      <div style={{fontSize:12,color:'var(--text-muted)',fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                         {(x.model_brand||x.model_name)?[x.model_brand,x.model_name].filter(Boolean).join(' '):'Sin modelo'}
                       </div>
                     </div>
@@ -384,20 +384,20 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                 display:'flex',alignItems:'stretch',
                 background:'#FFFFFF',
-                border:'1px solid #E5E7EB',borderRadius:14,
+                border:'1px solid var(--border)',borderRadius:14,
                 overflow:'hidden',
                 cursor:'pointer',
                 minHeight:148,
                 boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
                 transition:'box-shadow 0.15s, transform 0.15s, border-color 0.15s',
               }}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.08)';e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.borderColor='#D1D5DB';}}
-                onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor='#E5E7EB';}}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.08)';e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.borderColor='var(--border-strong)';}}
+                onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor='var(--border)';}}
               >
                 {/* FOTO — protagonista, 220px */}
                 <div style={{
                   width:220,flexShrink:0,
-                  background:`linear-gradient(135deg, ${stCfg.bg||'#F9FAFB'} 0%, #F3F4F6 100%)`,
+                  background:`linear-gradient(135deg, ${stCfg.bg||'var(--surface-muted)'} 0%, var(--surface-sunken) 100%)`,
                   overflow:'hidden',
                   display:'flex',alignItems:'center',justifyContent:'center',
                   position:'relative',
@@ -405,13 +405,13 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   {x.model_image ? (
                     <img src={x.model_image} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
                   ) : (
-                    <Ic.bike size={56} color={stCfg.c||'#D1D5DB'}/>
+                    <Ic.bike size={56} color={stCfg.c||'var(--border-strong)'}/>
                   )}
                   {/* Badge nº ficha encima de la foto */}
                   {x.num&&(
                     <span style={{
                       position:'absolute',top:8,left:8,
-                      fontSize:10,fontWeight:700,color:'#374151',
+                      fontSize:10,fontWeight:700,color:'var(--text-body)',
                       background:'rgba(255,255,255,0.92)',
                       padding:'3px 8px',borderRadius:6,
                       backdropFilter:'blur(4px)',
@@ -435,7 +435,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 }}>
                   {/* Fila 1: Nombre */}
                   <div style={{
-                    fontSize:17,fontWeight:700,color:'#111827',
+                    fontSize:17,fontWeight:700,color:'var(--text)',
                     whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
                     minWidth:0,letterSpacing:'-0.2px',
                   }}>
@@ -444,7 +444,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
                   {/* Fila 2: Modelo + año */}
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <span style={{fontSize:13,color:'#4B5563',fontWeight:600}}>
+                    <span style={{fontSize:13,color:'var(--text-muted)',fontWeight:600}}>
                       {x.model_brand&&x.model_name
                         ? `${x.model_brand} ${x.model_name}`
                         : <span style={{color:'#C4C9D4',fontWeight:500,fontStyle:'italic'}}>Sin modelo asignado</span>
@@ -486,8 +486,8 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       );
                     })()}
                     {x.source&&(
-                      <span style={{fontSize:11,color:'#6B7280',fontWeight:500,
-                        background:'#F9FAFB',padding:'3px 9px',borderRadius:99,border:'1px solid #F3F4F6'}}>
+                      <span style={{fontSize:11,color:'var(--text-subtle)',fontWeight:500,
+                        background:'var(--surface-muted)',padding:'3px 9px',borderRadius:99,border:'1px solid var(--surface-sunken)'}}>
                         {SRC[x.source]||x.source}
                       </span>
                     )}
@@ -539,19 +539,19 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   display:'flex',flexDirection:'column',
                   alignItems:'flex-end',justifyContent:'center',
                   padding:'16px 20px',flexShrink:0,gap:8,minWidth:150,
-                  borderLeft:'1px dashed #F3F4F6',
+                  borderLeft:'1px dashed var(--surface-sunken)',
                 }}>
                   <span style={{
                     fontSize:12,fontWeight:700,
                     padding:'5px 14px',borderRadius:99,
-                    background:stCfg.bg||'#F3F4F6',
-                    color:stCfg.c||'#6B7280',
+                    background:stCfg.bg||'var(--surface-sunken)',
+                    color:stCfg.c||'var(--text-subtle)',
                     whiteSpace:'nowrap',
-                    border:`1px solid ${stCfg.c||'#E5E7EB'}20`,
+                    border:`1px solid ${stCfg.c||'var(--border)'}20`,
                   }}>
                     {stCfg.l}
                   </span>
-                  <span style={{fontSize:11,color:'#9CA3AF',fontWeight:500}}>
+                  <span style={{fontSize:11,color:'var(--text-disabled)',fontWeight:500}}>
                     {fD(x.createdAt)}
                   </span>
                 </div>
@@ -561,7 +561,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                   <div style={{
                     display:'flex',alignItems:'center',
                     padding:'0 14px',flexShrink:0,
-                    borderLeft:'1px solid #F3F4F6',
+                    borderLeft:'1px solid var(--surface-sunken)',
                   }} onClick={e=>e.stopPropagation()}>
                     {reassigningId===x.id ? (
                       <div style={{display:'flex',alignItems:'center',gap:6}} onClick={e=>e.stopPropagation()}>

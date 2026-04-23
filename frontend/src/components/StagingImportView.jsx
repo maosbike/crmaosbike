@@ -94,7 +94,7 @@ export function StagingImportView() {
   const reset = () => { setStep('upload'); setBatchData(null); setResult(null); setEditingRow(null); };
 
   const MATCH_LABEL = { exact: 'Exacto', fuzzy: 'Parcial', new: 'Nuevo', ambiguous: 'Ambiguo', unknown: '—' };
-  const MATCH_COLOR = { exact: '#10B981', fuzzy: '#F59E0B', new: '#3B82F6', ambiguous: '#EF4444', unknown: '#6B7280' };
+  const MATCH_COLOR = { exact: '#10B981', fuzzy: '#F59E0B', new: '#3B82F6', ambiguous: '#EF4444', unknown: 'var(--text-subtle)' };
   const CAT_OPTS    = ['Commuter','Naked','Sport','Scooter','Adventure','Off-Road','Touring','Eléctrica','Big Bike','ATV','Cruiser'];
 
   return (
@@ -124,7 +124,7 @@ export function StagingImportView() {
           {step === 'done' && result && (
             <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#10B981', marginBottom: 6 }}>Publicado exitosamente</div>
-              <div style={{ fontSize: 12, color: '#6B7280' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>
                 {result.published} modelos actualizados · {result.created} modelos nuevos creados
                 {result.errors && result.errors.length > 0 && <span style={{ color: '#EF4444' }}> · {result.errors.length} errores</span>}
               </div>
@@ -135,14 +135,14 @@ export function StagingImportView() {
           {uploading
             ? <Loader label="Procesando PDF…"/>
             : (
-            <div style={{ ...S.card, border: '2px dashed #D1D5DB', textAlign: 'center', padding: '40px 24px', marginBottom: 16, background: '#FAFAFA', cursor: 'pointer' }}
+            <div style={{ ...S.card, border: '2px dashed var(--border-strong)', textAlign: 'center', padding: '40px 24px', marginBottom: 16, background: '#FAFAFA', cursor: 'pointer' }}
               onDragOver={e => e.preventDefault()} onDrop={handleDrop}
               onClick={() => document.getElementById('staging-file-input').click()}>
-              <Ic.upload size={32} color="#9CA3AF" style={{marginBottom:12}}/>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#1F2937' }}>
+              <Ic.upload size={32} color="var(--text-disabled)" style={{marginBottom:12}}/>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: 'var(--text-strong)' }}>
                 Arrastra el PDF de lista de precios aquí
               </div>
-              <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginBottom: 16 }}>
                 Formatos soportados: Honda · Yamaha (Yamaimport) · MMB (Keeway/Benelli/Benda/QJ) · Promobility
               </div>
               <label style={{ ...S.btn, cursor: 'pointer' }}>
@@ -153,8 +153,8 @@ export function StagingImportView() {
             </div>
             )}
 
-          <div style={{ ...S.card, background: '#F9FAFB', fontSize: 12, color: '#6B7280' }}>
-            El parser extrae automáticamente: <span style={{ color: '#1F2937', fontWeight: 500 }}>marca · modelo · categoría · precio lista · bono todo medio de pago</span>. Después puedes revisar y corregir cada fila antes de publicar.
+          <div style={{ ...S.card, background: 'var(--surface-muted)', fontSize: 12, color: 'var(--text-subtle)' }}>
+            El parser extrae automáticamente: <span style={{ color: 'var(--text-strong)', fontWeight: 500 }}>marca · modelo · categoría · precio lista · bono todo medio de pago</span>. Después puedes revisar y corregir cada fila antes de publicar.
           </div>
         </div>
       )}
@@ -170,20 +170,20 @@ export function StagingImportView() {
             {/* Resumen */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
               {[
-                { label: 'Total', val: batchData.rows.length, c: '#1F2937' },
+                { label: 'Total', val: batchData.rows.length, c: 'var(--text-strong)' },
                 { label: 'Válidos', val: validRows.length, c: '#10B981' },
                 { label: 'Con error', val: errorRows.length, c: '#EF4444' },
-                { label: 'Rechazados', val: rejectedRows.length, c: '#6B7280' },
+                { label: 'Rechazados', val: rejectedRows.length, c: 'var(--text-subtle)' },
               ].map(({ label, val, c }) => (
                 <div key={label} style={{ ...S.card, padding: '10px 16px', textAlign: 'center', minWidth: 80 }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: c }}>{val}</div>
-                  <div style={{ fontSize: 10, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>{label}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-subtle)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>{label}</div>
                 </div>
               ))}
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                 <button onClick={reset} style={S.btn2}>Cancelar</button>
                 <button onClick={handlePublish} disabled={publishing || validRows.length === 0}
-                  style={{ ...S.btn, background: validRows.length === 0 ? '#D1D5DB' : '#10B981', opacity: publishing ? 0.7 : 1 }}>
+                  style={{ ...S.btn, background: validRows.length === 0 ? 'var(--border-strong)' : '#10B981', opacity: publishing ? 0.7 : 1 }}>
                   {publishing ? 'Publicando...' : `Publicar ${validRows.length} modelos al catálogo`}
                 </button>
               </div>
@@ -193,9 +193,9 @@ export function StagingImportView() {
             <div style={{ ...S.card, padding: 0, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 700 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E5E7EB', background: '#F9FAFB' }}>
+                  <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-muted)' }}>
                     {['Estado','Marca','Modelo','Cat.','Precio lista','Bono','Match','Acciones'].map(h => (
-                      <th key={h} style={{ padding: '9px 10px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '9px 10px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -205,10 +205,10 @@ export function StagingImportView() {
                     const rejected = row.status === 'rejected';
                     const isEditing = editingRow === row.id;
                     return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #F3F4F6', opacity: rejected ? 0.4 : 1, background: isEditing ? '#FFF9F0' : 'transparent' }}>
+                      <tr key={row.id} style={{ borderBottom: '1px solid var(--surface-sunken)', opacity: rejected ? 0.4 : 1, background: isEditing ? '#FFF9F0' : 'transparent' }}>
                         <td style={{ padding: '8px 10px' }}>
                           {rejected
-                            ? <span style={{ fontSize: 10, color: '#6B7280' }}>Rechazado</span>
+                            ? <span style={{ fontSize: 10, color: 'var(--text-subtle)' }}>Rechazado</span>
                             : hasError
                             ? <span title={row.validation_errors.join('\n')} style={{ fontSize: 10, color: '#EF4444', cursor: 'help' }}>Error</span>
                             : <span style={{ fontSize: 10, color: '#10B981' }}>OK</span>
@@ -229,26 +229,26 @@ export function StagingImportView() {
                             <td/>
                             <td style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>
                               <button onClick={saveEdit} disabled={savingEdit} style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#10B981', color: '#ffffff', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>{savingEdit?'…':'OK'}</button>
-                              <button onClick={()=>setEditingRow(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 11, cursor: 'pointer' }}>×</button>
+                              <button onClick={()=>setEditingRow(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer' }}>×</button>
                             </td>
                           </>
                         ) : (
                           <>
                             <td style={{ padding: '8px 10px', fontWeight: 600 }}>{row.brand}</td>
                             <td style={{ padding: '8px 10px' }}>{row.commercial_name || row.model}</td>
-                            <td style={{ padding: '8px 10px', color: '#6B7280' }}>{row.category || '—'}</td>
+                            <td style={{ padding: '8px 10px', color: 'var(--text-subtle)' }}>{row.category || '—'}</td>
                             <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--brand)' }}>{row.price_list ? `$${row.price_list.toLocaleString('es-CL')}` : '—'}</td>
                             <td style={{ padding: '8px 10px', color: '#10B981' }}>{row.bonus ? `$${row.bonus.toLocaleString('es-CL')}` : '—'}</td>
                             <td style={{ padding: '8px 10px' }}>
-                              <span style={{ fontSize: 10, color: MATCH_COLOR[row.match_type] || '#6B7280' }}>
+                              <span style={{ fontSize: 10, color: MATCH_COLOR[row.match_type] || 'var(--text-subtle)' }}>
                                 {MATCH_LABEL[row.match_type] || '—'}
-                                {row.catalog_brand && row.match_type !== 'new' && <span style={{ color: '#6B7280', marginLeft: 4 }}>({row.catalog_brand} {row.catalog_model})</span>}
+                                {row.catalog_brand && row.match_type !== 'new' && <span style={{ color: 'var(--text-subtle)', marginLeft: 4 }}>({row.catalog_brand} {row.catalog_model})</span>}
                               </span>
                             </td>
                             <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                               {!rejected && (
                                 <>
-                                  <button onClick={() => startEdit(row)} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #D1D5DB', background: 'transparent', color: '#6B7280', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>Editar</button>
+                                  <button onClick={() => startEdit(row)} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>Editar</button>
                                   <button onClick={() => handleReject(row.id)} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#EF4444', fontSize: 11, cursor: 'pointer' }}>Rechazar</button>
                                 </>
                               )}
@@ -274,16 +274,16 @@ export function StagingImportView() {
               <div key={b.id} style={{ ...S.card, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{b.filename}</div>
-                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 2 }}>
                     {new Date(b.created_at).toLocaleDateString('es-CL')} · {b.uploaded_by_name}
                     {' · '}<span style={{ color: '#10B981' }}>{b.approved_rows} publicados</span>
                     {' · '}<span style={{ color: '#F59E0B' }}>{b.pending_rows} pendientes</span>
-                    {b.rejected_rows > 0 && <span style={{ color: '#6B7280' }}> · {b.rejected_rows} rechazados</span>}
+                    {b.rejected_rows > 0 && <span style={{ color: 'var(--text-subtle)' }}> · {b.rejected_rows} rechazados</span>}
                   </div>
                 </div>
                 <Bdg
                   l={b.status === 'published' ? 'Publicado' : b.status === 'partial' ? 'Parcial' : 'Pendiente'}
-                  c={b.status === 'published' ? '#10B981' : '#6B7280'}
+                  c={b.status === 'published' ? '#10B981' : 'var(--text-subtle)'}
                 />
                 {b.status !== 'published' && (
                   <button onClick={async () => {

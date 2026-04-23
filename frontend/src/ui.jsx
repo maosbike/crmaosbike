@@ -189,14 +189,14 @@ export const Ic={
 export const S={
   card:{
     background:'#FFFFFF',
-    border:'1px solid #E5E7EB',
+    border:'1px solid var(--border)',
     borderRadius:12,
     padding:16,
     boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
   },
   secCard:{
-    background:'#F9FAFB',
-    border:'1px solid #F3F4F6',
+    background:'var(--surface-muted)',
+    border:'1px solid var(--surface-sunken)',
     borderRadius:10,
     padding:14,
   },
@@ -219,8 +219,8 @@ export const S={
   },
   btn2:{
     background:'#FFFFFF',
-    color:'#374151',
-    border:'1px solid #D1D5DB',
+    color:'var(--text-body)',
+    border:'1px solid var(--border-strong)',
     borderRadius:8,
     padding:'8px 16px',
     fontSize:13,
@@ -236,7 +236,7 @@ export const S={
   },
   gh:{
     background:'transparent',
-    color:'#6B7280',
+    color:'var(--text-subtle)',
     border:'none',
     borderRadius:8,
     padding:'6px 10px',
@@ -250,11 +250,11 @@ export const S={
     fontFamily:'inherit',
   },
   inp:{
-    border:'1px solid #D1D5DB',
+    border:'1px solid var(--border-strong)',
     borderRadius:8,
     padding:'8px 12px',
     fontSize:13,
-    color:'#111827',
+    color:'var(--text)',
     background:'#FFFFFF',
     outline:'none',
     width:'100%',
@@ -265,7 +265,7 @@ export const S={
   lbl:{
     fontSize:11,
     fontWeight:600,
-    color:'#4B5563',
+    color:'var(--text-muted)',
     display:'block',
     marginBottom:5,
     letterSpacing:'0.01em',
@@ -276,14 +276,14 @@ S.btnSec = S.btn2;
 // S.lbl usa TY.label como base — sobreescribe solo las props de layout
 // No se puede definir con TY al inicio porque TY se declara después en el archivo.
 // Esta reasignación asegura coherencia con la escala tipográfica.
-S.lbl = { fontSize:11, fontWeight:600, lineHeight:1.3, color:'#4B5563', fontFamily:'inherit', display:'block', marginBottom:5, letterSpacing:'0.01em' };
+S.lbl = { fontSize:11, fontWeight:600, lineHeight:1.3, color:'var(--text-muted)', fontFamily:'inherit', display:'block', marginBottom:5, letterSpacing:'0.01em' };
 
 // Shared components
 export const Bdg=({l,c,bg,size})=>{
   const z=size==='sm'?{padding:"2px 7px",fontSize:9,borderRadius:8}:{padding:"3px 10px",fontSize:11,borderRadius:20};
   return <span style={{display:"inline-flex",...z,fontWeight:600,color:c,background:bg||`${c}18`,whiteSpace:"nowrap",fontFamily:'inherit'}}>{l}</span>;
 };
-export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}/>:<Bdg l={s} c="#6B7280"/>;};
+export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}/>:<Bdg l={s} c="var(--text-subtle)"/>;};
 export const PBdg=({p})=>{const x=PRIORITY[p];return x?<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,color:x.c}}><span style={{width:7,height:7,borderRadius:"50%",background:x.c}}/>{x.l}</span>:null;};
 // SlaBdg: muestra estado SLA en lenguaje comercial. fa = first_action_at (si existe, está atendido a tiempo → sin badge)
 export const SlaBdg=({s,fa})=>{if(!s||s==='normal'&&fa)return null;const x=SLA_STATUS[s];if(!x)return null;return<Bdg l={x.l} c={x.c} bg={x.bg}/>;};
@@ -294,25 +294,25 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
   const isAlert=al||alert||false;
   const fg=color||undefined;
   const cardBg=bg||(isAlert?bg:'#FFFFFF');
-  const cardBd=border||'#E5E7EB';
+  const cardBd=border||'var(--border)';
   return(
     <div style={{...S.card,display:"flex",flexDirection:"column",gap:4,
       background:isAlert?cardBg:'#FFFFFF',
-      border:`1px solid ${isAlert?cardBd:'#E5E7EB'}`,
+      border:`1px solid ${isAlert?cardBd:'var(--border)'}`,
       boxShadow:isAlert?`0 2px 8px ${cardBd}44`:'0 1px 4px rgba(0,0,0,0.06)',
       ...style,
     }}>
       {Ico&&ib&&(
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div>
-          <span style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.07em",fontWeight:700,fontFamily:'inherit'}}>{label}</span>
+          <span style={{fontSize:10,color:"var(--text-subtle)",textTransform:"uppercase",letterSpacing:"0.07em",fontWeight:700,fontFamily:'inherit'}}>{label}</span>
         </div>
       )}
       {(!Ico||!ib)&&label&&(
-        <div style={{fontSize:10,fontWeight:700,color:isAlert?fg:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.07em',fontFamily:'inherit'}}>{label}</div>
+        <div style={{fontSize:10,fontWeight:700,color:isAlert?fg:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.07em',fontFamily:'inherit'}}>{label}</div>
       )}
       <span style={{fontSize:24,fontWeight:800,color:isAlert?fg:fg||undefined,letterSpacing:'-0.02em',lineHeight:1,fontFamily:'inherit'}}>{v}</span>
-      {sub&&<span style={{fontSize:11,color:sc||"#6B7280",fontFamily:'inherit'}}>{sub}</span>}
+      {sub&&<span style={{fontSize:11,color:sc||"var(--text-subtle)",fontFamily:'inherit'}}>{sub}</span>}
     </div>
   );
 };
@@ -320,9 +320,9 @@ export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>(
   <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
     <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'#FFFFFF',borderRadius:16,width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
       {headerContent ? headerContent : (
-        <div style={{padding:'18px 20px 14px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <h2 style={{fontSize:15,fontWeight:700,color:'#111827',margin:0}}>{title}</h2>
-          {onClose&&<button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>}
+        <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--surface-sunken)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h2 style={{fontSize:15,fontWeight:700,color:'var(--text)',margin:0}}>{title}</h2>
+          {onClose&&<button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>}
         </div>
       )}
       <div style={{padding:'20px'}}>{children}</div>
@@ -354,14 +354,14 @@ export function ViewHeader({ preheader, title, subtitle, count, itemLabel='regis
   // size='md': TY.h1 en desktop, 16px en mobile. size='sm': 18px fijo.
   const titleStyle = size === 'md'
     ? (isMobile
-        ? { margin:0, fontSize:16, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit' }
-        : { margin:0, fontSize:20, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit', letterSpacing:'-0.02em' })
-    : { margin:0, fontSize:18, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit', letterSpacing:'-0.01em' };
+        ? { margin:0, fontSize:16, fontWeight:700, lineHeight:1.2, color:'var(--text)', fontFamily:'inherit' }
+        : { margin:0, fontSize:20, fontWeight:700, lineHeight:1.2, color:'var(--text)', fontFamily:'inherit', letterSpacing:'-0.02em' })
+    : { margin:0, fontSize:18, fontWeight:700, lineHeight:1.2, color:'var(--text)', fontFamily:'inherit', letterSpacing:'-0.01em' };
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: isMobile ? 16 : 24 }}>
       <div style={{ minWidth: 0, flex: '1 1 auto' }}>
         {preheader && (
-          <p style={{ margin: '0 0 3px', fontSize:10, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:'inherit' }}>
+          <p style={{ margin: '0 0 3px', fontSize:10, fontWeight:700, color:'var(--text-disabled)', letterSpacing:'0.08em', textTransform:'uppercase', fontFamily:'inherit' }}>
             {preheader}
           </p>
         )}
@@ -369,7 +369,7 @@ export function ViewHeader({ preheader, title, subtitle, count, itemLabel='regis
           {title}
         </h1>
         {sub && (
-          <p style={{ margin: '3px 0 0', fontSize:13, fontWeight:500, color:'#6B7280', fontFamily:'inherit' }}>
+          <p style={{ margin: '3px 0 0', fontSize:13, fontWeight:500, color:'var(--text-subtle)', fontFamily:'inherit' }}>
             {sub}
           </p>
         )}
@@ -461,12 +461,12 @@ export function Loader({ label='Cargando…' }) {
 export const selectCtrl = {
   height:34, border:'1px solid #E2E8F0', borderRadius:8,
   fontSize:12.5, fontWeight:500, padding:'0 10px', background:'#fff',
-  color:'#0F172A', outline:'none', cursor:'pointer',
+  color:'var(--text)', outline:'none', cursor:'pointer',
   fontFamily:'inherit',
 };
 
 export const filterLabel = {
-  fontSize:9, fontWeight:700, color:'#9CA3AF',
+  fontSize:9, fontWeight:700, color:'var(--text-disabled)',
   textTransform:'uppercase', letterSpacing:'0.08em',
   marginBottom:3, display:'block',
 };
@@ -547,27 +547,27 @@ export const TY = {
   kpiSm: { fontSize:20, fontWeight:700, lineHeight:1, letterSpacing:'-0.01em', fontFamily:'inherit' },
 
   // Títulos de vista y sección
-  h1:    { fontSize:20, fontWeight:700, lineHeight:1.2, color:'#111827', fontFamily:'inherit' },
-  h2:    { fontSize:15, fontWeight:700, lineHeight:1.3, color:'#111827', fontFamily:'inherit' },
-  h3:    { fontSize:13, fontWeight:600, lineHeight:1.4, color:'#374151', fontFamily:'inherit' },
+  h1:    { fontSize:20, fontWeight:700, lineHeight:1.2, color:'var(--text)', fontFamily:'inherit' },
+  h2:    { fontSize:15, fontWeight:700, lineHeight:1.3, color:'var(--text)', fontFamily:'inherit' },
+  h3:    { fontSize:13, fontWeight:600, lineHeight:1.4, color:'var(--text-body)', fontFamily:'inherit' },
 
   // Texto de contenido
-  body:  { fontSize:13, fontWeight:400, lineHeight:1.5, color:'#374151', fontFamily:'inherit' },
-  bodyB: { fontSize:13, fontWeight:600, lineHeight:1.5, color:'#111827', fontFamily:'inherit' },
+  body:  { fontSize:13, fontWeight:400, lineHeight:1.5, color:'var(--text-body)', fontFamily:'inherit' },
+  bodyB: { fontSize:13, fontWeight:600, lineHeight:1.5, color:'var(--text)', fontFamily:'inherit' },
 
   // Labels de campo y texto de tabla
-  label: { fontSize:11, fontWeight:600, lineHeight:1.3, color:'#4B5563', fontFamily:'inherit' },
-  meta:  { fontSize:11, fontWeight:400, lineHeight:1.3, color:'#6B7280', fontFamily:'inherit' },
+  label: { fontSize:11, fontWeight:600, lineHeight:1.3, color:'var(--text-muted)', fontFamily:'inherit' },
+  meta:  { fontSize:11, fontWeight:400, lineHeight:1.3, color:'var(--text-subtle)', fontFamily:'inherit' },
 
   // Headers de tabla, badges, labels de grupo en uppercase
-  micro: { fontSize:10, fontWeight:700, lineHeight:1.2, color:'#9CA3AF',
+  micro: { fontSize:10, fontWeight:700, lineHeight:1.2, color:'var(--text-disabled)',
            textTransform:'uppercase', letterSpacing:'0.08em', fontFamily:'inherit' },
 };
 
 export function AccordionSection({ title, icon, isOpen, onToggle, children }) {
   return (
     <div style={{
-      border:'1px solid #F3F4F6', borderRadius:10,
+      border:'1px solid var(--surface-sunken)', borderRadius:10,
       marginBottom:8, overflow:'hidden',
     }}>
       <button
@@ -577,18 +577,18 @@ export function AccordionSection({ title, icon, isOpen, onToggle, children }) {
           width:'100%', display:'flex', alignItems:'center',
           justifyContent:'space-between',
           padding:'10px 14px',
-          background: isOpen ? '#F9FAFB' : '#FFFFFF',
+          background: isOpen ? 'var(--surface-muted)' : '#FFFFFF',
           border:'none', cursor:'pointer', textAlign:'left',
-          borderBottom: isOpen ? '1px solid #F3F4F6' : 'none',
+          borderBottom: isOpen ? '1px solid var(--surface-sunken)' : 'none',
           fontFamily:'inherit',
         }}
       >
         <div style={{display:'flex', alignItems:'center', gap:8}}>
-          {icon && <span style={{color:'#9CA3AF', fontSize:14}}>{icon}</span>}
-          <span style={{fontSize:13, fontWeight:600, color:'#374151'}}>{title}</span>
+          {icon && <span style={{color:'var(--text-disabled)', fontSize:14}}>{icon}</span>}
+          <span style={{fontSize:13, fontWeight:600, color:'var(--text-body)'}}>{title}</span>
         </div>
         <span style={{
-          fontSize:11, color:'#9CA3AF',
+          fontSize:11, color:'var(--text-disabled)',
           display:'inline-block',
           transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
           transition:'transform 0.2s',

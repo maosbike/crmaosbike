@@ -279,7 +279,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     position: fixed; left: 0; right: 0; bottom: 0;
     height: 60px;
     background: #FFFFFF;
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid var(--border);
     z-index: var(--z-bottom-nav);
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
@@ -325,6 +325,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
 /* Scrollbar global — más discreta */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
-* { scrollbar-width: thin; scrollbar-color: #D1D5DB transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-disabled); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }

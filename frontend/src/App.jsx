@@ -130,7 +130,7 @@ export default function App(){
     if(pending.length>0)setShowOverdueModal(true);
   },[page,leads]);
 
-  if(sessionLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F9FAFB"}}><img src="/logo.png" alt="MaosBike" style={{height:48,opacity:0.5}}/></div>;
+  if(sessionLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--surface-muted)"}}><img src="/logo.png" alt="MaosBike" style={{height:48,opacity:0.5}}/></div>;
   if(!user)return<Login onLogin={setUser}/>;
   if(user.forceChange)return<ForceChangeView user={user} onChanged={u=>{setUser(u);}}/>;
 
@@ -232,11 +232,11 @@ export default function App(){
   ];
 
   return(
-    <div style={{display:"flex",height:"100vh",background:"#F9FAFB",color:"#111827",fontFamily:"'Inter',system-ui,sans-serif",fontSize:14,overflow:"hidden"}}>
+    <div style={{display:"flex",height:"100vh",background:"var(--surface-muted)",color:"var(--text)",fontFamily:"'Inter',system-ui,sans-serif",fontSize:14,overflow:"hidden"}}>
       <MobileDrawer open={drawerOpen} onClose={()=>setDrawerOpen(false)} items={items} page={page} nav={(pg,lid)=>{setDrawerOpen(false);nav(pg,lid);}} user={user} onChangePw={()=>{setDrawerOpen(false);setShowChangePw(true);}} onLogout={handleLogout}/>
-      <aside className="crm-sidebar" style={{width:220,minWidth:220,height:'100vh',background:'#FFFFFF',borderRight:'1px solid #E5E7EB',display:'flex',flexDirection:'column',overflow:'hidden',flexShrink:0}}>
+      <aside className="crm-sidebar" style={{width:220,minWidth:220,height:'100vh',background:'#FFFFFF',borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',overflow:'hidden',flexShrink:0}}>
         <button onClick={()=>nav('dashboard')} title="Ir al dashboard"
-          style={{height:72,display:'flex',alignItems:'center',justifyContent:'flex-start',padding:'0 20px',borderBottom:'1px solid #F3F4F6',flexShrink:0,background:'transparent',border:'none',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'#F3F4F6',cursor:'pointer',width:'100%',fontFamily:'inherit'}}>
+          style={{height:72,display:'flex',alignItems:'center',justifyContent:'flex-start',padding:'0 20px',borderBottom:'1px solid var(--surface-sunken)',flexShrink:0,background:'transparent',border:'none',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--surface-sunken)',cursor:'pointer',width:'100%',fontFamily:'inherit'}}>
           <img src="/logo.png" alt="MaosBike" style={{height:44,objectFit:'contain'}}
             onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
           />
@@ -259,14 +259,14 @@ export default function App(){
                       padding:'8px 12px 8px 16px',marginBottom:1,
                       borderRadius:8,
                       background:act?'var(--brand-soft)':'transparent',
-                      color:act?'#C2680A':'#4B5563',
+                      color:act?'#C2680A':'var(--text-muted)',
                       fontSize:13,fontWeight:act?600:500,
                       border:'none',cursor:'pointer',width:'100%',textAlign:'left',
                       userSelect:'none',fontFamily:'inherit',
                       position:'relative',
                     }}>
                       {act&&<div style={{position:'absolute',left:0,top:'50%',transform:'translateY(-50%)',width:3,height:20,background:'var(--brand)',borderRadius:'0 3px 3px 0'}}/>}
-                      <it.icon size={15} color={act?'#C2680A':'#4B5563'}/>
+                      <it.icon size={15} color={act?'#C2680A':'var(--text-muted)'}/>
                       {it.label}
                     </button>
                   );
@@ -275,7 +275,7 @@ export default function App(){
             );
           })}
         </nav>
-        <div style={{padding:'12px 14px',borderTop:'1px solid #F3F4F6',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div style={{padding:'12px 14px',borderTop:'1px solid var(--surface-sunken)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
           <div style={{width:30,height:30,borderRadius:'50%',background:'var(--brand-soft)',color:'#C2680A',fontWeight:700,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'inherit'}}>
             {(user.fn[0]+(user.ln&&user.ln!=='-'?user.ln[0]:'')).toUpperCase()}
           </div>
@@ -283,21 +283,21 @@ export default function App(){
             <div style={{...TY.bodyB,fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.fn} {user.ln&&user.ln!=='-'?user.ln:''}</div>
             <div style={{...TY.meta,fontSize:10,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.branchName||user.role}</div>
           </div>
-          <button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="#6B7280"/></button>
-          <button onClick={handleLogout} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="#6B7280"/></button>
+          <button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="var(--text-subtle)"/></button>
+          <button onClick={handleLogout} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="var(--text-subtle)"/></button>
         </div>
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
-        <header className="crm-mobile-hdr" style={{display:"none",height:64,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid #E5E7EB",background:"#FFFFFF",flexShrink:0,gap:10}}>
+        <header className="crm-mobile-hdr" style={{display:"none",height:64,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid var(--border)",background:"#FFFFFF",flexShrink:0,gap:10}}>
           <button onClick={()=>nav('dashboard')} title="Ir al dashboard"
             style={{display:"flex",alignItems:"center",gap:8,background:'transparent',border:'none',padding:0,cursor:'pointer',fontFamily:'inherit'}}>
             <img src="/logo.png" alt="MaosBike" style={{height:36}}/>
-            <span style={{fontSize:12,fontWeight:600,color:"#6B7280"}}>CRM</span>
+            <span style={{fontSize:12,fontWeight:600,color:"var(--text-subtle)"}}>CRM</span>
           </button>
           <NotifBell nav={nav}/>
         </header>
-        <header className="crm-desktop-hdr" style={{height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',background:'#FFFFFF',borderBottom:'1px solid #E5E7EB',flexShrink:0}}>
-          <span style={{...TY.h3,color:'#6B7280'}}>{getCurrentPageLabel(page)}</span>
+        <header className="crm-desktop-hdr" style={{height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',background:'#FFFFFF',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+          <span style={{...TY.h3,color:'var(--text-subtle)'}}>{getCurrentPageLabel(page)}</span>
           <div style={{display:'flex',alignItems:'center',gap:8}}><NotifBell nav={nav}/></div>
         </header>
         <main className="crm-scroll-area" style={{flex:1,overflow:"auto",padding:"16px 20px"}}>

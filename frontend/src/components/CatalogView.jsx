@@ -3,14 +3,14 @@ import { api } from '../services/api';
 import { ColorPicker } from './ColorPicker.jsx';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, CAT_COLOR, ViewHeader, colorNameToCss, useIsMobile, Empty, Loader, ErrorMsg, hasRole, ROLES } from '../ui.jsx';
 
-function catColor(c){return CAT_COLOR[c]||"#4B5563";}
+function catColor(c){return CAT_COLOR[c]||"var(--text-muted)";}
 
 const BONO_CONDICION={
   todo_medio_pago:     {l:"Todo medio de pago",     c:"#10B981"},
   solo_financiamiento: {l:"Solo financiamiento",     c:"#8B5CF6"},
   solo_autofin:        {l:"Solo Autofin",             c:"var(--brand)"},
   contado_transferencia:{l:"Contado / Transferencia", c:"#3B82F6"},
-  otro:                {l:"Otro (ver requisitos)",    c:"#6B7280"},
+  otro:                {l:"Otro (ver requisitos)",    c:"var(--text-subtle)"},
 };
 // Devuelve el label de condición dado el valor guardado
 function bonoCondLabel(condicion){
@@ -21,17 +21,17 @@ function bonoCondColor(condicion){
 }
 
 // Resolver color CSS: usa colorNameToCss de ui.jsx (fuente única).
-// Retorna null cuando no hay match (el fallback de colorNameToCss es '#9CA3AF',
+// Retorna null cuando no hay match (el fallback de colorNameToCss es 'var(--text-disabled)',
 // así que lo convertimos a null para mantener la semántica de "sin color conocido").
 function colorToCss(name){
   if(!name) return null;
   const r=colorNameToCss(name);
-  return r==='#9CA3AF'?null:r;
+  return r==='var(--text-disabled)'?null:r;
 }
 // Dado un CSS de fondo, devuelve si es "claro" (necesita texto oscuro)
 function isLightColor(css){
   if(!css) return false;
-  const light=['#F9FAFB','#F9FAFB','#F0EDE8','#E8E0D0','#FEF3C7','#E5E7EB','#D1D5DB','#D1D5DB','#D4B896'];
+  const light=['var(--surface-muted)','var(--surface-muted)','#F0EDE8','#E8E0D0','#FEF3C7','var(--border)','var(--border-strong)','var(--border-strong)','#D4B896'];
   return light.includes(css);
 }
 
@@ -68,14 +68,14 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
   const[colorPhotoUploading,setColorPhotoUploading]=useState(null);
   const[colorInput,setColorInput]=useState("");
   const[activeColor,setActiveColor]=useState(null);
-  const[newColorHex,setNewColorHex]=useState('#111827');
+  const[newColorHex,setNewColorHex]=useState('var(--text)');
   const[showNewPicker,setShowNewPicker]=useState(false);
-  const[activeColorHex,setActiveColorHex]=useState('#111827');
+  const[activeColorHex,setActiveColorHex]=useState('var(--text)');
   const[savingHex,setSavingHex]=useState(false);
   const MAX_GALLERY=8;
   // Sync hex picker cuando cambia el color activo
   useEffect(()=>{
-    if(activeColor){const d=getColorData(activeColor);setActiveColorHex(d?.hex||colorToCss(activeColor)||'#111827');}
+    if(activeColor){const d=getColorData(activeColor);setActiveColorHex(d?.hex||colorToCss(activeColor)||'var(--text)');}
   },[activeColor,m.color_photos]);
 
   // Foto que se muestra en el header: la del color activo (con fallback al modelo)
@@ -211,13 +211,13 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
 
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:680,maxHeight:"92vh",overflowY:"auto",border:"1px solid #E5E7EB",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:680,maxHeight:"92vh",overflowY:"auto",border:"1px solid var(--border)",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
         {/* Header imagen — cambia según color seleccionado */}
-        <div style={{position:"relative",height:260,background:"linear-gradient(180deg,#FAFAFA 0%,#F3F4F6 100%)",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{position:"relative",height:260,background:"linear-gradient(180deg,#FAFAFA 0%,var(--surface-sunken) 100%)",borderRadius:"16px 16px 0 0",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
           {displayPhoto
             ?<img key={displayPhoto} src={displayPhoto} alt={m.model}
                 style={{maxWidth:"calc(100% - 48px)",maxHeight:"calc(100% - 40px)",width:"auto",height:"auto",display:"block",objectFit:"contain",transition:"opacity 0.2s"}}/>
-            :<div style={{color:"#D1D5DB",fontSize:13,fontWeight:500,letterSpacing:"0.05em"}}>SIN IMAGEN</div>
+            :<div style={{color:"var(--border-strong)",fontSize:13,fontWeight:500,letterSpacing:"0.05em"}}>SIN IMAGEN</div>
           }
           {/* Badge del color activo */}
           {activeColor&&(
@@ -228,36 +228,36 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           )}
           {/* Botón cambiar foto principal (solo sin color activo) */}
           {canEdit&&!activeColor&&(
-            <label style={{position:"absolute",bottom:14,right:14,background:"rgba(255,255,255,0.95)",border:"1px solid #D1D5DB",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",color:"#374151",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>
+            <label style={{position:"absolute",bottom:14,right:14,background:"rgba(255,255,255,0.95)",border:"1px solid var(--border-strong)",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",color:"var(--text-body)",boxShadow:"0 2px 8px rgba(0,0,0,0.08)"}}>
               {imgUploading?"Subiendo…":"Cambiar foto"}
               <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>e.target.files[0]&&uploadMainImg(e.target.files[0])}/>
             </label>
           )}
-          <button onClick={onClose} style={{position:"absolute",top:12,right:12,background:"rgba(255,255,255,0.95)",border:"none",borderRadius:20,width:32,height:32,color:"#374151",cursor:"pointer",fontSize:18,lineHeight:"32px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.1)"}}>×</button>
+          <button onClick={onClose} style={{position:"absolute",top:12,right:12,background:"rgba(255,255,255,0.95)",border:"none",borderRadius:20,width:32,height:32,color:"var(--text-body)",cursor:"pointer",fontSize:18,lineHeight:"32px",textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.1)"}}>×</button>
         </div>
 
         <div style={{padding:"22px 24px"}}>
           {errMsg&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}><ErrorMsg msg={errMsg}/><button onClick={()=>setErrMsg('')} style={{background:'none',border:'none',color:'#DC2626',cursor:'pointer',fontSize:16,lineHeight:1,padding:'0 4px',marginLeft:8,flexShrink:0}}>×</button></div>}
           {/* Identidad: marca + categoría */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-            <div style={{fontSize:10,color:"#9CA3AF",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.14em"}}>{m.brand}</div>
+            <div style={{fontSize:10,color:"var(--text-disabled)",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.14em"}}>{m.brand}</div>
             {m.category&&<span style={{fontSize:10,padding:"3px 10px",borderRadius:10,background:catColor(m.category)+"18",color:catColor(m.category),fontWeight:700,border:`1px solid ${catColor(m.category)}33`,letterSpacing:"0.02em"}}>{m.category}</span>}
           </div>
 
           {/* Nombre comercial */}
-          <div style={{fontSize:24,fontWeight:800,lineHeight:1.15,marginBottom:m.commercial_name&&m.commercial_name!==m.model?2:16,letterSpacing:"-0.015em",color:"#0F172A"}}>{m.commercial_name||m.model}</div>
-          {m.commercial_name&&m.commercial_name!==m.model&&<div style={{fontSize:12,color:"#9CA3AF",marginBottom:16,fontWeight:500}}>{m.model}</div>}
+          <div style={{fontSize:24,fontWeight:800,lineHeight:1.15,marginBottom:m.commercial_name&&m.commercial_name!==m.model?2:16,letterSpacing:"-0.015em",color:"var(--text)"}}>{m.commercial_name||m.model}</div>
+          {m.commercial_name&&m.commercial_name!==m.model&&<div style={{fontSize:12,color:"var(--text-disabled)",marginBottom:16,fontWeight:500}}>{m.model}</div>}
 
           {/* Price bar — precio lista · bono · precio final */}
           {m.price>0&&(()=>{
             const hasBono=m.bonus>0&&m.bonus<m.price;
             const finalPrice=hasBono?m.price-m.bonus:m.price;
-            const condColor=hasBono?bonoCondColor(m.bono_condicion):"#111827";
+            const condColor=hasBono?bonoCondColor(m.bono_condicion):"var(--text)";
             return(
-              <div style={{display:"flex",alignItems:"stretch",gap:1,marginBottom:14,border:"1px solid #E5E7EB",borderRadius:10,overflow:"hidden",background:"#E5E7EB"}}>
+              <div style={{display:"flex",alignItems:"stretch",gap:1,marginBottom:14,border:"1px solid var(--border)",borderRadius:10,overflow:"hidden",background:"var(--surface-sunken)"}}>
                 <div style={{flex:1,background:"#FFFFFF",padding:"10px 14px"}}>
-                  <div style={{fontSize:9,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Precio lista</div>
-                  <div style={{fontSize:16,fontWeight:800,color:"#374151",textDecoration:hasBono?"line-through":"none",textDecorationColor:"#CBD5E1"}}>{fmt(m.price)}</div>
+                  <div style={{fontSize:9,color:"var(--text-disabled)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Precio lista</div>
+                  <div style={{fontSize:16,fontWeight:800,color:"var(--text-body)",textDecoration:hasBono?"line-through":"none",textDecorationColor:"#CBD5E1"}}>{fmt(m.price)}</div>
                 </div>
                 {hasBono&&(
                   <div style={{flex:1.2,background:condColor,padding:"10px 14px",color:"#FFFFFF"}}>
@@ -271,11 +271,11 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
 
           {/* Chips de specs */}
           <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-            {m.year&&<span style={{background:"#F3F4F6",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:600,color:"#374151"}}>
-              <span style={{color:"#9CA3AF",marginRight:5}}>Año</span>{m.year}
+            {m.year&&<span style={{background:"var(--surface-sunken)",border:"1px solid var(--border)",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:600,color:"var(--text-body)"}}>
+              <span style={{color:"var(--text-disabled)",marginRight:5}}>Año</span>{m.year}
             </span>}
-            {specInfo&&specInfo!=="—"&&<span style={{background:"#F3F4F6",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:600,color:"#374151"}}>
-              <span style={{color:"#9CA3AF",marginRight:5}}>Cilindrada</span>{specInfo}
+            {specInfo&&specInfo!=="—"&&<span style={{background:"var(--surface-sunken)",border:"1px solid var(--border)",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:600,color:"var(--text-body)"}}>
+              <span style={{color:"var(--text-disabled)",marginRight:5}}>Cilindrada</span>{specInfo}
             </span>}
           </div>
 
@@ -290,23 +290,23 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                   <span style={{fontSize:10,fontWeight:800,color:condColor,background:condColor+"1A",padding:"3px 9px",borderRadius:10,textTransform:"uppercase",letterSpacing:"0.04em"}}>
                     {condLabel}
                   </span>
-                  <span style={{color:"#374151",fontWeight:600}}>
+                  <span style={{color:"var(--text-body)",fontWeight:600}}>
                     {m.bono_tipo?`${m.bono_tipo}: `:"Bono "}
                     <span style={{color:condColor,fontWeight:700}}>{fmt(m.bonus)}</span>
                   </span>
                 </div>
-                {m.bono_requisitos&&<div style={{marginTop:6,fontSize:11,color:"#6B7280",lineHeight:1.45}}>{m.bono_requisitos}</div>}
+                {m.bono_requisitos&&<div style={{marginTop:6,fontSize:11,color:"var(--text-subtle)",lineHeight:1.45}}>{m.bono_requisitos}</div>}
               </div>
             );
           })()}
 
           {/* ════ COLORES — siempre visible, interactivo ════ */}
           {(colors.length>0||canEdit)&&(
-            <div style={{marginBottom:16,borderTop:"1px solid #F3F4F6",paddingTop:14}}>
+            <div style={{marginBottom:16,borderTop:"1px solid var(--surface-sunken)",paddingTop:14}}>
 
               {/* Título + input para agregar */}
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                <div style={{fontSize:10,color:"var(--text-subtle)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>
                   Colores{colors.length>0&&` · ${colors.length}`}
                 </div>
                 {canEdit&&(
@@ -314,7 +314,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                     <div style={{display:"flex",gap:5}}>
                       {/* Swatch del hex seleccionado para el nuevo color */}
                       <button type="button" onClick={()=>setShowNewPicker(p=>!p)} title="Elegir tono"
-                        style={{width:26,height:26,borderRadius:6,background:newColorHex,border:"1.5px solid #E5E7EB",cursor:"pointer",flexShrink:0}}/>
+                        style={{width:26,height:26,borderRadius:6,background:newColorHex,border:"1.5px solid var(--border)",cursor:"pointer",flexShrink:0}}/>
                       <input value={colorInput} onChange={e=>setColorInput(e.target.value)}
                         onKeyDown={e=>e.key==="Enter"&&addColorImmediate()}
                         placeholder="+ nuevo color"
@@ -325,8 +325,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                       </button>
                     </div>
                     {showNewPicker&&(
-                      <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"10px 12px"}}>
-                        <div style={{fontSize:10,color:"#6B7280",marginBottom:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>Tono del color</div>
+                      <div style={{background:"var(--surface-muted)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 12px"}}>
+                        <div style={{fontSize:10,color:"var(--text-subtle)",marginBottom:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>Tono del color</div>
                         <ColorPicker value={newColorHex} onChange={setNewColorHex}/>
                       </div>
                     )}
@@ -349,8 +349,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                           title={c}
                           style={{
                             width:44,height:44,borderRadius:22,padding:0,cursor:"pointer",
-                            background:css||"#E5E7EB",
-                            border:isActive?"3px solid var(--brand)":`2px solid ${!css?"#D1D5DB":light?"#D1D5DB":"rgba(0,0,0,0.18)"}`,
+                            background:css||"var(--border)",
+                            border:isActive?"3px solid var(--brand)":`2px solid ${!css?"var(--border-strong)":light?"var(--border-strong)":"rgba(0,0,0,0.18)"}`,
                             boxShadow:isActive?"0 0 0 2px #FFFFFF,0 0 0 4px var(--brand)":"0 1px 4px rgba(0,0,0,0.15)",
                             transition:"all 0.12s",
                             position:"relative",
@@ -360,13 +360,13 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                             <span style={{position:"absolute",bottom:1,right:1,width:10,height:10,borderRadius:5,background:"#10B981",border:"2px solid #ffffff",display:"block"}}/>
                           )}
                         </button>
-                        <span style={{fontSize:9,fontWeight:isActive?700:500,color:isActive?"var(--brand)":"#6B7280",textAlign:"center",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        <span style={{fontSize:9,fontWeight:isActive?700:500,color:isActive?"var(--brand)":"var(--text-subtle)",textAlign:"center",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                           {c}
                         </span>
                         {/* × quitar color (solo admin) */}
                         {canEdit&&(
                           <button onClick={()=>removeColorImmediate(c)} title="Quitar color"
-                            style={{position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",background:"#374151",border:"2px solid #ffffff",color:"#ffffff",cursor:"pointer",fontSize:9,lineHeight:"11px",textAlign:"center",padding:0,opacity:0.8}}>
+                            style={{position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",background:"var(--text-body)",border:"2px solid #ffffff",color:"#ffffff",cursor:"pointer",fontSize:9,lineHeight:"11px",textAlign:"center",padding:0,opacity:0.8}}>
                             ×
                           </button>
                         )}
@@ -383,26 +383,26 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 const hexVal=getColorData(activeColor)?.hex||null;
                 const light=isLightColor(css);
                 return(
-                  <div style={{background:"#F9FAFB",border:"1.5px solid #E5E7EB",borderRadius:12,padding:"12px 14px",display:"flex",flexDirection:"column",gap:12}}>
+                  <div style={{background:"var(--surface-muted)",border:"1.5px solid var(--border)",borderRadius:12,padding:"12px 14px",display:"flex",flexDirection:"column",gap:12}}>
                     {/* Fila superior: foto + info */}
                     <div style={{display:"flex",gap:14,alignItems:"center"}}>
                       <div style={{flexShrink:0}}>
                         {photoUrl
                           ?<img src={photoUrl} alt={activeColor}
-                              style={{width:90,height:66,objectFit:"cover",borderRadius:10,border:"1.5px solid #E5E7EB",display:"block",cursor:"pointer"}}
+                              style={{width:90,height:66,objectFit:"cover",borderRadius:10,border:"1.5px solid var(--border)",display:"block",cursor:"pointer"}}
                               onClick={()=>window.open(photoUrl,'_blank')}/>
-                          :<div style={{width:90,height:66,borderRadius:10,background:css||"#F3F4F6",border:`1.5px dashed ${css?"rgba(0,0,0,0.15)":"#D1D5DB"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:0.6}}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?"#ffffff":"#9CA3AF"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                          :<div style={{width:90,height:66,borderRadius:10,background:css||"var(--surface-sunken)",border:`1.5px dashed ${css?"rgba(0,0,0,0.15)":"var(--border-strong)"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:0.6}}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?"#ffffff":"var(--text-disabled)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                             </div>
                         }
                       </div>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
-                          {css&&<span style={{width:14,height:14,borderRadius:7,background:css,border:`1.5px solid ${light?"#D1D5DB":"rgba(0,0,0,0.15)"}`,display:"inline-block",flexShrink:0}}/>}
-                          <span style={{fontSize:13,fontWeight:700,color:"#111827"}}>{activeColor}</span>
-                          {hexVal&&<span style={{fontSize:10,color:"#9CA3AF",fontFamily:'inherit'}}>{hexVal}</span>}
+                          {css&&<span style={{width:14,height:14,borderRadius:7,background:css,border:`1.5px solid ${light?"var(--border-strong)":"rgba(0,0,0,0.15)"}`,display:"inline-block",flexShrink:0}}/>}
+                          <span style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>{activeColor}</span>
+                          {hexVal&&<span style={{fontSize:10,color:"var(--text-disabled)",fontFamily:'inherit'}}>{hexVal}</span>}
                         </div>
-                        <div style={{fontSize:10,color:"#9CA3AF",marginBottom:canEdit?8:0}}>
+                        <div style={{fontSize:10,color:"var(--text-disabled)",marginBottom:canEdit?8:0}}>
                           {photoUrl?"Foto específica de este color":"Sin foto — muestra la imagen general del modelo"}
                         </div>
                         {canEdit&&(
@@ -414,7 +414,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                             </label>
                             {photoUrl&&colorPhotoUploading!==activeColor&&(
                               <button onClick={()=>handleRemoveColorPhoto(activeColor)}
-                                style={{fontSize:11,color:"#9CA3AF",cursor:"pointer",border:"1px solid #E5E7EB",borderRadius:7,padding:"5px 10px",background:"transparent"}}>
+                                style={{fontSize:11,color:"var(--text-disabled)",cursor:"pointer",border:"1px solid var(--border)",borderRadius:7,padding:"5px 10px",background:"transparent"}}>
                                 Quitar foto
                               </button>
                             )}
@@ -424,11 +424,11 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                     </div>
                     {/* Fila inferior: color picker para el hex */}
                     {canEdit&&(
-                      <div style={{borderTop:"1px solid #F3F4F6",paddingTop:10}}>
-                        <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Tono visual</div>
+                      <div style={{borderTop:"1px solid var(--surface-sunken)",paddingTop:10}}>
+                        <div style={{fontSize:10,color:"var(--text-subtle)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Tono visual</div>
                         <ColorPicker value={activeColorHex} onChange={setActiveColorHex}/>
                         <button type="button" onClick={saveActiveColorHex} disabled={savingHex}
-                          style={{marginTop:8,height:28,padding:"0 14px",borderRadius:7,border:"none",background:"#111827",color:"#ffffff",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                          style={{marginTop:8,height:28,padding:"0 14px",borderRadius:7,border:"none",background:"var(--text)",color:"#ffffff",fontSize:11,fontWeight:700,cursor:"pointer"}}>
                           {savingHex?"Guardando…":"Guardar tono"}
                         </button>
                       </div>
@@ -438,7 +438,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               })()}
 
               {colors.length===0&&canEdit&&(
-                <div style={{fontSize:11,color:"#9CA3AF",fontStyle:"italic"}}>Sin colores. Agrega el primero arriba.</div>
+                <div style={{fontSize:11,color:"var(--text-disabled)",fontStyle:"italic"}}>Sin colores. Agrega el primero arriba.</div>
               )}
             </div>
           )}
@@ -446,8 +446,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {/* Descripción */}
           {!editing&&m.description&&(
             <div style={{marginBottom:14}}>
-              <div style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",fontWeight:600,marginBottom:4}}>Descripción</div>
-              <div style={{fontSize:13,color:"#4B5563",lineHeight:1.5}}>{m.description}</div>
+              <div style={{fontSize:10,color:"var(--text-subtle)",textTransform:"uppercase",fontWeight:600,marginBottom:4}}>Descripción</div>
+              <div style={{fontSize:13,color:"var(--text-muted)",lineHeight:1.5}}>{m.description}</div>
             </div>
           )}
 
@@ -461,7 +461,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                 </a>
               )}
               {canEdit&&(
-                <label style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"#6B7280",cursor:"pointer",border:"1px solid #E5E7EB",borderRadius:8,padding:"5px 11px",background:"#F9FAFB"}}>
+                <label style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:"var(--text-subtle)",cursor:"pointer",border:"1px solid var(--border)",borderRadius:8,padding:"5px 11px",background:"var(--surface-muted)"}}>
                   {specUploading?"Subiendo…":(m.spec_url?"Reemplazar PDF":"Subir PDF")}
                   <input type="file" accept="application/pdf,.pdf" style={{display:"none"}} onChange={e=>e.target.files[0]&&handleUploadSpec(e.target.files[0])}/>
                 </label>
@@ -472,14 +472,14 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {/* Galería de fotos (view mode) */}
           {!editing&&gallery.length>0&&(
             <div style={{marginBottom:14}}>
-              <div style={{fontSize:10,color:"#6B7280",textTransform:"uppercase",fontWeight:600,marginBottom:6}}>
-                Galería <span style={{color:"#D1D5DB",fontWeight:400}}>({gallery.length})</span>
+              <div style={{fontSize:10,color:"var(--text-subtle)",textTransform:"uppercase",fontWeight:600,marginBottom:6}}>
+                Galería <span style={{color:"var(--border-strong)",fontWeight:400}}>({gallery.length})</span>
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {gallery.map((url,i)=>(
                   <a key={i} href={url} target="_blank" rel="noreferrer">
                     <img src={url} loading="lazy" alt={`Foto ${i+1}`}
-                      style={{width:80,height:60,objectFit:"cover",borderRadius:8,border:"1px solid #E5E7EB",cursor:"pointer",transition:"opacity 0.15s"}}
+                      style={{width:80,height:60,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)",cursor:"pointer",transition:"opacity 0.15s"}}
                       onMouseEnter={e=>e.currentTarget.style.opacity=0.8}
                       onMouseLeave={e=>e.currentTarget.style.opacity=1}
                     />
@@ -491,7 +491,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
 
           {/* FORM EDICIÓN */}
           {editing&&(
-            <div style={{borderTop:"1px solid #111827",paddingTop:16,marginTop:4}}>
+            <div style={{borderTop:"1px solid var(--text)",paddingTop:16,marginTop:4}}>
               <div style={{fontSize:12,fontWeight:700,color:"var(--brand)",marginBottom:12}}>Editar modelo</div>
 
               <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -537,8 +537,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               </div>
               {/* ─ Configuración del bono ─ */}
               {Number(form.bonus)>0&&(
-                <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Condición del bono</div>
+                <div style={{background:"var(--surface-muted)",border:"1px solid var(--border)",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"var(--text-subtle)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Condición del bono</div>
                   <div style={{marginBottom:8}}>
                     <label style={S.lbl}>¿A qué aplica este bono?</label>
                     <select value={form.bono_condicion} onChange={e=>setForm(f=>({...f,bono_condicion:e.target.value}))} style={{...S.inp,width:"100%",boxSizing:"border-box"}}>
@@ -547,11 +547,11 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                     </select>
                   </div>
                   <div style={{marginBottom:8}}>
-                    <label style={S.lbl}>Tipo / nombre del bono <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></label>
+                    <label style={S.lbl}>Tipo / nombre del bono <span style={{color:"var(--text-disabled)",fontWeight:400}}>(opcional)</span></label>
                     <input value={form.bono_tipo} onChange={e=>setForm(f=>({...f,bono_tipo:e.target.value}))} placeholder="ej: Bono mes, Bono aniversario..." style={{...S.inp,width:"100%",boxSizing:"border-box"}}/>
                   </div>
                   <div>
-                    <label style={S.lbl}>Requisitos adicionales <span style={{color:"#9CA3AF",fontWeight:400}}>(opcional)</span></label>
+                    <label style={S.lbl}>Requisitos adicionales <span style={{color:"var(--text-disabled)",fontWeight:400}}>(opcional)</span></label>
                     <textarea value={form.bono_requisitos} onChange={e=>setForm(f=>({...f,bono_requisitos:e.target.value}))} rows={2} placeholder="ej: Requiere firma de contrato antes del 30/04..." style={{...S.inp,width:"100%",boxSizing:"border-box",resize:"vertical",fontSize:12}}/>
                   </div>
                 </div>
@@ -576,7 +576,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               {/* Galería de fotos */}
               <div style={{marginBottom:14}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                  <div style={{fontSize:10,color:"#6B7280"}}>Galería de fotos ({gallery.length}/{MAX_GALLERY})</div>
+                  <div style={{fontSize:10,color:"var(--text-subtle)"}}>Galería de fotos ({gallery.length}/{MAX_GALLERY})</div>
                   {gallery.length<MAX_GALLERY&&(
                     <label style={{fontSize:11,color:"var(--brand)",cursor:"pointer",border:"1px solid #FDBA74",borderRadius:6,padding:"3px 9px"}}>
                       {galleryUploading?"Subiendo…":"+ Foto"}
@@ -589,7 +589,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                     {gallery.map((url,i)=>(
                       <div key={i} style={{position:"relative"}}>
                         <img src={url} loading="lazy" alt={`Foto ${i+1}`}
-                          style={{width:76,height:58,objectFit:"cover",borderRadius:7,border:"1px solid #E5E7EB",display:"block"}}/>
+                          style={{width:76,height:58,objectFit:"cover",borderRadius:7,border:"1px solid var(--border)",display:"block"}}/>
                         <button onClick={()=>handleRemoveGalleryPhoto(url)}
                           title="Quitar foto"
                           style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",background:"#EF4444",border:"2px solid #FFFFFF",color:"#ffffff",cursor:"pointer",fontSize:11,lineHeight:"14px",textAlign:"center",padding:0,fontWeight:700}}>
@@ -599,7 +599,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                     ))}
                   </div>
                 )}
-                {gallery.length===0&&<div style={{fontSize:11,color:"#9CA3AF"}}>Sin fotos en galería. Máximo {MAX_GALLERY}, 5 MB cada una.</div>}
+                {gallery.length===0&&<div style={{fontSize:11,color:"var(--text-disabled)"}}>Sin fotos en galería. Máximo {MAX_GALLERY}, 5 MB cada una.</div>}
               </div>
               {/* Los colores se gestionan en la sección superior (siempre visible) */}
               <div style={{display:"flex",gap:8}}>
@@ -618,12 +618,12 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
             <div style={{marginTop:8}}>
               {!confirmDel
                 ?<button onClick={()=>setConfirmDel(true)} style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid #3F1111",background:"transparent",color:"#EF4444",fontSize:12,cursor:"pointer"}}>Eliminar del catálogo</button>
-                :<div style={{background:"#111827",border:"1px solid #3F1111",borderRadius:8,padding:"10px 12px"}}>
+                :<div style={{background:"var(--text)",border:"1px solid #3F1111",borderRadius:8,padding:"10px 12px"}}>
                   <div style={{fontSize:12,color:"#EF4444",marginBottom:8,fontWeight:600}}>¿Eliminar {m.commercial_name||m.model}?</div>
-                  <div style={{fontSize:11,color:"#6B7280",marginBottom:10}}>Esta acción desactiva el modelo del catálogo. No se puede deshacer desde aquí.</div>
+                  <div style={{fontSize:11,color:"var(--text-subtle)",marginBottom:10}}>Esta acción desactiva el modelo del catálogo. No se puede deshacer desde aquí.</div>
                   <div style={{display:"flex",gap:6}}>
                     <button onClick={handleDelete} disabled={deleting} style={{flex:1,padding:"7px",borderRadius:7,border:"none",background:"#EF4444",color:"#ffffff",fontSize:12,cursor:"pointer",fontWeight:600}}>{deleting?"Eliminando…":"Sí, eliminar"}</button>
-                    <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"7px",borderRadius:7,border:"1px solid #D1D5DB",background:"transparent",color:"#4B5563",fontSize:12,cursor:"pointer"}}>Cancelar</button>
+                    <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"7px",borderRadius:7,border:"1px solid var(--border-strong)",background:"transparent",color:"var(--text-muted)",fontSize:12,cursor:"pointer"}}>Cancelar</button>
                   </div>
                 </div>
               }
@@ -656,10 +656,10 @@ function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
   };
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",border:"1px solid #E5E7EB"}}>
-        <div style={{padding:"16px 20px",borderBottom:"1px solid #E5E7EB",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{background:"#FFFFFF",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",border:"1px solid var(--border)"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{fontWeight:700,fontSize:15}}>Agregar moto al catálogo</div>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text-subtle)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
         </div>
         <form onSubmit={handleSubmit} style={{padding:20}}>
           <div className="crm-cat-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -701,8 +701,8 @@ function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
             </div>
           </div>
           {Number(form.bonus)>0&&(
-            <div style={{background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Condición del bono</div>
+            <div style={{background:"var(--surface-muted)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+              <div style={{fontSize:10,fontWeight:700,color:"var(--text-subtle)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Condición del bono</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                 <div>
                   <label style={S.lbl}>¿A qué aplica?</label>
@@ -734,8 +734,8 @@ function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
             <label style={S.lbl}>Colores</label>
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
               {colors.map(c=>(
-                <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"#F3F4F6",color:"#9CA3AF",border:"1px solid #D1D5DB",display:"flex",alignItems:"center",gap:4}}>
-                  {c}<button type="button" onClick={()=>removeColor(c)} style={{background:"none",border:"none",color:"#6B7280",cursor:"pointer",padding:0,fontSize:12}}>×</button>
+                <span key={c} style={{fontSize:11,padding:"3px 8px",borderRadius:10,background:"var(--surface-sunken)",color:"var(--text-disabled)",border:"1px solid var(--border-strong)",display:"flex",alignItems:"center",gap:4}}>
+                  {c}<button type="button" onClick={()=>removeColor(c)} style={{background:"none",border:"none",color:"var(--text-subtle)",cursor:"pointer",padding:0,fontSize:12}}>×</button>
                 </span>
               ))}
             </div>
@@ -775,15 +775,15 @@ function ModelCard({m,onClick}){
       {/* Imagen del modelo */}
       {m.image_url
         ?<img src={m.image_url} alt={m.model} style={{width:"100%",height:140,objectFit:"cover",display:"block"}} loading="lazy"/>
-        :<div style={{width:"100%",height:140,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
+        :<div style={{width:"100%",height:140,background:"var(--surface-sunken)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M8 17.5h7M15 6l2 5h4M5.5 14l2.5-7h5l3 5"/></svg>
         </div>
       }
 
       {/* Info */}
       <div style={{padding:"12px 14px"}}>
         {/* Marca + Modelo */}
-        <div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:2,lineHeight:1.2}}>
+        <div style={{fontSize:14,fontWeight:700,color:"var(--text)",marginBottom:2,lineHeight:1.2}}>
           {m.brand} {m.commercial_name||m.model}
         </div>
         {/* Año y categoría como badges */}
@@ -794,12 +794,12 @@ function ModelCard({m,onClick}){
             </span>
           )}
           {m.category&&(
-            <span style={{fontSize:10,fontWeight:600,color:"#6B7280",background:"#F3F4F6",padding:"2px 6px",borderRadius:99}}>
+            <span style={{fontSize:10,fontWeight:600,color:"var(--text-subtle)",background:"var(--surface-sunken)",padding:"2px 6px",borderRadius:99}}>
               {m.category}
             </span>
           )}
           {m.cc&&(
-            <span style={{fontSize:10,fontWeight:600,color:"#6B7280",background:"#F3F4F6",padding:"2px 6px",borderRadius:99}}>
+            <span style={{fontSize:10,fontWeight:600,color:"var(--text-subtle)",background:"var(--surface-sunken)",padding:"2px 6px",borderRadius:99}}>
               {m.cc}cc
             </span>
           )}
@@ -807,7 +807,7 @@ function ModelCard({m,onClick}){
         {/* Precio */}
         {m.price>0&&(
           <div style={{marginBottom:colors.length>0?8:0}}>
-            <div style={{fontSize:15,fontWeight:800,color:"#374151"}}>{fmt(m.price)}</div>
+            <div style={{fontSize:15,fontWeight:800,color:"var(--text-body)"}}>{fmt(m.price)}</div>
             {m.bonus>0&&m.bonus<m.price&&(()=>{
               const cond=m.bono_condicion;
               const color=bonoCondColor(cond);
@@ -828,7 +828,7 @@ function ModelCard({m,onClick}){
               }}/>
             ))}
             {colors.length>6&&(
-              <span style={{fontSize:10,color:"#9CA3AF"}}>+{colors.length-6}</span>
+              <span style={{fontSize:10,color:"var(--text-disabled)"}}>+{colors.length-6}</span>
             )}
           </div>
         )}
@@ -854,14 +854,14 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
     finally{setSaving(false);}
   };
   return(
-    <div style={{background:"#FFFFFF",border:"1px solid #E5E7EB",borderRadius:14,padding:"18px 20px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+    <div style={{background:"#FFFFFF",border:"1px solid var(--border)",borderRadius:14,padding:"18px 20px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:700,color:"#111827"}}>Gestionar categorías</div>
-        <button onClick={onClose} style={{background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+        <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>Gestionar categorías</div>
+        <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text-disabled)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
       </div>
       {/* Categorías existentes */}
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
-        {allCategories.length===0?<span style={{fontSize:12,color:"#9CA3AF"}}>Sin categorías aún</span>:allCategories.map(c=>(
+        {allCategories.length===0?<span style={{fontSize:12,color:"var(--text-disabled)"}}>Sin categorías aún</span>:allCategories.map(c=>(
           <span key={c} onClick={()=>setRenameFrom(c)} title="Renombrar"
             style={{fontSize:11,padding:"4px 12px",borderRadius:20,background:catColor(c)+"18",color:catColor(c),border:`1.5px solid ${renameFrom===c?catColor(c):"transparent"}`,fontWeight:600,cursor:"pointer",transition:"border-color 0.1s"}}>
             {c}
@@ -884,7 +884,7 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
         </button>
       </div>
       {errMsg&&<div style={{marginTop:10}}><ErrorMsg msg={errMsg}/></div>}
-      <div style={{fontSize:11,color:"#9CA3AF",marginTop:8}}>
+      <div style={{fontSize:11,color:"var(--text-disabled)",marginTop:8}}>
         Renombrar actualiza la categoría en todos los modelos que la tengan asignada.
         Para crear una categoría nueva, asignala directamente al editar un modelo.
       </div>
@@ -915,7 +915,7 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
     <div onClick={onClick}
       style={{
         background:'#FFFFFF',
-        border:'1px solid #E5E7EB',
+        border:'1px solid var(--border)',
         borderRadius:14,
         overflow:'hidden',
         cursor:'pointer',
@@ -924,20 +924,20 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
         transition:'transform 140ms, box-shadow 140ms, border-color 140ms',
       }}
       onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(16,24,40,0.08)';e.currentTarget.style.borderColor='var(--brand)';}}
-      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 1px 3px rgba(16,24,40,0.04)';e.currentTarget.style.borderColor='#E5E7EB';}}
+      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 1px 3px rgba(16,24,40,0.04)';e.currentTarget.style.borderColor='var(--border)';}}
     >
       {/* Logo 16:9 */}
       <div style={{
-        position:'relative',aspectRatio:'16/9',background:'#F9FAFB',
+        position:'relative',aspectRatio:'16/9',background:'var(--surface-muted)',
         display:'flex',alignItems:'center',justifyContent:'center',
-        borderBottom:'1px solid #F3F4F6',
+        borderBottom:'1px solid var(--surface-sunken)',
       }}>
         {logoUrl
           ? <img src={logoUrl} alt={brand} style={{maxWidth:'78%',maxHeight:'78%',objectFit:'contain'}}/>
           : (
             <div style={{textAlign:'center',padding:'0 12px'}}>
-              <div style={{fontSize:28,fontWeight:900,color:'#111827',letterSpacing:'-0.8px',lineHeight:1}}>{brand}</div>
-              {canEdit&&<div style={{fontSize:10,fontWeight:600,color:'#9CA3AF',marginTop:8,letterSpacing:'0.05em',textTransform:'uppercase'}}>Sin logo</div>}
+              <div style={{fontSize:28,fontWeight:900,color:'var(--text)',letterSpacing:'-0.8px',lineHeight:1}}>{brand}</div>
+              {canEdit&&<div style={{fontSize:10,fontWeight:600,color:'var(--text-disabled)',marginTop:8,letterSpacing:'0.05em',textTransform:'uppercase'}}>Sin logo</div>}
             </div>
           )
         }
@@ -958,8 +958,8 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
       {/* Contenido */}
       <div style={{padding:'14px 16px',flex:1,display:'flex',flexDirection:'column',gap:8}}>
         <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8}}>
-          <div style={{fontSize:17,fontWeight:900,color:'#111827',letterSpacing:'-0.4px'}}>{brand}</div>
-          <div style={{fontSize:11,fontWeight:700,color:'#6B7280'}}>{modelCount} modelo{modelCount!==1?'s':''}</div>
+          <div style={{fontSize:17,fontWeight:900,color:'var(--text)',letterSpacing:'-0.4px'}}>{brand}</div>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--text-subtle)'}}>{modelCount} modelo{modelCount!==1?'s':''}</div>
         </div>
         {categories.length>0&&(
           <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
@@ -968,7 +968,7 @@ function BrandCard({brand,logoUrl,modelCount,categories,canEdit,onClick,onLogoUp
                 {c}
               </span>
             ))}
-            {categories.length>5&&<span style={{fontSize:10,color:'#9CA3AF',fontWeight:600,alignSelf:'center'}}>+{categories.length-5}</span>}
+            {categories.length>5&&<span style={{fontSize:10,color:'var(--text-disabled)',fontWeight:600,alignSelf:'center'}}>+{categories.length-5}</span>}
           </div>
         )}
         {err&&<div style={{fontSize:11,color:'#DC2626'}}>{err}</div>}
@@ -1009,16 +1009,16 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
   };
 
   return(
-    <div style={{background:'#FFFFFF',border:'1px solid #E5E7EB',borderRadius:14,padding:'16px 18px',marginBottom:18,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+    <div style={{background:'#FFFFFF',border:'1px solid var(--border)',borderRadius:14,padding:'16px 18px',marginBottom:18,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#111827'}}>Categorías de {brand}</div>
-        <button onClick={onClose} style={{background:'none',border:'none',color:'#9CA3AF',cursor:'pointer',fontSize:18,lineHeight:1}}>×</button>
+        <div style={{fontSize:13,fontWeight:800,color:'var(--text)'}}>Categorías de {brand}</div>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-disabled)',cursor:'pointer',fontSize:18,lineHeight:1}}>×</button>
       </div>
 
       {/* Lista existentes */}
       <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14}}>
-        {cats.length===0?<span style={{fontSize:12,color:'#9CA3AF'}}>Aún no hay categorías para esta marca</span>:cats.map(c=>(
-          <div key={c.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',background:'#F9FAFB',borderRadius:8,border:'1px solid #F3F4F6'}}>
+        {cats.length===0?<span style={{fontSize:12,color:'var(--text-disabled)'}}>Aún no hay categorías para esta marca</span>:cats.map(c=>(
+          <div key={c.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',background:'var(--surface-muted)',borderRadius:8,border:'1px solid var(--surface-sunken)'}}>
             {editId===c.id?(
               <>
                 <input value={editVal} onChange={e=>setEditVal(e.target.value)} autoFocus
@@ -1029,7 +1029,7 @@ function BrandCategoriesPanel({brand,cats,onClose,onChanged}){
             ):(
               <>
                 <span style={{fontSize:12,padding:'2px 10px',borderRadius:20,background:catColor(c.name)+'20',color:catColor(c.name),fontWeight:700,border:`1px solid ${catColor(c.name)}40`}}>{c.name}</span>
-                <span style={{fontSize:11,color:'#9CA3AF',flex:1}}>{c.model_count} modelo{c.model_count!==1?'s':''}</span>
+                <span style={{fontSize:11,color:'var(--text-disabled)',flex:1}}>{c.model_count} modelo{c.model_count!==1?'s':''}</span>
                 <button onClick={()=>startEdit(c)} style={{...S.gh,padding:'4px 10px',fontSize:11}}>Renombrar</button>
                 <button onClick={()=>del(c)} disabled={saving} style={{background:'none',border:'none',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer',padding:'4px 8px'}}>Eliminar</button>
               </>
@@ -1139,8 +1139,8 @@ export function CatalogView({user}){
             {canEdit&&showManageCats&&<ManageCategoriesPanel allCategories={allCategories} onRenamed={handleCategoryRenamed} onClose={()=>setShowManageCats(false)}/>}
 
             {/* Barra de filtros: búsqueda global */}
-            <div style={{display:'flex',alignItems:'center',gap:10,background:'#F9FAFB',border:'1px solid #E5E7EB',borderRadius:10,padding:'8px 12px',marginBottom:20}}>
-              <Ic.search size={14} color="#9CA3AF" style={{flexShrink:0}}/>
+            <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface-muted)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 12px',marginBottom:20}}>
+              <Ic.search size={14} color="var(--text-disabled)" style={{flexShrink:0}}/>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar marca, modelo..." style={{...S.inp,border:'none',background:'transparent',padding:0,outline:'none',flex:1}}/>
             </div>
 
@@ -1150,7 +1150,7 @@ export function CatalogView({user}){
                 <Empty icon={Ic.search} title={`Sin resultados para "${search}"`} hint="Intenta con otra marca o nombre de modelo."/>
               ):(
                 <div>
-                  <div style={{fontSize:11,color:"#9CA3AF",marginBottom:12,fontWeight:600}}>{filteredModels.length} resultado{filteredModels.length!==1?"s":""}</div>
+                  <div style={{fontSize:11,color:"var(--text-disabled)",marginBottom:12,fontWeight:600}}>{filteredModels.length} resultado{filteredModels.length!==1?"s":""}</div>
                   <div style={{display:"grid",gridTemplateColumns:gridCols,gap:12}}>
                     {filteredModels.map(m=><ModelCard key={m.id} m={m} onClick={()=>setSelected(m)}/>)}
                   </div>
@@ -1208,16 +1208,16 @@ export function CatalogView({user}){
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <button onClick={()=>{setActiveBrand(null);setActiveCat(null);setShowBrandCats(false);}}
-            style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",color:"#9CA3AF",fontSize:13,fontWeight:600,cursor:"pointer",padding:0,fontFamily:"inherit"}}>
+            style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",color:"var(--text-disabled)",fontSize:13,fontWeight:600,cursor:"pointer",padding:0,fontFamily:"inherit"}}>
             <Ic.back size={14}/> Catálogo
           </button>
-          <span style={{color:"#D1D5DB"}}>/</span>
+          <span style={{color:"var(--border-strong)"}}>/</span>
           {brandMeta?.logo_url&&<img src={brandMeta.logo_url} alt="" style={{height:22,maxWidth:60,objectFit:'contain'}}/>}
-          <span style={{fontSize:16,fontWeight:800,color:"#111827"}}>{activeBrand}</span>
-          {activeCat&&activeCat!=="__sin_categoria"&&<><span style={{color:"#D1D5DB"}}>/</span><span style={{fontSize:14,fontWeight:700,color:catColor(activeCat)}}>{activeCat}</span></>}
+          <span style={{fontSize:16,fontWeight:800,color:"var(--text)"}}>{activeBrand}</span>
+          {activeCat&&activeCat!=="__sin_categoria"&&<><span style={{color:"var(--border-strong)"}}>/</span><span style={{fontSize:14,fontWeight:700,color:catColor(activeCat)}}>{activeCat}</span></>}
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <span style={{fontSize:12,color:"#9CA3AF"}}>{(activeCat==="__sin_categoria"?uncategorized:shownModels).length} modelo{(activeCat==="__sin_categoria"?uncategorized:shownModels).length!==1?"s":""}</span>
+          <span style={{fontSize:12,color:"var(--text-disabled)"}}>{(activeCat==="__sin_categoria"?uncategorized:shownModels).length} modelo{(activeCat==="__sin_categoria"?uncategorized:shownModels).length!==1?"s":""}</span>
           {canEdit&&<button onClick={()=>setShowBrandCats(v=>!v)} style={{...S.btn2,fontSize:12,padding:"6px 14px"}}>Categorías</button>}
           {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
         </div>
@@ -1231,7 +1231,7 @@ export function CatalogView({user}){
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
           <button onClick={()=>setActiveCat(null)}
             style={{padding:"6px 16px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
-                    background:!activeCat?"#111827":"#F3F4F6",color:!activeCat?"#FFFFFF":"#4B5563",transition:"all 0.12s"}}>
+                    background:!activeCat?"var(--text)":"var(--surface-sunken)",color:!activeCat?"#FFFFFF":"var(--text-muted)",transition:"all 0.12s"}}>
             Todos ({brandModels.length})
           </button>
           {allBrandCatNames.map(c=>{
@@ -1239,7 +1239,7 @@ export function CatalogView({user}){
             const active=activeCat===c;
             return(
               <button key={c} onClick={()=>setActiveCat(c)}
-                style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${active?catColor(c):"#E5E7EB"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
+                style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${active?catColor(c):"var(--border)"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,
                         background:active?catColor(c):"#FFFFFF",color:active?"#FFFFFF":catColor(c),transition:"all 0.12s"}}>
                 {c} <span style={{fontWeight:400,opacity:0.75}}>({cnt})</span>
               </button>
@@ -1247,8 +1247,8 @@ export function CatalogView({user}){
           })}
           {uncategorized.length>0&&(
             <button onClick={()=>setActiveCat("__sin_categoria")}
-              style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${activeCat==="__sin_categoria"?"#6B7280":"#E5E7EB"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,
-                      background:activeCat==="__sin_categoria"?"#6B7280":"#FFFFFF",color:activeCat==="__sin_categoria"?"#FFFFFF":"#6B7280"}}>
+              style={{padding:"6px 16px",borderRadius:20,border:`1.5px solid ${activeCat==="__sin_categoria"?"var(--text-subtle)":"var(--border)"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,
+                      background:activeCat==="__sin_categoria"?"var(--text-subtle)":"#FFFFFF",color:activeCat==="__sin_categoria"?"#FFFFFF":"var(--text-subtle)"}}>
               Sin categoría ({uncategorized.length})
             </button>
           )}

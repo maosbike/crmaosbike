@@ -119,16 +119,16 @@ export function PipelineView({leads,user,nav,updLead}){
                 flexShrink:0, padding:'8px 14px', borderRadius:99,
                 border:'none', cursor:'pointer', fontFamily:'inherit',
                 fontSize:13, fontWeight:600,
-                background: act ? x.c  : '#F3F4F6',
-                color:      act ? '#fff': '#6B7280',
+                background: act ? x.c  : 'var(--surface-sunken)',
+                color:      act ? '#fff': 'var(--text-subtle)',
                 display:'flex', alignItems:'center', gap:6,
                 transition:'all 0.15s',
               }}>
                 {x.l}
                 <span style={{
                   fontSize:11, fontWeight:700,
-                  background: act ? 'rgba(255,255,255,0.25)' : '#E5E7EB',
-                  color:      act ? '#fff' : '#9CA3AF',
+                  background: act ? 'rgba(255,255,255,0.25)' : 'var(--border)',
+                  color:      act ? '#fff' : 'var(--text-disabled)',
                   padding:'1px 7px', borderRadius:99,
                 }}>
                   {cnt}
@@ -143,11 +143,11 @@ export function PipelineView({leads,user,nav,updLead}){
           {sorted.length === 0 && (
             <div style={{
               padding:'48px 24px', textAlign:'center',
-              border:'2px dashed #E5E7EB', borderRadius:14,
+              border:'2px dashed var(--border)', borderRadius:14,
               color:'#C4C9D4',
             }}>
-              <Ic.leads size={32} color="#E5E7EB"/>
-              <div style={{fontSize:13, marginTop:10, color:'#9CA3AF'}}>Sin fichas en {sc?.l}</div>
+              <Ic.leads size={32} color="var(--border)"/>
+              <div style={{fontSize:13, marginTop:10, color:'var(--text-disabled)'}}>Sin fichas en {sc?.l}</div>
             </div>
           )}
           {sorted.map(l => {
@@ -157,7 +157,7 @@ export function PipelineView({leads,user,nav,updLead}){
             return (
               <div key={l.id} style={{
                 background:'#FFFFFF', borderRadius:14,
-                border:'1px solid #E5E7EB',
+                border:'1px solid var(--border)',
                 overflow:'hidden',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}>
@@ -170,37 +170,37 @@ export function PipelineView({leads,user,nav,updLead}){
                       <img src={l.model_image} alt="" style={{
                         width:104, height:104, borderRadius:12,
                         objectFit:'cover', display:'block',
-                        background:'#F9FAFB',
+                        background:'var(--surface-muted)',
                       }}/>
                     </div>
                   ) : (
                     <div style={{
                       flexShrink:0, margin:'14px 0 14px 14px',
                       width:104, height:104, borderRadius:12,
-                      background:'#F9FAFB', display:'flex',
+                      background:'var(--surface-muted)', display:'flex',
                       alignItems:'center', justifyContent:'center',
                     }}>
-                      <Ic.bike size={28} color="#D1D5DB"/>
+                      <Ic.bike size={28} color="var(--border-strong)"/>
                     </div>
                   )}
                   {/* Contenido */}
                   <div style={{flex:1, padding:'14px 14px', minWidth:0, overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
                     <div>
                       <div style={{
-                        fontSize:15, fontWeight:700, color:'#111827', lineHeight:1.25, marginBottom:3,
+                        fontSize:15, fontWeight:700, color:'var(--text)', lineHeight:1.25, marginBottom:3,
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                       }}>
                         {l.fn} {l.ln || ''}
                       </div>
                       <div style={{
-                        fontSize:12, color:'#6B7280', marginBottom:6,
+                        fontSize:12, color:'var(--text-subtle)', marginBottom:6,
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                       }}>
-                        {m ? `${m.brand} ${m.model}`.trim() : <span style={{color:'#D1D5DB', fontStyle:'italic'}}>Sin moto</span>}
+                        {m ? `${m.brand} ${m.model}`.trim() : <span style={{color:'var(--border-strong)', fontStyle:'italic'}}>Sin moto</span>}
                       </div>
                       {m && m.price > 0 && (
                         <div style={{
-                          fontSize:14, fontWeight:700, color:'#111827', letterSpacing:'-0.01em',
+                          fontSize:14, fontWeight:700, color:'var(--text)', letterSpacing:'-0.01em',
                         }}>
                           ${Number(m.price - m.bonus).toLocaleString('es-CL')}
                         </div>
@@ -212,23 +212,23 @@ export function PipelineView({leads,user,nav,updLead}){
                       <div style={{
                         display:'inline-flex', alignItems:'center', gap:4,
                         marginTop:8,
-                        fontSize:11, fontWeight:600, color:'#6B7280',
+                        fontSize:11, fontWeight:600, color:'var(--text-subtle)',
                         padding:'3px 8px', borderRadius:99,
-                        background:'#F3F4F6',
+                        background:'var(--surface-sunken)',
                         alignSelf:'flex-start',
                       }}>
-                        <Ic.clock size={10} color="#6B7280"/>{age}
+                        <Ic.clock size={10} color="var(--text-subtle)"/>{age}
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Acciones */}
-                <div style={{display:'flex', gap:8, padding:'10px 14px 12px', borderTop:'1px solid #F3F4F6'}}>
+                <div style={{display:'flex', gap:8, padding:'10px 14px 12px', borderTop:'1px solid var(--surface-sunken)'}}>
                   <button onClick={() => setMoveLead(l)} style={{
                     flex:1, padding:'9px 0', fontSize:12, fontWeight:600,
-                    background:'#F9FAFB', color:'#374151',
-                    border:'1px solid #E5E7EB', borderRadius:8,
+                    background:'var(--surface-muted)', color:'var(--text-body)',
+                    border:'1px solid var(--border)', borderRadius:8,
                     cursor:'pointer', fontFamily:'inherit',
                   }}>
                     Mover etapa
@@ -263,7 +263,7 @@ export function PipelineView({leads,user,nav,updLead}){
                     fontFamily:'inherit', textAlign:'left', opacity: moving ? 0.6 : 1,
                   }}>
                     <span style={{width:10, height:10, borderRadius:'50%', background:x?.c, flexShrink:0}}/>
-                    <span style={{fontSize:14, fontWeight:700, color:'#111827'}}>{x?.l || s}</span>
+                    <span style={{fontSize:14, fontWeight:700, color:'var(--text)'}}>{x?.l || s}</span>
                   </button>
                 );
               })}
@@ -301,7 +301,7 @@ export function PipelineView({leads,user,nav,updLead}){
         overflowY:'hidden',
         padding:'4px 2px 20px',
         scrollbarWidth:'thin',
-        scrollbarColor:'#D1D5DB #F9FAFB',
+        scrollbarColor:'var(--border-strong) var(--surface-muted)',
         alignItems:'stretch',
       }}>
         {stages.map(stage => {
@@ -318,9 +318,9 @@ export function PipelineView({leads,user,nav,updLead}){
               style={{
                 flex:'1 1 240px', minWidth:220, maxWidth:320,
                 display:'flex', flexDirection:'column',
-                background:'#F9FAFB',
+                background:'var(--surface-muted)',
                 borderRadius:14,
-                border:'1px solid #E5E7EB',
+                border:'1px solid var(--border)',
                 overflow:'hidden',
               }}
             >
@@ -328,7 +328,7 @@ export function PipelineView({leads,user,nav,updLead}){
               <div style={{
                 padding:'14px 16px',
                 background: sc?.bg || '#FFFFFF',
-                borderBottom:'1px solid #E5E7EB',
+                borderBottom:'1px solid var(--border)',
                 display:'flex', alignItems:'center', justifyContent:'space-between',
                 flexShrink:0,
               }}>
@@ -337,7 +337,7 @@ export function PipelineView({leads,user,nav,updLead}){
                     width:8, height:8, borderRadius:'50%',
                     background:sc?.c, flexShrink:0,
                   }}/>
-                  <span style={{fontSize:13, fontWeight:700, color:'#111827', letterSpacing:'-0.01em'}}>
+                  <span style={{fontSize:13, fontWeight:700, color:'var(--text)', letterSpacing:'-0.01em'}}>
                     {sc?.l}
                   </span>
                 </div>
@@ -358,7 +358,7 @@ export function PipelineView({leads,user,nav,updLead}){
                 padding:'12px',
                 display:'flex', flexDirection:'column', gap:10,
                 scrollbarWidth:'thin',
-                scrollbarColor:'#E5E7EB transparent',
+                scrollbarColor:'var(--border) transparent',
               }}>
                 {/* Empty state */}
                 {sl.length === 0 && (
@@ -366,14 +366,14 @@ export function PipelineView({leads,user,nav,updLead}){
                     display:'flex', flexDirection:'column',
                     alignItems:'center', justifyContent:'center',
                     padding:'40px 20px', margin:'4px 0',
-                    border:'2px dashed #E5E7EB',
+                    border:'2px dashed var(--border)',
                     borderRadius:12,
-                    color:'#D1D5DB',
+                    color:'var(--border-strong)',
                     gap:10,
                     minHeight:180,
                   }}>
-                    <Ic.leads size={28} color="#E5E7EB"/>
-                    <span style={{fontSize:12, color:'#9CA3AF'}}>Sin fichas</span>
+                    <Ic.leads size={28} color="var(--border)"/>
+                    <span style={{fontSize:12, color:'var(--text-disabled)'}}>Sin fichas</span>
                   </div>
                 )}
 
@@ -396,7 +396,7 @@ export function PipelineView({leads,user,nav,updLead}){
                       style={{
                         background:'#FFFFFF',
                         borderRadius:14,
-                        border:'1px solid #E5E7EB',
+                        border:'1px solid var(--border)',
                         cursor:'grab',
                         transition:'transform 0.15s, box-shadow 0.15s',
                         transform: hover ? 'translateY(-2px)' : 'none',
@@ -413,7 +413,7 @@ export function PipelineView({leads,user,nav,updLead}){
                             style={{
                               width:84, height:84, borderRadius:10,
                               objectFit:'cover', display:'block',
-                              background:'#F9FAFB',
+                              background:'var(--surface-muted)',
                             }}
                           />
                         </div>
@@ -421,10 +421,10 @@ export function PipelineView({leads,user,nav,updLead}){
                         <div style={{
                           flexShrink:0, margin:'12px 0 12px 12px',
                           width:84, height:84, borderRadius:10,
-                          background:'#F9FAFB', display:'flex',
+                          background:'var(--surface-muted)', display:'flex',
                           alignItems:'center', justifyContent:'center',
                         }}>
-                          <Ic.bike size={24} color="#D1D5DB"/>
+                          <Ic.bike size={24} color="var(--border-strong)"/>
                         </div>
                       )}
 
@@ -437,7 +437,7 @@ export function PipelineView({leads,user,nav,updLead}){
                       }}>
                         {/* Nombre */}
                         <div style={{
-                          fontSize:14, fontWeight:700, color:'#111827',
+                          fontSize:14, fontWeight:700, color:'var(--text)',
                           lineHeight:1.3,
                           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                         }}>
@@ -446,19 +446,19 @@ export function PipelineView({leads,user,nav,updLead}){
 
                         {/* Modelo */}
                         <div style={{
-                          fontSize:12, color:'#6B7280', lineHeight:1.3,
+                          fontSize:12, color:'var(--text-subtle)', lineHeight:1.3,
                           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                         }}>
                           {m
                             ? `${m.brand || ''} ${m.model || ''}`.trim() || 'Sin modelo'
-                            : <span style={{color:'#D1D5DB', fontStyle:'italic'}}>Sin moto</span>
+                            : <span style={{color:'var(--border-strong)', fontStyle:'italic'}}>Sin moto</span>
                           }
                         </div>
 
                         {/* Precio */}
                         {m && m.price > 0 && (
                           <div style={{
-                            fontSize:13, fontWeight:700, color:'#111827',
+                            fontSize:13, fontWeight:700, color:'var(--text)',
                             letterSpacing:'-0.01em',
                             overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                           }}>
@@ -471,19 +471,19 @@ export function PipelineView({leads,user,nav,updLead}){
                           <div style={{
                             display:'inline-flex', alignItems:'center', gap:4,
                             marginTop:4,
-                            fontSize:11, fontWeight:600, color:'#6B7280',
+                            fontSize:11, fontWeight:600, color:'var(--text-subtle)',
                             padding:'3px 8px', borderRadius:99,
-                            background:'#F3F4F6',
+                            background:'var(--surface-sunken)',
                             alignSelf:'flex-start',
                           }}>
-                            <Ic.clock size={10} color="#6B7280"/>{age}
+                            <Ic.clock size={10} color="var(--text-subtle)"/>{age}
                           </div>
                         )}
 
                         {/* Footer: vendedor + venta */}
                         <div style={{
                           display:'flex', alignItems:'center', justifyContent:'space-between',
-                          marginTop:8, paddingTop:8, borderTop:'1px solid #F3F4F6', gap:6,
+                          marginTop:8, paddingTop:8, borderTop:'1px solid var(--surface-sunken)', gap:6,
                         }}>
                           {l.seller_fn ? (() => {
                             const sc = colorFor(l.seller_id || `${l.seller_fn}${l.seller_ln||''}`);
@@ -503,7 +503,7 @@ export function PipelineView({leads,user,nav,updLead}){
                             );
                           })() : (
                             <span style={{
-                              fontSize:11, color:'#D1D5DB', flex:1, minWidth:0,
+                              fontSize:11, color:'var(--border-strong)', flex:1, minWidth:0,
                               whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
                             }}>
                               Sin asignar

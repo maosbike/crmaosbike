@@ -5,12 +5,12 @@ import { S, TICKET_STATUS, FIN_STATUS, fmt, ViewHeader, Loader } from '../ui.jsx
 const TABS = ['General','Marca','Modelo','Sucursal','Vendedor','Financiamiento','Color','Estado','Tiempo'];
 
 const card = { ...S.card, padding: 16 };
-const kpiBox = { background:'#FFFFFF', border:'1px solid #E5E7EB', borderRadius:10, padding:'12px 16px', display:'flex', flexDirection:'column', gap:2, minWidth:120, flex:1 };
+const kpiBox = { background:'#FFFFFF', border:'1px solid var(--border)', borderRadius:10, padding:'12px 16px', display:'flex', flexDirection:'column', gap:2, minWidth:120, flex:1 };
 const kpiVal = { fontSize:22, fontWeight:800, lineHeight:1 };
-const kpiLbl = { fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em' };
-const thS = { textAlign:'left', padding:'10px 14px', color:'#9CA3AF', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', background:'#F9FAFB', borderBottom:'2px solid #E5E7EB', whiteSpace:'nowrap' };
-const tdS = { padding:'10px 14px', fontSize:12, borderBottom:'1px solid #F3F4F6' };
-const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'var(--brand)':'#D1D5DB'), background:active?'var(--brand)':'#FFFFFF', color:active?'#FFFFFF':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' });
+const kpiLbl = { fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.07em' };
+const thS = { textAlign:'left', padding:'10px 14px', color:'var(--text-disabled)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', background:'var(--surface-muted)', borderBottom:'2px solid var(--border)', whiteSpace:'nowrap' };
+const tdS = { padding:'10px 14px', fontSize:12, borderBottom:'1px solid var(--surface-sunken)' };
+const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'var(--brand)':'var(--border-strong)'), background:active?'var(--brand)':'#FFFFFF', color:active?'#FFFFFF':'var(--text-body)', fontSize:11, fontWeight:600, cursor:'pointer' });
 const selectS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
 const inputS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
 
@@ -23,9 +23,9 @@ function Bar({ items, colorKey, maxVal }) {
   return <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
     {items.map((it, i) => <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
       <div style={{ width:100, fontSize:11, textAlign:'right', flexShrink:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.label}</div>
-      <div style={{ flex:1, background:'#F3F4F6', borderRadius:4, height:20, position:'relative', overflow:'hidden' }}>
+      <div style={{ flex:1, background:'var(--surface-sunken)', borderRadius:4, height:20, position:'relative', overflow:'hidden' }}>
         <div style={{ width:`${(it.value/mx)*100}%`, height:'100%', background:colorKey||'var(--brand)', borderRadius:4, transition:'width .3s' }}/>
-        <span style={{ position:'absolute', right:6, top:2, fontSize:10, color:'#374151' }}>{it.value}</span>
+        <span style={{ position:'absolute', right:6, top:2, fontSize:10, color:'var(--text-body)' }}>{it.value}</span>
       </div>
     </div>)}
   </div>;
@@ -33,7 +33,7 @@ function Bar({ items, colorKey, maxVal }) {
 
 // Sparkline mini chart (pure SVG)
 function Sparkline({ data, width=320, height=60 }) {
-  if (!data || data.length < 2) return <div style={{ color:'#6B7280', fontSize:11 }}>Sin datos suficientes</div>;
+  if (!data || data.length < 2) return <div style={{ color:'var(--text-subtle)', fontSize:11 }}>Sin datos suficientes</div>;
   const vals = data.map(d => d.value);
   const mx = Math.max(...vals, 1);
   const mn = Math.min(...vals, 0);
@@ -44,8 +44,8 @@ function Sparkline({ data, width=320, height=60 }) {
   return <svg viewBox={`0 0 ${VW} ${height+20}`} width="100%" style={{ display:'block', maxWidth: VW }}>
     <polyline points={pts} fill="none" stroke="var(--brand)" strokeWidth="2"/>
     {vals.map((v,i) => <circle key={i} cx={(i/(vals.length-1))*VW} cy={height - ((v-mn)/range)*height} r="2.5" fill="var(--brand)"/>)}
-    <text x="0" y={height+14} fill="#9CA3AF" fontSize="9">{data[0]?.label}</text>
-    <text x={VW} y={height+14} fill="#9CA3AF" fontSize="9" textAnchor="end">{data[data.length-1]?.label}</text>
+    <text x="0" y={height+14} fill="var(--text-disabled)" fontSize="9">{data[0]?.label}</text>
+    <text x={VW} y={height+14} fill="var(--text-disabled)" fontSize="9" textAnchor="end">{data[data.length-1]?.label}</text>
   </svg>;
 }
 
@@ -54,7 +54,7 @@ function RankTable({ rows, columns }) {
     <table style={{ width:'100%', borderCollapse:'collapse' }}>
       <thead><tr>{columns.map(c => <th key={c.key} style={thS}>{c.label}</th>)}</tr></thead>
       <tbody>{rows.map((r, i) => <tr key={i} style={{ background: i === 0 ? 'var(--brand-soft)' : 'transparent' }}>
-        {columns.map(c => <td key={c.key} style={{ ...tdS, fontWeight: c.bold || i === 0 ? 700 : 400, color: c.color && c.color !== '#E5E7EB' ? c.color : i === 0 ? '#111827' : '#374151' }}>
+        {columns.map(c => <td key={c.key} style={{ ...tdS, fontWeight: c.bold || i === 0 ? 700 : 400, color: c.color && c.color !== 'var(--border)' ? c.color : i === 0 ? 'var(--text)' : 'var(--text-body)' }}>
           {c.medal && i < 3 ? ['1°','2°','3°'][i]+' ' : ''}{c.render ? c.render(r) : r[c.key]}
         </td>)}
       </tr>)}</tbody>
@@ -104,7 +104,7 @@ export function ReportsView({ branches = [] }) {
   };
 
   if (loading && !data) return <Loader label="Cargando reportes…" />;
-  if (!data) return <div style={{ padding:20, color:'#6B7280' }}>Error cargando reportes</div>;
+  if (!data) return <div style={{ padding:20, color:'var(--text-subtle)' }}>Error cargando reportes</div>;
 
   const k = data.kpi;
 
@@ -112,8 +112,8 @@ export function ReportsView({ branches = [] }) {
     <ViewHeader size="sm" title="Reportes" />
 
     {/* ── Filtros ── */}
-    <div style={{ background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:'10px 14px' }}>
-      <span style={{ fontSize:9, color:'#9CA3AF', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>Filtros</span>
+    <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:10, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:'10px 14px' }}>
+      <span style={{ fontSize:9, color:'var(--text-disabled)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>Filtros</span>
       <input type="date" value={filters.from} onChange={e=>applyFilter('from',e.target.value)} style={inputS} title="Desde"/>
       <input type="date" value={filters.to} onChange={e=>applyFilter('to',e.target.value)} style={inputS} title="Hasta"/>
       <select value={filters.branch_id} onChange={e=>applyFilter('branch_id',e.target.value)} style={selectS}>
@@ -153,12 +153,12 @@ export function ReportsView({ branches = [] }) {
       <div style={kpiBox}><div style={{ ...kpiVal, color:'var(--brand)' }}>{pct(n(k.ganados), n(k.total))}</div><div style={kpiLbl}>Conversión</div></div>
       <div style={kpiBox}><div style={{ ...kpiVal, color:'#F59E0B' }}>{n(k.activos)}</div><div style={kpiLbl}>Activos</div></div>
       <div style={kpiBox}><div style={{ ...kpiVal, color:'#EF4444' }}>{n(k.sla_breached)}</div><div style={kpiLbl}>SLA Vencido</div></div>
-      <div style={kpiBox}><div style={{ ...kpiVal, color:'#6B7280' }}>{n(k.sin_tocar)}</div><div style={kpiLbl}>Sin Tocar</div></div>
+      <div style={kpiBox}><div style={{ ...kpiVal, color:'var(--text-subtle)' }}>{n(k.sin_tocar)}</div><div style={kpiLbl}>Sin Tocar</div></div>
       <div style={kpiBox}><div style={{ ...kpiVal, color:'#8B5CF6' }}>{k.avg_first_action_hrs || '-'}h</div><div style={kpiLbl}>Prom 1ª Gestión</div></div>
     </div>
 
     {/* ── Tabs ── */}
-    <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:12, marginBottom:8, scrollbarWidth:'none', borderBottom:'2px solid #F3F4F6', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>
+    <div style={{ display:'flex', gap:4, overflowX:'auto', paddingBottom:12, marginBottom:8, scrollbarWidth:'none', borderBottom:'2px solid var(--surface-sunken)', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>
       {TABS.map(t => (
         <button key={t} onClick={()=>setTab(t)} style={{
           padding:'7px 14px',
@@ -167,7 +167,7 @@ export function ReportsView({ branches = [] }) {
           fontSize:12, fontWeight: tab===t ? 700 : 500,
           cursor:'pointer', flexShrink:0,
           background: tab===t ? '#FFFFFF' : 'transparent',
-          color: tab===t ? 'var(--brand)' : '#6B7280',
+          color: tab===t ? 'var(--brand)' : 'var(--text-subtle)',
           borderBottom: tab===t ? '2px solid var(--brand)' : '2px solid transparent',
           marginBottom:'-2px',
           transition:'all 0.15s',
@@ -231,7 +231,7 @@ function ModelTab({ data }) {
     <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Ranking por Modelo</h3>
     <RankTable rows={data.by_model} columns={[
       { key:'name', label:'Modelo', bold:true, medal:true },
-      { key:'brand', label:'Marca', color:'#6B7280' },
+      { key:'brand', label:'Marca', color:'var(--text-subtle)' },
       { key:'total', label:'Leads' },
       { key:'ganados', label:'Ganados', color:'#10B981', bold:true },
       { key:'perdidos', label:'Perdidos', color:'#EF4444' },
@@ -252,7 +252,7 @@ function BranchTab({ data }) {
       { key:'perdidos', label:'Perdidos', color:'#EF4444' },
       { key:'conv', label:'Conversión', color:'var(--brand)', render: r => pct(n(r.ganados), n(r.total)) },
       { key:'avg_first_hrs', label:'1ª Gestión (h)', render: r => r.avg_first_hrs ? r.avg_first_hrs+'h' : '-' },
-      { key:'sin_tocar', label:'Sin Tocar', color:'#6B7280' },
+      { key:'sin_tocar', label:'Sin Tocar', color:'var(--text-subtle)' },
       { key:'sla_breached', label:'SLA Vencido', color:'#EF4444' },
     ]}/>
   </div>;
@@ -264,7 +264,7 @@ function SellerTab({ data }) {
     <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Ranking Vendedores</h3>
     <RankTable rows={data.by_seller} columns={[
       { key:'name', label:'Vendedor', bold:true, medal:true, render: r => `${r.first_name||''} ${(r.last_name||'')[0]||''}.` },
-      { key:'branch_code', label:'Suc.', color:'#6B7280' },
+      { key:'branch_code', label:'Suc.', color:'var(--text-subtle)' },
       { key:'total', label:'Asignados' },
       { key:'trabajados', label:'Trabajados' },
       { key:'ganados', label:'Ganados', color:'#10B981', bold:true },
@@ -341,7 +341,7 @@ function StatusTab({ data }) {
     <div style={card}>
       <h3 style={{ fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Detalle</h3>
       <RankTable rows={data.by_status} columns={[
-        { key:'name', label:'Estado', bold:true, render: r => <span style={{ color:TICKET_STATUS[r.name]?.c||'#D1D5DB' }}>{TICKET_STATUS[r.name]?.l||r.name}</span> },
+        { key:'name', label:'Estado', bold:true, render: r => <span style={{ color:TICKET_STATUS[r.name]?.c||'var(--border-strong)' }}>{TICKET_STATUS[r.name]?.l||r.name}</span> },
         { key:'total', label:'Cantidad' },
         { key:'pct', label:'% del Total', color:'var(--brand)', render: r => pct(n(r.total), total) },
       ]}/>

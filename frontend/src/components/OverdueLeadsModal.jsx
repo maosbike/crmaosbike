@@ -85,9 +85,9 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
 
   // Estilo compartido para filas de grilla de contexto
   const ctxRowStyle = { display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12 };
-  const ctxLabelStyle = { color: '#9CA3AF', minWidth: 0, whiteSpace: 'nowrap' };
-  const ctxValStyle = { color: '#111827', fontWeight: 500, minWidth: 0 };
-  const ctxMissingStyle = { color: '#9CA3AF', fontStyle: 'italic' };
+  const ctxLabelStyle = { color: 'var(--text-disabled)', minWidth: 0, whiteSpace: 'nowrap' };
+  const ctxValStyle = { color: 'var(--text)', fontWeight: 500, minWidth: 0 };
+  const ctxMissingStyle = { color: 'var(--text-disabled)', fontStyle: 'italic' };
 
   return (
     <div
@@ -138,8 +138,8 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
         <div
           style={{
             padding: '14px 22px',
-            background: '#F9FAFB',
-            borderBottom: '1px solid #E5E7EB',
+            background: 'var(--surface-muted)',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             flexDirection: 'column',
             gap: 10,
@@ -245,10 +245,10 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
 
           {/* Última observación — solo si existe */}
           {lastObs && (
-            <div style={{ fontSize: 12, color: '#374151' }}>
-              <div style={{ color: '#9CA3AF', marginBottom: 4, fontSize: 11 }}>Ultima observacion</div>
+            <div style={{ fontSize: 12, color: 'var(--text-body)' }}>
+              <div style={{ color: 'var(--text-disabled)', marginBottom: 4, fontSize: 11 }}>Ultima observacion</div>
               <div style={{
-                background: '#F3F4F6',
+                background: 'var(--surface-sunken)',
                 borderRadius: 6,
                 padding: '6px 10px',
                 overflow: 'hidden',
@@ -256,7 +256,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
                 lineHeight: '1.5',
-                color: '#374151',
+                color: 'var(--text-body)',
               }}>
                 {lastObs}
               </div>
@@ -290,7 +290,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
           <div>
             <label style={{ ...S.lbl, marginBottom: 5 }}>
               ¿Qué pasó con este lead? <span style={{ color: '#EF4444' }}>*</span>{' '}
-              <span style={{ fontWeight: 400, color: '#9CA3AF' }}>(mín. 15 caracteres)</span>
+              <span style={{ fontWeight: 400, color: 'var(--text-disabled)' }}>(mín. 15 caracteres)</span>
             </label>
             <textarea
               value={fq.note}
@@ -304,7 +304,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
               style={{
                 textAlign: 'right',
                 fontSize: 10,
-                color: fq.note.length >= 15 ? '#10B981' : '#9CA3AF',
+                color: fq.note.length >= 15 ? '#10B981' : 'var(--text-disabled)',
                 marginTop: 2,
               }}
             >
@@ -369,12 +369,12 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
                 onClick={() => onViewLead(lead.id)}
                 style={{
                   background: 'none',
-                  border: '1px solid #D1D5DB',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 8,
                   padding: '9px 16px',
                   fontSize: 12,
                   fontWeight: 600,
-                  color: '#374151',
+                  color: 'var(--text-body)',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                 }}

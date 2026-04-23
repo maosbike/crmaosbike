@@ -26,7 +26,7 @@ export function BottomNav({ page, nav, user, onMenuOpen }) {
           if (it.id === 'more') { onMenuOpen && onMenuOpen(); return; }
           nav && nav(it.id);
         };
-        const color = act ? 'var(--brand)' : '#9CA3AF';
+        const color = act ? 'var(--brand)' : 'var(--text-disabled)';
         return (
           <button key={it.id} onClick={onClick}
             style={{

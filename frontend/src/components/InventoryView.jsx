@@ -21,7 +21,7 @@ const BRANCH_COLORS = {
   MPSY: { color:'#7C3AED', light:'#F5F3FF' },
   MOV:  { color:'#D97706', light:'#FFFBEB' },
 };
-const FALLBACK_BRANCH_COLOR = { color:'#6B7280', light:'#F9FAFB' };
+const FALLBACK_BRANCH_COLOR = { color:'var(--text-subtle)', light:'var(--surface-muted)' };
 // Resuelve cfg {color, light, label} combinando paleta + DB. Si la sucursal
 // existe en DB pero no está en la paleta, cae al color gris fallback.
 const branchCfg = (code, brs) => {
@@ -45,23 +45,23 @@ const ST_CFG = Object.fromEntries(
 
 // Entradas locales no cubiertas por COLOR_CSS_MAP de ui.jsx
 const EXTRA_COLORS = {
-  'negro mate':'#1F2937', 'negro metalico':'#374151', 'negro brillante':'#111827',
-  'blanco perla':'#F0EDE8', 'blanco nieve':'#F9FAFB', 'blanco polar':'#F3F4F6',
+  'negro mate':'var(--text-strong)', 'negro metalico':'var(--text-body)', 'negro brillante':'var(--text)',
+  'blanco perla':'#F0EDE8', 'blanco nieve':'var(--surface-muted)', 'blanco polar':'var(--surface-sunken)',
   'rojo oscuro':'#991B1B', 'rojo metalico':'#DC2626', 'rojo brillante':'#EF4444',
   'azul marino':'#1E3A8A', 'azul metalico':'#1D4ED8', 'azul oscuro':'#1E3A8A',
   'azul cielo':'#0EA5E9', 'azul claro':'#38BDF8', 'azul royal':'#2563EB',
   'verde oscuro':'#14532D', 'verde militar':'#4D7C0F', 'verde oliva':'#65A30D',
   'verde bosque':'#166534', 'verde metalico':'#16A34A', 'verde lima':'#84CC16',
-  'gris oscuro':'#374151', 'gris claro':'#D1D5DB', 'gris metalico':'#6B7280',
-  'gris perla':'#E5E7EB', 'gris plata':'#9CA3AF', 'gris titanio':'#4B5563',
+  'gris oscuro':'var(--text-body)', 'gris claro':'var(--border-strong)', 'gris metalico':'var(--text-subtle)',
+  'gris perla':'var(--border)', 'gris plata':'var(--text-disabled)', 'gris titanio':'var(--text-muted)',
   'naranja metalico':'#C2410C', 'naranja fluor':'#F97316',
   'amarillo metalico':'#B45309', 'amarillo fluor':'#EAB308',
-  plata:'#9CA3AF', 'plata metalico':'#D1D5DB', 'plata mate':'#9CA3AF',
+  plata:'var(--text-disabled)', 'plata metalico':'var(--border-strong)', 'plata mate':'var(--text-disabled)',
   perla:'#E8E0D0', bordo:'#9F1239', vino:'#9F1239', guinda:'#881337',
   fucsia:'#DB2777', violeta:'#7C3AED', lila:'#A78BFA',
   oro:'#CA8A04', bronce:'#92400E', cafe:'#78350F',
   marron:'#92400E', crema:'#FEF3C7', champagne:'#F5E6C8',
-  titanio:'#6B7280', grafito:'#374151', antracita:'#1F2937',
+  titanio:'var(--text-subtle)', grafito:'var(--text-body)', antracita:'var(--text-strong)',
 };
 // Resolver color CSS: busca primero en entradas extra locales (con normalizeText
 // para matching sin acentos ni case), luego cae a colorNameToCss de ui.jsx.
@@ -77,11 +77,11 @@ const getColorCss = c => {
   });
   if (partial) return partial[1];
   const fromCentral = colorNameToCss(c);
-  return fromCentral !== '#9CA3AF' ? fromCentral : null;
+  return fromCentral !== 'var(--text-disabled)' ? fromCentral : null;
 };
 
 // Heurística para saber si el fondo es claro y el texto debe ser oscuro
-const _LIGHT_BGS = ['#F9FAFB','#F0EDE8','#E8E0D0','#FEF3C7','#E5E7EB','#D1D5DB','#D4B896','#FFFFFF'];
+const _LIGHT_BGS = ['var(--surface-muted)','#F0EDE8','#E8E0D0','#FEF3C7','var(--border)','var(--border-strong)','#D4B896','#FFFFFF'];
 const isLightBg = css => !!css && _LIGHT_BGS.includes(css);
 
 // ─── Componente principal ──────────────────────────────────────────────────────
@@ -458,11 +458,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             {isAdmin && (
               <>
                 <button onClick={handleExport} disabled={exporting} style={{...btnGhost, justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
-                  <Ic.dl size={13} color="#6B7280"/> {exporting ? 'Exportando…' : (isMobile ? 'Exportar' : 'Exportar Excel')}
+                  <Ic.dl size={13} color="var(--text-subtle)"/> {exporting ? 'Exportando…' : (isMobile ? 'Exportar' : 'Exportar Excel')}
                 </button>
                 <button onClick={()=>{setShowImport(true);setImportPreview(null);setImportDone(null);}}
                   style={{...btnGhost, justifyContent:'center', padding: isMobile ? '9px 10px' : '8px 14px'}}>
-                  <Ic.upload size={13} color="#6B7280"/> {isMobile ? 'Importar' : 'Importar Excel'}
+                  <Ic.upload size={13} color="var(--text-subtle)"/> {isMobile ? 'Importar' : 'Importar Excel'}
                 </button>
               </>
             )}
@@ -491,16 +491,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 padding: isMobile ? '10px 10px 8px' : '10px 16px 8px', borderRadius:10, border:'none',
                 background: active ? v.bg : '#FFFFFF',
                 cursor:'pointer', textAlign:'left', fontFamily:'inherit',
-                outline: active ? `2px solid ${v.color}` : '1px solid #E5E7EB',
+                outline: active ? `2px solid ${v.color}` : '1px solid var(--border)',
                 outlineOffset: active ? 1 : 0,
                 boxShadow: active ? `0 2px 12px ${v.color}22` : '0 1px 3px rgba(0,0,0,0.04)',
                 transition:'all 0.15s',
               }}>
               <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:v.color, borderRadius:'10px 10px 0 0' }}/>
-              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight:900, color: active ? v.color : '#111827', letterSpacing:'-1px', lineHeight:1, marginBottom:3 }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight:900, color: active ? v.color : 'var(--text)', letterSpacing:'-1px', lineHeight:1, marginBottom:3 }}>
                 {cnt}
               </div>
-              <div style={{ fontSize: isMobile ? 10 : 11, fontWeight:700, color: active ? v.color : '#6B7280', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{v.label}</div>
+              <div style={{ fontSize: isMobile ? 10 : 11, fontWeight:700, color: active ? v.color : 'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{v.label}</div>
             </button>
           );
         })}
@@ -514,16 +514,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           {/* Fila: buscador + botón Filtros */}
           <div style={{ display:'flex', gap:8, marginBottom: showFilters ? 8 : 0 }}>
             <div style={{ position:'relative', flex:1 }}>
-              <Ic.search size={13} color="#9CA3AF" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}/>
+              <Ic.search size={13} color="var(--text-disabled)" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}/>
               <input value={search} onChange={e=>setSearch(e.target.value)}
                 placeholder="Buscar modelo, chasis..."
                 style={{ ...S.inp, paddingLeft:30, width:'100%', height:36, borderRadius:8, fontSize:12, boxSizing:'border-box' }}/>
             </div>
             <button onClick={()=>setShowFilters(p=>!p)}
               style={{
-                height:36, padding:'0 14px', borderRadius:8, border:`1.5px solid ${showFilters||hasFilters?'#4F46E5':'#E5E7EB'}`,
-                background: showFilters||hasFilters ? '#EEF2FF' : '#F9FAFB',
-                color: showFilters||hasFilters ? '#4F46E5' : '#6B7280',
+                height:36, padding:'0 14px', borderRadius:8, border:`1.5px solid ${showFilters||hasFilters?'#4F46E5':'var(--border)'}`,
+                background: showFilters||hasFilters ? '#EEF2FF' : 'var(--surface-muted)',
+                color: showFilters||hasFilters ? '#4F46E5' : 'var(--text-subtle)',
                 fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
                 display:'flex', alignItems:'center', gap:5, flexShrink:0,
               }}>
@@ -532,7 +532,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           </div>
           {/* Panel expandible */}
           {showFilters && (
-            <div style={{ display:'flex', flexDirection:'column', gap:7, padding:'12px 14px', background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:7, padding:'12px 14px', background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:10 }}>
               <div style={{ display:'flex', gap:7 }}>
                 <select value={brF} onChange={e=>setBrF(e.target.value)}
                   style={{ flex:1, ...selectCtrl }}>
@@ -552,8 +552,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     style={{
                       padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600,
                       cursor:'pointer', border:'none', fontFamily:'inherit',
-                      background: stF===k ? v.color : '#F3F4F6',
-                      color: stF===k ? '#fff' : '#6B7280',
+                      background: stF===k ? v.color : 'var(--surface-sunken)',
+                      color: stF===k ? '#fff' : 'var(--text-subtle)',
                       transition:'all 0.15s',
                     }}>
                     {v.label}
@@ -562,7 +562,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               </div>
               {hasFilters && (
                 <button onClick={clearFilters}
-                  style={{ alignSelf:'flex-start', padding:'4px 12px', borderRadius:7, border:'1px solid #E5E7EB', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'#6B7280', fontFamily:'inherit' }}>
+                  style={{ alignSelf:'flex-start', padding:'4px 12px', borderRadius:7, border:'1px solid var(--border)', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'var(--text-subtle)', fontFamily:'inherit' }}>
                   Limpiar · {f.length} resultado{f.length!==1?'s':''}
                 </button>
               )}
@@ -573,17 +573,17 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
         /* ── BARRA DESKTOP — una sola línea compacta ── */
         <div style={{
           display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
-          background:'#F9FAFB', border:'1px solid #E5E7EB',
+          background:'var(--surface-muted)', border:'1px solid var(--border)',
           borderRadius:10, padding:'8px 14px', marginBottom:16,
         }}>
           {/* Buscador */}
           <div style={{ position:'relative', flex:'1 1 160px', minWidth:140 }}>
-            <Ic.search size={13} color="#9CA3AF" style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}/>
+            <Ic.search size={13} color="var(--text-disabled)" style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}/>
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Buscar modelo, chasis, color..."
               style={{ ...selectCtrl, paddingLeft:28, width:'100%', boxSizing:'border-box', background:'#fff' }}/>
           </div>
-          <div style={{ width:1, height:22, background:'#E5E7EB', flexShrink:0 }}/>
+          <div style={{ width:1, height:22, background:'var(--border)', flexShrink:0 }}/>
           {/* Sucursal */}
           <select value={brF} onChange={e=>setBrF(e.target.value)} style={{ ...selectCtrl, width:130 }}>
             <option value="">Todas las sucs.</option>
@@ -594,15 +594,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <option value="">Todas las marcas</option>
             {brands.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
-          <div style={{ width:1, height:22, background:'#E5E7EB', flexShrink:0 }}/>
+          <div style={{ width:1, height:22, background:'var(--border)', flexShrink:0 }}/>
           {/* Chips de estado */}
           {Object.entries(ST_CFG).map(([k,v]) => (
             <button key={k} onClick={()=>setStF(stF===k?'':k)}
               style={{
                 padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:600,
                 cursor:'pointer', border:'none', fontFamily:'inherit',
-                background: stF===k ? v.color : '#F3F4F6',
-                color: stF===k ? '#fff' : '#6B7280',
+                background: stF===k ? v.color : 'var(--surface-sunken)',
+                color: stF===k ? '#fff' : 'var(--text-subtle)',
                 transition:'all 0.15s',
               }}>
               {v.label}
@@ -611,9 +611,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           {/* Limpiar */}
           {hasFilters && (
             <>
-              <div style={{ width:1, height:22, background:'#E5E7EB', flexShrink:0 }}/>
+              <div style={{ width:1, height:22, background:'var(--border)', flexShrink:0 }}/>
               <button onClick={clearFilters}
-                style={{ padding:'4px 10px', height:32, borderRadius:7, border:'1px solid #E5E7EB', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'#6B7280', display:'flex', alignItems:'center', gap:5, fontWeight:500, fontFamily:'inherit' }}>
+                style={{ padding:'4px 10px', height:32, borderRadius:7, border:'1px solid var(--border)', background:'#FFFFFF', fontSize:11, cursor:'pointer', color:'var(--text-subtle)', display:'flex', alignItems:'center', gap:5, fontWeight:500, fontFamily:'inherit' }}>
                 <Ic.x size={10}/>{f.length} resultado{f.length!==1?'s':''}
               </button>
             </>
@@ -685,7 +685,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 {/* Cuerpo info */}
                 <div style={{ padding: isMobile ? '10px 12px' : '12px 16px' }}>
                   {!brPhoto && (
-                    <div style={{ fontSize:16, fontWeight:700, color:'#111827', marginBottom:8 }}>{cfg.label}</div>
+                    <div style={{ fontSize:16, fontWeight:700, color:'var(--text)', marginBottom:8 }}>{cfg.label}</div>
                   )}
                   {brPhoto && <div style={{ marginBottom:8 }}/>}
                   {/* Contadores de estado */}
@@ -697,7 +697,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     ].map(({ label, val, color }) => (
                       <div key={label} style={{ textAlign:'center', flex:1 }}>
                         <div style={{ fontSize: isMobile ? 20 : 26, fontWeight:900, color, lineHeight:1 }}>{val}</div>
-                        <div style={{ fontSize: isMobile ? 9 : 10, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.05em', marginTop:2 }}>{label}</div>
+                        <div style={{ fontSize: isMobile ? 9 : 10, fontWeight:600, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.05em', marginTop:2 }}>{label}</div>
                       </div>
                     ))}
                   </div>
@@ -712,13 +712,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           {/* Botón volver (solo cuando brF está activo) */}
           {brF && (
             <button onClick={clearFilters}
-              style={{ marginBottom:12, display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:'#4B5563', fontFamily:'inherit', padding:0 }}>
+              style={{ marginBottom:12, display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:'var(--text-muted)', fontFamily:'inherit', padding:0 }}>
               ← Volver a sucursales
             </button>
           )}
 
           {f.length === 0 ? (
-            <div style={{ background:'#FFFFFF', borderRadius:14, border:'1px dashed #E5E7EB' }}>
+            <div style={{ background:'#FFFFFF', borderRadius:14, border:'1px dashed var(--border)' }}>
               <Empty
                 icon={Ic.box}
                 title={hasFilters ? 'Sin resultados con estos filtros' : 'Sin unidades en el inventario'}
@@ -732,11 +732,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <div style={{ display:'grid', gridTemplateColumns: gridCols, gap:8 }}>
               {/* Contador + hint de orden — ocupa todo el ancho */}
               <div style={{ gridColumn:'1 / -1', display:'flex', justifyContent:'space-between', alignItems:'center', paddingLeft:2, marginBottom:2 }}>
-                <div style={{ fontSize:11, color:'#9CA3AF', fontWeight:500 }}>
+                <div style={{ fontSize:11, color:'var(--text-disabled)', fontWeight:500 }}>
                   {f.length} unidad{f.length!==1?'es':''}{hasFilters&&` (filtradas de ${inv.length})`}
                 </div>
                 {canDrag && (
-                  <div style={{ fontSize:10, color:'#9CA3AF', display:'flex', alignItems:'center', gap:4 }}>
+                  <div style={{ fontSize:10, color:'var(--text-disabled)', display:'flex', alignItems:'center', gap:4 }}>
                     <span style={{ fontSize:13 }}>⠿</span> Arrastra para reordenar
                   </div>
                 )}
@@ -758,13 +758,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   <div style={{
                     background:'#FFFFFF',
                     borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
-                    border:`1px solid ${isSold ? '#E5E7EB' : stCfg.border}`,
+                    border:`1px solid ${isSold ? 'var(--border)' : stCfg.border}`,
                     overflow:'hidden',
                     boxShadow: isSold ? 'none' : '0 1px 6px rgba(0,0,0,0.06)',
                     opacity: isSold ? 0.75 : 1,
                   }}>
                     {/* Branch color top strip */}
-                    <div style={{ height:4, background: bCode ? bCfg.color : '#E5E7EB' }}/>
+                    <div style={{ height:4, background: bCode ? bCfg.color : 'var(--border)' }}/>
                     {/* Main body: photo + info */}
                     <div style={{ display:'flex', padding:'10px 12px 10px 10px', alignItems:'flex-start' }}>
                       {/* Photo */}
@@ -774,7 +774,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                               <img
                                 src={x.unit_photo}
                                 onClick={()=>setViewPhoto({src:x.unit_photo, title:`${x.brand} ${x.model}`})}
-                                style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid #E5E7EB', display:'block' }}
+                                style={{ width:96, height:96, borderRadius:10, objectFit:'cover', cursor:'pointer', border:'1.5px solid var(--border)', display:'block' }}
                               />
                               <button onClick={e=>{e.stopPropagation();handlePhoto(x.id,'unit_photo');}} title="Cambiar foto"
                                 style={{ position:'absolute', bottom:3, right:3, width:22, height:22, borderRadius:4, background:'rgba(0,0,0,0.55)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', fontSize:12, padding:0 }}>
@@ -784,7 +784,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           : <button
                               onClick={()=>handlePhoto(x.id,'unit_photo')}
                               title="Agregar foto"
-                              style={{ width:96, height:96, borderRadius:10, border:'1.5px dashed #D1D5DB', background:'#F9FAFB', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5, padding:0 }}>
+                              style={{ width:96, height:96, borderRadius:10, border:'1.5px dashed var(--border-strong)', background:'var(--surface-muted)', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5, padding:0 }}>
                               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9D0D8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                 <circle cx="12" cy="13" r="4"/>
@@ -795,13 +795,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       </div>
                       {/* Info */}
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:17, fontWeight:900, color:'#111827', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.brand}</div>
-                        <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.model}</div>
+                        <div style={{ fontSize:17, fontWeight:900, color:'var(--text)', letterSpacing:'-0.5px', lineHeight:1.1, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.brand}</div>
+                        <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)', marginBottom:6, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.model}</div>
                         <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', marginBottom:5 }}>
                           {x.year && <span style={{ fontSize:11, fontWeight:800, color:'#4F46E5', background:'#EEF2FF', padding:'2px 8px', borderRadius:5, border:'1px solid #C7D2FE' }}>{x.year}</span>}
                           {x.color && <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                            <span style={{ display:'inline-block', width:14, height:10, borderRadius:3, flexShrink:0, background:cDot||'#E5E7EB', border:!cDot||cDot==='#FFFFFF'?'1px solid #D1D5DB':'1px solid rgba(0,0,0,0.12)' }}/>
-                            <span style={{ fontSize:10, color:'#6B7280', fontWeight:600 }}>{x.color}</span>
+                            <span style={{ display:'inline-block', width:14, height:10, borderRadius:3, flexShrink:0, background:cDot||'var(--border)', border:!cDot||cDot==='#FFFFFF'?'1px solid var(--border-strong)':'1px solid rgba(0,0,0,0.12)' }}/>
+                            <span style={{ fontSize:10, color:'var(--text-subtle)', fontWeight:600 }}>{x.color}</span>
                           </div>}
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>
@@ -810,49 +810,49 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       </div>
                     </div>
                     {/* Bottom action bar */}
-                    <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', borderTop:'1px solid #F3F4F6', gap:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', borderTop:'1px solid var(--surface-sunken)', gap:8 }}>
                       <div style={{ flex:1 }}></div>
                       <button onClick={()=>toggleExpand(x.id)}
-                        style={{ padding:'5px 10px', borderRadius:7, border:`1px solid ${isExpanded?'#A5B4FC':'#E5E7EB'}`, background:isExpanded?'#EEF2FF':'#F9FAFB', color:isExpanded?'#4F46E5':'#6B7280', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                        style={{ padding:'5px 10px', borderRadius:7, border:`1px solid ${isExpanded?'#A5B4FC':'var(--border)'}`, background:isExpanded?'#EEF2FF':'var(--surface-muted)', color:isExpanded?'#4F46E5':'var(--text-subtle)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                         {isExpanded ? '▲' : '▼ Detalles'}
                       </button>
                     </div>
                     {/* Expanded details */}
                     {isExpanded && (
-                      <div style={{ borderTop:'1px solid #F3F4F6', padding:'12px 14px', background:'#F9FAFB' }}>
+                      <div style={{ borderTop:'1px solid var(--surface-sunken)', padding:'12px 14px', background:'var(--surface-muted)' }}>
                         <div style={{ display:'flex', gap:16, marginBottom:10, flexWrap:'wrap' }}>
                           <div>
-                            <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Chasis</div>
+                            <div style={{ fontSize:9, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Chasis</div>
                             <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                              <span style={{ fontSize:11, fontWeight:700, color:'#1F2937', background:'#F3F4F6', padding:'3px 9px', borderRadius:6, border:'1px solid #E5E7EB', letterSpacing:'0.03em' }}>{x.chassis}</span>
+                              <span style={{ fontSize:11, fontWeight:700, color:'var(--text-strong)', background:'var(--surface-sunken)', padding:'3px 9px', borderRadius:6, border:'1px solid var(--border)', letterSpacing:'0.03em' }}>{x.chassis}</span>
                               {x.chassis_photo
-                                ? <img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
-                                : <button onClick={()=>handlePhoto(x.id,'chassis_photo')} title="Foto chasis" style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:13,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
+                                ? <img src={x.chassis_photo} onClick={()=>setViewPhoto({src:x.chassis_photo,title:`Chasis ${x.chassis}`})} style={{ width:24,height:24,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid var(--border)' }}/>
+                                : <button onClick={()=>handlePhoto(x.id,'chassis_photo')} title="Foto chasis" style={{ width:22,height:22,borderRadius:5,border:'1px dashed var(--border-strong)',background:'transparent',cursor:'pointer',fontSize:13,color:'var(--border-strong)',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                               }
                             </div>
                           </div>
                           {x.motor_num && (
                             <div>
-                              <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Motor</div>
+                              <div style={{ fontSize:9, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Motor</div>
                               <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                                <span style={{ fontSize:11, fontWeight:600, color:'#4B5563', background:'#F9FAFB', padding:'3px 9px', borderRadius:6, border:'1px solid #E5E7EB' }}>{x.motor_num}</span>
+                                <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', background:'var(--surface-muted)', padding:'3px 9px', borderRadius:6, border:'1px solid var(--border)' }}>{x.motor_num}</span>
                                 {x.motor_photo
-                                  ? <img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid #E5E7EB' }}/>
-                                  : <button onClick={()=>handlePhoto(x.id,'motor_photo')} title="Foto motor" style={{ width:22,height:22,borderRadius:5,border:'1px dashed #D1D5DB',background:'transparent',cursor:'pointer',fontSize:12,color:'#D1D5DB',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
+                                  ? <img src={x.motor_photo} onClick={()=>setViewPhoto({src:x.motor_photo,title:`Motor ${x.motor_num}`})} style={{ width:22,height:22,borderRadius:5,objectFit:'cover',cursor:'pointer',border:'1.5px solid var(--border)' }}/>
+                                  : <button onClick={()=>handlePhoto(x.id,'motor_photo')} title="Foto motor" style={{ width:22,height:22,borderRadius:5,border:'1px dashed var(--border-strong)',background:'transparent',cursor:'pointer',fontSize:12,color:'var(--border-strong)',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
                                 }
                               </div>
                             </div>
                           )}
                           {isSold && x.sold_at && (
                             <div>
-                              <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Vendida</div>
-                              <div style={{ fontSize:11, color:'#6B7280' }}>{fD(x.sold_at)}</div>
+                              <div style={{ fontSize:9, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Vendida</div>
+                              <div style={{ fontSize:11, color:'var(--text-subtle)' }}>{fD(x.sold_at)}</div>
                             </div>
                           )}
                         </div>
                         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                           {!isSold && isAdmin && (
-                            <button onClick={()=>openEdit(x)} style={{ ...miniBtn, background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB' }}>Editar</button>
+                            <button onClick={()=>openEdit(x)} style={{ ...miniBtn, background:'var(--surface-muted)', color:'var(--text-subtle)', border:'1px solid var(--border)' }}>Editar</button>
                           )}
                           {!isSold && (
                             <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
@@ -864,13 +864,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           )}
                           {isAdmin && (
                             <button onClick={()=>toggleHist(x.id)}
-                              style={{ ...miniBtn, background: isHistOpen ? '#EEF2FF' : '#F9FAFB', color: isHistOpen ? '#4F46E5' : '#6B7280', border:`1px solid ${isHistOpen?'#A5B4FC':'#E5E7EB'}` }}>
+                              style={{ ...miniBtn, background: isHistOpen ? '#EEF2FF' : 'var(--surface-muted)', color: isHistOpen ? '#4F46E5' : 'var(--text-subtle)', border:`1px solid ${isHistOpen?'#A5B4FC':'var(--border)'}` }}>
                               {histLoading[x.id]?'…':'Historial'}
                             </button>
                           )}
                           {!isSold && isAdmin && brs.filter(b=>b.id!==x.branch_id).length > 0 && (
                             <select defaultValue="" onChange={e=>{if(e.target.value){handleMove(x.id,e.target.value);}e.target.value='';}}
-                              style={{ ...miniBtn, appearance:'auto', background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB', cursor:'pointer', fontFamily:'inherit' }}>
+                              style={{ ...miniBtn, appearance:'auto', background:'var(--surface-muted)', color:'var(--text-subtle)', border:'1px solid var(--border)', cursor:'pointer', fontFamily:'inherit' }}>
                               <option value="" disabled>Mover a...</option>
                               {brs.filter(b=>b.id!==x.branch_id).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
@@ -884,14 +884,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     <div style={{ background:'#F8F7FF', border:'1px solid #E2E0F5', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'14px 16px 18px' }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
                         <div style={{ fontSize:11, fontWeight:700, color:'#4F46E5' }}>Historial · {x.brand} {x.model}</div>
-                        <button onClick={()=>toggleHist(x.id)} style={{ ...miniBtn, border:'1px solid #E5E7EB' }}>Cerrar</button>
+                        <button onClick={()=>toggleHist(x.id)} style={{ ...miniBtn, border:'1px solid var(--border)' }}>Cerrar</button>
                       </div>
-                      {histLoading[x.id] && <div style={{ color:'#9CA3AF', fontSize:11 }}>Cargando...</div>}
+                      {histLoading[x.id] && <div style={{ color:'var(--text-disabled)', fontSize:11 }}>Cargando...</div>}
                       {!histLoading[x.id] && histErr[x.id] && (
                         <div style={{ color:'#B91C1C', fontSize:11, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:7, padding:'6px 10px' }}>{histErr[x.id]}</div>
                       )}
                       {!histLoading[x.id] && !histErr[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
-                        <div style={{ color:'#9CA3AF', fontSize:11 }}>Sin registros de historial.</div>
+                        <div style={{ color:'var(--text-disabled)', fontSize:11 }}>Sin registros de historial.</div>
                       )}
                       {!histLoading[x.id] && histData[x.id]?.length > 0 && (
                         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
@@ -905,11 +905,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                                 </div>
                                 <div style={{ flex:1,minWidth:0 }}>
                                   <div style={{ display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginBottom:1 }}>
-                                    <span style={{ fontWeight:700,fontSize:11,color:isSaleEv?'#6D28D9':'#374151' }}>{HIST_LABELS[h.event_type]||h.event_type}</span>
-                                    <span style={{ fontSize:9,color:'#9CA3AF',marginLeft:'auto' }}>{fDT(h.created_at)}</span>
+                                    <span style={{ fontWeight:700,fontSize:11,color:isSaleEv?'#6D28D9':'var(--text-body)' }}>{HIST_LABELS[h.event_type]||h.event_type}</span>
+                                    <span style={{ fontSize:9,color:'var(--text-disabled)',marginLeft:'auto' }}>{fDT(h.created_at)}</span>
                                   </div>
-                                  {h.note && <div style={{ fontSize:10,color:'#4B5563',lineHeight:1.4 }}>{h.note}</div>}
-                                  <div style={{ fontSize:9,color:'#9CA3AF' }}>por <strong style={{ color:'#6B7280',fontWeight:600 }}>{uName}</strong></div>
+                                  {h.note && <div style={{ fontSize:10,color:'var(--text-muted)',lineHeight:1.4 }}>{h.note}</div>}
+                                  <div style={{ fontSize:9,color:'var(--text-disabled)' }}>por <strong style={{ color:'var(--text-subtle)',fontWeight:600 }}>{uName}</strong></div>
                                 </div>
                               </div>
                             );
@@ -937,7 +937,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   display:'flex', alignItems:'stretch',
                   background:'#FFFFFF',
                   borderRadius: isHistOpen ? '14px 14px 0 0' : 14,
-                  border:`1px solid ${isSold ? '#E5E7EB' : '#EAECEF'}`,
+                  border:`1px solid ${isSold ? 'var(--border)' : '#EAECEF'}`,
                   overflow:'hidden',
                   boxShadow: isSold ? 'none' : '0 1px 3px rgba(16,24,40,0.04), 0 1px 2px rgba(16,24,40,0.02)',
                   opacity: isSold ? 0.68 : 1,
@@ -945,12 +945,12 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   cursor: isAdmin ? 'pointer' : 'default',
                 }}
                   onClick={isAdmin ? ()=>openEdit(x) : undefined}
-                  onMouseEnter={e=>{ if(!isSold){ e.currentTarget.style.boxShadow='0 6px 20px rgba(16,24,40,0.08)'; e.currentTarget.style.borderColor='#D1D5DB'; e.currentTarget.style.transform='translateY(-1px)'; } }}
+                  onMouseEnter={e=>{ if(!isSold){ e.currentTarget.style.boxShadow='0 6px 20px rgba(16,24,40,0.08)'; e.currentTarget.style.borderColor='var(--border-strong)'; e.currentTarget.style.transform='translateY(-1px)'; } }}
                   onMouseLeave={e=>{ if(!isSold){ e.currentTarget.style.boxShadow='0 1px 3px rgba(16,24,40,0.04), 0 1px 2px rgba(16,24,40,0.02)'; e.currentTarget.style.borderColor='#EAECEF'; e.currentTarget.style.transform='translateY(0)'; } }}
                 >
 
                   {/* ── FOTO GRANDE con badge de estado superpuesto ── */}
-                  <div style={{ flexShrink:0, position:'relative', width:180, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)', overflow:'hidden', minHeight:140 }} onClick={e=>e.stopPropagation()}>
+                  <div style={{ flexShrink:0, position:'relative', width:180, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg, var(--surface-muted) 0%, var(--surface-sunken) 100%)', overflow:'hidden', minHeight:140 }} onClick={e=>e.stopPropagation()}>
                     {x.unit_photo
                       ? <>
                           <img
@@ -977,7 +977,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   {/* ── INFO PRINCIPAL ── */}
                   <div style={{ flex:1, minWidth:0, padding:'14px 18px', display:'flex', flexDirection:'column', justifyContent:'center', gap:6, overflow:'hidden' }}>
                     {/* Marca + Modelo */}
-                    <div style={{ fontSize:15, fontWeight:800, color:'#0F172A', letterSpacing:'-0.2px', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    <div style={{ fontSize:15, fontWeight:800, color:'var(--text)', letterSpacing:'-0.2px', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                       {x.brand} <span style={{ fontWeight:600, color:'#475569' }}>{x.model}</span>
                     </div>
                     {/* Meta chips: año · color */}
@@ -989,14 +989,14 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       )}
                       {x.color && (
                         <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                          <span style={{ width:12, height:12, borderRadius:3, background:cDot||'#E5E7EB', border: !cDot||cDot==='#FFFFFF'?'1px solid #D1D5DB':'1px solid rgba(0,0,0,0.08)', flexShrink:0, display:'inline-block' }}/>
+                          <span style={{ width:12, height:12, borderRadius:3, background:cDot||'var(--border)', border: !cDot||cDot==='#FFFFFF'?'1px solid var(--border-strong)':'1px solid rgba(0,0,0,0.08)', flexShrink:0, display:'inline-block' }}/>
                           <span style={{ fontSize:11, color:'#64748B', fontWeight:600 }}>{x.color}</span>
                         </div>
                       )}
                       {x.sale_price > 0 && (
                         <>
                           <span style={{ width:3, height:3, borderRadius:'50%', background:'#CBD5E1' }}/>
-                          <span style={{ fontSize:12, fontWeight:800, color:'#0F172A', letterSpacing:'-0.01em' }}>
+                          <span style={{ fontSize:12, fontWeight:800, color:'var(--text)', letterSpacing:'-0.01em' }}>
                             ${Number(x.sale_price).toLocaleString('es-CL')}
                           </span>
                         </>
@@ -1087,9 +1087,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                         style={{
                           padding:'6px 10px', borderRadius:8, fontSize:11, fontWeight:700,
                           cursor:'pointer', fontFamily:'inherit',
-                          background: isHistOpen ? '#0F172A' : '#FFFFFF',
+                          background: isHistOpen ? 'var(--text)' : '#FFFFFF',
                           color: isHistOpen ? '#FFFFFF' : '#475569',
-                          border:`1px solid ${isHistOpen?'#0F172A':'#E2E8F0'}`,
+                          border:`1px solid ${isHistOpen?'var(--text)':'#E2E8F0'}`,
                           display:'flex', alignItems:'center', justifyContent:'center', gap:5,
                           transition:'all 0.12s',
                         }}>
@@ -1127,20 +1127,20 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                       <div>
                         <div style={{ fontSize:12, fontWeight:700, color:'#4F46E5' }}>Trazabilidad de la unidad</div>
-                        <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>
+                        <div style={{ fontSize:11, color:'var(--text-disabled)', marginTop:2 }}>
                           {x.brand} {x.model}{x.year?` · ${x.year}`:''} · Chasis{' '}
                           <span style={{ fontFamily:'inherit', fontWeight:600, color:'#4F46E5' }}>{x.chassis}</span>
                         </div>
                       </div>
                       <button onClick={()=>toggleHist(x.id)}
-                        style={{ ...miniBtn, border:'1px solid #E5E7EB' }}>Cerrar</button>
+                        style={{ ...miniBtn, border:'1px solid var(--border)' }}>Cerrar</button>
                     </div>
-                    {histLoading[x.id] && <div style={{ color:'#9CA3AF', fontSize:11 }}>Cargando historial...</div>}
+                    {histLoading[x.id] && <div style={{ color:'var(--text-disabled)', fontSize:11 }}>Cargando historial...</div>}
                     {!histLoading[x.id] && histErr[x.id] && (
                       <div style={{ color:'#B91C1C', fontSize:11, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:7, padding:'7px 10px' }}>{histErr[x.id]}</div>
                     )}
                     {!histLoading[x.id] && !histErr[x.id] && (!histData[x.id]||histData[x.id].length===0) && (
-                      <div style={{ color:'#9CA3AF', fontSize:11 }}>Sin registros de historial para esta unidad.</div>
+                      <div style={{ color:'var(--text-disabled)', fontSize:11 }}>Sin registros de historial para esta unidad.</div>
                     )}
                     {!histLoading[x.id] && histData[x.id]?.length > 0 && (
                       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:8, maxWidth:900 }}>
@@ -1159,16 +1159,16 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                               </div>
                               <div style={{ flex:1,minWidth:0 }}>
                                 <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:2 }}>
-                                  <span style={{ fontWeight:700,fontSize:11,color:isSaleEv?'#6D28D9':'#374151' }}>{HIST_LABELS[h.event_type]||h.event_type}</span>
+                                  <span style={{ fontWeight:700,fontSize:11,color:isSaleEv?'#6D28D9':'var(--text-body)' }}>{HIST_LABELS[h.event_type]||h.event_type}</span>
                                   {h.from_status&&h.to_status&&(
-                                    <span style={{ fontSize:9,color:'#6B7280',background:'#F3F4F6',padding:'1px 5px',borderRadius:3,border:'1px solid #E5E7EB' }}>
+                                    <span style={{ fontSize:9,color:'var(--text-subtle)',background:'var(--surface-sunken)',padding:'1px 5px',borderRadius:3,border:'1px solid var(--border)' }}>
                                       {INV_ST[h.from_status]?.l||h.from_status} → {INV_ST[h.to_status]?.l||h.to_status}
                                     </span>
                                   )}
-                                  <span style={{ fontSize:9,color:'#9CA3AF',marginLeft:'auto',flexShrink:0 }}>{fDT(h.created_at)}</span>
+                                  <span style={{ fontSize:9,color:'var(--text-disabled)',marginLeft:'auto',flexShrink:0 }}>{fDT(h.created_at)}</span>
                                 </div>
-                                {h.note && <div style={{ fontSize:10,color:'#4B5563',marginBottom:3,lineHeight:1.4 }}>{h.note}</div>}
-                                <div style={{ fontSize:9,color:'#9CA3AF' }}>por <strong style={{ color:'#6B7280',fontWeight:600 }}>{uName}</strong></div>
+                                {h.note && <div style={{ fontSize:10,color:'var(--text-muted)',marginBottom:3,lineHeight:1.4 }}>{h.note}</div>}
+                                <div style={{ fontSize:9,color:'var(--text-disabled)' }}>por <strong style={{ color:'var(--text-subtle)',fontWeight:600 }}>{uName}</strong></div>
                               </div>
                             </div>
                           );
@@ -1226,9 +1226,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             {/* Color — nombre + picker de tono */}
             <div style={{ marginBottom:10 }}>
               <Field label="Color" value={eForm.color} onChange={v=>setEForm({...eForm,color:v})}/>
-              <div style={{ marginTop:8, background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 12px' }}>
-                <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Tono visual</div>
-                <ColorPicker value={eForm.color_hex || '#111827'} onChange={v=>setEForm({...eForm,color_hex:v})}/>
+              <div style={{ marginTop:8, background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px' }}>
+                <div style={{ fontSize:10, color:'var(--text-subtle)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Tono visual</div>
+                <ColorPicker value={eForm.color_hex || 'var(--text)'} onChange={v=>setEForm({...eForm,color_hex:v})}/>
               </div>
             </div>
             {/* Chasis + Motor */}
@@ -1250,11 +1250,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
                   <div>
                     <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>Cliente</div>
-                    <div style={{ fontSize:13, color:'#111827' }}>{editTarget.client_name || <span style={{color:'#9CA3AF'}}>—</span>}</div>
+                    <div style={{ fontSize:13, color:'var(--text)' }}>{editTarget.client_name || <span style={{color:'var(--text-disabled)'}}>—</span>}</div>
                   </div>
                   <div>
                     <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>RUT</div>
-                    <div style={{ fontSize:13, color:'#111827' }}>{editTarget.client_rut || <span style={{color:'#9CA3AF'}}>—</span>}</div>
+                    <div style={{ fontSize:13, color:'var(--text)' }}>{editTarget.client_rut || <span style={{color:'var(--text-disabled)'}}>—</span>}</div>
                   </div>
                 </div>
 
@@ -1263,7 +1263,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:12 }}>
                     <div style={{ background:'#FEF3C7', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
                       <div style={{ fontSize:10, color:'#92400E', fontWeight:700, marginBottom:2 }}>PRECIO</div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{fmt(editTarget.sale_price)}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{fmt(editTarget.sale_price)}</div>
                     </div>
                     <div style={{ background:'#ECFDF5', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
                       <div style={{ fontSize:10, color:'#065F46', fontWeight:700, marginBottom:2 }}>ABONADO</div>
@@ -1299,7 +1299,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     <select
                       value={eForm.sold_by}
                       onChange={e=>setEForm({...eForm,sold_by:e.target.value})}
-                      style={{ width:'100%', height:38, borderRadius:8, border:'1px solid #E5E7EB', background:'#ffffff', fontSize:13, color:'#374151', padding:'0 8px', fontFamily:'inherit' }}>
+                      style={{ width:'100%', height:38, borderRadius:8, border:'1px solid var(--border)', background:'#ffffff', fontSize:13, color:'var(--text-body)', padding:'0 8px', fontFamily:'inherit' }}>
                       <option value="">Seleccionar…</option>
                       {sellers.map(s=><option key={s.id} value={s.id}>{`${s.first_name||''} ${s.last_name||''}`.trim()}</option>)}
                     </select>
@@ -1343,7 +1343,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </button>
                 )}
                 <button type="submit" disabled={eSaving}
-                  style={{ background:'#111827', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                  style={{ background:'var(--text)', color:'#FFFFFF', border:'none', borderRadius:8, padding:'8px 22px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                   {eSaving ? 'Guardando…' : 'Guardar cambios'}
                 </button>
               </div>
@@ -1369,9 +1369,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             {/* Color — nombre + picker de tono */}
             <div style={{ marginBottom:10 }}>
               <Field label="Color" value={nw.color} onChange={v=>setNw({...nw,color:v})}/>
-              <div style={{ marginTop:8, background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 12px' }}>
-                <div style={{ fontSize:10, color:'#6B7280', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Tono visual</div>
-                <ColorPicker value={nw.color_hex || '#111827'} onChange={v=>setNw({...nw,color_hex:v})}/>
+              <div style={{ marginTop:8, background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px' }}>
+                <div style={{ fontSize:10, color:'var(--text-subtle)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Tono visual</div>
+                <ColorPicker value={nw.color_hex || 'var(--text)'} onChange={v=>setNw({...nw,color_hex:v})}/>
               </div>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14 }}>
@@ -1379,13 +1379,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
               <Field label="N° Motor" value={nw.motor_num} onChange={v=>setNw({...nw,motor_num:v})}/>
             </div>
             <div onClick={()=>setNw({...nw,added_as_sold:!nw.added_as_sold})}
-              style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:8,marginBottom:nw.added_as_sold?10:16,cursor:'pointer',background:nw.added_as_sold?'rgba(239,68,68,0.06)':'#F9FAFB',border:`1px solid ${nw.added_as_sold?'rgba(239,68,68,0.3)':'#E5E7EB'}`,transition:'all 0.15s' }}>
-              <div style={{ width:18,height:18,borderRadius:4,border:nw.added_as_sold?'none':'2px solid #1F2937',background:nw.added_as_sold?'#EF4444':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+              style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:8,marginBottom:nw.added_as_sold?10:16,cursor:'pointer',background:nw.added_as_sold?'rgba(239,68,68,0.06)':'var(--surface-muted)',border:`1px solid ${nw.added_as_sold?'rgba(239,68,68,0.3)':'var(--border)'}`,transition:'all 0.15s' }}>
+              <div style={{ width:18,height:18,borderRadius:4,border:nw.added_as_sold?'none':'2px solid var(--text-strong)',background:nw.added_as_sold?'#EF4444':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
                 {nw.added_as_sold&&<Ic.check size={11} color="white"/>}
               </div>
               <div>
-                <div style={{ fontSize:13,fontWeight:600,color:nw.added_as_sold?'#EF4444':'#374151' }}>Esta unidad ya está vendida</div>
-                <div style={{ fontSize:11,color:'#6B7280' }}>Se registrará directamente como vendida, sin pasar por stock disponible</div>
+                <div style={{ fontSize:13,fontWeight:600,color:nw.added_as_sold?'#EF4444':'var(--text-body)' }}>Esta unidad ya está vendida</div>
+                <div style={{ fontSize:11,color:'var(--text-subtle)' }}>Se registrará directamente como vendida, sin pasar por stock disponible</div>
               </div>
             </div>
             {nw.added_as_sold && (
@@ -1407,7 +1407,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             )}
             <ErrorMsg msg={addErr}/>
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-              <div style={{ fontSize:11,color:'#6B7280' }}>
+              <div style={{ fontSize:11,color:'var(--text-subtle)' }}>
                 {nw.added_as_sold&&<span style={{ color:'#EF4444',fontWeight:600 }}>Se creará como vendida</span>}
               </div>
               <div style={{ display:'flex',gap:8 }}>
@@ -1429,9 +1429,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           <input ref={importFileRef} type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={handleImportFile}/>
           {!importPreview && !importDone && (
             <div style={{ textAlign:'center',padding:'32px 16px' }}>
-              <div style={{ width:52,height:52,borderRadius:12,background:'#F3F4F6',border:'1px solid #E5E7EB',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',fontSize:13,fontWeight:800,color:'#6B7280' }}>XLS</div>
-              <p style={{ fontSize:13,color:'#374151',marginBottom:6 }}>Selecciona tu plantilla Excel (.xlsx)</p>
-              <p style={{ fontSize:11,color:'#6B7280',marginBottom:20 }}>Columnas: <strong>Sucursal · Año · Marca · Modelo · Color · N° Chasis · N° Motor · Estado</strong></p>
+              <div style={{ width:52,height:52,borderRadius:12,background:'var(--surface-sunken)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',fontSize:13,fontWeight:800,color:'var(--text-subtle)' }}>XLS</div>
+              <p style={{ fontSize:13,color:'var(--text-body)',marginBottom:6 }}>Selecciona tu plantilla Excel (.xlsx)</p>
+              <p style={{ fontSize:11,color:'var(--text-subtle)',marginBottom:20 }}>Columnas: <strong>Sucursal · Año · Marca · Modelo · Color · N° Chasis · N° Motor · Estado</strong></p>
               <button onClick={()=>importFileRef.current?.click()} disabled={importLoading} style={{ ...S.btn,fontSize:13,padding:'10px 24px' }}>
                 {importLoading?'Procesando...':'Seleccionar archivo'}
               </button>
@@ -1440,26 +1440,26 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           {importPreview && (
             <>
               <div style={{ display:'flex',gap:10,marginBottom:14,flexWrap:'wrap' }}>
-                {[{l:'Total filas',v:importPreview.total,c:'#6B7280'},{l:'Nuevas',v:importPreview.ok,c:'#10B981'},{l:'Incompletas',v:importPreview.warnings||0,c:'#F97316'},{l:'Duplicados',v:importPreview.duplicates,c:'#F59E0B'},{l:'Errores',v:importPreview.errors,c:'#EF4444'}].map(({l,v,c})=>(
+                {[{l:'Total filas',v:importPreview.total,c:'var(--text-subtle)'},{l:'Nuevas',v:importPreview.ok,c:'#10B981'},{l:'Incompletas',v:importPreview.warnings||0,c:'#F97316'},{l:'Duplicados',v:importPreview.duplicates,c:'#F59E0B'},{l:'Errores',v:importPreview.errors,c:'#EF4444'}].map(({l,v,c})=>(
                   <div key={l} style={{ ...S.card,padding:'8px 14px',textAlign:'center',flex:1,minWidth:80 }}>
                     <div style={{ fontSize:20,fontWeight:800,color:c }}>{v}</div>
-                    <div style={{ fontSize:10,color:'#6B7280' }}>{l}</div>
+                    <div style={{ fontSize:10,color:'var(--text-subtle)' }}>{l}</div>
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize:11,color:'#6B7280',marginBottom:10 }}>Hoja: <strong>{importPreview.sheet}</strong> · Se importarán filas <span style={{color:'#10B981',fontWeight:600}}>verdes</span> (completas) y <span style={{color:'#F97316',fontWeight:600}}>naranjas</span> (incompletas, completar después).</p>
-              <div style={{ maxHeight:320,overflowY:'auto',border:'1px solid #E5E7EB',borderRadius:8,marginBottom:14 }}>
+              <p style={{ fontSize:11,color:'var(--text-subtle)',marginBottom:10 }}>Hoja: <strong>{importPreview.sheet}</strong> · Se importarán filas <span style={{color:'#10B981',fontWeight:600}}>verdes</span> (completas) y <span style={{color:'#F97316',fontWeight:600}}>naranjas</span> (incompletas, completar después).</p>
+              <div style={{ maxHeight:320,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,marginBottom:14 }}>
                 <table style={{ width:'100%',borderCollapse:'collapse',fontSize:11 }}>
-                  <thead style={{ position:'sticky',top:0,background:'#F9FAFB' }}>
-                    <tr>{['Fila','Sucursal','Año','Marca','Modelo','Color','Chasis','Motor','Estado',''].map(h=><th key={h} style={{ padding:'6px 8px',textAlign:'left',fontSize:9,fontWeight:600,color:'#6B7280',textTransform:'uppercase',borderBottom:'1px solid #E5E7EB' }}>{h}</th>)}</tr>
+                  <thead style={{ position:'sticky',top:0,background:'var(--surface-muted)' }}>
+                    <tr>{['Fila','Sucursal','Año','Marca','Modelo','Color','Chasis','Motor','Estado',''].map(h=><th key={h} style={{ padding:'6px 8px',textAlign:'left',fontSize:9,fontWeight:600,color:'var(--text-subtle)',textTransform:'uppercase',borderBottom:'1px solid var(--border)' }}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {importPreview.rows.map((r,i)=>{
                       const bg=r._status==='ok'?'rgba(16,185,129,0.04)':r._status==='warning'?'rgba(249,115,22,0.05)':r._status==='duplicate'?'rgba(245,158,11,0.06)':'rgba(239,68,68,0.06)';
                       const ic=r._status==='ok'?'#10B981':r._status==='warning'?'#F97316':r._status==='duplicate'?'#F59E0B':'#EF4444';
                       return(
-                        <tr key={i} style={{ borderBottom:'1px solid #F3F4F6',background:bg }}>
-                          <td style={{ padding:'5px 8px',color:'#9CA3AF' }}>{r._row}</td>
+                        <tr key={i} style={{ borderBottom:'1px solid var(--surface-sunken)',background:bg }}>
+                          <td style={{ padding:'5px 8px',color:'var(--text-disabled)' }}>{r._row}</td>
                           <td style={{ padding:'5px 8px' }}>{r.branch_raw||'-'}</td>
                           <td style={{ padding:'5px 8px' }}>{r.year}</td>
                           <td style={{ padding:'5px 8px',fontWeight:600 }}>{r.brand||'-'}</td>
@@ -1500,7 +1500,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
             <div style={{ textAlign:'center',padding:'32px 16px' }}>
               <div style={{ width:44,height:44,borderRadius:'50%',background:'rgba(16,185,129,0.1)',border:'1.5px solid rgba(16,185,129,0.25)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',fontSize:11,fontWeight:700,color:'#10B981' }}>OK</div>
               <h3 style={{ fontSize:16,fontWeight:700,marginBottom:8 }}>Importación completada</h3>
-              <p style={{ fontSize:13,color:'#374151',marginBottom:4 }}><strong>{importDone.inserted}</strong> unidades agregadas</p>
+              <p style={{ fontSize:13,color:'var(--text-body)',marginBottom:4 }}><strong>{importDone.inserted}</strong> unidades agregadas</p>
               {importDone.skipped>0&&<p style={{ fontSize:12,color:'#F59E0B' }}>{importDone.skipped} duplicadas omitidas</p>}
               <div style={{ display:'flex',gap:8,justifyContent:'center',marginTop:20 }}>
                 <button onClick={()=>{setImportPreview(null);setImportDone(null);importFileRef.current?.click();}} style={S.btn2}>Importar otro archivo</button>
@@ -1521,18 +1521,18 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
           style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1001,display:'flex',flexDirection:'column',justifyContent:'flex-end' }}>
           <div onClick={e=>e.stopPropagation()}
             style={{ background:'#ffffff',borderRadius:'18px 18px 0 0',padding:'12px 16px 32px' }}>
-            <div style={{ width:36,height:4,borderRadius:2,background:'#D1D5DB',margin:'0 auto 18px' }}/>
-            <div style={{ fontSize:13,fontWeight:700,color:'#374151',marginBottom:14,textAlign:'center' }}>Agregar foto</div>
+            <div style={{ width:36,height:4,borderRadius:2,background:'var(--border-strong)',margin:'0 auto 18px' }}/>
+            <div style={{ fontSize:13,fontWeight:700,color:'var(--text-body)',marginBottom:14,textAlign:'center' }}>Agregar foto</div>
             <button onClick={()=>{ setShowPhotoPicker(false); setTimeout(()=>{ cameraInputRef.current.value=''; cameraInputRef.current.click(); },50); }}
-              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#111827' }}>
+              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid var(--border)',background:'var(--surface-muted)',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'var(--text)' }}>
               Tomar foto con la cámara
             </button>
             <button onClick={()=>{ setShowPhotoPicker(false); setTimeout(()=>{ galleryInputRef.current.value=''; galleryInputRef.current.click(); },50); }}
-              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'#111827' }}>
+              style={{ display:'block',width:'100%',padding:'15px',borderRadius:12,border:'1px solid var(--border)',background:'var(--surface-muted)',fontSize:15,fontWeight:600,cursor:'pointer',marginBottom:10,fontFamily:'inherit',color:'var(--text)' }}>
               Elegir desde la galería
             </button>
             <button onClick={()=>{ setShowPhotoPicker(false); photoTargetRef.current=null; }}
-              style={{ display:'block',width:'100%',padding:'12px',borderRadius:12,border:'none',background:'transparent',fontSize:14,color:'#6B7280',cursor:'pointer',fontFamily:'inherit' }}>
+              style={{ display:'block',width:'100%',padding:'12px',borderRadius:12,border:'none',background:'transparent',fontSize:14,color:'var(--text-subtle)',cursor:'pointer',fontFamily:'inherit' }}>
               Cancelar
             </button>
           </div>
@@ -1553,12 +1553,12 @@ const btnOrange = {
 };
 const btnGhost = {
   display:'flex', alignItems:'center', gap:6,
-  background:'#FFFFFF', border:'1.5px solid #E5E7EB', color:'#374151',
+  background:'#FFFFFF', border:'1.5px solid var(--border)', color:'var(--text-body)',
   borderRadius:9, fontSize:12, fontWeight:500, cursor:'pointer',
   padding:'8px 14px', fontFamily:'inherit',
 };
 const miniBtn = {
   padding:'5px 10px', borderRadius:7, fontSize:10, fontWeight:600,
   cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap',
-  background:'#F9FAFB', color:'#6B7280', border:'1px solid #E5E7EB',
+  background:'var(--surface-muted)', color:'var(--text-subtle)', border:'1px solid var(--border)',
 };

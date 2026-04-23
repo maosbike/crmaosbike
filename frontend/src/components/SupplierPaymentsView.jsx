@@ -66,8 +66,8 @@ function ColorChip({color}) {
   if(!color) return null;
   const hex=colorHex(color);
   const light = ['blanco','plata','plateado','celeste','amarillo'].includes(color.toLowerCase().split(' ')[0]);
-  return <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px 3px 6px',borderRadius:20,border:'1px solid #E5E7EB',background:'#F9FAFB',fontSize:11,fontWeight:600,color:'#374151',whiteSpace:'nowrap'}}>
-    <span style={{width:10,height:10,borderRadius:'50%',background:hex,border:light?'1px solid #D1D5DB':'none',flexShrink:0}}/>
+  return <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px 3px 6px',borderRadius:20,border:'1px solid var(--border)',background:'var(--surface-muted)',fontSize:11,fontWeight:600,color:'var(--text-body)',whiteSpace:'nowrap'}}>
+    <span style={{width:10,height:10,borderRadius:'50%',background:hex,border:light?'1px solid var(--border-strong)':'none',flexShrink:0}}/>
     {color}
   </span>;
 }
@@ -82,7 +82,7 @@ function CatalogModelPicker({ brand, model, onSelect }) {
     if(!selBrand){setModels([]);return;}
     api.getModels({brand:selBrand}).then(r=>setModels(Array.isArray(r)?r:r.data||[])).catch(()=>{});
   },[selBrand]);
-  const sel = {height:36,borderRadius:8,border:'1px solid #D1D5DB',background:'#F9FAFB',color:'#374151',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
+  const sel = {height:36,borderRadius:8,border:'1px solid var(--border-strong)',background:'var(--surface-muted)',color:'var(--text-body)',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
   return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
     <div>
       <label style={{...S.lbl,fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Marca</label>
@@ -115,7 +115,7 @@ function catalogColors(modelRow) {
 }
 function CatalogColorPicker({ modelRow, value, onChange }) {
   const opts = catalogColors(modelRow);
-  const sel = {height:36,borderRadius:8,border:'1px solid #D1D5DB',background:'#F9FAFB',color:'#374151',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
+  const sel = {height:36,borderRadius:8,border:'1px solid var(--border-strong)',background:'var(--surface-muted)',color:'var(--text-body)',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
   if (opts.length === 0) {
     return (
       <input value={value||''} onChange={e=>onChange(e.target.value)}
@@ -141,20 +141,20 @@ function CatalogColorPicker({ modelRow, value, onChange }) {
 }
 
 /* ── Shared inline tokens ───────────────────────────────────────────────── */
-const lbl9 = { display:'block', fontSize:9, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:5 };
-const lblField = { display:'block', fontSize:11, fontWeight:600, color:'#6B7280', marginBottom:3 };
-const secTitle = (color='#374151') => ({ fontSize:9, fontWeight:800, color, textTransform:'uppercase', letterSpacing:'0.14em', paddingBottom:7, marginBottom:10, borderBottom:`2px solid ${color}22` });
+const lbl9 = { display:'block', fontSize:9, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:5 };
+const lblField = { display:'block', fontSize:11, fontWeight:600, color:'var(--text-subtle)', marginBottom:3 };
+const secTitle = (color='var(--text-body)') => ({ fontSize:9, fontWeight:800, color, textTransform:'uppercase', letterSpacing:'0.14em', paddingBottom:7, marginBottom:10, borderBottom:`2px solid ${color}22` });
 const secCard = S.secCard;
 
 /* ── Form field ─────────────────────────────────────────────────────────── */
 function F({ label, value, onChange, type='text', half, hl }) {
   return (
     <div style={{ gridColumn: half?'auto':'1/-1' }}>
-      <label style={{ ...S.lbl, fontSize:10, fontWeight:600, color:hl?'#92400E':'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+      <label style={{ ...S.lbl, fontSize:10, fontWeight:600, color:hl?'#92400E':'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
         {label}{hl?' *':''}
       </label>
       <input type={type} value={value||''} onChange={e=>onChange?.(e.target.value)}
-        style={{ ...S.inp, width:'100%', border:'1px solid '+(hl?'#FCD34D':'#D1D5DB') }}/>
+        style={{ ...S.inp, width:'100%', border:'1px solid '+(hl?'#FCD34D':'var(--border-strong)') }}/>
     </div>
   );
 }
@@ -164,20 +164,20 @@ function FileZone({ label, file, onFile, url, onUrl, accent='var(--brand)' }) {
   const [mode, setMode] = useState(url?'url':'upload');
   const [drag, setDrag] = useState(false);
   return (
-    <div style={{ ...S.card, border:`1.5px solid ${drag?accent:'#E5E7EB'}`, padding:14 }}>
+    <div style={{ ...S.card, border:`1.5px solid ${drag?accent:'var(--border)'}`, padding:14 }}>
       <div style={lbl9}>{label}</div>
       <div style={{ display:'flex',gap:6,marginBottom:10 }}>
         {[['upload','Subir PDF'],['url','URL Drive']].map(([m,l])=>(
           <button key={m} type="button" onClick={()=>setMode(m)}
-            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:20,cursor:'pointer',border:`1.5px solid ${mode===m?accent:'#D1D5DB'}`,background:mode===m?accent:'#ffffff',color:mode===m?'#ffffff':'#6B7280' }}>{l}</button>
+            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:20,cursor:'pointer',border:`1.5px solid ${mode===m?accent:'var(--border-strong)'}`,background:mode===m?accent:'#ffffff',color:mode===m?'#ffffff':'var(--text-subtle)' }}>{l}</button>
         ))}
       </div>
       {mode==='upload' ? (
         <label onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)}
           onDrop={e=>{e.preventDefault();setDrag(false);if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0])}}
-          style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'16px 12px',border:`2px dashed ${drag?accent:'#D1D5DB'}`,borderRadius:8,cursor:'pointer' }}>
-          <Ic.file size={16} color={drag?accent:'#9CA3AF'}/>
-          <span style={{ fontFamily:'inherit',fontSize:12,color:'#6B7280' }}>{file?<strong style={{color:'#111827'}}>{file.name}</strong>:'Arrastra o haz click'}</span>
+          style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'16px 12px',border:`2px dashed ${drag?accent:'var(--border-strong)'}`,borderRadius:8,cursor:'pointer' }}>
+          <Ic.file size={16} color={drag?accent:'var(--text-disabled)'}/>
+          <span style={{ fontFamily:'inherit',fontSize:12,color:'var(--text-subtle)' }}>{file?<strong style={{color:'var(--text)'}}>{file.name}</strong>:'Arrastra o haz click'}</span>
           <input type="file" accept=".pdf" style={{display:'none'}} onChange={e=>{if(e.target.files[0])onFile(e.target.files[0])}}/>
         </label>
       ) : (
@@ -202,9 +202,9 @@ function Sec({ title, color, children }) {
 function DR({ label, value, bold, span }) {
   if (!value && value!==0) return null;
   return (
-    <div style={{ gridColumn:span?'1/-1':'auto', padding:'6px 0', borderBottom:'1px solid #F3F4F6' }}>
+    <div style={{ gridColumn:span?'1/-1':'auto', padding:'6px 0', borderBottom:'1px solid var(--surface-sunken)' }}>
       <div style={lbl9}>{label}</div>
-      <div style={{ fontFamily:'inherit', fontSize:13, fontWeight:bold?700:400, color:'#111827' }}>{value}</div>
+      <div style={{ fontFamily:'inherit', fontSize:13, fontWeight:bold?700:400, color:'var(--text)' }}>{value}</div>
     </div>
   );
 }
@@ -252,7 +252,7 @@ function NewModal({ onClose, onCreated }) {
     <Modal onClose={onClose} title="Registro creado">
       <div style={{textAlign:'center',padding:'30px 0'}}>
         <div style={{width:44,height:44,borderRadius:'50%',background:'#DCFCE7',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}><Ic.check size={22} color="#15803D"/></div>
-        <div style={{fontFamily:'inherit',fontSize:15,fontWeight:700,color:'#111827',marginBottom:12}}>Pago registrado</div>
+        <div style={{fontFamily:'inherit',fontSize:15,fontWeight:700,color:'var(--text)',marginBottom:12}}>Pago registrado</div>
         <button onClick={onClose} style={{...S.btn,padding:'8px 28px'}}>Cerrar</button>
       </div>
     </Modal>
@@ -262,7 +262,7 @@ function NewModal({ onClose, onCreated }) {
     <Modal onClose={onClose} title={step===1?'Nuevo pago a proveedor':'Revisar datos'} wide>
       {step===1&&(
         <div style={{display:'flex',flexDirection:'column',gap:14}}>
-          <div style={{fontSize:12,color:'#6B7280',background:'#F9FAFB',border:'1px solid #E5E7EB',borderRadius:8,padding:'10px 14px',fontFamily:'inherit'}}>Sube los PDF o pega los links de Google Drive.</div>
+          <div style={{fontSize:12,color:'var(--text-subtle)',background:'var(--surface-muted)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',fontFamily:'inherit'}}>Sube los PDF o pega los links de Google Drive.</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}}>
             <FileZone label="Factura proveedor" file={invFile} onFile={setInvFile} url={invUrl} onUrl={setInvUrl}/>
             <FileZone label="Comprobante de pago" file={recFile} onFile={setRecFile} url={recUrl} onUrl={setRecUrl} accent="#2563EB"/>
@@ -303,7 +303,7 @@ function NewModal({ onClose, onCreated }) {
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
               <div>
-                <label style={{...S.lbl, fontSize:10, fontWeight:600, color:hl.color?'#92400E':'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color{hl.color?' *':''}</label>
+                <label style={{...S.lbl, fontSize:10, fontWeight:600, color:hl.color?'#92400E':'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color{hl.color?' *':''}</label>
                 <CatalogColorPicker modelRow={modelRow} value={form.color} onChange={s('color')}/>
               </div>
               <F label="Año" value={form.commercial_year} onChange={s('commercial_year')} type="number" half hl={!!hl.commercial_year}/>
@@ -356,39 +356,39 @@ function DetailView({ p, dv, overdue, onUpdated }) {
       {/* Hero: foto + factura + estado + totales */}
       <div style={{
         display:'flex', alignItems:'stretch', minHeight:120,
-        background:'#FFFFFF', border:'1px solid #E5E7EB',
+        background:'#FFFFFF', border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
         borderRadius:12, overflow:'hidden',
         boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
       }}>
         <div style={{
           width:150, flexShrink:0,
-          background: STATUS_BG[st.l] || '#F3F4F6',
+          background: STATUS_BG[st.l] || 'var(--surface-sunken)',
           display:'flex', alignItems:'center', justifyContent:'center',
           overflow:'hidden',
         }}>
           {img
             ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-            : <Ic.bike size={48} color={STATUS_ICON[st.l] || '#9CA3AF'}/>}
+            : <Ic.bike size={48} color={STATUS_ICON[st.l] || 'var(--text-disabled)'}/>}
         </div>
         <div style={{ flex:1, padding:'14px 18px', display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, flexWrap:'wrap' }}>
           <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', marginBottom:2 }}>Factura</div>
-            <div style={{ fontSize:20, fontWeight:800, color:'#0F172A', letterSpacing:'-0.4px', marginBottom:4 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:'var(--text-disabled)', marginBottom:2 }}>Factura</div>
+            <div style={{ fontSize:20, fontWeight:800, color:'var(--text)', letterSpacing:'-0.4px', marginBottom:4 }}>
               #{p.invoice_number || '—'}
             </div>
-            <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>
               {p.catalog_name || p.model || '—'}
             </div>
             {(p.color || p.commercial_year) && (
-              <div style={{ fontSize:11, color:'#6B7280', marginTop:2 }}>
+              <div style={{ fontSize:11, color:'var(--text-subtle)', marginTop:2 }}>
                 {[p.color, p.commercial_year].filter(Boolean).join(' · ')}
               </div>
             )}
           </div>
           <div style={{ textAlign:'right', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
             <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
-            <div style={{ fontSize:22, fontWeight:800, color:'#0F172A', letterSpacing:'-0.5px' }}>
+            <div style={{ fontSize:22, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px' }}>
               {$(p.total_amount)}
             </div>
             {p.paid_amount ? (
@@ -424,7 +424,7 @@ function DetailView({ p, dv, overdue, onUpdated }) {
       )}
 
       {/* Vehículo */}
-      <DetailCard title="Vehículo" accent="#374151">
+      <DetailCard title="Vehículo" accent="var(--text-body)">
         <DetailRow label="Marca" value={p.brand}/>
         <DetailRow label="Modelo" value={p.model} bold/>
         <DetailRow label="Color" value={p.color}/>
@@ -457,7 +457,7 @@ function DetailView({ p, dv, overdue, onUpdated }) {
           style={{
             width:'100%', resize:'vertical', fontSize:13, fontFamily:'inherit',
             padding:'8px 10px', borderRadius:8, border:'1px solid #FDE68A',
-            background:'#FFFFFF', color:'#374151', outline:'none',
+            background:'#FFFFFF', color:'var(--text-body)', outline:'none',
           }}
         />
         {notesErr && (
@@ -502,19 +502,19 @@ function DetailView({ p, dv, overdue, onUpdated }) {
   );
 }
 
-function DetailCard({ title, accent='#374151', children }) {
+function DetailCard({ title, accent='var(--text-body)', children }) {
   return (
     <div style={{
-      background:'#FFFFFF', border:'1px solid #E5E7EB',
+      background:'#FFFFFF', border:'1px solid var(--border)',
       borderRadius:12, overflow:'hidden',
     }}>
       <div style={{
-        padding:'10px 16px', background:'#F9FAFB',
-        borderBottom:`1px solid #F3F4F6`,
+        padding:'10px 16px', background:'var(--surface-muted)',
+        borderBottom:`1px solid var(--surface-sunken)`,
         display:'flex', alignItems:'center', gap:8,
       }}>
         <span style={{ width:3, height:14, background:accent, borderRadius:2 }}/>
-        <span style={{ fontSize:12, fontWeight:700, color:'#111827', letterSpacing:'0.01em' }}>
+        <span style={{ fontSize:12, fontWeight:700, color:'var(--text)', letterSpacing:'0.01em' }}>
           {title}
         </span>
       </div>
@@ -529,12 +529,12 @@ function DetailRow({ label, value, bold, danger, span }) {
   if (!value && value !== 0) return null;
   return (
     <div style={{ gridColumn: span ? '1/-1' : 'auto' }}>
-      <div style={{ fontSize:11, fontWeight:600, color:'#6B7280', marginBottom:2 }}>
+      <div style={{ fontSize:11, fontWeight:600, color:'var(--text-subtle)', marginBottom:2 }}>
         {label}
       </div>
       <div style={{
         fontSize:14, fontWeight: bold ? 700 : 500,
-        color: danger ? '#DC2626' : '#111827',
+        color: danger ? '#DC2626' : 'var(--text)',
         fontFamily:'inherit', letterSpacing:'-0.1px',
       }}>
         {value}
@@ -607,18 +607,18 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
 
   /* Modal header personalizado con badge de estado */
   const headerContent = (
-    <div style={{padding:'18px 20px 14px',borderBottom:'1px solid #F3F4F6',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
+    <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--surface-sunken)',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
       <div style={{minWidth:0}}>
-        <h2 style={{fontSize:15,fontWeight:700,color:'#111827',margin:0}}>
+        <h2 style={{fontSize:15,fontWeight:700,color:'var(--text)',margin:0}}>
           Factura {p.invoice_number||'—'}
         </h2>
         {(p.catalog_name||p.model) && (
-          <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{p.catalog_name||p.model}</div>
+          <div style={{fontSize:12,color:'var(--text-subtle)',marginTop:2}}>{p.catalog_name||p.model}</div>
         )}
       </div>
       <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
         <Bdg l={st_badge.l} c={st_badge.c} bg={st_badge.bg}/>
-        <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'#9CA3AF',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>
+        <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>
       </div>
     </div>
   );
@@ -681,7 +681,7 @@ function DetailModal({ payment:p0, onClose, onUpdated, onDeleted, canDel, startI
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
                 <div>
-                  <label style={{...S.lbl, fontSize:10, fontWeight:600, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color</label>
+                  <label style={{...S.lbl, fontSize:10, fontWeight:600, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em'}}>Color</label>
                   <CatalogColorPicker modelRow={modelRow} value={form.color} onChange={st('color')}/>
                 </div>
                 <F label="Año" value={form.commercial_year} onChange={st('commercial_year')} type="number" half/>
@@ -716,12 +716,12 @@ function MobileCard({ p, onClick }) {
   const paid = parseFloat(p.paid_amount || 0) > 0;
   const saldo = Math.max(0, parseFloat(p.total_amount || 0) - parseFloat(p.paid_amount || 0));
   const amount = paid ? p.paid_amount : (saldo || p.total_amount);
-  const amountColor = paid ? '#059669' : st.l === 'Vencido' ? '#DC2626' : '#111827';
+  const amountColor = paid ? '#059669' : st.l === 'Vencido' ? '#DC2626' : 'var(--text)';
   return (
     <div onClick={onClick} style={{
       background:'#FFFFFF',
       borderRadius:14,
-      border:'1px solid #E5E7EB',
+      border:'1px solid var(--border)',
       borderLeft:`4px solid ${st.c}`,
       padding:12,
       marginBottom:12,
@@ -736,26 +736,26 @@ function MobileCard({ p, onClick }) {
         width:104, height:104,
         flexShrink:0,
         borderRadius:10,
-        background:'#F9FAFB',
-        border:'1px solid #F3F4F6',
+        background:'var(--surface-muted)',
+        border:'1px solid var(--surface-sunken)',
         display:'flex',alignItems:'center',justifyContent:'center',
         overflow:'hidden',
       }}>
         {img
           ? <img src={img} alt="" style={{width:'100%',height:'100%',objectFit:'contain'}}/>
-          : <Ic.bike size={30} color="#D1D5DB"/>}
+          : <Ic.bike size={30} color="var(--border-strong)"/>}
       </div>
 
       {/* Info */}
       <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
         <div style={{minWidth:0}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:2}}>
-            <div style={{fontSize:11, fontWeight:700, color:'#9CA3AF', letterSpacing:'0.02em'}}>
+            <div style={{fontSize:11, fontWeight:700, color:'var(--text-disabled)', letterSpacing:'0.02em'}}>
               #{p.invoice_number || '—'}
             </div>
             <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
           </div>
-          <div style={{fontSize:15, fontWeight:800, color:'#111827', lineHeight:1.2, letterSpacing:'-0.2px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+          <div style={{fontSize:15, fontWeight:800, color:'var(--text)', lineHeight:1.2, letterSpacing:'-0.2px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
             {p.catalog_name || p.model || '—'}
           </div>
         </div>
@@ -766,7 +766,7 @@ function MobileCard({ p, onClick }) {
           </div>
           {p.chassis && (
             <div style={{
-              fontSize:11, color:'#6B7280', marginTop:4,
+              fontSize:11, color:'var(--text-subtle)', marginTop:4,
               fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
               whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             }}>
@@ -808,7 +808,7 @@ function RowCard({ p, onClick }) {
         display:'flex', alignItems:'stretch',
         minHeight:148, marginBottom:10,
         background:'#FFFFFF',
-        border:'1px solid #E5E7EB',
+        border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
         borderRadius:14, overflow:'hidden',
         cursor:'pointer',
@@ -820,13 +820,13 @@ function RowCard({ p, onClick }) {
       {/* Foto */}
       <div style={{
         width:220, flexShrink:0,
-        background: STATUS_BG[st.l] || '#F3F4F6',
+        background: STATUS_BG[st.l] || 'var(--surface-sunken)',
         display:'flex', alignItems:'center', justifyContent:'center',
         overflow:'hidden', position:'relative',
       }}>
         {img
           ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-          : <Ic.bike size={56} color={STATUS_ICON[st.l] || '#9CA3AF'}/>
+          : <Ic.bike size={56} color={STATUS_ICON[st.l] || 'var(--text-disabled)'}/>
         }
         {!p.model_id && (p.brand||p.model) && (
           <span style={{
@@ -855,13 +855,13 @@ function RowCard({ p, onClick }) {
               #{p.invoice_number||'—'}
             </div>
             <span style={{
-              fontSize:10, fontWeight:700, color:'#6B7280',
-              background:'#F9FAFB', padding:'2px 8px', borderRadius:20, border:'1px solid #E5E7EB',
+              fontSize:10, fontWeight:700, color:'var(--text-subtle)',
+              background:'var(--surface-muted)', padding:'2px 8px', borderRadius:20, border:'1px solid var(--border)',
             }}>
               {fd(p.invoice_date)}
             </span>
           </div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:6,
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:6,
                         whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
             {p.catalog_name || p.model || p.notes || '—'}
           </div>
@@ -874,14 +874,14 @@ function RowCard({ p, onClick }) {
               </span>
             )}
             {p.chassis && (
-              <span style={{ fontSize:10, fontWeight:600, color:'#6B7280',
-                             background:'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>
+              <span style={{ fontSize:10, fontWeight:600, color:'var(--text-subtle)',
+                             background:'var(--surface-sunken)', padding:'2px 8px', borderRadius:20 }}>
                 {p.chassis}
               </span>
             )}
             {p.motor_num && (
-              <span style={{ fontSize:10, fontWeight:600, color:'#6B7280',
-                             background:'#F3F4F6', padding:'2px 8px', borderRadius:20 }}>
+              <span style={{ fontSize:10, fontWeight:600, color:'var(--text-subtle)',
+                             background:'var(--surface-sunken)', padding:'2px 8px', borderRadius:20 }}>
                 {p.motor_num}
               </span>
             )}
@@ -893,13 +893,13 @@ function RowCard({ p, onClick }) {
       <div style={{
         width:200, flexShrink:0,
         padding:'14px 18px',
-        borderLeft:'1px dashed #E5E7EB',
+        borderLeft:'1px dashed var(--border)',
         display:'flex', flexDirection:'column', justifyContent:'space-between',
         alignItems:'flex-end', textAlign:'right', gap:6,
       }}>
         <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
         <div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#0F172A', letterSpacing:'-0.5px', lineHeight:1 }}>
+          <div style={{ fontSize:18, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px', lineHeight:1 }}>
             {$(p.total_amount)}
           </div>
           {p.paid_amount ? (
@@ -912,10 +912,10 @@ function RowCard({ p, onClick }) {
             </div>
           ) : null}
         </div>
-        <div style={{ fontSize:10, color:'#9CA3AF', lineHeight:1.4 }}>
+        <div style={{ fontSize:10, color:'var(--text-disabled)', lineHeight:1.4 }}>
           {p.payment_date
-            ? <>Pagado: <strong style={{color:'#374151'}}>{fd(p.payment_date)}</strong></>
-            : dv ? <>Vence: <strong style={{color: ov?'#DC2626':'#374151'}}>{fd(dv)}</strong></> : null}
+            ? <>Pagado: <strong style={{color:'var(--text-body)'}}>{fd(p.payment_date)}</strong></>
+            : dv ? <>Vence: <strong style={{color: ov?'#DC2626':'var(--text-body)'}}>{fd(dv)}</strong></> : null}
         </div>
       </div>
     </div>
@@ -924,7 +924,7 @@ function RowCard({ p, onClick }) {
 
 /* ── Helpers de filtro (labels legibles) ─────────────────────────────────── */
 const FILT_LBL = {
-  fontSize: 11, fontWeight: 600, color: '#6B7280',
+  fontSize: 11, fontWeight: 600, color: 'var(--text-subtle)',
   marginBottom: 5, letterSpacing: '0.01em',
 };
 
@@ -1062,9 +1062,9 @@ export function SupplierPaymentsView({ user }) {
     padding:'0 12px',
     fontSize:13,
     fontWeight:500,
-    color:'#111827',
+    color:'var(--text)',
     background:'#fff',
-    border:'1px solid #E5E7EB',
+    border:'1px solid var(--border)',
     borderRadius:8,
     fontFamily:'inherit',
     outline:'none',
@@ -1082,7 +1082,7 @@ export function SupplierPaymentsView({ user }) {
         actions={canCreate && (
           <>
             <button onClick={sync} disabled={syncing} style={S.btn2}>
-              <Ic.refresh size={14} color={syncing?'#9CA3AF':'#374151'}/>{syncing?'Sincronizando...':'Sincronizar con Drive'}
+              <Ic.refresh size={14} color={syncing?'var(--text-disabled)':'var(--text-body)'}/>{syncing?'Sincronizando...':'Sincronizar con Drive'}
             </button>
             <button onClick={()=>setShowNew(true)} style={S.btn}>
               <Ic.plus size={14}/> Nuevo pago
@@ -1104,25 +1104,25 @@ export function SupplierPaymentsView({ user }) {
         display:'flex', gap:10, flexWrap:'wrap', marginBottom:16,
       }}>
         {[
-          { label:'Registros', val:sorted.length,    color:'#374151', isMoney:false, sub: sorted.length!==data.length?`de ${data.length} total`:null },
-          { label:'Motos',     val:sum.motos,        color:'#374151', isMoney:false },
-          { label:'Facturado', val:sum.total,        color:'#374151', isMoney:true  },
+          { label:'Registros', val:sorted.length,    color:'var(--text-body)', isMoney:false, sub: sorted.length!==data.length?`de ${data.length} total`:null },
+          { label:'Motos',     val:sum.motos,        color:'var(--text-body)', isMoney:false },
+          { label:'Facturado', val:sum.total,        color:'var(--text-body)', isMoney:true  },
           { label:'Pagado',    val:sum.paid,         color:'#15803D', isMoney:true  },
           { label:'Saldo',     val:saldo,            color:saldo>0?'#DC2626':'#15803D', isMoney:true },
-          { label:'Vencidas',  val:sum.overdue,      color:sum.overdue>0?'#DC2626':'#374151', isMoney:false },
+          { label:'Vencidas',  val:sum.overdue,      color:sum.overdue>0?'#DC2626':'var(--text-body)', isMoney:false },
         ].map(k=>(
           <div key={k.label} style={{
-            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            background:'#FFFFFF', border:'1px solid var(--border)',
             borderRadius:10, padding:'10px 16px',
             flex: isMobile ? '1 1 calc(50% - 5px)' : '1 1 100px',
           }}>
             <div style={{fontSize:18, fontWeight:800, color:k.color, lineHeight:1, marginBottom:3}}>
               {k.isMoney ? $short(k.val) : k.val}
             </div>
-            <div style={{fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.07em'}}>
+            <div style={{fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.07em'}}>
               {k.label}
             </div>
-            {k.sub&&<div style={{fontSize:10,color:'#9CA3AF',marginTop:2}}>{k.sub}</div>}
+            {k.sub&&<div style={{fontSize:10,color:'var(--text-disabled)',marginTop:2}}>{k.sub}</div>}
           </div>
         ))}
       </div>
@@ -1139,11 +1139,11 @@ export function SupplierPaymentsView({ user }) {
               <Ic.search size={14}/>
               {hasFilters ? 'Filtros activos' : 'Filtrar / buscar'}
             </span>
-            <span style={{fontSize:12,color:'#9CA3AF'}}>{filtersOpen?'▲':'▼'}</span>
+            <span style={{fontSize:12,color:'var(--text-disabled)'}}>{filtersOpen?'▲':'▼'}</span>
           </button>
           {filtersOpen&&(
             <div style={{
-              background:'#F9FAFB', border:'1px solid #E5E7EB',
+              background:'var(--surface-muted)', border:'1px solid var(--border)',
               borderRadius:'0 0 10px 10px', padding:'12px 14px',
               display:'flex', flexDirection:'column', gap:10,
             }}>
@@ -1178,28 +1178,28 @@ export function SupplierPaymentsView({ user }) {
         /* Desktop: barra de filtros */
         <div style={{
           display:'flex', flexDirection:'column', gap:10,
-          background:'#FFFFFF', border:'1px solid #E5E7EB',
+          background:'#FFFFFF', border:'1px solid var(--border)',
           borderRadius:12, padding:'12px 14px', marginBottom:14,
         }}>
           {/* Fila 1: buscador + limpiar */}
           <div style={{
             display:'flex', alignItems:'center', gap:10,
-            background:'#F9FAFB', border:'1px solid #E5E7EB',
+            background:'var(--surface-muted)', border:'1px solid var(--border)',
             borderRadius:10, padding:'8px 12px',
           }}>
-            <Ic.search size={15} color="#9CA3AF"/>
+            <Ic.search size={15} color="var(--text-disabled)"/>
             <input value={q} onChange={e=>setQ(e.target.value)}
               placeholder="Buscar factura, modelo, color, chasis, motor…"
               style={{
                 border:'none', background:'transparent', outline:'none',
                 flex:1, padding:0, height:26, fontSize:13,
-                fontFamily:'inherit', color:'#111827',
+                fontFamily:'inherit', color:'var(--text)',
               }}/>
             {hasFilters && (
               <button onClick={clearFilters}
                 style={{
                   height:28, padding:'0 12px', fontSize:12, fontWeight:600,
-                  color:'#6B7280', background:'#fff', border:'1px solid #E5E7EB',
+                  color:'var(--text-subtle)', background:'#fff', border:'1px solid var(--border)',
                   borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                   display:'flex', alignItems:'center', gap:4,
                 }}>
@@ -1223,7 +1223,7 @@ export function SupplierPaymentsView({ user }) {
             <FiltGroup title="Emisión">
               <input type="date" value={fromF} onChange={e=>setFromF(e.target.value)}
                 style={{...fc, minWidth:138}} placeholder="desde"/>
-              <span style={{ color:'#9CA3AF', fontSize:12, fontWeight:600 }}>→</span>
+              <span style={{ color:'var(--text-disabled)', fontSize:12, fontWeight:600 }}>→</span>
               <input type="date" value={toF} onChange={e=>setToF(e.target.value)}
                 style={{...fc, minWidth:138}} placeholder="hasta"/>
             </FiltGroup>
@@ -1231,7 +1231,7 @@ export function SupplierPaymentsView({ user }) {
             <FiltGroup title="Pago">
               <input type="date" value={payFromF} onChange={e=>setPayFromF(e.target.value)}
                 style={{...fc, minWidth:138}} placeholder="desde"/>
-              <span style={{ color:'#9CA3AF', fontSize:12, fontWeight:600 }}>→</span>
+              <span style={{ color:'var(--text-disabled)', fontSize:12, fontWeight:600 }}>→</span>
               <input type="date" value={payToF} onChange={e=>setPayToF(e.target.value)}
                 style={{...fc, minWidth:138}} placeholder="hasta"/>
             </FiltGroup>
@@ -1256,7 +1256,7 @@ export function SupplierPaymentsView({ user }) {
                   title={sortDir==='asc'?'Ascendente':'Descendente'}
                   style={{
                     padding:'0 12px', height:36, fontSize:14, fontWeight:700,
-                    color:'#374151', background:'#fff', border:'1px solid #E5E7EB',
+                    color:'var(--text-body)', background:'#fff', border:'1px solid var(--border)',
                     borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                   }}>
                   {sortDir==='asc'?'↑':'↓'}
@@ -1309,12 +1309,12 @@ export function SupplierPaymentsView({ user }) {
 
       {/* Footer — conteo + resumen */}
       {!loading && sorted.length>0 && (
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:'#9CA3AF',fontFamily:'inherit',flexWrap:'wrap',gap:6}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:'var(--text-disabled)',fontFamily:'inherit',flexWrap:'wrap',gap:6}}>
           <span>{sorted.length} de {data.length} registro{data.length!==1?'s':''}</span>
           <span>
-            Facturado: <strong style={{color:'#111827'}}>{$(sum.total)}</strong>
+            Facturado: <strong style={{color:'var(--text)'}}>{$(sum.total)}</strong>
             {' · '}Pagado: <strong style={{color:'#15803D'}}>{$(sum.paid)}</strong>
-            {' · '}Saldo: <strong style={{color:saldo>0?'#C2410C':'#111827'}}>{$(saldo)}</strong>
+            {' · '}Saldo: <strong style={{color:saldo>0?'#C2410C':'var(--text)'}}>{$(saldo)}</strong>
           </span>
         </div>
       )}

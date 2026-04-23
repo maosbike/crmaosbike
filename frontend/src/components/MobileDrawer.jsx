@@ -20,8 +20,8 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
   return(
     <>
       {open&&<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",zIndex:88}}/>}
-      <div className={`crm-drawer${open?" open":""}`} style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:"#FFFFFF",borderRight:"1px solid #E5E7EB",display:"flex",flexDirection:"column",zIndex:89,overflowY:"auto"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px 0 20px",height:56,borderBottom:"1px solid #F3F4F6",flexShrink:0}}>
+      <div className={`crm-drawer${open?" open":""}`} style={{position:"fixed",left:0,top:0,bottom:0,width:240,background:"#FFFFFF",borderRight:"1px solid var(--border)",display:"flex",flexDirection:"column",zIndex:89,overflowY:"auto"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px 0 20px",height:56,borderBottom:"1px solid var(--surface-sunken)",flexShrink:0}}>
           <div>
             <img src="/logo.png" alt="MaosBike" style={{height:28,objectFit:'contain',display:'block'}}
               onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
@@ -30,7 +30,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
               <Ic.bike size={16} color="#fff"/>
             </div>
           </div>
-          <button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18} color="#6B7280"/></button>
+          <button onClick={onClose} style={{...S.gh,padding:4}}><Ic.x size={18} color="var(--text-subtle)"/></button>
         </div>
         <nav style={{flex:1,padding:"8px 6px",display:"flex",flexDirection:"column"}}>
           {DRAWER_GROUPS.map((group,gi)=>{
@@ -48,12 +48,12 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
                       borderRadius:8,border:"none",cursor:"pointer",
                       fontSize:13,fontWeight:act?600:500,fontFamily:"inherit",
                       background:act?"var(--brand-soft)":"transparent",
-                      color:act?"#C2680A":"#4B5563",
+                      color:act?"#C2680A":"var(--text-muted)",
                       textAlign:"left",userSelect:"none",
                       position:"relative",width:"100%",
                     }}>
                       {act&&<div style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",width:3,height:20,background:"var(--brand)",borderRadius:"0 3px 3px 0"}}/>}
-                      <it.icon size={16} color={act?"#C2680A":"#4B5563"}/>
+                      <it.icon size={16} color={act?"#C2680A":"var(--text-muted)"}/>
                       {it.label}
                     </button>
                   );
@@ -62,7 +62,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
             );
           })}
         </nav>
-        <div style={{borderTop:"1px solid #F3F4F6",padding:"12px 14px",display:"flex",flexDirection:"column",gap:6}}>
+        <div style={{borderTop:"1px solid var(--surface-sunken)",padding:"12px 14px",display:"flex",flexDirection:"column",gap:6}}>
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 0 8px"}}>
             <div style={{width:30,height:30,borderRadius:"50%",background:"var(--brand-soft)",display:"flex",alignItems:"center",justifyContent:"center",color:"#C2680A",fontSize:11,fontWeight:700,flexShrink:0,fontFamily:"inherit"}}>{initials}</div>
             <div style={{flex:1,minWidth:0}}>
@@ -70,7 +70,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
               <div style={{...TY.meta,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.role?.replace(/_/g," ")}</div>
             </div>
           </div>
-          <button onClick={onChangePw} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"1px solid #E5E7EB",background:"transparent",color:"#4B5563",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.lock size={14} color="#6B7280"/>Cambiar contraseña</button>
+          <button onClick={onChangePw} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"1px solid var(--border)",background:"transparent",color:"var(--text-muted)",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.lock size={14} color="var(--text-subtle)"/>Cambiar contraseña</button>
           <button onClick={onLogout} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"none",background:"transparent",color:"#EF4444",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.out size={14} color="#EF4444"/>Cerrar sesión</button>
         </div>
       </div>

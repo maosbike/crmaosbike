@@ -26,7 +26,7 @@ const blankEdit = u => ({
 });
 
 const sectionLbl = {
-  fontSize:9, fontWeight:700, color:'#9CA3AF',
+  fontSize:9, fontWeight:700, color:'var(--text-disabled)',
   textTransform:'uppercase', letterSpacing:'0.1em',
 };
 
@@ -142,24 +142,24 @@ function TimeOffCalendar({ users }) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, flexWrap:'wrap', gap:8 }}>
         <div>
           <h3 style={{ fontSize:13, fontWeight:600, margin:0 }}>Días libres del equipo</h3>
-          <p style={{ fontSize:11, color:'#6B7280', margin:'2px 0 0' }}>
+          <p style={{ fontSize:11, color:'var(--text-subtle)', margin:'2px 0 0' }}>
             Marca los días en que un vendedor no trabaja — ese día no recibe leads nuevos ni notificaciones.
           </p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <button onClick={prevMonth} title="Mes anterior"
-            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid #E5E7EB' }}>
+            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)' }}>
             <Ic.chev size={14}/>
           </button>
           <div style={{ fontSize:12, fontWeight:700, minWidth:150, textAlign:'center' }}>
             {MONTHS_ES[cursor.getMonth()]} {cursor.getFullYear()}
           </div>
           <button onClick={nextMonth} title="Mes siguiente"
-            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid #E5E7EB', transform:'rotate(180deg)' }}>
+            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)', transform:'rotate(180deg)' }}>
             <Ic.chev size={14}/>
           </button>
           <button onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}
-            style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E5E7EB', marginLeft:4 }}>
+            style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid var(--border)', marginLeft:4 }}>
             Hoy
           </button>
         </div>
@@ -183,14 +183,14 @@ function TimeOffCalendar({ users }) {
               style={{
                 minHeight:96, borderRadius:8, padding:'6px 7px',
                 background: isToday(d) ? '#FFF7ED' : (isPast ? '#FAFAFA' : '#FFFFFF'),
-                border: isToday(d) ? '1.5px solid var(--brand)' : '1px solid #E5E7EB',
+                border: isToday(d) ? '1.5px solid var(--brand)' : '1px solid var(--border)',
                 cursor:'pointer', transition:'background 0.1s', opacity: isPast ? 0.75 : 1,
                 display:'flex', flexDirection:'column', gap:4, overflow:'hidden',
               }}
-              onMouseEnter={e => { if (!isToday(d)) e.currentTarget.style.background = '#F9FAFB'; }}
+              onMouseEnter={e => { if (!isToday(d)) e.currentTarget.style.background = 'var(--surface-muted)'; }}
               onMouseLeave={e => { if (!isToday(d)) e.currentTarget.style.background = isPast ? '#FAFAFA' : '#FFFFFF'; }}
             >
-              <div style={{ fontSize:11, fontWeight:700, color: isToday(d) ? 'var(--brand)' : '#374151' }}>
+              <div style={{ fontSize:11, fontWeight:700, color: isToday(d) ? 'var(--brand)' : 'var(--text-body)' }}>
                 {d.getDate()}
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
@@ -210,7 +210,7 @@ function TimeOffCalendar({ users }) {
                   );
                 })}
                 {list.length > 3 && (
-                  <span style={{ fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:6, background:'#F3F4F6', color:'#6B7280' }}>
+                  <span style={{ fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:6, background:'var(--surface-sunken)', color:'var(--text-subtle)' }}>
                     +{list.length - 3} más
                   </span>
                 )}
@@ -220,11 +220,11 @@ function TimeOffCalendar({ users }) {
         })}
       </div>
 
-      {loading && <div style={{ marginTop:8, fontSize:11, color:'#9CA3AF' }}>Cargando…</div>}
+      {loading && <div style={{ marginTop:8, fontSize:11, color:'var(--text-disabled)' }}>Cargando…</div>}
 
       {dayModal && (
         <Modal onClose={() => setDayModal(null)} title={`Días libres · ${dayModal.date}`}>
-          <p style={{ fontSize:12, color:'#6B7280', margin:'0 0 12px' }}>
+          <p style={{ fontSize:12, color:'var(--text-subtle)', margin:'0 0 12px' }}>
             Activa la casilla para marcar que ese vendedor <strong>no trabaja ese día</strong>.
             No recibirá leads nuevos ni notificaciones.
           </p>
@@ -241,24 +241,24 @@ function TimeOffCalendar({ users }) {
                       style={{
                         display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
                         borderRadius:8, cursor: saving ? 'wait' : 'pointer',
-                        background: isOff ? c.bg : '#F9FAFB',
-                        border: `1px solid ${isOff ? c.fg : '#E5E7EB'}`,
+                        background: isOff ? c.bg : 'var(--surface-muted)',
+                        border: `1px solid ${isOff ? c.fg : 'var(--border)'}`,
                         transition:'background 0.1s',
                       }}
                     >
                       <div style={{
                         width:16, height:16, borderRadius:4, flexShrink:0,
-                        border: isOff ? 'none' : '2px solid #D1D5DB',
+                        border: isOff ? 'none' : '2px solid var(--border-strong)',
                         background: isOff ? c.fg : 'transparent',
                         display:'flex', alignItems:'center', justifyContent:'center',
                       }}>
                         {isOff && <Ic.check size={10} color="white"/>}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:12, fontWeight:600, color: isOff ? c.fg : '#111827' }}>
+                        <div style={{ fontSize:12, fontWeight:600, color: isOff ? c.fg : 'var(--text)' }}>
                           {u.first_name} {u.last_name}
                         </div>
-                        <div style={{ fontSize:10, color:'#6B7280' }}>
+                        <div style={{ fontSize:10, color:'var(--text-subtle)' }}>
                           {(ROLES.find(r => r.v === u.role)?.l) || u.role}
                           {u.branch_name ? ` · ${u.branch_name}` : ''}
                         </div>
@@ -284,13 +284,13 @@ function ActiveToggle({ value, onChange }) {
       onClick={() => onChange(!value)}
       style={{
         display:'flex', alignItems:'center', gap:8, padding:'10px 12px',
-        borderRadius:8, background:'#F9FAFB', border:'1px solid #E5E7EB',
+        borderRadius:8, background:'var(--surface-muted)', border:'1px solid var(--border)',
         cursor:'pointer', marginBottom:16, userSelect:'none',
       }}
     >
       <div style={{
         width:16, height:16, borderRadius:4, flexShrink:0,
-        border: value ? 'none' : '2px solid #D1D5DB',
+        border: value ? 'none' : '2px solid var(--border-strong)',
         background: value ? '#10B981' : 'transparent',
         display:'flex', alignItems:'center', justifyContent:'center',
       }}>
@@ -608,10 +608,10 @@ export function AdminView() {
 
       {/* ── TABLA USUARIOS ── */}
       <div style={{ ...S.card, marginBottom:14, padding:0, overflow:'hidden' }}>
-        <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid #F3F4F6' }}>
+        <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid var(--surface-sunken)' }}>
           <h3 style={{ fontSize:13, fontWeight:700, margin:0 }}>
             Usuarios{' '}
-            <span style={{ color:'#9CA3AF', fontWeight:400, fontSize:12 }}>({users.length})</span>
+            <span style={{ color:'var(--text-disabled)', fontWeight:400, fontSize:12 }}>({users.length})</span>
           </h3>
         </div>
         {loading
@@ -622,7 +622,7 @@ export function AdminView() {
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
-                  <tr style={{ background:'#F9FAFB', borderBottom:'2px solid #E5E7EB' }}>
+                  <tr style={{ background:'var(--surface-muted)', borderBottom:'2px solid var(--border)' }}>
                     {['Usuario','Email','Rol','Sucursal','Estado','Acciones'].map(h => (
                       <th key={h} style={{ ...sectionLbl, textAlign:'left', padding:'10px 14px' }}>{h}</th>
                     ))}
@@ -631,8 +631,8 @@ export function AdminView() {
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id}
-                      style={{ borderBottom:'1px solid #F3F4F6', transition:'background 0.1s' }}
-                      onMouseEnter={e => e.currentTarget.style.background='#F9FAFB'}
+                      style={{ borderBottom:'1px solid var(--surface-sunken)', transition:'background 0.1s' }}
+                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-muted)'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}
                     >
                       {/* Nombre */}
@@ -640,37 +640,37 @@ export function AdminView() {
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{
                             width:30, height:30, borderRadius:'50%', flexShrink:0,
-                            background: u.active ? 'var(--brand-soft)' : '#F3F4F6',
+                            background: u.active ? 'var(--brand-soft)' : 'var(--surface-sunken)',
                             display:'flex', alignItems:'center', justifyContent:'center',
-                            color: u.active ? 'var(--brand)' : '#9CA3AF',
+                            color: u.active ? 'var(--brand)' : 'var(--text-disabled)',
                             fontSize:10, fontWeight:700,
                           }}>
                             {((u.first_name||'?')[0]+(u.last_name||'?')[0]).toUpperCase()}
                           </div>
-                          <span style={{ fontSize:12, fontWeight:600, color: u.active ? '#111827' : '#9CA3AF' }}>
+                          <span style={{ fontSize:12, fontWeight:600, color: u.active ? 'var(--text)' : 'var(--text-disabled)' }}>
                             {u.first_name} {u.last_name}
                           </span>
                         </div>
                       </td>
                       {/* Email */}
-                      <td style={{ padding:'12px 14px', fontSize:11, color:'#6B7280' }}>
+                      <td style={{ padding:'12px 14px', fontSize:11, color:'var(--text-subtle)' }}>
                         {u.email || u.username || '—'}
                       </td>
                       {/* Rol */}
                       <td style={{ padding:'12px 14px' }}>
-                        <Bdg l={(ROLES.find(x=>x.v===u.role)||{l:u.role,c:'#6B7280'}).l} c={(ROLES.find(x=>x.v===u.role)||{c:'#6B7280'}).c} />
+                        <Bdg l={(ROLES.find(x=>x.v===u.role)||{l:u.role,c:'var(--text-subtle)'}).l} c={(ROLES.find(x=>x.v===u.role)||{c:'var(--text-subtle)'}).c} />
                       </td>
                       {/* Sucursal */}
-                      <td style={{ padding:'12px 14px', fontSize:12, color:'#4B5563' }}>
+                      <td style={{ padding:'12px 14px', fontSize:12, color:'var(--text-muted)' }}>
                         {u.branch_name || '—'}
                       </td>
                       {/* Estado */}
                       <td style={{ padding:'12px 14px' }}>
                         <span style={{
                           fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:20,
-                          background: u.active ? '#F0FDF4' : '#F9FAFB',
-                          color: u.active ? '#16A34A' : '#9CA3AF',
-                          border:`1px solid ${u.active ? '#BBF7D0' : '#E5E7EB'}`,
+                          background: u.active ? '#F0FDF4' : 'var(--surface-muted)',
+                          color: u.active ? '#16A34A' : 'var(--text-disabled)',
+                          border:`1px solid ${u.active ? '#BBF7D0' : 'var(--border)'}`,
                         }}>
                           {u.active ? 'Activo' : 'Inactivo'}
                         </span>
@@ -679,11 +679,11 @@ export function AdminView() {
                       <td style={{ padding:'12px 14px' }}>
                         <div style={{ display:'flex', gap:5 }}>
                           <button onClick={() => openEdit(u)} title="Editar usuario"
-                            style={{ ...S.gh, padding:'4px 9px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E5E7EB', color:'#374151' }}>
+                            style={{ ...S.gh, padding:'4px 9px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid var(--border)', color:'var(--text-body)' }}>
                             Editar
                           </button>
                           <button onClick={() => handleReset(u)} title="Restablecer contraseña"
-                            style={{ ...S.gh, padding:'4px 8px', fontSize:11, borderRadius:6, border:'1px solid #E5E7EB', color:'#6B7280' }}>
+                            style={{ ...S.gh, padding:'4px 8px', fontSize:11, borderRadius:6, border:'1px solid var(--border)', color:'var(--text-subtle)' }}>
                             <Ic.lock size={13}/>
                           </button>
                           {u.active
@@ -697,7 +697,7 @@ export function AdminView() {
                               </button>
                           }
                           <button onClick={() => openDelete(u)} title="Eliminar usuario (solo si no tiene historial)"
-                            style={{ padding:'4px 8px',fontSize:11,borderRadius:6,cursor:'pointer',border:'1px solid #E5E7EB',background:'#FFFFFF',color:'#9CA3AF' }}>
+                            style={{ padding:'4px 8px',fontSize:11,borderRadius:6,cursor:'pointer',border:'1px solid var(--border)',background:'#FFFFFF',color:'var(--text-disabled)' }}>
                             <Ic.trash size={12}/>
                           </button>
                         </div>
@@ -715,28 +715,28 @@ export function AdminView() {
       <div style={{ ...S.card, marginBottom:14 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
           <h3 style={{ fontSize:12, fontWeight:600, margin:0 }}>Sucursales</h3>
-          <button onClick={openBranchNew} style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid #E5E7EB', display:'flex', alignItems:'center', gap:4 }}>
+          <button onClick={openBranchNew} style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:4 }}>
             <Ic.plus size={12}/> Nueva sucursal
           </button>
         </div>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           {branches.map(b => (
-            <div key={b.id} style={{ background:'#F9FAFB', borderRadius:10, padding:12, minWidth:220, flex:'1 1 220px', position:'relative' }}>
+            <div key={b.id} style={{ background:'var(--surface-muted)', borderRadius:10, padding:12, minWidth:220, flex:'1 1 220px', position:'relative' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8 }}>
                 <div style={{ minWidth:0 }}>
                   <div style={{ fontWeight:700, marginBottom:4 }}>{b.name}</div>
-                  <div style={{ fontSize:11, color:'#6B7280' }}>{b.address||b.addr}</div>
-                  <div style={{ fontSize:11, color:'#6B7280', marginTop:4 }}>
+                  <div style={{ fontSize:11, color:'var(--text-subtle)' }}>{b.address||b.addr}</div>
+                  <div style={{ fontSize:11, color:'var(--text-subtle)', marginTop:4 }}>
                     Código: {b.code} · Vendedores: {users.filter(u => u.branch_id===b.id && u.role===ROLE_KEYS.VEND).length}
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:4, flexShrink:0 }}>
                   <button onClick={() => openBranchEdit(b)} title="Editar sucursal"
-                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid #E5E7EB', background:'#FFFFFF', color:'#6B7280' }}>
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'#FFFFFF', color:'var(--text-subtle)' }}>
                     <Ic.edit size={12}/>
                   </button>
                   <button onClick={() => openBranchDelete(b)} title="Eliminar sucursal"
-                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid #E5E7EB', background:'#FFFFFF', color:'#9CA3AF' }}>
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'#FFFFFF', color:'var(--text-disabled)' }}>
                     <Ic.trash size={12}/>
                   </button>
                 </div>
@@ -752,7 +752,7 @@ export function AdminView() {
       {/* ── DANGER ZONE ── */}
       <div style={{ border:'2px solid #FECACA', borderRadius:12, padding:'16px 20px', marginBottom:14, background:'#FFF5F5' }}>
         <div style={{ fontSize:13, fontWeight:700, color:'#DC2626', marginBottom:4 }}>Zona restringida</div>
-        <p style={{ fontSize:12, color:'#6B7280', marginBottom:14 }}>Las acciones de esta sección son permanentes y no se pueden deshacer.</p>
+        <p style={{ fontSize:12, color:'var(--text-subtle)', marginBottom:14 }}>Las acciones de esta sección son permanentes y no se pueden deshacer.</p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {cleanCatalogDone!==null
             ? <div style={{ display:'flex',alignItems:'center',gap:8,color:'#10B981',fontSize:12,fontWeight:600 }}><Ic.check size={16} color="#10B981"/>{cleanCatalogDone} modelos eliminados. Recarga para ver cambios.</div>
@@ -772,10 +772,10 @@ export function AdminView() {
       {/* ── ALIASES ── */}
       <div style={{ ...S.card }}>
         <h3 style={{ fontSize:13, fontWeight:600, margin:'0 0 4px' }}>Aliases de Modelos</h3>
-        <p style={{ fontSize:11, color:'#6B7280', margin:'0 0 12px' }}>Mapea nombres alternativos (como vienen en los leads) al modelo del catálogo. Ej: "R15 V4" → YZF-R15A</p>
+        <p style={{ fontSize:11, color:'var(--text-subtle)', margin:'0 0 12px' }}>Mapea nombres alternativos (como vienen en los leads) al modelo del catálogo. Ej: "R15 V4" → YZF-R15A</p>
 
         {/* Probador — valida a qué modelo resolvería un texto sin re-importar */}
-        <form onSubmit={handleAliasTest} style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap', background:'#F9FAFB', padding:'10px 12px', borderRadius:8, border:'1px solid #E5E7EB' }}>
+        <form onSubmit={handleAliasTest} style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap', background:'var(--surface-muted)', padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)' }}>
           <input value={aliasTestText} onChange={e=>setAliasTestText(e.target.value)}
             placeholder='Probar: pega el texto como viene en el lead…' style={{ ...S.inp, flex:1, minWidth:200 }}/>
           <button type="submit" disabled={aliasTesting||!aliasTestText.trim()}
@@ -814,15 +814,15 @@ export function AdminView() {
             style={{ ...S.btn,opacity:aliasSaving?0.7:1 }}>Agregar</button>
         </form>
         {aliases.length===0
-          ? <div style={{ fontSize:12,color:'#6B7280',padding:'8px 0' }}>Sin aliases configurados.</div>
+          ? <div style={{ fontSize:12,color:'var(--text-subtle)',padding:'8px 0' }}>Sin aliases configurados.</div>
           : <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
               {aliases.map(a=>(
-                <div key={a.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:'#F9FAFB',borderRadius:8,fontSize:12 }}>
+                <div key={a.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:'var(--surface-muted)',borderRadius:8,fontSize:12 }}>
                   <div>
                     <span style={{ fontWeight:600,color:'var(--brand)' }}>"{a.alias}"</span>
-                    <span style={{ color:'#6B7280',margin:'0 6px' }}>→</span>
+                    <span style={{ color:'var(--text-subtle)',margin:'0 6px' }}>→</span>
                     <span style={{ fontWeight:600 }}>{a.brand} {a.model}</span>
-                    {a.commercial_name&&a.commercial_name!==a.model&&<span style={{ color:'#6B7280' }}> ({a.commercial_name})</span>}
+                    {a.commercial_name&&a.commercial_name!==a.model&&<span style={{ color:'var(--text-subtle)' }}> ({a.commercial_name})</span>}
                   </div>
                   <button onClick={()=>handleDeleteAlias(a.id)}
                     style={{ ...S.gh,padding:'2px 8px',fontSize:11,color:'#EF4444' }}>Eliminar</button>
@@ -867,13 +867,13 @@ export function AdminView() {
       {/* ══ MODAL — EDITAR USUARIO ══ */}
       {editTarget && (
         <Modal onClose={()=>setEditTarget(null)} title={`Editar usuario`}>
-          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#F8F9FB',borderRadius:9,border:'1px solid #E5E7EB',marginBottom:16 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#F8F9FB',borderRadius:9,border:'1px solid var(--border)',marginBottom:16 }}>
             <div style={{ width:34,height:34,borderRadius:'50%',background:'var(--brand-soft)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--brand)',fontSize:12,fontWeight:700,flexShrink:0 }}>
               {((editTarget.first_name||'?')[0]+(editTarget.last_name||'?')[0]).toUpperCase()}
             </div>
             <div>
               <div style={{ fontSize:13,fontWeight:700 }}>{editTarget.first_name} {editTarget.last_name}</div>
-              <div style={{ fontSize:11,color:'#6B7280' }}>{editTarget.email||editTarget.username}</div>
+              <div style={{ fontSize:11,color:'var(--text-subtle)' }}>{editTarget.email||editTarget.username}</div>
             </div>
           </div>
           <form onSubmit={handleEdit}>
@@ -912,13 +912,13 @@ export function AdminView() {
             </div>
             <div>
               <div style={{ fontSize:13,fontWeight:700,color:'#DC2626' }}>{deactivateTarget.first_name} {deactivateTarget.last_name}</div>
-              <div style={{ fontSize:11,color:'#9CA3AF' }}>{deactivateTarget.email}</div>
+              <div style={{ fontSize:11,color:'var(--text-disabled)' }}>{deactivateTarget.email}</div>
             </div>
           </div>
 
           {/* Leads activos */}
           {deactivateInfo?.loading
-            ? <div style={{ fontSize:12,color:'#6B7280',marginBottom:14 }}>Verificando leads activos...</div>
+            ? <div style={{ fontSize:12,color:'var(--text-subtle)',marginBottom:14 }}>Verificando leads activos...</div>
             : deactivateInfo?.count > 0
               ? <div style={{ padding:'10px 14px',borderRadius:9,background:'#FFFBEB',border:'1px solid #FCD34D',marginBottom:14 }}>
                   <div style={{ fontSize:12,fontWeight:700,color:'#92400E',marginBottom:6 }}>
@@ -928,7 +928,7 @@ export function AdminView() {
                     Elige qué hacer con ellos:
                   </div>
                   <div style={{ marginTop:10 }}>
-                    <label style={{ fontSize:11,fontWeight:600,color:'#374151',display:'block',marginBottom:4 }}>Reasignar a</label>
+                    <label style={{ fontSize:11,fontWeight:600,color:'var(--text-body)',display:'block',marginBottom:4 }}>Reasignar a</label>
                     <select
                       value={deactivateReassignTo}
                       onChange={e => setDeactivateReassignTo(e.target.value)}
@@ -942,7 +942,7 @@ export function AdminView() {
                       ))}
                     </select>
                     {!deactivateReassignTo && (
-                      <div style={{ fontSize:10,color:'#9CA3AF',marginTop:4 }}>
+                      <div style={{ fontSize:10,color:'var(--text-disabled)',marginTop:4 }}>
                         Si no reasignas ahora, los leads quedan asignados al historial del usuario.
                         La rotación de SLA los redistribuirá automáticamente cuando venza el plazo.
                       </div>
@@ -956,7 +956,7 @@ export function AdminView() {
                 : null
           }
 
-          <div style={{ padding:'8px 12px',borderRadius:8,background:'#F9FAFB',border:'1px solid #E5E7EB',fontSize:11,color:'#6B7280',marginBottom:14 }}>
+          <div style={{ padding:'8px 12px',borderRadius:8,background:'var(--surface-muted)',border:'1px solid var(--border)',fontSize:11,color:'var(--text-subtle)',marginBottom:14 }}>
             El usuario <strong>no podrá iniciar sesión</strong> ni aparecerá en selectores de vendedores ni en la rotación de asignaciones. El historial y trazabilidad se mantienen íntegros.
           </div>
 
@@ -984,17 +984,17 @@ export function AdminView() {
             </div>
             <div>
               <div style={{ fontSize:13,fontWeight:700,color:'#DC2626' }}>{deleteTarget.first_name} {deleteTarget.last_name}</div>
-              <div style={{ fontSize:11,color:'#9CA3AF' }}>{deleteTarget.email}</div>
+              <div style={{ fontSize:11,color:'var(--text-disabled)' }}>{deleteTarget.email}</div>
             </div>
           </div>
           <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:8, fontSize:11, color:'#92400E', marginBottom:14 }}>
             Esta acción <strong>borra al usuario definitivamente</strong>. Solo funciona si el usuario no tiene leads, ventas, recordatorios, inventario ni reasignaciones en su historial. Si tiene historial, el sistema te lo avisa y deberás usar «Desactivar».
           </div>
           {deleteDetail && (
-            <div style={{ padding:'10px 12px', background:'#F9FAFB', border:'1px solid #E5E7EB', borderRadius:8, fontSize:11, color:'#374151', marginBottom:14 }}>
+            <div style={{ padding:'10px 12px', background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:8, fontSize:11, color:'var(--text-body)', marginBottom:14 }}>
               <div style={{ fontWeight:600, marginBottom:4 }}>Historial detectado:</div>
               {Object.entries(deleteDetail).filter(([,v]) => v > 0).map(([k,v]) => (
-                <div key={k} style={{ color:'#6B7280' }}>· {k}: {v}</div>
+                <div key={k} style={{ color:'var(--text-subtle)' }}>· {k}: {v}</div>
               ))}
             </div>
           )}
@@ -1039,7 +1039,7 @@ export function AdminView() {
         <Modal onClose={()=>{ setBranchDeleteTarget(null); setBranchDeleteErr(''); }} title="Eliminar sucursal">
           <div style={{ padding:'10px 14px', background:'#FEF2F2', borderRadius:9, border:'1px solid #FECACA', marginBottom:14 }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#DC2626' }}>{branchDeleteTarget.name}</div>
-            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{branchDeleteTarget.code} · {branchDeleteTarget.address || '—'}</div>
+            <div style={{ fontSize:11, color:'var(--text-disabled)', marginTop:2 }}>{branchDeleteTarget.code} · {branchDeleteTarget.address || '—'}</div>
           </div>
           <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:8, fontSize:11, color:'#92400E', marginBottom:14 }}>
             Se eliminará definitivamente. Si la sucursal tiene usuarios, leads o inventario, el sistema bloqueará el borrado — en ese caso edítala y desactívala en su lugar.
@@ -1063,11 +1063,11 @@ export function AdminView() {
               <Ic.check size={24} color="#10B981"/>
             </div>
             <p style={{ fontWeight:600,marginBottom:4 }}>{resetInfo.name}</p>
-            <p style={{ color:'#6B7280',fontSize:12,marginBottom:12 }}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
-            <div style={{ background:'#F9FAFB',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'inherit',fontSize:18,fontWeight:700,letterSpacing:2,color:'var(--brand)' }}>
+            <p style={{ color:'var(--text-subtle)',fontSize:12,marginBottom:12 }}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
+            <div style={{ background:'var(--surface-muted)',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'inherit',fontSize:18,fontWeight:700,letterSpacing:2,color:'var(--brand)' }}>
               {resetInfo.temp}
             </div>
-            <p style={{ color:'#6B7280',fontSize:11,marginBottom:16 }}>Comparte esta contraseña con el usuario de forma segura.</p>
+            <p style={{ color:'var(--text-subtle)',fontSize:11,marginBottom:16 }}>Comparte esta contraseña con el usuario de forma segura.</p>
             <button onClick={()=>setResetInfo(null)} style={S.btn}>Cerrar</button>
           </div>
         </Modal>

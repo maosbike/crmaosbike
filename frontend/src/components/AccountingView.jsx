@@ -66,21 +66,21 @@ function invoiceStatus(inv) {
   if (inv.link_status === 'revisar') {
     return { k:'rev', l:'Revisar', c:'#D97706', bg:'rgba(217,119,6,0.10)' };
   }
-  return { k:'sin', l:'Sin vincular', c:'#6B7280', bg:'rgba(107,114,128,0.10)' };
+  return { k:'sin', l:'Sin vincular', c:'var(--text-subtle)', bg:'rgba(107,114,128,0.10)' };
 }
 const STATUS_BG = {
   anulada: 'linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)',
   nc:      'linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)',
   vinc:    'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)',
   rev:     'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
-  sin:     'linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)',
+  sin:     'linear-gradient(135deg, var(--surface-sunken) 0%, var(--border) 100%)',
 };
 const STATUS_ICON = {
   anulada: '#DC2626',
   nc:      '#DC2626',
   vinc:    '#059669',
   rev:     '#D97706',
-  sin:     '#9CA3AF',
+  sin:     'var(--text-disabled)',
 };
 
 /* ── Month hero ───────────────────────────────────────────────────────────── */
@@ -107,7 +107,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #111827 0%, #1F2937 100%)',
+      background: 'linear-gradient(135deg, var(--text) 0%, var(--text-strong) 100%)',
       borderRadius: 16,
       padding: isMobile ? '16px' : '20px 24px',
       marginBottom: 16,
@@ -230,18 +230,18 @@ function CatalogModelPicker({ brand, modelId, onSelect }) {
     if (!selBrand) { setModels([]); return; }
     api.getModels({ brand: selBrand }).then(r => setModels(Array.isArray(r) ? r : r.data || [])).catch(() => {});
   }, [selBrand]);
-  const sel = { height:36, borderRadius:8, border:'1px solid #D1D5DB', background:'#F9FAFB', color:'#374151', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
+  const sel = { height:36, borderRadius:8, border:'1px solid var(--border-strong)', background:'var(--surface-muted)', color:'var(--text-body)', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
       <div>
-        <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>Marca</label>
+        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>Marca</label>
         <select value={selBrand} onChange={e => { setSelBrand(e.target.value); onSelect(null); }} style={sel}>
           <option value="">— Seleccionar —</option>
           {brands.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
       </div>
       <div>
-        <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>Modelo del catálogo</label>
+        <label style={{ fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>Modelo del catálogo</label>
         <select value={modelId || ''} onChange={e => { const m = models.find(x => x.id === e.target.value); onSelect(m || null); }} style={sel} disabled={!selBrand}>
           <option value="">— Seleccionar —</option>
           {models.map(m => <option key={m.id} value={m.id}>{m.commercial_name || m.model} {m.year ? `(${m.year})` : ''}</option>)}
@@ -279,7 +279,7 @@ function InvoiceCard({ inv, onOpen }) {
         display:'flex', alignItems:'stretch',
         minHeight:148, marginBottom:10,
         background:'#FFFFFF',
-        border:'1px solid #E5E7EB',
+        border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
         borderRadius:14, overflow:'hidden',
         cursor:'pointer',
@@ -291,13 +291,13 @@ function InvoiceCard({ inv, onOpen }) {
       {/* Foto */}
       <div style={{
         width:220, flexShrink:0,
-        background: STATUS_BG[st.k] || '#F3F4F6',
+        background: STATUS_BG[st.k] || 'var(--surface-sunken)',
         display:'flex', alignItems:'center', justifyContent:'center',
         overflow:'hidden', position:'relative',
       }}>
         {img
           ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-          : <Ic.bike size={56} color={STATUS_ICON[st.k] || '#9CA3AF'}/>
+          : <Ic.bike size={56} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
         }
         {st.k === 'anulada' && (
           <span style={{
@@ -340,7 +340,7 @@ function InvoiceCard({ inv, onOpen }) {
           }}>
             #{folioLbl}
           </div>
-          <span style={{ fontSize:11, fontWeight:600, color:'#9CA3AF' }}>
+          <span style={{ fontSize:11, fontWeight:600, color:'var(--text-disabled)' }}>
             {fd(inv.fecha_emision)}
           </span>
           {isNC && inv.ref_folio && (
@@ -352,22 +352,22 @@ function InvoiceCard({ inv, onOpen }) {
 
         {/* Línea 2: cliente — es el dato primario del card */}
         <div style={{
-          fontSize:15, fontWeight:700, color:'#0F172A',
+          fontSize:15, fontWeight:700, color:'var(--text)',
           letterSpacing:'-0.2px',
           whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
         }}>
-          {inv.cliente_nombre || <span style={{ color:'#9CA3AF', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
+          {inv.cliente_nombre || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
         </div>
 
         {/* Línea 3: vehículo como texto limpio con bullets */}
         {modelo && (
           <div style={{
-            fontSize:12, fontWeight:600, color:'#374151',
+            fontSize:12, fontWeight:600, color:'var(--text-body)',
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
           }}>
             {modelo}
-            {inv.commercial_year && <span style={{ color:'#9CA3AF', fontWeight:500 }}> · {inv.commercial_year}</span>}
-            {inv.color && <span style={{ color:'#9CA3AF', fontWeight:500 }}> · {inv.color}</span>}
+            {inv.commercial_year && <span style={{ color:'var(--text-disabled)', fontWeight:500 }}> · {inv.commercial_year}</span>}
+            {inv.color && <span style={{ color:'var(--text-disabled)', fontWeight:500 }}> · {inv.color}</span>}
           </div>
         )}
 
@@ -375,10 +375,10 @@ function InvoiceCard({ inv, onOpen }) {
         {(inv.chassis || inv.rut_cliente) && (
           <div style={{
             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
-            fontSize:11, fontWeight:500, color:'#9CA3AF',
+            fontSize:11, fontWeight:500, color:'var(--text-disabled)',
           }}>
             {inv.chassis && (
-              <span style={{ letterSpacing:'0.03em', fontWeight:600, color:'#6B7280' }}>
+              <span style={{ letterSpacing:'0.03em', fontWeight:600, color:'var(--text-subtle)' }}>
                 {inv.chassis}
               </span>
             )}
@@ -393,7 +393,7 @@ function InvoiceCard({ inv, onOpen }) {
       <div style={{
         width:200, flexShrink:0,
         padding:'14px 18px',
-        borderLeft:'1px dashed #E5E7EB',
+        borderLeft:'1px dashed var(--border)',
         display:'flex', flexDirection:'column', justifyContent:'space-between',
         alignItems:'flex-end', textAlign:'right', gap:6,
       }}>
@@ -401,13 +401,13 @@ function InvoiceCard({ inv, onOpen }) {
         <div>
           <div style={{
             fontSize:18, fontWeight:800,
-            color: isNC ? '#DC2626' : '#0F172A',
+            color: isNC ? '#DC2626' : 'var(--text)',
             letterSpacing:'-0.5px', lineHeight:1,
           }}>
             {isNC ? '−' : ''}{$(inv.total)}
           </div>
           {inv.iva > 0 && (
-            <div style={{ fontSize:10, fontWeight:600, color:'#9CA3AF', marginTop:3 }}>
+            <div style={{ fontSize:10, fontWeight:600, color:'var(--text-disabled)', marginTop:3 }}>
               IVA {$compact(inv.iva)}
             </div>
           )}
@@ -435,19 +435,19 @@ function InvoiceCard({ inv, onOpen }) {
 }
 
 /* ── DetailCard / DetailRow (mismo patrón que SupplierPaymentsView) ───────── */
-function DetailCard({ title, accent='#374151', children }) {
+function DetailCard({ title, accent='var(--text-body)', children }) {
   return (
     <div style={{
-      background:'#FFFFFF', border:'1px solid #E5E7EB',
+      background:'#FFFFFF', border:'1px solid var(--border)',
       borderRadius:12, overflow:'hidden',
     }}>
       <div style={{
-        padding:'10px 16px', background:'#F9FAFB',
-        borderBottom:'1px solid #F3F4F6',
+        padding:'10px 16px', background:'var(--surface-muted)',
+        borderBottom:'1px solid var(--surface-sunken)',
         display:'flex', alignItems:'center', gap:8,
       }}>
         <span style={{ width:3, height:14, background:accent, borderRadius:2 }}/>
-        <span style={{ fontSize:12, fontWeight:700, color:'#111827', letterSpacing:'0.01em' }}>
+        <span style={{ fontSize:12, fontWeight:700, color:'var(--text)', letterSpacing:'0.01em' }}>
           {title}
         </span>
       </div>
@@ -461,12 +461,12 @@ function DetailRow({ label, value, bold, danger, span }) {
   if (value === null || value === undefined || value === '' || value === '-') return null;
   return (
     <div style={{ gridColumn: span ? '1/-1' : 'auto', minWidth:0 }}>
-      <div style={{ fontSize:11, fontWeight:600, color:'#6B7280', marginBottom:2 }}>
+      <div style={{ fontSize:11, fontWeight:600, color:'var(--text-subtle)', marginBottom:2 }}>
         {label}
       </div>
       <div style={{
         fontSize:14, fontWeight: bold ? 700 : 500,
-        color: danger ? '#DC2626' : '#111827',
+        color: danger ? '#DC2626' : 'var(--text)',
         letterSpacing:'-0.1px',
         wordBreak:'break-word',
       }}>
@@ -534,7 +534,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
   const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
   const colorOpts = catalogColorsFromRow(selModel);
 
-  const selStyle = { height:36, borderRadius:8, border:'1px solid #D1D5DB', background:'#F9FAFB', color:'#374151', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
+  const selStyle = { height:36, borderRadius:8, border:'1px solid var(--border-strong)', background:'var(--surface-muted)', color:'var(--text-body)', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
 
   return (
     <Modal onClose={onClose} maxWidth={1500}
@@ -550,7 +550,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
         {/* ── Columna IZQ: hero vertical (foto + identidad + total) ──────── */}
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{
-            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            background:'#FFFFFF', border:'1px solid var(--border)',
             borderLeft:`4px solid ${st.c}`,
             borderRadius:14, overflow:'hidden',
             boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
@@ -558,13 +558,13 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
             {/* Foto grande: ocupa todo el ancho de la columna */}
             <div style={{
               width:'100%', aspectRatio:'4/3',
-              background: STATUS_BG[st.k] || '#F3F4F6',
+              background: STATUS_BG[st.k] || 'var(--surface-sunken)',
               display:'flex', alignItems:'center', justifyContent:'center',
               overflow:'hidden', position:'relative',
             }}>
               {img
                 ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                : <Ic.bike size={80} color={STATUS_ICON[st.k] || '#9CA3AF'}/>
+                : <Ic.bike size={80} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
               }
               {st.k === 'anulada' && (
                 <span style={{
@@ -580,13 +580,13 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
             <div style={{ padding:'16px 18px', display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
                 <div style={{ minWidth:0 }}>
-                  <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF', marginBottom:2 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:'var(--text-disabled)', marginBottom:2 }}>
                     {isNC ? 'Nota de crédito' : 'Factura'}
                   </div>
-                  <div style={{ fontSize:24, fontWeight:800, color:'#0F172A', letterSpacing:'-0.5px', marginBottom:2 }}>
+                  <div style={{ fontSize:24, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px', marginBottom:2 }}>
                     #{inv.folio || '—'}
                   </div>
-                  <div style={{ fontSize:11, fontWeight:600, color:'#6B7280' }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:'var(--text-subtle)' }}>
                     {fd(inv.fecha_emision)}
                   </div>
                 </div>
@@ -594,29 +594,29 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
               </div>
 
               {modelo && (
-                <div style={{ fontSize:13, fontWeight:700, color:'#111827', letterSpacing:'-0.2px' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', letterSpacing:'-0.2px' }}>
                   {modelo}
-                  {inv.commercial_year && <span style={{ color:'#6B7280', fontWeight:500 }}> · {inv.commercial_year}</span>}
-                  {inv.color && <span style={{ color:'#6B7280', fontWeight:500 }}> · {inv.color}</span>}
+                  {inv.commercial_year && <span style={{ color:'var(--text-subtle)', fontWeight:500 }}> · {inv.commercial_year}</span>}
+                  {inv.color && <span style={{ color:'var(--text-subtle)', fontWeight:500 }}> · {inv.color}</span>}
                 </div>
               )}
 
               <div style={{
-                borderTop:'1px dashed #E5E7EB', paddingTop:10, marginTop:4,
+                borderTop:'1px dashed var(--border)', paddingTop:10, marginTop:4,
                 display:'flex', justifyContent:'space-between', alignItems:'baseline',
               }}>
-                <span style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
                   Total
                 </span>
                 <span style={{
                   fontSize:26, fontWeight:800,
-                  color: isNC ? '#DC2626' : '#0F172A',
+                  color: isNC ? '#DC2626' : 'var(--text)',
                   letterSpacing:'-0.5px',
                 }}>
                   {isNC ? '−' : ''}{$(inv.total)}
                 </span>
               </div>
-              <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#6B7280' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'var(--text-subtle)' }}>
                 <span>Neto {$(inv.monto_neto)}</span>
                 <span>IVA {$(inv.iva)}</span>
                 {inv.monto_exento > 0 && <span>Exento {$(inv.monto_exento)}</span>}
@@ -693,7 +693,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
 
           {/* Vincular con catálogo — manual */}
           <div style={{
-            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            background:'#FFFFFF', border:'1px solid var(--border)',
             borderRadius:12, overflow:'hidden',
           }}>
             <div style={{
@@ -716,7 +716,7 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
                 onSelect={(m) => { setModelId(m?.id || null); setSelModel(m || null); }}
               />
               <div>
-                <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>
+                <label style={{ fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5, display:'block' }}>
                   Color
                 </label>
                 {colorOpts.length > 0 ? (
@@ -747,16 +747,16 @@ function InvoiceDetail({ inv, onClose, onUpdated }) {
 
           {/* Notas internas */}
           <div style={{
-            background:'#FFFFFF', border:'1px solid #E5E7EB',
+            background:'#FFFFFF', border:'1px solid var(--border)',
             borderRadius:12, overflow:'hidden',
           }}>
             <div style={{
-              padding:'10px 16px', background:'#F9FAFB',
-              borderBottom:'1px solid #F3F4F6',
+              padding:'10px 16px', background:'var(--surface-muted)',
+              borderBottom:'1px solid var(--surface-sunken)',
               display:'flex', alignItems:'center', gap:8,
             }}>
-              <span style={{ width:3, height:14, background:'#6B7280', borderRadius:2 }}/>
-              <span style={{ fontSize:12, fontWeight:700, color:'#111827' }}>NOTAS INTERNAS</span>
+              <span style={{ width:3, height:14, background:'var(--text-subtle)', borderRadius:2 }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'var(--text)' }}>NOTAS INTERNAS</span>
             </div>
             <div style={{ padding:'12px 16px' }}>
               <textarea
@@ -915,7 +915,7 @@ export function AccountingView() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border)' }}>
         {[
           { key: 'facturas', label: 'Ventas de motos' },
           { key: 'notas',    label: 'Notas de crédito' },
@@ -928,7 +928,7 @@ export function AccountingView() {
               background: 'transparent',
               border: 'none',
               borderBottom: tab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
-              color: tab === t.key ? 'var(--brand)' : '#6B7280',
+              color: tab === t.key ? 'var(--brand)' : 'var(--text-subtle)',
               fontWeight: tab === t.key ? 700 : 500,
               fontSize: 13,
               padding: '8px 14px',
@@ -951,14 +951,14 @@ export function AccountingView() {
           style={{ ...S.inp, flex: 1, minWidth: 180, height: 36, fontSize: 13 }}
         />
         <select value={linkStatus} onChange={e => { setLinkStatus(e.target.value); setPage(1); }}
-          style={{ height: 36, borderRadius: 8, border: '1px solid #D1D5DB', background: '#F9FAFB',
-            color: '#374151', fontSize: 13, padding: '0 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ height: 36, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-muted)',
+            color: 'var(--text-body)', fontSize: 13, padding: '0 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
           <option value="">Todos</option>
           <option value="vinculada">Vinculadas</option>
           <option value="revisar">Revisar</option>
           <option value="sin_vincular">Sin vincular</option>
         </select>
-        <span style={{ fontSize: 12, color: '#9CA3AF' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-disabled)' }}>
           {loading ? '...' : `${total} ${total === 1 ? 'documento' : 'documentos'}`}
         </span>
       </div>
@@ -989,7 +989,7 @@ export function AccountingView() {
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={S.gh}>
             Anterior
           </button>
-          <span style={{ fontSize: 13, color: '#6B7280', alignSelf: 'center' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-subtle)', alignSelf: 'center' }}>
             Página {page} de {Math.ceil(total / LIMIT)}
           </span>
           <button onClick={() => setPage(p => p + 1)} disabled={page >= Math.ceil(total / LIMIT)} style={S.gh}>

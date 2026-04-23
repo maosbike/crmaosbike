@@ -148,7 +148,7 @@ export function CalendarView({user,nav}){
   };
 
   const evColor=(ev)=>{
-    if(ev.type==='sla')return SLA_COLORS[ev.status]||'#6B7280';
+    if(ev.type==='sla')return SLA_COLORS[ev.status]||'var(--text-subtle)';
     return REM_COLORS[ev.status]||'#3B82F6';
   };
 
@@ -207,12 +207,12 @@ export function CalendarView({user,nav}){
         {[
           {c:'#3B82F6',l:'Recordatorio'},
           {c:'#10B981',l:'Completado'},
-          {c:'#6B7280',l:'Sin gestionar'},
+          {c:'var(--text-subtle)',l:'Sin gestionar'},
           {c:'#F97316',l:'Atender ya'},
           {c:'#EF4444',l:'Vencido'},
           {c:'#8B5CF6',l:'Reasignado'},
         ].map(({c,l})=>(
-          <div key={l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'#9CA3AF'}}>
+          <div key={l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'var(--text-disabled)'}}>
             <div style={{width:10,height:10,borderRadius:2,background:c}}/>{l}
           </div>
         ))}
@@ -227,7 +227,7 @@ export function CalendarView({user,nav}){
               {getDaysWithEvents(events).map(({date:dayKey,dayEvents})=>(
                 <div key={dayKey} style={{marginBottom:12}}>
                   {/* Header del día */}
-                  <div style={{fontSize:11,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.08em',padding:'6px 0 4px',borderBottom:'1px solid #F3F4F6',marginBottom:6}}>
+                  <div style={{fontSize:11,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em',padding:'6px 0 4px',borderBottom:'1px solid var(--surface-sunken)',marginBottom:6}}>
                     {formatDay(dayKey)}
                   </div>
                   {/* Eventos del día */}
@@ -235,14 +235,14 @@ export function CalendarView({user,nav}){
                     const c=evColor(ev);
                     return(
                       <div key={ei}
-                        style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 0',borderBottom:'1px solid #F9FAFB',cursor:'pointer'}}
+                        style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 0',borderBottom:'1px solid var(--surface-muted)',cursor:'pointer'}}
                         onClick={()=>openEdit(ev)}
                       >
                         <div style={{width:8,height:8,borderRadius:'50%',marginTop:4,flexShrink:0,background:c}}/>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:13,fontWeight:600,color:'#111827',marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.title}</div>
-                          {ev.time&&<div style={{fontSize:11,color:'#9CA3AF'}}>{ev.time}</div>}
-                          {!ev.time&&ev.meta?.client_name&&<div style={{fontSize:11,color:'#9CA3AF'}}>{ev.meta.client_name}</div>}
+                          <div style={{fontSize:13,fontWeight:600,color:'var(--text)',marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.title}</div>
+                          {ev.time&&<div style={{fontSize:11,color:'var(--text-disabled)'}}>{ev.time}</div>}
+                          {!ev.time&&ev.meta?.client_name&&<div style={{fontSize:11,color:'var(--text-disabled)'}}>{ev.meta.client_name}</div>}
                         </div>
                         <div style={{fontSize:10,color:c,fontWeight:600,flexShrink:0}}>{evShortLabel(ev)}</div>
                       </div>
@@ -258,8 +258,8 @@ export function CalendarView({user,nav}){
         </div>
       ) : (
         <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid #E5E7EB'}}>
-            {DIAS.map(d=><div key={d} style={{padding:'9px 4px',textAlign:'center',fontSize:10,fontWeight:600,color:'#6B7280',textTransform:'uppercase'}}>{d}</div>)}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid var(--border)'}}>
+            {DIAS.map(d=><div key={d} style={{padding:'9px 4px',textAlign:'center',fontSize:10,fontWeight:600,color:'var(--text-subtle)',textTransform:'uppercase'}}>{d}</div>)}
           </div>
           {loading
             ?<Loader label="Cargando eventos…" />
@@ -270,10 +270,10 @@ export function CalendarView({user,nav}){
                 return(
                   <div key={i}
                     onClick={()=>day&&openNew(day)}
-                    style={{minHeight:88,padding:5,borderRight:'1px solid #F3F4F6',borderBottom:'1px solid #F3F4F6',background:isToday?'var(--brand-soft)':'transparent',cursor:day?'pointer':'default'}}
+                    style={{minHeight:88,padding:5,borderRight:'1px solid var(--surface-sunken)',borderBottom:'1px solid var(--surface-sunken)',background:isToday?'var(--brand-soft)':'transparent',cursor:day?'pointer':'default'}}
                   >
                     {day&&(
-                      <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'var(--brand)':'#9CA3AF',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'var(--brand-muted)':'transparent',marginBottom:3}}>
+                      <div style={{fontSize:11,fontWeight:isToday?700:400,color:isToday?'var(--brand)':'var(--text-disabled)',width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:isToday?'var(--brand-muted)':'transparent',marginBottom:3}}>
                         {day}
                       </div>
                     )}
@@ -289,7 +289,7 @@ export function CalendarView({user,nav}){
                         </div>
                       );
                     })}
-                    {evs.length>3&&<div style={{fontSize:9,color:'#6B7280'}}>+{evs.length-3} más</div>}
+                    {evs.length>3&&<div style={{fontSize:9,color:'var(--text-subtle)'}}>+{evs.length-3} más</div>}
                   </div>
                 );
               })}
@@ -309,16 +309,16 @@ export function CalendarView({user,nav}){
               return(
                 <div key={i}
                   onClick={()=>openEdit(ev)}
-                  style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:8,background:'#F9FAFB',cursor:'pointer'}}
-                  onMouseEnter={e=>e.currentTarget.style.background='#F3F4F6'}
-                  onMouseLeave={e=>e.currentTarget.style.background='#F9FAFB'}
+                  style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:8,background:'var(--surface-muted)',cursor:'pointer'}}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--surface-sunken)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='var(--surface-muted)'}
                 >
                   <div style={{width:4,height:36,borderRadius:2,background:c,flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.title}</div>
-                    <div style={{fontSize:11,color:'#6B7280'}}>{ev.meta?.client_name||ev.meta?.assigned_name||''}{lbl?` · ${lbl}`:''}</div>
+                    <div style={{fontSize:11,color:'var(--text-subtle)'}}>{ev.meta?.client_name||ev.meta?.assigned_name||''}{lbl?` · ${lbl}`:''}</div>
                   </div>
-                  <div style={{fontSize:11,color:'#6B7280',textAlign:'right',flexShrink:0}}>
+                  <div style={{fontSize:11,color:'var(--text-subtle)',textAlign:'right',flexShrink:0}}>
                     <div>{fD(ev.date||ev.start)}</div>
                     {ev.time&&<div style={{fontWeight:600,color:c}}>{ev.time}</div>}
                   </div>
@@ -402,7 +402,7 @@ export function CalendarView({user,nav}){
       {/* Confirmar eliminación */}
       {delConfirm&&(
         <Modal onClose={()=>setDelConfirm(false)} title="Eliminar evento">
-          <p style={{marginBottom:20,color:'#374151',fontSize:13}}>¿Seguro que querés eliminar este evento? La acción no se puede deshacer.</p>
+          <p style={{marginBottom:20,color:'var(--text-body)',fontSize:13}}>¿Seguro que querés eliminar este evento? La acción no se puede deshacer.</p>
           <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button onClick={()=>setDelConfirm(false)} style={S.btn2}>Cancelar</button>
             <button onClick={handleDelete} style={{...S.btn,background:'#EF4444'}}>Eliminar</button>

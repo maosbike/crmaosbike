@@ -33,23 +33,23 @@ export function RemindersTab({ticketId,user}){
       {reminders.length===0&&<Empty icon={Ic.remind} title="Sin recordatorios" hint="Crea uno para hacer seguimiento de este lead."/>}
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {reminders.map(r=>(
-          <div key={r.id} style={{...S.secCard,border:`1px solid ${r.status==="overdue"?"rgba(239,68,68,0.3)":r.status==="completed"?"rgba(16,185,129,0.2)":"#F3F4F6"}`}}>
+          <div key={r.id} style={{...S.secCard,border:`1px solid ${r.status==="overdue"?"rgba(239,68,68,0.3)":r.status==="completed"?"rgba(16,185,129,0.2)":"var(--surface-sunken)"}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                  <span style={{fontWeight:600,fontSize:13,textDecoration:r.status==="completed"?"line-through":"none",color:r.status==="completed"?"#4B5563":"#111827"}}>{r.title}</span>
-                  <Bdg l={ST_L[r.status]||r.status} c={ST_C[r.status]||"#6B7280"}/>
+                  <span style={{fontWeight:600,fontSize:13,textDecoration:r.status==="completed"?"line-through":"none",color:r.status==="completed"?"var(--text-muted)":"var(--text)"}}>{r.title}</span>
+                  <Bdg l={ST_L[r.status]||r.status} c={ST_C[r.status]||"var(--text-subtle)"}/>
                 </div>
-                <div style={{fontSize:11,color:"#9CA3AF",display:"flex",gap:12,flexWrap:"wrap"}}>
+                <div style={{fontSize:11,color:"var(--text-disabled)",display:"flex",gap:12,flexWrap:"wrap"}}>
                   <span>{TYPE_L[r.type]||r.type}</span>
                   <span>{fD(r.reminder_date)}{r.reminder_time&&" · "+r.reminder_time}</span>
                   {r.priority==="alta"&&<span style={{color:"#EF4444",fontWeight:600}}>Alta prioridad</span>}
                 </div>
-                {r.note&&<div style={{fontSize:11,color:"#6B7280",marginTop:6}}>{r.note}</div>}
+                {r.note&&<div style={{fontSize:11,color:"var(--text-subtle)",marginTop:6}}>{r.note}</div>}
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
                 {r.status==="pending"&&<button onClick={()=>complete(r.id)} style={{...S.btn2,padding:"4px 10px",fontSize:11,background:"rgba(16,185,129,0.1)",color:"#10B981",border:"1px solid rgba(16,185,129,0.2)"}}>Completar</button>}
-                <button onClick={()=>del(r.id)} style={{...S.gh,padding:4,color:"#6B7280"}}><Ic.x size={14}/></button>
+                <button onClick={()=>del(r.id)} style={{...S.gh,padding:4,color:"var(--text-subtle)"}}><Ic.x size={14}/></button>
               </div>
             </div>
           </div>

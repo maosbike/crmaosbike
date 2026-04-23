@@ -158,24 +158,24 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
         <div>
           <div style={sectionLabel}>
             Producto Cotizado
-            <span style={{ fontWeight: 400, color: '#9CA3AF', textTransform: 'none', letterSpacing: 0 }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-disabled)', textTransform: 'none', letterSpacing: 0 }}>
               {' '}· historial del ticket, no se modifica
             </span>
           </div>
           {quoted ? (
-            <div style={{ padding: '10px 14px', borderRadius: 8, background: '#F9FAFB', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--surface-muted)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
               {quoted.image && (
                 <img
                   src={quoted.image} alt=""
-                  style={{ width: 52, height: 38, padding: 4, boxSizing: 'border-box', objectFit: 'contain', objectPosition: 'center', borderRadius: 5, background: '#F3F4F6', flexShrink: 0 }}
+                  style={{ width: 52, height: 38, padding: 4, boxSizing: 'border-box', objectFit: 'contain', objectPosition: 'center', borderRadius: 5, background: 'var(--surface-sunken)', flexShrink: 0 }}
                 />
               )}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
                   {quoted.brand} {quoted.model}{quoted.year ? ` ${quoted.year}` : ''}
                 </div>
                 {quoted.price > 0 && (
-                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 2 }}>
                     Lista: {fmt(quoted.price)}
                     {quoted.bonus > 0 && (
                       <> · Con bono: <span style={{ fontWeight: 600, color: 'var(--brand)' }}>{fmt(quoted.price - quoted.bonus)}</span></>
@@ -185,7 +185,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               </div>
             </div>
           ) : (
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 12, color: '#9CA3AF' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--surface-muted)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-disabled)' }}>
               Sin modelo cotizado registrado en este ticket
             </div>
           )}
@@ -199,14 +199,14 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <button type="button" onClick={() => setNoStock(false)}
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
-                background: !noStock ? '#1E40AF' : '#F3F4F6', color: !noStock ? '#ffffff' : '#6B7280',
-                border: !noStock ? 'none' : '1px solid #E5E7EB' }}>
+                background: !noStock ? '#1E40AF' : 'var(--surface-sunken)', color: !noStock ? '#ffffff' : 'var(--text-subtle)',
+                border: !noStock ? 'none' : '1px solid var(--border)' }}>
               Del inventario real
             </button>
             <button type="button" onClick={() => setNoStock(true)}
               style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
-                background: noStock ? '#D97706' : '#F3F4F6', color: noStock ? '#ffffff' : '#6B7280',
-                border: noStock ? 'none' : '1px solid #E5E7EB' }}>
+                background: noStock ? '#D97706' : 'var(--surface-sunken)', color: noStock ? '#ffffff' : 'var(--text-subtle)',
+                border: noStock ? 'none' : '1px solid var(--border)' }}>
               Nota sin stock
             </button>
           </div>
@@ -240,7 +240,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             /* ── Unidad real de inventario ── */
             <>
               {loading ? (
-                <div style={{ fontSize: 12, color: '#6B7280', padding: '8px 0' }}>Cargando unidades disponibles...</div>
+                <div style={{ fontSize: 12, color: 'var(--text-subtle)', padding: '8px 0' }}>Cargando unidades disponibles...</div>
               ) : inv.length === 0 ? (
                 <div style={{ padding: '10px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
                   No hay unidades disponibles en stock. Registra la unidad primero en Inventario, o usa "Nota sin stock".
@@ -260,9 +260,9 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
                 <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 7, background: '#F0FDF4', border: '1px solid #BBF7D0', fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model} {selectedUnit.year}</span>
                   <span style={{ color: '#166534' }}>· {selectedUnit.color}</span>
-                  <span style={{ color: '#4B5563' }}>· Chasis: {selectedUnit.chassis}</span>
-                  {selectedUnit.motor_num && <span style={{ color: '#4B5563' }}>· Motor: {selectedUnit.motor_num}</span>}
-                  {selectedUnit.branch_code && <span style={{ color: '#4B5563', marginLeft: 'auto' }}>{selectedUnit.branch_code}</span>}
+                  <span style={{ color: 'var(--text-muted)' }}>· Chasis: {selectedUnit.chassis}</span>
+                  {selectedUnit.motor_num && <span style={{ color: 'var(--text-muted)' }}>· Motor: {selectedUnit.motor_num}</span>}
+                  {selectedUnit.branch_code && <span style={{ color: 'var(--text-muted)', marginLeft: 'auto' }}>{selectedUnit.branch_code}</span>}
                 </div>
               )}
             </>
@@ -281,13 +281,13 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             </div>
             <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div style={{ padding: '8px 10px', borderRadius: 6, background: '#FFF7ED', border: '1px solid #FED7AA' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Cotizado</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{quoted.brand} {quoted.model}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Cotizado</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-body)' }}>{quoted.brand} {quoted.model}</div>
               </div>
               <div style={{ padding: '8px 10px', borderRadius: 6, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Vendido</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Vendido</div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model}</div>
-                <div style={{ fontSize: 11, color: '#374151' }}>{selectedUnit.color} · {selectedUnit.chassis}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-body)' }}>{selectedUnit.color} · {selectedUnit.chassis}</div>
               </div>
             </div>
             <div style={{ fontSize: 11, color: '#92400E', marginTop: 8, lineHeight: 1.5 }}>
@@ -306,7 +306,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
         {/* ═══════════════════════════════════════════════════
             BLOQUE 4 — DATOS DE LA VENTA
         ═══════════════════════════════════════════════════ */}
-        <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 12 }}>
+        <div style={{ borderTop: '1px solid var(--surface-sunken)', paddingTop: 12 }}>
           <div style={{ ...sectionLabel, marginBottom: 10 }}>Datos de la Venta</div>
 
           {/* Vendedor + Fecha */}
@@ -422,7 +422,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             <label style={S.lbl}>
               Precio de Venta (CLP)
               {quoted && quoted.price > 0 && (
-                <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6 }}>
+                <span style={{ fontWeight: 400, color: 'var(--text-disabled)', marginLeft: 6 }}>
                   · cotizado: {fmt(quoted.price - quoted.bonus)}
                 </span>
               )}
@@ -441,11 +441,11 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           {isAdmin && (
             <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--brand-soft)', borderRadius: 8, border: '1px solid var(--brand-muted)' }}>
               <div>
-                <label style={{ ...S.lbl, color: '#9CA3AF' }}>Costo Interno</label>
+                <label style={{ ...S.lbl, color: 'var(--text-disabled)' }}>Costo Interno</label>
                 <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Solo visible para admin" min="0" />
               </div>
               <div>
-                <label style={{ ...S.lbl, color: '#9CA3AF' }}>Monto Factura</label>
+                <label style={{ ...S.lbl, color: 'var(--text-disabled)' }}>Monto Factura</label>
                 <input type="number" value={form.invoice_amount} onChange={e => set('invoice_amount', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="0" min="0" />
               </div>
             </div>
@@ -471,7 +471,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
         <ErrorMsg msg={err} />
 
         {/* Acciones */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, borderTop: '1px solid #F3F4F6' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, borderTop: '1px solid var(--surface-sunken)' }}>
           <button type="button" onClick={onClose} style={{ ...S.btn2, padding: '8px 18px' }}>
             Cancelar
           </button>
@@ -498,7 +498,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 const sectionLabel = {
   fontSize: 10,
   fontWeight: 700,
-  color: '#374151',
+  color: 'var(--text-body)',
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
   marginBottom: 7,
