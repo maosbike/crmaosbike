@@ -1751,6 +1751,21 @@ async function openNoteFromSale(s) {
   const finData = s.payment_method === 'Crédito Autofin'
     ? parseAutofinFromNotes(s.sale_notes)
     : null;
+  // Extras persistidos en la DB (migración 055): accesorios, descuento y tipo
+  // de cobro. openNoteFromSale los ignoraba → al regenerar el PDF faltaban
+  // (ej: un casco vendido no aparecía en la nota descargada).
+  const loadedAccessories = Array.isArray(s.accessories)
+    ? s.accessories
+        .filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
+        .map(a => ({ name: a.description || a.name, amount: Number(a.amount) || 0 }))
+    : [];
+  const motoAmtForDisc = Number(s.sale_price) || 0;
+  const accAmtForDisc  = loadedAccessories.reduce((sum, a) => sum + a.amount, 0);
+  const chargeAmtForDisc = Number(s.charge_amt) || 0;
+  const subtotalForDisc  = motoAmtForDisc + accAmtForDisc + chargeAmtForDisc;
+  const loadedDiscountPct = (s.discount_amt && subtotalForDisc > 0)
+    ? String(Math.round(Number(s.discount_amt) / subtotalForDisc * 100))
+    : '';
   return openNote({
     brand: s.brand, model: s.model, year: s.year, color: s.color,
     chassis: s.chassis, motor_num: s.motor_num,
@@ -1759,8 +1774,11 @@ async function openNoteFromSale(s) {
     sellerName: s.seller_fn ? `${s.seller_fn} ${s.seller_ln||''}`.trim() : '',
     client_name: s.client_name||'', client_rut: s.client_rut||'', client_type:'persona',
     sale_price: s.sale_price, abono: s.invoice_amount||0,
-    accessories:[], discount:'', payMode: s.payment_method||'', payLines:[],
-    chargeType: ['completa','transferencia','inscripcion'].includes(s.sale_type) ? s.sale_type : 'inscripcion',
+    accessories: loadedAccessories, discount: loadedDiscountPct,
+    payMode: s.payment_method||'', payLines:[],
+    chargeType: ['completa','transferencia','inscripcion'].includes(s.charge_type || s.sale_type)
+      ? (s.charge_type || s.sale_type)
+      : 'inscripcion',
     sale_notes: s.sale_notes, titularSame:true, titular:null,
     modelPhotoUrl, finData,
   }, isRes ? 'reserva' : 'venta');
