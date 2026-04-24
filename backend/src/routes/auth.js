@@ -31,13 +31,16 @@ const LOCKOUT_MINUTES = 15;
 router.post('/login', loginLimiter, asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const identifier = (email || '').trim();
-  if (!identifier || !password) return res.status(400).json({ error: 'Usuario/email y contraseña requeridos' });
+  if (!identifier || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
-  // Lookup case-insensitive tanto en username como en email
+  // Lookup case-insensitive SÓLO por email. El sistema autentica únicamente
+  // con email — no exponemos username en ningún lado del producto y admitir
+  // ambos generaba confusión ("Credenciales inválidas" ambiguo cuando el
+  // usuario tipeaba cualquier string que no era ni username ni email).
   const { rows } = await db.query(
     `SELECT u.*, b.name as branch_name, b.code as branch_code
      FROM users u LEFT JOIN branches b ON u.branch_id = b.id
-     WHERE LOWER(u.username) = LOWER($1) OR LOWER(u.email) = LOWER($1)
+     WHERE LOWER(u.email) = LOWER($1)
      LIMIT 1`,
     [identifier]
   );
