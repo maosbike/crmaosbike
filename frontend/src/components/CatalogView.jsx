@@ -1127,7 +1127,6 @@ export function CatalogView({user}){
           subtitle={loading ? undefined : `${models.length} modelos · ${brands.length} marcas`}
           actions={
             <>
-              {canEdit && <button onClick={()=>setShowManageCats(v=>!v)} style={{...S.btn2,fontSize:12,padding:"6px 14px"}}>Categorías</button>}
               {canEdit && <button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
             </>
           }
@@ -1137,9 +1136,6 @@ export function CatalogView({user}){
 
         {!loading&&(
           <>
-            {/* Panel gestión categorías */}
-            {canEdit&&showManageCats&&<ManageCategoriesPanel allCategories={allCategories} onRenamed={handleCategoryRenamed} onClose={()=>setShowManageCats(false)}/>}
-
             {/* Barra de filtros: búsqueda global */}
             <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface-muted)',border:'1px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'8px 12px',marginBottom:20}}>
               <Ic.search size={14} color="var(--text-disabled)" style={{flexShrink:0}}/>
