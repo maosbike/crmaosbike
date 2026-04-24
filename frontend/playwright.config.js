@@ -53,7 +53,15 @@ export default defineConfig({
       use: { ...devices['Pixel 7'] },
     },
   ],
-  // No levantamos webServer automáticamente: el usuario corre `npm run dev` del
-  // frontend + backend por separado, y luego `npm run visual`. Así evitamos
-  // acoplar este script a la inicialización del stack completo (DB, etc).
+  // Levantamos vite dev server automáticamente para los tests de
+  // `public.spec.js` (login) — no dependen del backend.
+  // Para los de `auth.spec.js` hace falta backend + DB vivos a mano.
+  webServer: {
+    command: 'npm run dev',
+    url: baseURL,
+    reuseExistingServer: true,
+    timeout: 60_000,
+    stdout: 'ignore',
+    stderr: 'pipe',
+  },
 });
