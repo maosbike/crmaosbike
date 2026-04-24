@@ -617,7 +617,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {canDelete&&!editing&&(
             <div style={{marginTop:8}}>
               {!confirmDel
-                ?<button onClick={()=>setConfirmDel(true)} style={{width:"100%",padding:"8px 12px",borderRadius:'var(--radius-md)',border:"1px solid #3F1111",background:"transparent",color:"#EF4444",fontSize:12,cursor:"pointer"}}>Eliminar del catálogo</button>
+                ?<Btn variant='danger-outline' size='sm' onClick={()=>setConfirmDel(true)} style={{width:"100%"}}>Eliminar del catálogo</Btn>
                 :<div style={{background:"var(--text)",border:"1px solid #3F1111",borderRadius:'var(--radius-md)',padding:"10px 12px"}}>
                   <div style={{fontSize:12,color:"#EF4444",marginBottom:8,fontWeight:600}}>¿Eliminar {m.commercial_name||m.model}?</div>
                   <div style={{fontSize:11,color:"var(--text-subtle)",marginBottom:10}}>Esta acción desactiva el modelo del catálogo. No se puede deshacer desde aquí.</div>
@@ -1033,7 +1033,7 @@ function BrandCategoriesPanel({brand,cats,onClose,onSaved}){
                 <span style={{fontSize:12,padding:'2px 10px',borderRadius:'var(--radius-xl)',background:catColor(c.name)+'20',color:catColor(c.name),fontWeight:700,border:`1px solid ${catColor(c.name)}40`}}>{c.name}</span>
                 <span style={{fontSize:11,color:'var(--text-disabled)',flex:1}}>{c.model_count} modelo{c.model_count!==1?'s':''}</span>
                 <Btn variant='ghost' size='sm' onClick={()=>startEdit(c)}>Renombrar</Btn>
-                <button onClick={()=>del(c)} disabled={saving} style={{background:'none',border:'none',color:'#DC2626',fontSize:11,fontWeight:700,cursor:'pointer',padding:'4px 8px'}}>Eliminar</button>
+                <Btn variant='danger-outline' size='sm' onClick={()=>del(c)} disabled={saving}>Eliminar</Btn>
               </>
             )}
           </div>

@@ -383,10 +383,12 @@ export function ViewHeader({ preheader, title, subtitle, count, itemLabel='regis
 // Btn — variant × size. Aditivo: S.btn/S.btn2/S.gh siguen funcionales.
 // Variants consumen tokens (T.color.brand/danger/surfaceMuted) — sin hex inline.
 const _BTN_VARIANTS = {
-  primary:   { bg: T.color.brand,        fg: T.color.textOnBrand, border: 'none' },
-  secondary: { bg: T.color.surfaceMuted, fg: T.color.textBody,    border: `1px solid ${T.color.borderStrong}` },
-  danger:    { bg: T.color.dangerStrong, fg: T.color.textOnBrand, border: 'none' },
-  ghost:     { bg: 'transparent',        fg: T.color.textBody,    border: 'none' },
+  primary:         { bg: T.color.brand,        fg: T.color.textOnBrand, border: 'none' },
+  secondary:       { bg: T.color.surfaceMuted, fg: T.color.textBody,    border: `1px solid ${T.color.borderStrong}` },
+  danger:          { bg: T.color.dangerStrong, fg: T.color.textOnBrand, border: 'none' },
+  ghost:           { bg: 'transparent',        fg: T.color.textBody,    border: 'none' },
+  'danger-outline':{ bg: 'transparent',        fg: T.color.danger,      border: `1px solid ${T.color.dangerMuted}` },
+  'ghost-bordered':{ bg: 'transparent',        fg: T.color.textBody,    border: `1px solid ${T.color.border}` },
 };
 const _BTN_SIZES = {
   sm: { padding: `${T.space[1]}px ${T.space[3]}px`,  fs: T.fs.sm,   fw: T.fw.semi },

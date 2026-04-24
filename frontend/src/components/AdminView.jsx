@@ -725,9 +725,9 @@ export function AdminView() {
       <div style={{ ...S.card, marginBottom:14 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
           <h3 style={{ fontSize:12, fontWeight:600, margin:0 }}>Sucursales</h3>
-          <button onClick={openBranchNew} style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:4 }}>
+          <Btn variant='ghost-bordered' size='sm' onClick={openBranchNew}>
             <Ic.plus size={12}/> Nueva sucursal
-          </button>
+          </Btn>
         </div>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           {branches.map(b => (

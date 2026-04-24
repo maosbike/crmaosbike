@@ -635,9 +635,9 @@ function DetailModal({ payment:p0, onClose, onSaved, onDeleted, canDel, startInE
               <Ic.file size={13}/> Editar
             </Btn>
             {canDel && (
-              <button onClick={()=>setCD(true)} style={{...S.btn2,padding:'6px 14px',fontSize:12,color:'#DC2626',borderColor:'#FECACA'}}>
+              <Btn variant='danger-outline' size='sm' onClick={()=>setCD(true)}>
                 Eliminar
-              </button>
+              </Btn>
             )}
           </div>
         )}

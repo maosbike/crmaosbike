@@ -2162,13 +2162,9 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             </select>
           )}
           {hasFilters && (
-            <button onClick={clearFilters} style={{
-              ...S.gh, height: 34, fontSize: 12, fontWeight: 600,
-              border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
-              padding: '0 12px', flexShrink: 0, color: 'var(--text-subtle)',
-            }}>
+            <Btn variant='ghost-bordered' size='sm' onClick={clearFilters} style={{ height: 34, flexShrink: 0 }}>
               Limpiar
-            </button>
+            </Btn>
           )}
         </div>
       </div>
