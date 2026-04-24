@@ -135,6 +135,10 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
 
   const editColors = Array.isArray(editSelMod?.colors) ? editSelMod.colors : [];
 
+  // Estados editables para reservas (admin) — accesorios y abono multi-medio
+  const [editAccs,       setEditAccs]       = useState([]);
+  const [editAbonoLines, setEditAbonoLines] = useState([]);
+
   useEffect(() => {
     setForm({
       sale_price:       sale.sale_price       || '',
@@ -156,6 +160,21 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       color:            sale.color            || '',
       chassis:          sale.chassis          || '',
     });
+    // Editor de accesorios — copia editable del array persistido.
+    const accs = Array.isArray(sale.accessories)
+      ? sale.accessories
+          .filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
+          .map(a => ({ description: a.description || a.name || '', amount: Number(a.amount) || 0 }))
+      : [];
+    setEditAccs(accs);
+    // Editor de abonos — copia editable. Si la reserva ya tiene abono_lines
+    // las usamos; si no, derivamos un line único de invoice_amount + payment_method.
+    const lines = Array.isArray(sale.abono_lines) && sale.abono_lines.length
+      ? sale.abono_lines.map(l => ({ method: l.method || '', amount: Number(l.amount) || 0 }))
+      : (Number(sale.invoice_amount) > 0
+          ? [{ method: sale.payment_method || '', amount: Number(sale.invoice_amount) }]
+          : []);
+    setEditAbonoLines(lines);
   }, [sale]);
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
@@ -163,6 +182,14 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
   async function handleSave() {
     setSaving(true); setErr('');
     try {
+      // Limpieza: accesorios y abono_lines válidos (descartan filas vacías)
+      const accsClean = editAccs
+        .filter(a => a.description && Number(a.amount) > 0)
+        .map(a => ({ description: a.description.trim().slice(0, 200), amount: parseInt(a.amount) || 0 }));
+      const abonoClean = editAbonoLines
+        .filter(l => l.method && Number(l.amount) > 0)
+        .map(l => ({ method: l.method, amount: parseInt(l.amount) || 0 }));
+
       if (isRes && !sale.is_note_only) {
         // Reserva real de inventario → actualizar via inventory PUT
         await api.updateInventory(sale.id, {
@@ -174,14 +201,16 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           client_rut:     form.client_rut     || null,
           sold_by:        form.sold_by        || null,
           ...(isAdmin ? {
-            branch_id:  form.branch_id  || null,
-            sold_at:    form.sold_at    || null,
-            brand:      form.brand      || null,
-            model:      form.model      || null,
-            model_id:   editSelMod?.id  || null,
-            year:       form.year ? parseInt(form.year) : null,
-            color:      form.color      || null,
-            chassis:    form.chassis    || null,
+            branch_id:    form.branch_id  || null,
+            sold_at:      form.sold_at    || null,
+            brand:        form.brand      || null,
+            model:        form.model      || null,
+            model_id:     editSelMod?.id  || null,
+            year:         form.year ? parseInt(form.year) : null,
+            color:        form.color      || null,
+            chassis:      form.chassis    || null,
+            accessories:  accsClean,
+            abono_lines:  abonoClean,
           } : {}),
         });
       } else {
@@ -190,6 +219,10 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           ...form,
           model_id:     editSelMod?.id || null,
           is_note_only: !!sale.is_note_only,
+          ...(isAdmin ? {
+            accessories: accsClean,
+            abono_lines: abonoClean,
+          } : {}),
         });
       }
       onSaved();
@@ -543,6 +576,38 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                 <span style={{ fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total</span>
                 <span style={{ fontWeight: 900, color: 'var(--brand)', fontSize: 16 }}>{fmt(total)}</span>
               </div>
+              {/* Desglose de abonos por medio (si hay abono_lines) */}
+              {Array.isArray(sale.abono_lines) && sale.abono_lines.length > 0 && (
+                <div style={{ marginTop:12, paddingTop:10, borderTop:'1px dashed var(--border)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                    Abonos recibidos
+                  </div>
+                  {sale.abono_lines.map((l, i) => (
+                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', padding:'3px 0', fontSize:12 }}>
+                      <span style={{ color:'var(--text-body)', paddingLeft:4 }}>• {l.method}</span>
+                      <span style={{ fontWeight:700, color:'var(--text)' }}>{fmt(Number(l.amount) || 0)}</span>
+                    </div>
+                  ))}
+                  {(() => {
+                    const totalAb = sale.abono_lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+                    const saldo   = Math.max(0, total - totalAb);
+                    return (
+                      <>
+                        <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0 0', fontSize:12, fontWeight:700, color:'#92400E', borderTop:'1px dashed #FCD34D', marginTop:4 }}>
+                          <span>Total abonado</span>
+                          <span>{fmt(totalAb)}</span>
+                        </div>
+                        {saldo > 0 && (
+                          <div style={{ display:'flex', justifyContent:'space-between', padding:'2px 0', fontSize:12, fontWeight:700, color:'#B45309' }}>
+                            <span>Saldo pendiente</span>
+                            <span>{fmt(saldo)}</span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -660,27 +725,116 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="Precio total ($)" value={form.sale_price}
               onChange={set('sale_price')} type="number" />
-            {isRes ? (
-              <div>
-                <Field label="Abono recibido ($)" value={form.invoice_amount}
-                  onChange={set('invoice_amount')} type="number" />
-                {form.sale_price > 0 && form.invoice_amount >= 0 && (
-                  <div style={{ fontSize:11, marginTop:4, color:'#B45309' }}>
-                    Saldo: <strong>{fmt(Math.max(0, parseInt(form.sale_price||0) - parseInt(form.invoice_amount||0)))}</strong>
-                  </div>
-                )}
-              </div>
-            ) : isAdmin && (
+            {!isRes && isAdmin && (
               <Field label="Costo compra distribuidor ($)" value={form.cost_price}
                 onChange={set('cost_price')} type="number" />
             )}
-            <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
-              opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
+            {!isRes && (
+              <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
+                opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
+            )}
             {!isRes && (
               <Field label="Tipo de entrega" value={form.sale_type}
                 onChange={set('sale_type')} opts={SALE_TYPES} />
             )}
           </div>
+
+          {/* ── Abonos múltiples — sólo en reservas (admin puede editar) ── */}
+          {isRes && (
+            <div style={{ background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:'var(--radius-md)', padding:'12px 14px' }}>
+              <div style={{ fontSize:10, fontWeight:800, color:'#92400E', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+                Abonos recibidos
+              </div>
+              {editAbonoLines.length === 0 && (
+                <div style={{ fontSize:12, color:'#A16207', marginBottom:8 }}>
+                  Sin abonos cargados todavía.
+                </div>
+              )}
+              {editAbonoLines.map((l, i) => (
+                <div key={i} style={{ display:'flex', gap:8, marginBottom:6, alignItems:'center', flexWrap:'wrap' }}>
+                  <select
+                    value={l.method}
+                    onChange={e => setEditAbonoLines(p => p.map((x, j) => j === i ? { ...x, method: e.target.value } : x))}
+                    disabled={!isAdmin}
+                    style={{ ...S.inp, flex:'1 1 160px', fontSize:12 }}>
+                    <option value="">— Medio de pago —</option>
+                    {PAYMENT_TYPES.filter(p => p !== 'Mixto' && p !== 'Crédito Autofin').map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    value={l.amount}
+                    onChange={e => setEditAbonoLines(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                    disabled={!isAdmin}
+                    placeholder="Monto $"
+                    style={{ ...S.inp, flex:'1 1 130px', fontSize:12 }}
+                  />
+                  {isAdmin && (
+                    <button onClick={() => setEditAbonoLines(p => p.filter((_, j) => j !== i))}
+                      style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', fontSize:18, padding:'0 6px', lineHeight:1 }}>×</button>
+                  )}
+                </div>
+              ))}
+              {isAdmin && (
+                <button onClick={() => setEditAbonoLines(p => [...p, { method:'', amount:'' }])}
+                  style={{ ...S.btn2, fontSize:11, padding:'5px 12px', marginTop:4 }}>
+                  + Agregar abono
+                </button>
+              )}
+              {/* Totales y saldo */}
+              {(() => {
+                const totalAbono = editAbonoLines.reduce((s, l) => s + (parseInt(l.amount) || 0), 0);
+                const total = parseInt(form.sale_price || 0)
+                            + editAccs.reduce((s, a) => s + (parseInt(a.amount) || 0), 0);
+                const saldo = Math.max(0, total - totalAbono);
+                return (
+                  <div style={{ marginTop:10, paddingTop:10, borderTop:'1px dashed #FCD34D', fontSize:12, color:'#92400E', display:'flex', flexDirection:'column', gap:3 }}>
+                    <div>Total a pagar: <strong>{fmt(total)}</strong></div>
+                    <div>Total abonado: <strong>{fmt(totalAbono)}</strong></div>
+                    <div style={{ fontWeight:700 }}>Saldo: <strong style={{ color:'#B45309' }}>{fmt(saldo)}</strong></div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ── Accesorios — admin edita en cualquier modo ── */}
+          {isAdmin && (
+            <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px' }}>
+              <div style={{ fontSize:10, fontWeight:800, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+                Accesorios
+              </div>
+              {editAccs.length === 0 && (
+                <div style={{ fontSize:12, color:'var(--text-disabled)', marginBottom:8 }}>
+                  Sin accesorios incluidos en la venta.
+                </div>
+              )}
+              {editAccs.map((a, i) => (
+                <div key={i} style={{ display:'flex', gap:8, marginBottom:6, alignItems:'center' }}>
+                  <input
+                    value={a.description}
+                    onChange={e => setEditAccs(p => p.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
+                    placeholder="Ej: Casco, Guantes…"
+                    style={{ ...S.inp, flex:2, fontSize:12 }}
+                  />
+                  <input
+                    type="number"
+                    value={a.amount}
+                    onChange={e => setEditAccs(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                    placeholder="Monto $"
+                    style={{ ...S.inp, flex:1, fontSize:12 }}
+                  />
+                  <button onClick={() => setEditAccs(p => p.filter((_, j) => j !== i))}
+                    style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', fontSize:18, padding:'0 6px', lineHeight:1 }}>×</button>
+                </div>
+              ))}
+              <button onClick={() => setEditAccs(p => [...p, { description:'', amount:'' }])}
+                style={{ ...S.btn2, fontSize:11, padding:'5px 12px', marginTop:4 }}>
+                + Agregar accesorio
+              </button>
+            </div>
+          )}
           {!isRes && isAdmin && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
               <input type="checkbox" checked={!!form.distributor_paid}

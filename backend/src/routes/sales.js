@@ -67,7 +67,7 @@ const COMBINED_FROM = `(
     i.price,
     i.sale_price, i.cost_price, i.invoice_amount,
     i.sold_at, i.payment_method, i.sale_type, i.sale_notes,
-    i.accessories, i.charge_type, i.charge_amt, i.discount_amt,
+    i.accessories, i.charge_type, i.charge_amt, i.discount_amt, i.abono_lines,
     i.delivered, i.distributor_paid,
     i.doc_factura_dist, i.doc_factura_cli, i.doc_homologacion, i.doc_inscripcion,
     i.ticket_id,
@@ -106,7 +106,7 @@ const COMBINED_FROM = `(
     n.price,
     n.sale_price, n.cost_price, n.invoice_amount,
     n.sold_at, n.payment_method, n.sale_type, n.sale_notes,
-    n.accessories, n.charge_type, n.charge_amt, n.discount_amt,
+    n.accessories, n.charge_type, n.charge_amt, n.discount_amt, n.abono_lines,
     n.delivered, n.distributor_paid,
     n.doc_factura_dist, n.doc_factura_cli, n.doc_homologacion, n.doc_inscripcion,
     n.ticket_id,
@@ -453,7 +453,25 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
       'delivered', 'distributor_paid',
       'doc_factura_dist', 'doc_factura_cli', 'doc_homologacion', 'doc_inscripcion',
       'client_name', 'client_rut', 'sold_by', 'branch_id', 'model_id',
+      'accessories', 'charge_type', 'charge_amt', 'discount_amt', 'abono_lines',
     ];
+
+    // abono_lines: si viene array, derivar invoice_amount (suma) y
+    // payment_method ('Mixto' si >1) antes de aplicar la lista UPDATABLE.
+    if (req.body.abono_lines !== undefined) {
+      const arr = Array.isArray(req.body.abono_lines)
+        ? req.body.abono_lines
+            .filter(l => l && l.method && Number(l.amount) > 0)
+            .map(l => ({ method: String(l.method).slice(0, 50), amount: parseInt(l.amount) || 0 }))
+        : null;
+      req.body.abono_lines = arr && arr.length ? arr : null;
+      if (arr && arr.length) {
+        req.body.invoice_amount = arr.reduce((s, l) => s + l.amount, 0);
+        if (!req.body.payment_method) {
+          req.body.payment_method = arr.length > 1 ? 'Mixto' : arr[0].method;
+        }
+      }
+    }
     // sales_notes admite además cambio de estado, fecha y datos del vehículo
     const UPDATABLE = isNoteOnly
       ? [...UPDATABLE_BASE, 'status', 'sold_at', 'brand', 'model', 'year', 'color', 'chassis', 'motor_num']
@@ -461,11 +479,19 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
 
     // Columnas numéricas — el form manda '' cuando está vacío, Postgres falla en INTEGER
     const INT_FIELDS = new Set(['sale_price', 'cost_price', 'invoice_amount', 'year']);
+    const JSON_FIELDS = new Set(['accessories', 'abono_lines']);
     const coerce = (field, v) => {
       if (INT_FIELDS.has(field)) {
         if (v === '' || v === null || v === undefined) return null;
         const n = parseInt(v, 10);
         return isNaN(n) ? null : n;
+      }
+      if (JSON_FIELDS.has(field)) {
+        if (v == null) return null;
+        return Array.isArray(v) && v.length ? JSON.stringify(v) : null;
+      }
+      if (field === 'charge_type') {
+        return ['completa','inscripcion','transferencia'].includes(v) ? v : null;
       }
       // UUIDs que pueden venir como '' desde selects
       if ((field === 'sold_by' || field === 'branch_id' || field === 'model_id') && v === '') return null;
