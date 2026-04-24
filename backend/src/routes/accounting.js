@@ -139,8 +139,13 @@ function extractEmitida(text, fileName = '') {
       null;
   }
 
-  // ── Referencia (nota de crédito anula factura) ──
-  let ref_folio = null, ref_fecha = null;
+  // ── Referencia (nota de crédito) ──
+  // Las NC chilenas pueden tener 3 motivos: anula la factura, corrige datos
+  // del receptor o corrige montos. El sistema antes trataba TODAS como
+  // anulación, dejando la factura original como anulada aunque la venta
+  // siguiera vigente (ej. NC Nº 807 "Corrige Dato Receptor" no anula la
+  // factura 7590, sólo arregla una dirección mal escrita).
+  let ref_folio = null, ref_fecha = null, ref_tipo = null;
   if (isNotaCredito) {
     const refMatch = t.match(
       /Fact(?:ura)?\.?\s*Electr[oó]nica\s*N[°º\.]?\s*(\d{3,9})(?:\s+del\s+(\d{4}-\d{2}-\d{2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4}))?/i
@@ -156,6 +161,26 @@ function extractEmitida(text, fileName = '') {
               return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             })();
       }
+    }
+    // Detectar el tipo de NC por texto literal del DTE (primero) y monto (fallback).
+    // Los DTE chilenos imprimen frases como "Corrige Dato Receptor", "Anula
+    // Documento de la Referencia", "Corrige Monto".
+    if (/\banula\w*\b/i.test(t)) {
+      ref_tipo = 'anulacion';
+    } else if (/corrig\w*\s+(?:monto|valor|importe)/i.test(t)) {
+      ref_tipo = 'ajuste';
+    } else if (/corrig\w*|correcci[oó]n/i.test(t)) {
+      ref_tipo = 'correccion';
+    }
+    // Fallback por monto: si el total es 0 es casi seguro una corrección de
+    // datos (no se puede anular con monto 0 ni ajustar a cero contable).
+    // Parseamos el total como string del raw para evitar asumir variables.
+    const totalMatchRaw = t.match(/TOTAL\s*\$?\s*([\d\.,\-]+)/i);
+    const totalNum = totalMatchRaw
+      ? parseInt(String(totalMatchRaw[1]).replace(/[^\d\-]/g, ''), 10) || 0
+      : 0;
+    if (!ref_tipo) {
+      ref_tipo = totalNum === 0 ? 'correccion' : 'anulacion';
     }
   }
 
@@ -480,6 +505,7 @@ function extractEmitida(text, fileName = '') {
     ref_folio:       clip(ref_folio, 50),
     ref_rut_emisor:  clip(ref_folio ? rut_emisor : null, 20),
     ref_fecha,
+    ref_tipo:        ref_tipo,                         // anulacion | correccion | ajuste
     notes,                                             // TEXT — extras útiles
   };
 }
@@ -1217,10 +1243,11 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                sale_note_id=COALESCE(sale_note_id,$26),
                link_status=$27,
                ref_folio=$28, ref_rut_emisor=$29, ref_fecha=$30,
-               notes=COALESCE(notes, $31),
-               model_id=COALESCE($33, model_id),
+               ref_tipo=$31,
+               notes=COALESCE(notes, $32),
+               model_id=COALESCE($34, model_id),
                updated_at=NOW()
-             WHERE id=$32`,
+             WHERE id=$33`,
             [
               parsed.doc_type, parsed.category,
               parsed.rut_emisor, parsed.emisor_nombre,
@@ -1233,6 +1260,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               links.lead_id, links.inventory_id, links.sale_note_id,
               links.link_status,
               parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
+              parsed.ref_tipo,
               parsed.notes,
               invoiceId,
               modelId,
@@ -1249,7 +1277,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                brand, model, color, commercial_year, motor_num, chassis, descripcion,
                pdf_url, drive_file_id,
                lead_id, inventory_id, sale_note_id, link_status,
-               ref_folio, ref_rut_emisor, ref_fecha,
+               ref_folio, ref_rut_emisor, ref_fecha, ref_tipo,
                notes, model_id,
                created_by
              ) VALUES (
@@ -1260,9 +1288,9 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
                $17,$18,$19,$20,$21,$22,$23,
                $24,$25,
                $26,$27,$28,$29,
-               $30,$31,$32,
-               $33,$34,
-               $35
+               $30,$31,$32,$33,
+               $34,$35,
+               $36
              ) RETURNING id`,
             [
               parsed.source, parsed.doc_type, parsed.category,
@@ -1274,7 +1302,7 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
               parsed.motor_num, parsed.chassis, parsed.descripcion,
               pdf_url, file.id,
               links.lead_id, links.inventory_id, links.sale_note_id, links.link_status,
-              parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha,
+              parsed.ref_folio, parsed.ref_rut_emisor, parsed.ref_fecha, parsed.ref_tipo,
               parsed.notes, modelId,
               req.user.id,
             ]
@@ -1283,15 +1311,26 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
           results.created++;
         }
 
-        // Si es una nota de crédito con referencia, vinculamos la factura
-        // original marcándola como anulada. No borramos nada — queda el rastro.
+        // NC con referencia → marcar la factura original como anulada SÓLO si
+        // el tipo es 'anulacion'. Correcciones de datos / ajustes NO anulan.
         if (parsed.doc_type === 'nota_credito' && parsed.ref_folio) {
-          await db.query(
-            `UPDATE invoices SET anulada_por_id=$1, updated_at=NOW()
-             WHERE source='emitida' AND doc_type='factura'
-               AND folio=$2 AND ($3::text IS NULL OR rut_emisor=$3)`,
-            [invoiceId, parsed.ref_folio, parsed.ref_rut_emisor || parsed.rut_emisor || null]
-          );
+          if (parsed.ref_tipo === 'anulacion') {
+            await db.query(
+              `UPDATE invoices SET anulada_por_id=$1, updated_at=NOW()
+               WHERE source='emitida' AND doc_type='factura'
+                 AND folio=$2 AND ($3::text IS NULL OR rut_emisor=$3)`,
+              [invoiceId, parsed.ref_folio, parsed.ref_rut_emisor || parsed.rut_emisor || null]
+            );
+          } else {
+            // Limpieza retroactiva: si esta NC anteriormente había marcado la
+            // factura como anulada (bug previo que trataba toda NC como
+            // anulación), reviértelo ahora que sabemos que es corrección/ajuste.
+            await db.query(
+              `UPDATE invoices SET anulada_por_id=NULL, updated_at=NOW()
+               WHERE anulada_por_id=$1`,
+              [invoiceId]
+            );
+          }
         }
       } catch (e) {
         results.errors.push(`${file.name}: ${e.message}`);

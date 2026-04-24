@@ -58,7 +58,16 @@ function invoiceStatus(inv) {
     return { k:'anulada', l:'Anulada', c:'#DC2626', bg:'rgba(220,38,38,0.10)' };
   }
   if (inv.doc_type === 'nota_credito') {
-    return { k:'nc', l:'Nota crédito', c:'#DC2626', bg:'rgba(220,38,38,0.10)' };
+    // Las NC sin impacto contable (corrección de datos del receptor) van en
+    // azul/info — la factura original sigue vigente. Sólo las NC de anulación
+    // se muestran en rojo.
+    if (inv.ref_tipo === 'correccion') {
+      return { k:'nc-corr', l:'NC · corrección', c:'#4F46E5', bg:'rgba(79,70,229,0.10)' };
+    }
+    if (inv.ref_tipo === 'ajuste') {
+      return { k:'nc-aj', l:'NC · ajuste', c:'#D97706', bg:'rgba(217,119,6,0.10)' };
+    }
+    return { k:'nc', l:'NC · anulación', c:'#DC2626', bg:'rgba(220,38,38,0.10)' };
   }
   if (inv.link_status === 'vinculada') {
     return { k:'vinc', l:'Vinculada', c:'#15803D', bg:'rgba(21,128,61,0.10)' };
