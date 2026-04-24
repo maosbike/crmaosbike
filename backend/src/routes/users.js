@@ -181,7 +181,14 @@ router.put('/:id/reset-password', roleCheck('super_admin'), asyncHandler(async (
     const tempPassword = Array.from(bytes).map(b => chars[b % chars.length]).join('');
     const hash = await bcrypt.hash(tempPassword, 10);
     await db.query(
-      'UPDATE users SET password_hash = $1, force_password_change = true, session_version = session_version + 1, updated_at = NOW() WHERE id = $2',
+      `UPDATE users
+          SET password_hash         = $1,
+              force_password_change = true,
+              session_version       = session_version + 1,
+              failed_login_attempts = 0,
+              locked_until          = NULL,
+              updated_at            = NOW()
+        WHERE id = $2`,
       [hash, req.params.id]
     );
     const u = check.rows[0];

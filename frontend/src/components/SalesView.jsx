@@ -1029,9 +1029,26 @@ async function openNote(data, type) {
     const fd = data.finData;
     const pieAmt = Number(fd.pieAmt) || 0;
     const piePct = fd.piePct != null ? Number(fd.piePct) : null;
-    const saldoFin = Math.max(0, t.grandTotal - pieAmt);
+    // Autofin financia sólo la moto (menos el pie). Doc + accesorios los paga
+    // el cliente hoy en la sucursal junto con el pie.
+    const saldoFin = Math.max(0, t.netTotal - t.chargeAmt - t.accAmt - pieAmt);
+    const piePayM  = fd.piePayMethod || null;
+    const isCard   = piePayM === 'Tarjeta Débito' || piePayM === 'Tarjeta Crédito';
+    const pieSurch = isCard ? Math.round(pieAmt * 0.02) : 0;
+    const totalHoy = pieAmt + t.chargeAmt + t.accAmt + pieSurch;
+    const chargeLbl = data.chargeType === 'completa'      ? 'Documentación completa'
+                    : data.chargeType === 'transferencia' ? 'Transferencia vehicular'
+                    :                                       'Inscripción vehicular';
 
-    const boxH = 14;
+    const rows = [['Pie inicial', piePct != null ? `${fmtCLP(pieAmt)} (${piePct}%)` : fmtCLP(pieAmt)]];
+    if (t.chargeAmt > 0) rows.push([chargeLbl, `+${fmtCLP(t.chargeAmt)}`]);
+    if (t.accAmt > 0)    rows.push(['Accesorios', `+${fmtCLP(t.accAmt)}`]);
+    if (piePayM)         rows.push(['Medio de pago del pie', piePayM]);
+    if (pieSurch > 0)    rows.push(['Recargo tarjeta 2% (sobre el pie)', `+${fmtCLP(pieSurch)}`]);
+    rows.push(['Total a pagar hoy en sucursal', fmtCLP(totalHoy)]);
+    rows.push(['Saldo a financiar por Autofin', fmtCLP(saldoFin)]);
+
+    const boxH = 8 + rows.length * 4.5;
     doc.setFillColor(255, 247, 237);
     doc.setDrawColor(253, 186, 116); doc.setLineWidth(0.3);
     doc.roundedRect(M, y, cw, boxH, 1.5, 1.5, 'FD');
@@ -1040,9 +1057,14 @@ async function openNote(data, type) {
     doc.text('Condiciones de financiamiento (Autofin)', M + 4, y + 5);
 
     doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...dark);
-    const pieLabel = piePct != null ? `${fmtCLP(pieAmt)} (${piePct}%)` : fmtCLP(pieAmt);
-    doc.text(`Pie inicial: ${pieLabel}`, M + 4, y + 10.5);
-    doc.text(`Saldo a financiar: ${fmtCLP(saldoFin)}`, W - M - 4, y + 10.5, { align: 'right' });
+    let ly = y + 10.5;
+    rows.forEach(([label, val], i) => {
+      const isTotal = label.startsWith('Total') || label.startsWith('Saldo');
+      doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+      doc.text(label + ':', M + 4, ly);
+      doc.text(val, W - M - 4, ly, { align: 'right' });
+      ly += 4.5;
+    });
 
     y += boxH + 4;
   }
@@ -1160,8 +1182,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [payLines, setPayLines]= useState([{ method: '', amount: '' }]);
 
   // Autofin (crédito) — pie inicial
-  const [finPct,     setFinPct]     = useState('');   // % del pie sobre el total
-  const [finAmt,     setFinAmt]     = useState('');   // monto $ del pie
+  const [finPct,       setFinPct]       = useState('');   // % del pie sobre el total
+  const [finAmt,       setFinAmt]       = useState('');   // monto $ del pie
+  const [piePayMethod, setPiePayMethod] = useState('');   // cómo se paga el pie (Contado/Transferencia/Tarjeta…)
 
   // Extras
   const [accs,       setAccs]      = useState([]);
@@ -1260,6 +1283,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         const pieAmt = Number(finAmt) || 0;
         const parts = [`Autofin: pie ${fmtCLP(pieAmt)}`];
         if (finPct) parts.push(`(${finPct}%)`);
+        if (piePayMethod) parts.push(`pagado con ${piePayMethod}`);
         autofinLine = parts.join(' ');
       }
 
@@ -1363,8 +1387,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         isReserva,
         accessories: accs, discount, payMode, payLines, chargeType,
         finData: payMode === 'Crédito Autofin' ? {
-          pieAmt:    Number(finAmt)    || 0,
-          piePct:    finPct ? Number(finPct) : null,
+          pieAmt:       Number(finAmt) || 0,
+          piePct:       finPct ? Number(finPct) : null,
+          piePayMethod: piePayMethod || null,
         } : null,
         modelPhotoUrl: colorPhotoUrl,
         titularSame,
@@ -1680,13 +1705,47 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                         }} />
                     </div>
 
+                    {/* Medio de pago del pie — si es tarjeta, se aplica el 2% de recargo */}
+                    <Field
+                      label="Medio de pago del pie"
+                      value={piePayMethod}
+                      onChange={setPiePayMethod}
+                      opts={[
+                        { v: '',                l: '— Seleccionar —' },
+                        { v: 'Contado',         l: 'Contado (efectivo)' },
+                        { v: 'Transferencia',   l: 'Transferencia bancaria' },
+                        { v: 'Tarjeta Débito',  l: 'Tarjeta Débito (+2%)' },
+                        { v: 'Tarjeta Crédito', l: 'Tarjeta Crédito (+2%)' },
+                      ]}
+                    />
+
                     {totals.grandTotal > 0 && Number(finAmt) >= 0 && (() => {
-                      const pieAmt = Number(finAmt) || 0;
-                      const saldoFin = Math.max(0, totals.grandTotal - pieAmt);
+                      const pieAmt     = Number(finAmt) || 0;
+                      // Autofin financia SÓLO la moto (menos el pie). La documentación
+                      // (inscripción/completa/transferencia) y los accesorios los paga
+                      // el cliente hoy en la sucursal, no entran al financiamiento.
+                      const saldoFin   = Math.max(0, totals.netTotal - totals.chargeAmt - totals.accAmt - pieAmt);
+                      const pieSurch   = isTarjeta(piePayMethod) ? Math.round(pieAmt * 0.02) : 0;
+                      const totalHoy   = pieAmt + totals.chargeAmt + totals.accAmt + pieSurch;
+                      const chargeLbl  = chargeType === 'completa'      ? 'Documentación completa'
+                                       : chargeType === 'transferencia' ? 'Transferencia vehicular'
+                                       :                                  'Inscripción vehicular';
                       return (
                         <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <div>Pie inicial: <strong>{fmtCLP(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
-                          <div>Saldo a financiar: <strong>{fmtCLP(saldoFin)}</strong></div>
+                          {totals.chargeAmt > 0 && (
+                            <div>{chargeLbl}: <strong>+{fmtCLP(totals.chargeAmt)}</strong></div>
+                          )}
+                          {totals.accAmt > 0 && (
+                            <div>Accesorios: <strong>+{fmtCLP(totals.accAmt)}</strong></div>
+                          )}
+                          {pieSurch > 0 && (
+                            <div>Recargo tarjeta 2% (sobre el pie): <strong>+{fmtCLP(pieSurch)}</strong></div>
+                          )}
+                          <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #FDBA74', fontWeight: 700 }}>
+                            Total a pagar hoy en sucursal: <strong style={{ color: '#9A3412' }}>{fmtCLP(totalHoy)}</strong>
+                          </div>
+                          <div style={{ color: '#9A3412' }}>Saldo a financiar por Autofin: <strong>{fmtCLP(saldoFin)}</strong></div>
                         </div>
                       );
                     })()}
@@ -1814,14 +1873,15 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   );
 }
 
-// Parser de la línea "Autofin: pie $X (Y%)" dentro de sale_notes
+// Parser de la línea "Autofin: pie $X (Y%) pagado con Z" dentro de sale_notes
 function parseAutofinFromNotes(notes) {
   if (!notes) return null;
-  const m = /Autofin:\s*pie\s*\$?([\d\.\,]+)(?:\s*\(([\d\.]+)%\))?/i.exec(notes);
+  const m = /Autofin:\s*pie\s*\$?([\d\.\,]+)(?:\s*\(([\d\.]+)%\))?(?:\s*pagado\s*con\s*([^|]+?))?(?=\s*\||\s*$)/i.exec(notes);
   if (!m) return null;
   const pieAmt = Number(String(m[1]).replace(/[\.\,]/g, '')) || 0;
   const piePct = m[2] ? Number(m[2]) : null;
-  return { pieAmt, piePct };
+  const piePayMethod = m[3] ? m[3].trim() : null;
+  return { pieAmt, piePct, piePayMethod };
 }
 
 // Helper: abre nota de venta/reserva desde un registro del listado (busca foto en catálogo)
