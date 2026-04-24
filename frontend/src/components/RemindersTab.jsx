@@ -1,29 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, Modal, Field, fmt, fD, Loader, Empty, useToast, useConfirm } from '../ui.jsx';
+import { useApiQuery } from '../hooks/useApiQuery.js';
 
 export function RemindersTab({ticketId,user}){
   const toast=useToast();
   const confirm=useConfirm();
-  const[reminders,setReminders]=useState([]);
-  const[loading,setLoading]=useState(true);
   const[showNew,setShowNew]=useState(false);
   const[form,setForm]=useState({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});
   const TYPE_L={llamada:"Llamada",visita:"Visita",whatsapp:"WhatsApp",email:"Email",otro:"Otro"};
   const ST_C={pending:"#F59E0B",completed:"#10B981",overdue:"#EF4444"};
   const ST_L={pending:"Pendiente",completed:"Completado",overdue:"Vencido"};
 
-  useEffect(()=>{
-    api.getReminders({ticket_id:ticketId}).then(d=>setReminders(d.data||d.reminders||(Array.isArray(d)?d:[]))).catch(()=>{}).finally(()=>setLoading(false));
-  },[ticketId]);
+  const { data: remindersRaw, loading, refetch } = useApiQuery(
+    () => api.getReminders({ticket_id:ticketId}),
+    [ticketId]
+  );
+  const reminders = remindersRaw ? (remindersRaw.data || remindersRaw.reminders || (Array.isArray(remindersRaw) ? remindersRaw : [])) : [];
 
   const create=async(e)=>{
     e.preventDefault();
-    try{const d=await api.createReminder({...form,ticket_id:ticketId});setReminders(p=>[d.reminder,...p]);setShowNew(false);setForm({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});}
+    try{await api.createReminder({...form,ticket_id:ticketId});setShowNew(false);setForm({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});refetch();}
     catch(err){toast.error(err.message);}
   };
-  const complete=async(id)=>{try{await api.completeReminder(id);setReminders(p=>p.map(r=>r.id===id?{...r,status:"completed"}:r));}catch(ex){toast.error('No se pudo marcar como completado: '+(ex.message||'Error'));}};
-  const del=async(id)=>{const ok=await confirm({title:"¿Eliminar recordatorio?",confirmLabel:"Eliminar",tone:"danger"});if(!ok)return;try{await api.deleteReminder(id);setReminders(p=>p.filter(r=>r.id!==id));}catch(ex){toast.error('No se pudo eliminar el recordatorio: '+(ex.message||'Error'));}};
+  const complete=async(id)=>{try{await api.completeReminder(id);refetch();}catch(ex){toast.error('No se pudo marcar como completado: '+(ex.message||'Error'));}};
+  const del=async(id)=>{const ok=await confirm({title:"¿Eliminar recordatorio?",confirmLabel:"Eliminar",tone:"danger"});if(!ok)return;try{await api.deleteReminder(id);refetch();}catch(ex){toast.error('No se pudo eliminar el recordatorio: '+(ex.message||'Error'));}};
 
   if(loading)return<Loader label="Cargando recordatorios…" />;
   return(

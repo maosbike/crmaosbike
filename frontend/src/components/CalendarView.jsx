@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Modal, Field, fD, ViewHeader, Loader, useIsMobile, Btn, Empty, hasRole, ROLE_ADMIN_READ, useToast } from '../ui.jsx';
+import { useApiQuery } from '../hooks/useApiQuery.js';
 
 const EVENT_TYPES={
   follow_up:'Seguimiento',call:'Llamada',meeting:'Reunión',
@@ -19,8 +20,6 @@ export function CalendarView({user,nav}){
   const toast=useToast();
   const isMobile=useIsMobile();
   const[date,setDate]=useState(new Date());
-  const[events,setEvents]=useState([]);
-  const[loading,setLoading]=useState(true);
   const[showForm,setShowForm]=useState(false);
   const[editEv,setEditEv]=useState(null);
   const[sellers,setSellers]=useState([]);
@@ -34,17 +33,13 @@ export function CalendarView({user,nav}){
   const DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
   const isAdmin=hasRole(user, ...ROLE_ADMIN_READ);
 
-  const loadEvents=()=>{
-    setLoading(true);
-    const start=new Date(yr,mo,1).toISOString().split('T')[0];
-    const end=new Date(yr,mo+1,0).toISOString().split('T')[0];
-    api.getCalendarEvents({start,end})
-      .then(d=>setEvents(Array.isArray(d)?d:[]))
-      .catch(()=>setEvents([]))
-      .finally(()=>setLoading(false));
-  };
-
-  useEffect(()=>{loadEvents();},[yr,mo]);// eslint-disable-line
+  const start=new Date(yr,mo,1).toISOString().split('T')[0];
+  const end=new Date(yr,mo+1,0).toISOString().split('T')[0];
+  const { data: eventsRaw, loading, refetch: loadEvents } = useApiQuery(
+    () => api.getCalendarEvents({start,end}),
+    [yr,mo]
+  );
+  const events = Array.isArray(eventsRaw) ? eventsRaw : [];
 
   useEffect(()=>{
     if(!showForm)return;
