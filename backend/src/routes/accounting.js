@@ -840,7 +840,7 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
   );
   const inv = invRows[0];
   if (!inv) return res.status(404).json({ error: 'Factura no encontrada' });
-  if (inv.sale_note_id) {
+  if (inv.sale_note_id || inv.inventory_id) {
     return res.status(409).json({ error: 'Esta factura ya tiene una venta vinculada' });
   }
 
@@ -867,9 +867,29 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
   // Fecha de venta: si no viene, usar fecha de emisión de la factura
   const finalSoldAt = sold_at || inv.fecha_emision || new Date().toISOString().slice(0, 10);
 
+  // ── Match con inventario por chasis ───────────────────────────────────────
+  // Si la factura tiene chasis y hay una unidad en inventario que coincide y
+  // NO está vendida, vendemos esa unidad directamente — evita duplicar el dato
+  // entre inventory y sales_notes, y hace que desaparezca del stock disponible.
+  let matchedInvUnit = null;
+  if (inv.chassis) {
+    const chassisCanon = String(inv.chassis).replace(/\s+/g, '').toUpperCase();
+    const { rows: invUnit } = await db.query(
+      `SELECT * FROM inventory
+        WHERE UPPER(REPLACE(chassis,' ','')) = $1
+          AND status != 'vendida'
+        LIMIT 1`,
+      [chassisCanon]
+    );
+    if (invUnit[0]) matchedInvUnit = invUnit[0];
+  }
+
   // Resolver model_id del catálogo a partir de brand/model del invoice (best effort).
   // Si no matchea, queda null — no es bloqueante.
   let resolvedModelId = inv.model_id || null;
+  if (!resolvedModelId && matchedInvUnit?.model_id) {
+    resolvedModelId = matchedInvUnit.model_id;
+  }
   if (!resolvedModelId && inv.brand && inv.model) {
     const { rows: modelRows } = await db.query(
       `SELECT id FROM moto_models
@@ -884,68 +904,123 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
   try {
     await client.query('BEGIN');
 
-    // 1. Crear la nota de venta
-    const { rows: saleRows } = await client.query(
-      `INSERT INTO sales_notes (
-         status, branch_id, year, brand, model, color, chassis, motor_num, price,
-         sold_at, sold_by, ticket_id,
-         payment_method, sale_type, sale_notes,
-         sale_price, client_name, client_rut, created_by, model_id,
-         charge_type, delivered, doc_factura_cli
-       ) VALUES (
-         'vendida', $1, $2, $3, $4, $5, $6, $7, $8,
-         $9, $10, $11,
-         $12, $13, $14,
-         $15, $16, $17, $18, $19,
-         $20, true, $21
-       ) RETURNING *`,
-      [
-        branch_id,
-        inv.commercial_year || null,
-        (inv.brand || '').trim().toUpperCase() || null,
-        (inv.model || '').trim().toUpperCase() || null,
-        inv.color  || null,
-        inv.chassis ? inv.chassis.trim().toUpperCase() : null,
-        inv.motor_num || null,
-        price,
-        finalSoldAt,
-        sold_by,
-        inv.lead_id || null,
-        payment_method || null,
-        chType,                                // sale_type
-        `Creada desde Contabilidad — factura Nº ${inv.folio || inv.id}`,
-        price,
-        inv.cliente_nombre || null,
-        inv.rut_cliente    || null,
-        req.user.id,
-        resolvedModelId,
-        chType,                                // charge_type
-        inv.pdf_url || null,                   // doc_factura_cli — el PDF de la factura queda adjunto
-      ]
-    );
-    const sale = saleRows[0];
+    let sale = null;
+    let linkField = null;   // 'inventory_id' | 'sale_note_id'
+    let linkId    = null;
 
-    // 2. Vincular la factura a la venta recién creada
+    if (matchedInvUnit) {
+      // ── Camino A: venta sobre unidad real del inventario ──────────────────
+      const prevStatus = matchedInvUnit.status;
+      const { rows: updatedInv } = await client.query(
+        `UPDATE inventory SET
+           status='vendida', sold_at=$1, sold_by=$2, ticket_id=$3,
+           payment_method=$4, sale_type=$5, sale_notes=$6,
+           sale_price=$7, client_name=$8, client_rut=$9,
+           charge_type=$10, delivered=true,
+           doc_factura_cli=COALESCE(doc_factura_cli, $11),
+           branch_id=$12, updated_at=NOW()
+         WHERE id=$13 RETURNING *`,
+        [
+          finalSoldAt, sold_by, inv.lead_id || null,
+          payment_method || null, chType,
+          `Creada desde Contabilidad — factura Nº ${inv.folio || inv.id}`,
+          price,
+          inv.cliente_nombre || null,
+          inv.rut_cliente    || null,
+          chType,
+          inv.pdf_url || null,
+          branch_id,
+          matchedInvUnit.id,
+        ]
+      );
+      sale = updatedInv[0];
+
+      // Log en inventory_history para trazabilidad
+      await client.query(
+        `INSERT INTO inventory_history
+           (inventory_id, event_type, from_status, to_status, user_id, note, metadata)
+         VALUES ($1,'sold',$2,'vendida',$3,$4,$5)`,
+        [matchedInvUnit.id, prevStatus, req.user.id,
+         `Venta creada desde Contabilidad (factura Nº ${inv.folio || inv.id})`,
+         JSON.stringify({ invoice_id: inv.id, sold_by, sale_price: price })]
+      );
+
+      linkField = 'inventory_id';
+      linkId    = matchedInvUnit.id;
+    } else {
+      // ── Camino B: no hay unidad en inventario → nota de venta suelta ──────
+      const { rows: saleRows } = await client.query(
+        `INSERT INTO sales_notes (
+           status, branch_id, year, brand, model, color, chassis, motor_num, price,
+           sold_at, sold_by, ticket_id,
+           payment_method, sale_type, sale_notes,
+           sale_price, client_name, client_rut, created_by, model_id,
+           charge_type, delivered, doc_factura_cli
+         ) VALUES (
+           'vendida', $1, $2, $3, $4, $5, $6, $7, $8,
+           $9, $10, $11,
+           $12, $13, $14,
+           $15, $16, $17, $18, $19,
+           $20, true, $21
+         ) RETURNING *`,
+        [
+          branch_id,
+          inv.commercial_year || null,
+          (inv.brand || '').trim().toUpperCase() || null,
+          (inv.model || '').trim().toUpperCase() || null,
+          inv.color  || null,
+          inv.chassis ? inv.chassis.trim().toUpperCase() : null,
+          inv.motor_num || null,
+          price,
+          finalSoldAt,
+          sold_by,
+          inv.lead_id || null,
+          payment_method || null,
+          chType,
+          `Creada desde Contabilidad — factura Nº ${inv.folio || inv.id}`,
+          price,
+          inv.cliente_nombre || null,
+          inv.rut_cliente    || null,
+          req.user.id,
+          resolvedModelId,
+          chType,
+          inv.pdf_url || null,
+        ]
+      );
+      sale = saleRows[0];
+
+      linkField = 'sale_note_id';
+      linkId    = sale.id;
+    }
+
+    // Vincular la factura a la venta (inventory o sales_notes)
     await client.query(
       `UPDATE invoices
-         SET sale_note_id = $1,
+         SET ${linkField} = $1,
              link_status  = 'vinculada',
              updated_at   = NOW()
        WHERE id = $2`,
-      [sale.id, inv.id]
+      [linkId, inv.id]
     );
 
     await client.query('COMMIT');
 
     // Respuesta enriquecida con el invoice actualizado
     const { rows: updatedInv } = await db.query(
-      `SELECT i.*, sn.brand AS sn_brand, sn.model AS sn_model, sn.sold_at
+      `SELECT i.*,
+              sn.brand  AS sn_brand,  sn.model  AS sn_model,  sn.sold_at,
+              invu.brand AS inv_brand, invu.model AS inv_model, invu.chassis AS inv_chassis, invu.status AS inv_status
          FROM invoices i
-         LEFT JOIN sales_notes sn ON sn.id = i.sale_note_id
+         LEFT JOIN sales_notes sn   ON sn.id  = i.sale_note_id
+         LEFT JOIN inventory   invu ON invu.id = i.inventory_id
         WHERE i.id = $1`,
       [inv.id]
     );
-    res.status(201).json({ sale, invoice: updatedInv[0] });
+    res.status(201).json({
+      sale,
+      invoice: updatedInv[0],
+      linked_to: matchedInvUnit ? 'inventory' : 'sales_notes',
+    });
   } catch (e) {
     await client.query('ROLLBACK');
     logger.error({ err: e }, '[Accounting/create-sale]');

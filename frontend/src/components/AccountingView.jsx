@@ -729,7 +729,7 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
           {/* Crear venta desde factura — backfill admin-only de ventas pre-CRM */}
-          {!inv.sale_note_id && (
+          {!inv.sale_note_id && !inv.inventory_id && (
             <div style={{
               background:'var(--surface)', border:'1px solid var(--brand-strong)',
               borderRadius:'var(--radius-lg)', overflow:'hidden',
@@ -755,6 +755,16 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
                     anteriores al CRM. El cliente, la moto y el monto salen de la factura; elegí
                     el vendedor y la sucursal.
                   </div>
+                  {inv.chassis && (
+                    <div style={{
+                      fontSize:11, color:'#065F46', background:'rgba(5,150,105,0.08)',
+                      border:'1px solid rgba(5,150,105,0.25)', borderRadius:'var(--radius-sm)',
+                      padding:'7px 10px', lineHeight:1.45,
+                    }}>
+                      Si el chasis <strong>{inv.chassis}</strong> coincide con una unidad del inventario,
+                      la venta se aplicará sobre esa unidad y desaparecerá del stock disponible.
+                    </div>
+                  )}
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                     <label style={{ fontSize:10, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
                       Vendedor *
