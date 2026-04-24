@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, Loader, ErrorMsg, Empty, useToast, useConfirm } from '../ui.jsx';
+import { useApiQuery } from '../hooks/useApiQuery.js';
 
 export function StagingImportView() {
   const toast=useToast();
@@ -8,17 +9,13 @@ export function StagingImportView() {
   const [step, setStep]           = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [batchData, setBatchData] = useState(null);
-  const [batches, setBatches]     = useState([]);
+  const { data: batchesRaw, refetch: loadBatches } = useApiQuery(() => api.getPriceBatches(), []);
+  const batches = Array.isArray(batchesRaw) ? batchesRaw : [];
   const [publishing, setPublishing] = useState(false);
   const [result, setResult]       = useState(null);
   const [editingRow, setEditingRow] = useState(null);
   const [editForm, setEditForm]   = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
-
-  const loadBatches = () =>
-    api.getPriceBatches().then(setBatches).catch(() => {});
-
-  useEffect(() => { loadBatches(); }, []);
 
   const handleUpload = async (file) => {
     setUploading(true);

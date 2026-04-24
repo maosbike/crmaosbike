@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, Loader, ErrorMsg, Empty } from '../ui.jsx';
+import { useApiQuery } from '../hooks/useApiQuery.js';
 
 export function ImportView() {
   const [step, setStep]         = useState('upload');
@@ -9,8 +10,8 @@ export function ImportView() {
   const [result, setResult]     = useState(null);
   const [skipDups, setSkipDups] = useState(true);
   const [filter, setFilter]     = useState('all');
-  const [catalogModels, setCatalogModels] = useState([]);
-  useEffect(()=>{ api.getModels().then(d=>setCatalogModels(Array.isArray(d)?d:[])).catch(()=>{}); },[]);
+  const { data: catalogModelsRaw } = useApiQuery(() => api.getModels(), []);
+  const catalogModels = Array.isArray(catalogModelsRaw) ? catalogModelsRaw : [];
   const [dragOver, setDragOver] = useState(false);
   const [logs, setLogs]         = useState(null);
   const [logsLoading, setLogsLoading] = useState(false);

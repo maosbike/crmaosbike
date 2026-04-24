@@ -1,17 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, ACTIVE_STATUSES, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ViewHeader, useIsMobile, ErrorMsg, Btn } from '../ui.jsx';
+import { useApiQuery } from '../hooks/useApiQuery.js';
 
 export function Dashboard({leads,inv,user,nav,branches=[]}){
-  const[stats,setStats]=useState(null);
-  const[statsErr,setStatsErr]=useState('');
+  const { data: stats, error: statsRawErr } = useApiQuery(() => api.getCommercialStats(), []);
+  const statsErr = statsRawErr ? 'No se pudieron cargar los datos.' : '';
   const isMobile = useIsMobile();
   const active=leads.filter(l=>ACTIVE_STATUSES.includes(l.status));
   const ganados=leads.filter(l=>l.status==="ganado");
   const perdidos=leads.filter(l=>l.status==="perdido");
   const avail=inv.filter(x=>x.status==="disponible").length;
   const pipe=Object.entries(TICKET_STATUS).slice(0,5).map(([k,v])=>({name:v.l,count:leads.filter(l=>l.status===k).length,color:v.c}));
-  useEffect(()=>{api.getCommercialStats().then(d=>setStats(d)).catch(()=>{setStatsErr('No se pudieron cargar los datos.');});},[]);
   const kpi=(key,...fallbacks)=>{if(!stats)return 0;for(const k of[key,...fallbacks]){const v=stats.stats?.[k]??stats.kpis?.[k]??stats[k];if(v!==undefined&&v!==null)return v;}return 0;};
   const urgentes=stats?.leads_urgentes||stats?.urgentes||[];
   const tareasHoy=stats?.recordatorios_hoy||stats?.tareas_hoy||stats?.reminders_today||[];
