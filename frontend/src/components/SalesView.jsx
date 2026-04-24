@@ -101,6 +101,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
   const canEdit    = isVendedor ? isOwner : (isRes ? true : hasRole(user, ...CAN_CREATE));
 
   const [editing,           setEditing]           = useState(false);
+  const [showEditModal,     setShowEditModal]     = useState(false);
   const [form,              setForm]              = useState({});
   const [saving,            setSaving]            = useState(false);
   const [converting,        setConverting]        = useState(false);
@@ -706,8 +707,8 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
             Ver documento
           </button>
           {canEdit && (
-            <button onClick={() => setEditing(true)} style={{ ...S.btn2, flex: 1 }}>
-              {isRes ? 'Editar reserva' : 'Editar seguimiento'}
+            <button onClick={() => isAdmin ? setShowEditModal(true) : setEditing(true)} style={{ ...S.btn2, flex: 1 }}>
+              {isRes ? 'Editar reserva' : (isAdmin ? 'Editar venta' : 'Editar seguimiento')}
             </button>
           )}
           {/* Convertir a venta (solo reservas saldadas o cualquiera) */}
@@ -932,6 +933,17 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
             <Btn variant='primary' onClick={() => { setShowConfirmConvert(false); doConvert(); }}>Convertir a venta</Btn>
           </div>
         </Modal>
+      )}
+      {showEditModal && (
+        <NewSaleModal
+          editSale={sale}
+          noteType={isRes ? 'reserva' : 'venta'}
+          user={user}
+          sellers={sellers}
+          branches={branches}
+          onClose={() => setShowEditModal(false)}
+          onCreated={() => { onSaved(); setShowEditModal(false); }}
+        />
       )}
     </Modal>
   );
@@ -1309,19 +1321,47 @@ const SEC = ({ children }) => (
 
 // ─── Modal: nueva venta/reserva ───────────────────────────────────────────────
 
-function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta', user, initial = null }) {
+function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta', user, initial = null, editSale = null }) {
   const isReserva  = noteType === 'reserva';
   const isVendedor = user?.role === 'vendedor';
-  const [step,       setStep]     = useState(0);
-  const [hasInvUnit, setHasInvUnit] = useState(null);
+  const isEdit     = !!editSale;
+  // En edición arrancamos directo en el paso 2 (formulario completo).
+  // Creación sigue arrancando en step 0 (¿unidad de inventario?).
+  const [step,       setStep]     = useState(isEdit ? 2 : 0);
+  const [hasInvUnit, setHasInvUnit] = useState(isEdit ? !editSale.is_note_only : null);
   const [invUnits,   setInvUnits] = useState([]);
   const [invSearch,  setInvSearch]= useState('');
-  const [selUnit,    setSelUnit]  = useState(null);
+  const [selUnit,    setSelUnit]  = useState(isEdit && !editSale.is_note_only ? editSale : null);
   const [savedDoc,   setSavedDoc] = useState(null);
   // Vendedor: pre-fill sold_by con su propio id.
   // Si viene un `initial` (cliente desde un lead), lo fusionamos sobre el formulario vacío.
   const [form,       setForm]     = useState(() => {
     const base = { ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' };
+    // Edición: hidratar TODO desde el sale existente
+    if (editSale) {
+      return {
+        ...base,
+        ticket_id:       editSale.ticket_id      || '',
+        client_name:     editSale.client_name    || '',
+        client_rut:      editSale.client_rut     || '',
+        client_phone:    '',
+        client_email:    '',
+        client_address:  '',
+        client_commune:  '',
+        client_type:     'persona',
+        branch_id:       editSale.branch_id      || '',
+        sold_by:         editSale.seller_id      || editSale.sold_by || '',
+        sold_at:         editSale.sold_at ? String(editSale.sold_at).slice(0,10) : '',
+        brand:           editSale.brand          || '',
+        model:           editSale.model          || '',
+        year:            editSale.year           || '',
+        color:           editSale.color          || '',
+        chassis:         editSale.chassis        || '',
+        motor_num:       editSale.motor_num      || '',
+        sale_price:      editSale.sale_price     || '',
+        sale_notes:      editSale.sale_notes     || '',
+      };
+    }
     if (!initial) return base;
     return {
       ...base,
@@ -1345,20 +1385,63 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [catMods,  setCatMods] = useState([]);
   const [selMod,   setSelMod]  = useState(null);
 
-  // Payment
-  const [payMode,  setPayMode] = useState('');
-  const [payLines, setPayLines]= useState([{ method: '', amount: '' }]);
+  // Payment — hidratados desde editSale si es edición
+  const [payMode,  setPayMode] = useState(editSale?.payment_method || '');
+  const [payLines, setPayLines]= useState(() => {
+    if (editSale && Array.isArray(editSale.abono_lines) && editSale.abono_lines.length > 0) {
+      return editSale.abono_lines.map(l => ({ method: l.method || '', amount: Number(l.amount) || 0 }));
+    }
+    return [{ method: '', amount: '' }];
+  });
 
-  // Autofin (crédito) — pie inicial
-  const [finPct,       setFinPct]       = useState('');   // % del pie sobre el total
-  const [finAmt,       setFinAmt]       = useState('');   // monto $ del pie
-  const [piePayMethod, setPiePayMethod] = useState('');   // cómo se paga el pie (Contado/Transferencia/Tarjeta…)
+  // Autofin — pie inicial (hidratado desde sale_notes si editando un Autofin)
+  const [finPct,       setFinPct]       = useState(() => {
+    if (editSale?.payment_method === 'Crédito Autofin') {
+      const parsed = parseAutofinFromNotes(editSale.sale_notes);
+      return parsed?.piePct != null ? String(parsed.piePct) : '';
+    }
+    return '';
+  });
+  const [finAmt,       setFinAmt]       = useState(() => {
+    if (editSale?.payment_method === 'Crédito Autofin') {
+      const parsed = parseAutofinFromNotes(editSale.sale_notes);
+      return parsed?.pieAmt ? String(parsed.pieAmt) : '';
+    }
+    return '';
+  });
+  const [piePayMethod, setPiePayMethod] = useState(() => {
+    if (editSale?.payment_method === 'Crédito Autofin') {
+      const parsed = parseAutofinFromNotes(editSale.sale_notes);
+      return parsed?.piePayMethod || '';
+    }
+    return '';
+  });
 
-  // Extras
-  const [accs,       setAccs]      = useState([]);
-  const [discount,   setDiscount]  = useState('');
-  const [abono,      setAbono]     = useState('');
-  const [chargeType, setChargeType]= useState('inscripcion');
+  // Extras — hidratados desde editSale si es edición
+  const [accs,       setAccs]      = useState(() => {
+    if (editSale && Array.isArray(editSale.accessories)) {
+      return editSale.accessories
+        .filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
+        .map(a => ({ name: a.description || a.name || '', amount: Number(a.amount) || 0 }));
+    }
+    return [];
+  });
+  const [discount,   setDiscount]  = useState(() => {
+    if (editSale?.discount_amt && editSale.sale_price) {
+      const pct = Math.round(Number(editSale.discount_amt) / Number(editSale.sale_price) * 100);
+      return pct > 0 ? String(pct) : '';
+    }
+    return '';
+  });
+  const [abono,      setAbono]     = useState(() =>
+    editSale && editSale.status === 'reservada' && editSale.invoice_amount
+      ? String(editSale.invoice_amount)
+      : ''
+  );
+  const [chargeType, setChargeType]= useState(() => {
+    const t = editSale?.charge_type || editSale?.sale_type;
+    return ['completa','transferencia','inscripcion'].includes(t) ? t : 'inscripcion';
+  });
 
   // Titular del vehículo
   const [titularSame, setTitularSame] = useState(true);
@@ -1478,15 +1561,63 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       const discountAmtPayload = discount
         ? Math.round(subtotalForDiscount * Number(discount) / 100)
         : 0;
+      // abono_lines persistido: usamos payLines sólo si payMode==='Mixto'.
+      // Si no es Mixto y hay abono único (reservas), guardamos una línea con
+      // el método principal para tener el desglose uniforme en la DB.
+      const abonoLinesPayload = (() => {
+        if (payMode === 'Mixto') {
+          return (payLines || [])
+            .filter(l => l.method && Number(l.amount) > 0)
+            .map(l => ({ method: l.method, amount: parseInt(l.amount) || 0 }));
+        }
+        if (isReserva && abono && payMode) {
+          return [{ method: payMode, amount: parseInt(abono) || 0 }];
+        }
+        return null;
+      })();
+
       const extrasPayload = {
         accessories:  accessoriesPayload.length ? accessoriesPayload : null,
         charge_type:  chargeType || null,
         charge_amt:   chargeAmtPayload || null,
         discount_amt: discountAmtPayload || null,
+        abono_lines:  abonoLinesPayload && abonoLinesPayload.length ? abonoLinesPayload : null,
       };
 
       // Modalidad = chargeType (las 3 tarjetas de Documentación son la única fuente)
       const saleTypeForPayload = chargeType || null;
+
+      // ── EDICIÓN: el mismo form pero con update endpoints ─────────────────
+      if (isEdit) {
+        const commonPayload = {
+          sold_by:        form.sold_by || null,
+          sold_at:        form.sold_at || null,
+          payment_method: payMode || null,
+          sale_type:      saleTypeForPayload,
+          sale_notes:     clientExtra || null,
+          client_name:    form.client_name || null,
+          client_rut:     form.client_rut || null,
+          sale_price:     form.sale_price ? parseInt(form.sale_price) : null,
+          invoice_amount: isReserva && abono ? parseInt(abono) : (abonoLinesPayload ? abonoLinesPayload.reduce((s, l) => s + l.amount, 0) : null),
+          branch_id:      form.branch_id || null,
+          brand:          form.brand || null,
+          model:          form.model || null,
+          model_id:       selMod?.id || null,
+          year:           form.year ? parseInt(form.year) : null,
+          color:          form.color || null,
+          chassis:        form.chassis || null,
+          motor_num:      form.motor_num || null,
+          ...extrasPayload,
+        };
+        if (editSale.is_note_only) {
+          await api.updateSale(editSale.id, { ...commonPayload, is_note_only: true });
+        } else {
+          await api.updateInventory(editSale.id, commonPayload);
+        }
+        onCreated && onCreated();
+        onClose();
+        return;
+      }
 
       if (selUnit && !isReserva) {
         await api.sellInventory(selUnit.id, {
@@ -1568,7 +1699,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     } catch (e) { setErr(e.message || 'Error al registrar'); setSaving(false); }
   }
 
-  const modalTitle = isReserva ? 'Nueva nota de reserva' : 'Nueva nota de venta';
+  const modalTitle = isEdit
+    ? (isReserva ? 'Editar reserva' : 'Editar venta')
+    : (isReserva ? 'Nueva nota de reserva' : 'Nueva nota de venta');
 
   return (
     <Modal onClose={onClose} title={modalTitle} wide>
@@ -1636,10 +1769,12 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       {step === 2 && (
         <div style={{ maxHeight: '72vh', overflowY: 'auto', paddingRight: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <button onClick={() => { resetForm(); setStep(0); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-subtle)', padding: 0, fontFamily: 'inherit' }}>
-              ← Volver
-            </button>
+            {!isEdit && (
+              <button onClick={() => { resetForm(); setStep(0); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-subtle)', padding: 0, fontFamily: 'inherit' }}>
+                ← Volver
+              </button>
+            )}
             {selUnit && (
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 'var(--radius-md)', padding: '4px 12px' }}>
                 Unidad: {selUnit.brand} {selUnit.model}{selUnit.chassis ? ` · ${selUnit.chassis}` : ''}
