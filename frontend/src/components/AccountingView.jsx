@@ -491,6 +491,42 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
   const [modelId, setModelId] = useState(inv.model_id_resolved || null);
   const [selModel, setSelModel] = useState(null);
   const [colorEdit, setColorEdit] = useState(inv.color || '');
+  // Crear venta desde factura (backfill de ventas anteriores al CRM).
+  // Sólo visible si la factura todavía no tiene una venta vinculada.
+  const [showCreateSale, setShowCreateSale] = useState(false);
+  const [sellers, setSellers] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [csForm, setCsForm] = useState({
+    sold_by: '', branch_id: '',
+    sold_at: inv.fecha_emision ? String(inv.fecha_emision).slice(0,10) : '',
+    payment_method: '', charge_type: 'inscripcion',
+    sale_price: inv.total || '',
+  });
+  const [csSaving, setCsSaving] = useState(false);
+  useEffect(() => {
+    if (!showCreateSale) return;
+    api.getSellers?.().then(s => setSellers(Array.isArray(s) ? s : (s?.data || []))).catch(() => {});
+    api.getBranches?.().then(b => setBranches(Array.isArray(b) ? b : (b?.data || []))).catch(() => {});
+  }, [showCreateSale]);
+  async function createSaleFromFactura() {
+    if (!csForm.sold_by)   { toast.error('Elegí un vendedor'); return; }
+    if (!csForm.branch_id) { toast.error('Elegí una sucursal'); return; }
+    setCsSaving(true);
+    try {
+      const r = await api.createSaleFromInvoice(inv.id, {
+        sold_by:        csForm.sold_by,
+        branch_id:      csForm.branch_id,
+        sold_at:        csForm.sold_at || null,
+        payment_method: csForm.payment_method || null,
+        charge_type:    csForm.charge_type,
+        sale_price:     csForm.sale_price ? parseInt(csForm.sale_price) : null,
+      });
+      toast.success('Venta creada y vinculada');
+      onSaved(r.invoice);
+      setShowCreateSale(false);
+    } catch (e) { toast.error(e.message); }
+    finally { setCsSaving(false); }
+  }
   // Cuando cambia el modelo elegido, precargamos la lista de colores y, si
   // el color actual no está en la lista, lo dejamos como "libre".
   useEffect(() => {
@@ -691,6 +727,104 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
 
         {/* ── Columna DER: acciones (editor catálogo + notas) ──────────── */}
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+
+          {/* Crear venta desde factura — backfill admin-only de ventas pre-CRM */}
+          {!inv.sale_note_id && (
+            <div style={{
+              background:'var(--surface)', border:'1px solid var(--brand-strong)',
+              borderRadius:'var(--radius-lg)', overflow:'hidden',
+            }}>
+              <div style={{
+                padding:'10px 14px', background:'rgba(242,129,0,0.08)',
+                borderBottom:'1px solid var(--brand-strong)',
+                display:'flex', justifyContent:'space-between', alignItems:'center',
+              }}>
+                <div style={{ fontSize:10, fontWeight:800, color:'var(--brand)', textTransform:'uppercase', letterSpacing:'0.12em' }}>
+                  Esta factura no tiene venta
+                </div>
+                {!showCreateSale && (
+                  <button onClick={() => setShowCreateSale(true)} style={{ ...S.btn, fontSize:11, padding:'5px 12px' }}>
+                    + Crear venta
+                  </button>
+                )}
+              </div>
+              {showCreateSale && (
+                <div style={{ padding:'12px 14px', display:'flex', flexDirection:'column', gap:10 }}>
+                  <div style={{ fontSize:11, color:'var(--text-subtle)', lineHeight:1.45 }}>
+                    Genera una nota de venta a partir de esta factura. Útil para registrar ventas
+                    anteriores al CRM. El cliente, la moto y el monto salen de la factura; elegí
+                    el vendedor y la sucursal.
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    <label style={{ fontSize:10, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                      Vendedor *
+                      <select value={csForm.sold_by} onChange={e => setCsForm(f => ({ ...f, sold_by: e.target.value }))}
+                        style={{ ...S.inp, width:'100%', marginTop:4, fontSize:12 }}>
+                        <option value="">— Seleccionar —</option>
+                        {sellers.map(s => (
+                          <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={{ fontSize:10, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                      Sucursal *
+                      <select value={csForm.branch_id} onChange={e => setCsForm(f => ({ ...f, branch_id: e.target.value }))}
+                        style={{ ...S.inp, width:'100%', marginTop:4, fontSize:12 }}>
+                        <option value="">— Seleccionar —</option>
+                        {branches.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    <label style={{ fontSize:10, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                      Fecha venta
+                      <input type="date" value={csForm.sold_at} onChange={e => setCsForm(f => ({ ...f, sold_at: e.target.value }))}
+                        style={{ ...S.inp, width:'100%', marginTop:4, fontSize:12 }}/>
+                    </label>
+                    <label style={{ fontSize:10, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                      Documentación
+                      <select value={csForm.charge_type} onChange={e => setCsForm(f => ({ ...f, charge_type: e.target.value }))}
+                        style={{ ...S.inp, width:'100%', marginTop:4, fontSize:12 }}>
+                        <option value="inscripcion">Inscripción vehicular</option>
+                        <option value="completa">Documentación completa</option>
+                        <option value="transferencia">Transferencia vehicular</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    <label style={{ fontSize:10, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                      Medio de pago
+                      <select value={csForm.payment_method} onChange={e => setCsForm(f => ({ ...f, payment_method: e.target.value }))}
+                        style={{ ...S.inp, width:'100%', marginTop:4, fontSize:12 }}>
+                        <option value="">— Sin especificar —</option>
+                        <option value="Contado">Contado (efectivo)</option>
+                        <option value="Transferencia">Transferencia bancaria</option>
+                        <option value="Tarjeta Débito">Tarjeta Débito</option>
+                        <option value="Tarjeta Crédito">Tarjeta Crédito</option>
+                        <option value="Crédito Autofin">Crédito Autofin</option>
+                      </select>
+                    </label>
+                    <label style={{ fontSize:10, fontWeight:700, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                      Precio venta ($)
+                      <input type="number" value={csForm.sale_price}
+                        onChange={e => setCsForm(f => ({ ...f, sale_price: e.target.value }))}
+                        style={{ ...S.inp, width:'100%', marginTop:4, fontSize:12 }}/>
+                    </label>
+                  </div>
+                  <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
+                    <button onClick={() => setShowCreateSale(false)} disabled={csSaving}
+                      style={{ ...S.btn2, fontSize:12, padding:'7px 14px' }}>Cancelar</button>
+                    <button onClick={createSaleFromFactura} disabled={csSaving}
+                      style={{ ...S.btn, fontSize:12, padding:'7px 18px' }}>
+                      {csSaving ? 'Creando…' : 'Crear venta'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Vincular con catálogo — manual */}
           <div style={{

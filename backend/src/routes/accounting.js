@@ -823,6 +823,138 @@ router.patch('/:id', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) =>
     res.json(rows[0]);
 }));
 
+// ─── POST /api/accounting/:id/create-sale ─────────────────────────────────────
+// Crea una nota de venta en `sales_notes` a partir de una factura y la vincula.
+// Caso de uso: backfill de ventas previas al CRM que sólo existen como factura
+// subida desde Drive. Sólo admins — el admin elige vendedor y sucursal.
+router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
+  const { sold_by, branch_id, sold_at, payment_method, charge_type, sale_price } = req.body;
+
+  if (!sold_by)   return res.status(400).json({ error: 'Vendedor requerido' });
+  if (!branch_id) return res.status(400).json({ error: 'Sucursal requerida' });
+
+  // Cargar la factura con su contexto
+  const { rows: invRows } = await db.query(
+    'SELECT * FROM invoices WHERE id = $1',
+    [req.params.id]
+  );
+  const inv = invRows[0];
+  if (!inv) return res.status(404).json({ error: 'Factura no encontrada' });
+  if (inv.sale_note_id) {
+    return res.status(409).json({ error: 'Esta factura ya tiene una venta vinculada' });
+  }
+
+  // Validar vendedor y sucursal
+  const { rows: userRows } = await db.query(
+    `SELECT id FROM users WHERE id = $1 AND active = true`, [sold_by]
+  );
+  if (!userRows[0]) return res.status(400).json({ error: 'Vendedor inválido' });
+
+  const { rows: branchRows } = await db.query(
+    `SELECT id FROM branches WHERE id = $1`, [branch_id]
+  );
+  if (!branchRows[0]) return res.status(400).json({ error: 'Sucursal inválida' });
+
+  // Tipo de cobro — default inscripción (es lo más común)
+  const VALID_CHARGES = ['inscripcion', 'completa', 'transferencia'];
+  const chType = VALID_CHARGES.includes(charge_type) ? charge_type : 'inscripcion';
+
+  // Precio de la moto: si no viene, usar total de la factura como mejor aproximación
+  const price = sale_price != null && sale_price !== ''
+    ? parseInt(sale_price)
+    : (parseInt(inv.total) || null);
+
+  // Fecha de venta: si no viene, usar fecha de emisión de la factura
+  const finalSoldAt = sold_at || inv.fecha_emision || new Date().toISOString().slice(0, 10);
+
+  // Resolver model_id del catálogo a partir de brand/model del invoice (best effort).
+  // Si no matchea, queda null — no es bloqueante.
+  let resolvedModelId = inv.model_id || null;
+  if (!resolvedModelId && inv.brand && inv.model) {
+    const { rows: modelRows } = await db.query(
+      `SELECT id FROM moto_models
+       WHERE LOWER(brand) = LOWER($1) AND LOWER(model) = LOWER($2)
+       LIMIT 1`,
+      [inv.brand, inv.model]
+    );
+    resolvedModelId = modelRows[0]?.id || null;
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Crear la nota de venta
+    const { rows: saleRows } = await client.query(
+      `INSERT INTO sales_notes (
+         status, branch_id, year, brand, model, color, chassis, motor_num, price,
+         sold_at, sold_by, ticket_id,
+         payment_method, sale_type, sale_notes,
+         sale_price, client_name, client_rut, created_by, model_id,
+         charge_type, delivered, doc_factura_cli
+       ) VALUES (
+         'vendida', $1, $2, $3, $4, $5, $6, $7, $8,
+         $9, $10, $11,
+         $12, $13, $14,
+         $15, $16, $17, $18, $19,
+         $20, true, $21
+       ) RETURNING *`,
+      [
+        branch_id,
+        inv.commercial_year || null,
+        (inv.brand || '').trim().toUpperCase() || null,
+        (inv.model || '').trim().toUpperCase() || null,
+        inv.color  || null,
+        inv.chassis ? inv.chassis.trim().toUpperCase() : null,
+        inv.motor_num || null,
+        price,
+        finalSoldAt,
+        sold_by,
+        inv.lead_id || null,
+        payment_method || null,
+        chType,                                // sale_type
+        `Creada desde Contabilidad — factura Nº ${inv.folio || inv.id}`,
+        price,
+        inv.cliente_nombre || null,
+        inv.rut_cliente    || null,
+        req.user.id,
+        resolvedModelId,
+        chType,                                // charge_type
+        inv.pdf_url || null,                   // doc_factura_cli — el PDF de la factura queda adjunto
+      ]
+    );
+    const sale = saleRows[0];
+
+    // 2. Vincular la factura a la venta recién creada
+    await client.query(
+      `UPDATE invoices
+         SET sale_note_id = $1,
+             link_status  = 'vinculada',
+             updated_at   = NOW()
+       WHERE id = $2`,
+      [sale.id, inv.id]
+    );
+
+    await client.query('COMMIT');
+
+    // Respuesta enriquecida con el invoice actualizado
+    const { rows: updatedInv } = await db.query(
+      `SELECT i.*, sn.brand AS sn_brand, sn.model AS sn_model, sn.sold_at
+         FROM invoices i
+         LEFT JOIN sales_notes sn ON sn.id = i.sale_note_id
+        WHERE i.id = $1`,
+      [inv.id]
+    );
+    res.status(201).json({ sale, invoice: updatedInv[0] });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    logger.error({ err: e }, '[Accounting/create-sale]');
+    res.status(500).json({ error: 'Error al crear venta desde factura: ' + e.message });
+  } finally {
+    client.release();
+  }
+}));
+
 // ─── DELETE /api/accounting/:id ───────────────────────────────────────────────
 router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query('DELETE FROM invoices WHERE id=$1 RETURNING id', [req.params.id]);
