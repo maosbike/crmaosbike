@@ -205,7 +205,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyn
     res.status(201).json(unit);
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Chasis ya existe' });
-    console.error(e); res.status(500).json({ error: 'Error' });
+    console.error(e); res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

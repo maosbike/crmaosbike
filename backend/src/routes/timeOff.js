@@ -63,7 +63,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async
 // Borrar un día libre específico
 router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const { rowCount } = await db.query('DELETE FROM user_time_off WHERE id = $1', [req.params.id]);
-    if (!rowCount) return res.status(404).json({ error: 'No encontrado' });
+    if (!rowCount) return res.status(404).json({ error: 'Día libre no encontrado' });
     res.json({ ok: true });
 }));
 

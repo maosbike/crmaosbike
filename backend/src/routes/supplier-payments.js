@@ -493,7 +493,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
        FROM supplier_payments sp
        LEFT JOIN moto_models mm ON mm.id = sp.model_id
        WHERE sp.id=$1`, [req.params.id]);
-    if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
+    if (!rows[0]) return res.status(404).json({ error: 'Pago no encontrado' });
     res.json(rows[0]);
 }));
 
@@ -542,14 +542,14 @@ router.patch('/:id', roleCheck('super_admin','admin_comercial','backoffice'), as
         WHERE sp.id = $1`,
       [req.params.id]
     );
-    if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
+    if (!rows[0]) return res.status(404).json({ error: 'Pago no encontrado' });
     res.json(rows[0]);
 }));
 
 // ─── DELETE /:id ──────────────────────────────────────────────────────────────
 router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const { rows } = await db.query('DELETE FROM supplier_payments WHERE id=$1 RETURNING id', [req.params.id]);
-    if (!rows[0]) return res.status(404).json({ error: 'No encontrado' });
+    if (!rows[0]) return res.status(404).json({ error: 'Pago no encontrado' });
     res.json({ ok: true });
 }));
 

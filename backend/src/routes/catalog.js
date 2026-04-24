@@ -373,7 +373,7 @@ router.post('/branches', roleCheck('super_admin'), async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (e) {
     if (e.code === '23505') return res.status(400).json({ error: 'Ya existe una sucursal con ese código' });
-    console.error('Error crear sucursal:', e); res.status(500).json({ error: 'Error' });
+    console.error('Error crear sucursal:', e); res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -393,7 +393,7 @@ router.put('/branches/:id', roleCheck('super_admin'), async (req, res) => {
     res.json(rows[0]);
   } catch (e) {
     if (e.code === '23505') return res.status(400).json({ error: 'Ya existe una sucursal con ese código' });
-    console.error('Error editar sucursal:', e); res.status(500).json({ error: 'Error' });
+    console.error('Error editar sucursal:', e); res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -422,7 +422,7 @@ router.delete('/branches/:id', roleCheck('super_admin'), async (req, res) => {
     res.json({ message: `${check.rows[0].name} eliminada` });
   } catch (e) {
     if (e.code === '23503') return res.status(409).json({ error: 'No se puede eliminar: la sucursal tiene datos referenciados. Desactívala.' });
-    console.error('Error eliminar sucursal:', e); res.status(500).json({ error: 'Error' });
+    console.error('Error eliminar sucursal:', e); res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
