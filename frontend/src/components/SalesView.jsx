@@ -1029,13 +1029,26 @@ async function openNote(data, type) {
     const fd = data.finData;
     const pieAmt = Number(fd.pieAmt) || 0;
     const piePct = fd.piePct != null ? Number(fd.piePct) : null;
-    const saldoFin = Math.max(0, t.grandTotal - pieAmt);
+    // Autofin financia sólo la moto (menos el pie). Doc + accesorios los paga
+    // el cliente hoy en la sucursal junto con el pie.
+    const saldoFin = Math.max(0, t.netTotal - t.chargeAmt - t.accAmt - pieAmt);
     const piePayM  = fd.piePayMethod || null;
     const isCard   = piePayM === 'Tarjeta Débito' || piePayM === 'Tarjeta Crédito';
     const pieSurch = isCard ? Math.round(pieAmt * 0.02) : 0;
+    const totalHoy = pieAmt + t.chargeAmt + t.accAmt + pieSurch;
+    const chargeLbl = data.chargeType === 'completa'      ? 'Documentación completa'
+                    : data.chargeType === 'transferencia' ? 'Transferencia vehicular'
+                    :                                       'Inscripción vehicular';
 
-    const lines = 2 + (piePayM ? 1 : 0) + (pieSurch ? 1 : 0);
-    const boxH = 6 + lines * 4.5;
+    const rows = [['Pie inicial', piePct != null ? `${fmtCLP(pieAmt)} (${piePct}%)` : fmtCLP(pieAmt)]];
+    if (t.chargeAmt > 0) rows.push([chargeLbl, `+${fmtCLP(t.chargeAmt)}`]);
+    if (t.accAmt > 0)    rows.push(['Accesorios', `+${fmtCLP(t.accAmt)}`]);
+    if (piePayM)         rows.push(['Medio de pago del pie', piePayM]);
+    if (pieSurch > 0)    rows.push(['Recargo tarjeta 2% (sobre el pie)', `+${fmtCLP(pieSurch)}`]);
+    rows.push(['Total a pagar hoy en sucursal', fmtCLP(totalHoy)]);
+    rows.push(['Saldo a financiar por Autofin', fmtCLP(saldoFin)]);
+
+    const boxH = 8 + rows.length * 4.5;
     doc.setFillColor(255, 247, 237);
     doc.setDrawColor(253, 186, 116); doc.setLineWidth(0.3);
     doc.roundedRect(M, y, cw, boxH, 1.5, 1.5, 'FD');
@@ -1044,18 +1057,14 @@ async function openNote(data, type) {
     doc.text('Condiciones de financiamiento (Autofin)', M + 4, y + 5);
 
     doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(...dark);
-    const pieLabel = piePct != null ? `${fmtCLP(pieAmt)} (${piePct}%)` : fmtCLP(pieAmt);
     let ly = y + 10.5;
-    doc.text(`Pie inicial: ${pieLabel}`, M + 4, ly);
-    doc.text(`Saldo a financiar: ${fmtCLP(saldoFin)}`, W - M - 4, ly, { align: 'right' });
-    if (piePayM) {
+    rows.forEach(([label, val], i) => {
+      const isTotal = label.startsWith('Total') || label.startsWith('Saldo');
+      doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+      doc.text(label + ':', M + 4, ly);
+      doc.text(val, W - M - 4, ly, { align: 'right' });
       ly += 4.5;
-      doc.text(`Medio de pago del pie: ${piePayM}`, M + 4, ly);
-    }
-    if (pieSurch) {
-      ly += 4.5;
-      doc.text(`Recargo tarjeta 2%: +${fmtCLP(pieSurch)} — Total a cargar: ${fmtCLP(pieAmt + pieSurch)}`, M + 4, ly);
-    }
+    });
 
     y += boxH + 4;
   }
@@ -1712,19 +1721,31 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
                     {totals.grandTotal > 0 && Number(finAmt) >= 0 && (() => {
                       const pieAmt     = Number(finAmt) || 0;
-                      const saldoFin   = Math.max(0, totals.grandTotal - pieAmt);
+                      // Autofin financia SÓLO la moto (menos el pie). La documentación
+                      // (inscripción/completa/transferencia) y los accesorios los paga
+                      // el cliente hoy en la sucursal, no entran al financiamiento.
+                      const saldoFin   = Math.max(0, totals.netTotal - totals.chargeAmt - totals.accAmt - pieAmt);
                       const pieSurch   = isTarjeta(piePayMethod) ? Math.round(pieAmt * 0.02) : 0;
-                      const pieACargar = pieAmt + pieSurch;
+                      const totalHoy   = pieAmt + totals.chargeAmt + totals.accAmt + pieSurch;
+                      const chargeLbl  = chargeType === 'completa'      ? 'Documentación completa'
+                                       : chargeType === 'transferencia' ? 'Transferencia vehicular'
+                                       :                                  'Inscripción vehicular';
                       return (
                         <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <div>Pie inicial: <strong>{fmtCLP(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
-                          {pieSurch > 0 && (
-                            <>
-                              <div>Recargo tarjeta 2%: <strong>+{fmtCLP(pieSurch)}</strong></div>
-                              <div>Total a cargar a la tarjeta: <strong>{fmtCLP(pieACargar)}</strong></div>
-                            </>
+                          {totals.chargeAmt > 0 && (
+                            <div>{chargeLbl}: <strong>+{fmtCLP(totals.chargeAmt)}</strong></div>
                           )}
-                          <div>Saldo a financiar: <strong>{fmtCLP(saldoFin)}</strong></div>
+                          {totals.accAmt > 0 && (
+                            <div>Accesorios: <strong>+{fmtCLP(totals.accAmt)}</strong></div>
+                          )}
+                          {pieSurch > 0 && (
+                            <div>Recargo tarjeta 2% (sobre el pie): <strong>+{fmtCLP(pieSurch)}</strong></div>
+                          )}
+                          <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #FDBA74', fontWeight: 700 }}>
+                            Total a pagar hoy en sucursal: <strong style={{ color: '#9A3412' }}>{fmtCLP(totalHoy)}</strong>
+                          </div>
+                          <div style={{ color: '#9A3412' }}>Saldo a financiar por Autofin: <strong>{fmtCLP(saldoFin)}</strong></div>
                         </div>
                       );
                     })()}
