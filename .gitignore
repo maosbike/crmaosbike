@@ -4,3 +4,9 @@ dist/
 .DS_Store
 *.log
 frontend/package-lock.json
+
+# Playwright — outputs volátiles no versionados. Los snapshots baseline
+# (tests/visual/**/__snapshots__/*.png) SÍ se versionan.
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
