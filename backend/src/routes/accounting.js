@@ -642,20 +642,21 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
     const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
     const off = (parseInt(page) - 1) * parseInt(limit);
 
-    // Foto de catálogo: prioridad (1) inventario → moto_models por model_id,
-    // (2) nota de venta → moto_models por model_id, (3) LATERAL que matchea
-    // moto_models por brand+model+year del texto de la factura. El LATERAL
-    // limita a 1 resultado para evitar duplicar filas.
+    // Foto de catálogo: prioridad (1) invoices.model_id → moto_models,
+    // (2) inventario linkeado → moto_models, (3) nota de venta linkeada →
+    // moto_models, (4) LATERAL que matchea por brand+model+year del texto
+    // del DTE (para facturas 'sin vincular' que nunca pasaron por el
+    // resolver de modelos). El LATERAL limita a 1 resultado.
     const { rows } = await db.query(
       `SELECT
          i.*,
          t.ticket_num, t.first_name, t.last_name,
          inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
          sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
-         COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url) AS model_image_url,
-         COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery)   AS model_gallery,
-         COALESCE(mm_own.color_photos, mm_inv.color_photos, mm_sn.color_photos) AS model_color_photos,
-         COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id)        AS model_id_resolved
+         COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url, mm_txt.image_url) AS model_image_url,
+         COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery,   mm_txt.gallery)   AS model_gallery,
+         COALESCE(mm_own.color_photos, mm_inv.color_photos, mm_sn.color_photos, mm_txt.color_photos) AS model_color_photos,
+         COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id,        mm_txt.id)        AS model_id_resolved
        FROM invoices i
        LEFT JOIN tickets     t   ON t.id   = i.lead_id
        LEFT JOIN inventory   inv ON inv.id = i.inventory_id
@@ -663,6 +664,17 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
        LEFT JOIN moto_models mm_own ON mm_own.id = i.model_id
        LEFT JOIN moto_models mm_inv ON mm_inv.id = inv.model_id
        LEFT JOIN moto_models mm_sn  ON mm_sn.id  = sn.model_id
+       LEFT JOIN LATERAL (
+         SELECT id, image_url, gallery, color_photos
+           FROM moto_models
+          WHERE active = true
+            AND i.brand IS NOT NULL AND i.model IS NOT NULL
+            AND LOWER(brand) = LOWER(i.brand)
+            AND LOWER(model) = LOWER(i.model)
+            AND (i.commercial_year IS NULL OR year = i.commercial_year OR year IS NULL)
+          ORDER BY CASE WHEN year = i.commercial_year THEN 0 ELSE 1 END
+          LIMIT 1
+       ) mm_txt ON mm_own.id IS NULL AND mm_inv.id IS NULL AND mm_sn.id IS NULL
        ${where}
        ORDER BY i.fecha_emision DESC NULLS LAST, i.created_at DESC
        LIMIT $${idx} OFFSET $${idx+1}`,
@@ -685,10 +697,10 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
          inv.model AS inv_model, inv.chassis AS inv_chassis, inv.status AS inv_status,
          sn.brand AS sn_brand, sn.model AS sn_model, sn.status AS sn_status,
          sn.sold_at, sn.sale_price,
-         COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url) AS model_image_url,
-         COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery)   AS model_gallery,
-         COALESCE(mm_own.color_photos, mm_inv.color_photos, mm_sn.color_photos) AS model_color_photos,
-         COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id)        AS model_id_resolved
+         COALESCE(mm_own.image_url, mm_inv.image_url, mm_sn.image_url, mm_txt.image_url) AS model_image_url,
+         COALESCE(mm_own.gallery,   mm_inv.gallery,   mm_sn.gallery,   mm_txt.gallery)   AS model_gallery,
+         COALESCE(mm_own.color_photos, mm_inv.color_photos, mm_sn.color_photos, mm_txt.color_photos) AS model_color_photos,
+         COALESCE(mm_own.id,        mm_inv.id,        mm_sn.id,        mm_txt.id)        AS model_id_resolved
        FROM invoices i
        LEFT JOIN tickets     t   ON t.id   = i.lead_id
        LEFT JOIN inventory   inv ON inv.id = i.inventory_id
@@ -696,6 +708,17 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
        LEFT JOIN moto_models mm_own ON mm_own.id = i.model_id
        LEFT JOIN moto_models mm_inv ON mm_inv.id = inv.model_id
        LEFT JOIN moto_models mm_sn  ON mm_sn.id  = sn.model_id
+       LEFT JOIN LATERAL (
+         SELECT id, image_url, gallery, color_photos
+           FROM moto_models
+          WHERE active = true
+            AND i.brand IS NOT NULL AND i.model IS NOT NULL
+            AND LOWER(brand) = LOWER(i.brand)
+            AND LOWER(model) = LOWER(i.model)
+            AND (i.commercial_year IS NULL OR year = i.commercial_year OR year IS NULL)
+          ORDER BY CASE WHEN year = i.commercial_year THEN 0 ELSE 1 END
+          LIMIT 1
+       ) mm_txt ON mm_own.id IS NULL AND mm_inv.id IS NULL AND mm_sn.id IS NULL
        WHERE i.id = $1`,
       [req.params.id]
     );
