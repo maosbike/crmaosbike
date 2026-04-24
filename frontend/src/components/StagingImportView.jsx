@@ -117,7 +117,7 @@ export function StagingImportView() {
         }
       />
 
-      <div style={{ background: 'var(--brand-soft)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, border: '1px solid var(--brand-strong)', fontSize: 12, color: 'var(--brand)' }}>
+      <div style={{ background: 'var(--brand-soft)', borderRadius: 'var(--radius-lg)', padding: '10px 14px', marginBottom: 16, border: '1px solid var(--brand-strong)', fontSize: 12, color: 'var(--brand)' }}>
         <b>Nuevo flujo seguro:</b> los datos no se publican al catálogo hasta que los revises y apruebes explícitamente.
       </div>
 
@@ -125,7 +125,7 @@ export function StagingImportView() {
       {(step === 'upload' || step === 'done') && (
         <div>
           {step === 'done' && result && (
-            <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+            <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-lg)', padding: 16, marginBottom: 16 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#10B981', marginBottom: 6 }}>Publicado exitosamente</div>
               <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>
                 {result.published} modelos actualizados · {result.created} modelos nuevos creados
@@ -231,8 +231,8 @@ export function StagingImportView() {
                             <td style={{ padding: '4px 6px' }}><input type="number" value={editForm.bonus} onChange={e=>setEditForm(f=>({...f,bonus:e.target.value}))} style={{...S.inp,fontSize:11,padding:'4px 6px',width:80}}/></td>
                             <td/>
                             <td style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>
-                              <button onClick={saveEdit} disabled={savingEdit} style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#10B981', color: 'var(--text-on-dark)', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>{savingEdit?'…':'OK'}</button>
-                              <button onClick={()=>setEditingRow(null)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer' }}>×</button>
+                              <button onClick={saveEdit} disabled={savingEdit} style={{ padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: 'none', background: '#10B981', color: 'var(--text-on-dark)', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>{savingEdit?'…':'OK'}</button>
+                              <button onClick={()=>setEditingRow(null)} style={{ padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer' }}>×</button>
                             </td>
                           </>
                         ) : (
@@ -251,8 +251,8 @@ export function StagingImportView() {
                             <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                               {!rejected && (
                                 <>
-                                  <button onClick={() => startEdit(row)} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>Editar</button>
-                                  <button onClick={() => handleReject(row.id)} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#EF4444', fontSize: 11, cursor: 'pointer' }}>Rechazar</button>
+                                  <button onClick={() => startEdit(row)} style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', marginRight: 4 }}>Editar</button>
+                                  <button onClick={() => handleReject(row.id)} style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#EF4444', fontSize: 11, cursor: 'pointer' }}>Rechazar</button>
                                 </>
                               )}
                             </td>

@@ -24,7 +24,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
       {/* ── Bloque 1: KPI strip horizontal ── */}
       <div style={{display:'grid',gridTemplateColumns:isMobile?'repeat(2,1fr)':'repeat(auto-fill,minmax(130px,1fr))',gap:10,marginBottom:16}}>
         {/* Sin atender — SLA vencido */}
-        <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:12,padding:'14px 16px',cursor:stats?'pointer':'default'}}
+        <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'var(--radius-lg)',padding:'14px 16px',cursor:stats?'pointer':'default'}}
           onClick={()=>stats&&nav('leads')}>
           <div style={{fontSize:28,fontWeight:800,color:'#DC2626',lineHeight:1,marginBottom:4}}>
             {kpi("vencidos","sla_vencidos")}
@@ -32,35 +32,35 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Sin atender</div>
         </div>
         {/* Leads activos */}
-        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
           <div style={{fontSize:28,fontWeight:800,color:'var(--text)',lineHeight:1,marginBottom:4}}>
             {active.length}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Activos</div>
         </div>
         {/* Ganados */}
-        <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'14px 16px'}}>
+        <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'var(--radius-lg)',padding:'14px 16px'}}>
           <div style={{fontSize:28,fontWeight:800,color:'#15803D',lineHeight:1,marginBottom:4}}>
             {ganados.length}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Ganados</div>
         </div>
         {/* Atender ya */}
-        <div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:12,padding:'14px 16px'}}>
+        <div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:'var(--radius-lg)',padding:'14px 16px'}}>
           <div style={{fontSize:28,fontWeight:800,color:'#B45309',lineHeight:1,marginBottom:4}}>
             {kpi("prox_vencer","proximos_vencer")}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Atender ya</div>
         </div>
         {/* Stock disponible */}
-        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
           <div style={{fontSize:28,fontWeight:800,color:'var(--text-body)',lineHeight:1,marginBottom:4}}>
             {avail}
           </div>
           <div style={{fontSize:10,fontWeight:700,color:'var(--text-disabled)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Stock disp.</div>
         </div>
         {/* Tareas hoy */}
-        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-lg)',padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
           <div style={{fontSize:28,fontWeight:800,color:'var(--text-body)',lineHeight:1,marginBottom:4}}>
             {tareasHoy.length||kpi("recordatorios_hoy")}
           </div>
@@ -76,7 +76,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <div style={{padding:'12px 16px 10px',borderBottom:'1px solid var(--surface-sunken)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{fontSize:13,fontWeight:700,color:'var(--text)'}}>Sin atender hoy</span>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:10,fontWeight:600,color:'#EF4444',background:'#FEF2F2',padding:'2px 7px',borderRadius:99}}>{urgentes.length}</span>
+              <span style={{fontSize:10,fontWeight:600,color:'#EF4444',background:'#FEF2F2',padding:'2px 7px',borderRadius:'var(--radius-pill)'}}>{urgentes.length}</span>
               {urgentes.length>8&&<Btn variant="ghost" size="sm" onClick={()=>nav('leads')} style={{fontSize:11,color:'#EF4444',padding:'2px 6px'}}>Ver todos →</Btn>}
             </div>
           </div>
@@ -114,7 +114,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
           <div style={{padding:'12px 16px 10px',borderBottom:'1px solid var(--surface-sunken)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{fontSize:13,fontWeight:700,color:'var(--text)'}}>Tareas hoy</span>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:10,fontWeight:600,color:'var(--brand)',background:'var(--brand-soft)',padding:'2px 7px',borderRadius:99}}>{tareasHoy.length}</span>
+              <span style={{fontSize:10,fontWeight:600,color:'var(--brand)',background:'var(--brand-soft)',padding:'2px 7px',borderRadius:'var(--radius-pill)'}}>{tareasHoy.length}</span>
               {tareasHoy.length>8&&<Btn variant="ghost" size="sm" onClick={()=>nav('calendar')} style={{fontSize:11,color:'var(--brand)',padding:'2px 6px'}}>Ver todas →</Btn>}
             </div>
           </div>
@@ -160,7 +160,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
                 onMouseEnter={e=>e.currentTarget.style.background='#FAFAFA'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 {/* Thumbnail del modelo */}
-                <div style={{width:40,height:36,borderRadius:6,background:'var(--surface-sunken)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{width:40,height:36,borderRadius:'var(--radius-sm)',background:'var(--surface-sunken)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {fotoUrl
                     ?<img src={fotoUrl} alt={motoModel} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                     :<Ic.bike size={16} color="var(--border-strong)"/>
@@ -174,7 +174,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
                   </div>
                 </div>
                 {/* Estado badge */}
-                <span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:99,background:stCfg.bg,color:stCfg.c,flexShrink:0}}>
+                <span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:'var(--radius-pill)',background:stCfg.bg,color:stCfg.c,flexShrink:0}}>
                   {stCfg.l}
                 </span>
               </div>
@@ -197,7 +197,7 @@ export function Dashboard({leads,inv,user,nav,branches=[]}){
               const barH=Math.max(Math.round((d.count/maxH)*76),d.count>0?4:2);
               return(
                 <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
-                  <div style={{width:'100%',height:barH,background:d.color,borderRadius:4,opacity:0.8}}/>
+                  <div style={{width:'100%',height:barH,background:d.color,borderRadius:'var(--radius-xs)',opacity:0.8}}/>
                   <span style={{fontSize:8,color:'var(--text-subtle)',textAlign:'center',lineHeight:1.1}}>{d.name}</span>
                 </div>
               );

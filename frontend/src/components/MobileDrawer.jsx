@@ -26,7 +26,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
             <img src="/logo.png" alt="MaosBike" style={{height:28,objectFit:'contain',display:'block'}}
               onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
             />
-            <div style={{width:28,height:28,borderRadius:7,background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
+            <div style={{width:28,height:28,borderRadius:'var(--radius-md)',background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
               <Ic.bike size={16} color="var(--text-on-brand)"/>
             </div>
           </div>
@@ -45,7 +45,7 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
                     <button key={it.id} onClick={()=>nav(it.id)} style={{
                       display:"flex",alignItems:"center",gap:10,
                       padding:"8px 12px 8px 16px",marginBottom:1,
-                      borderRadius:8,border:"none",cursor:"pointer",
+                      borderRadius:'var(--radius-md)',border:"none",cursor:"pointer",
                       fontSize:13,fontWeight:act?600:500,fontFamily:"inherit",
                       background:act?"var(--brand-soft)":"transparent",
                       color:act?"#C2680A":"var(--text-muted)",
@@ -70,8 +70,8 @@ export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogo
               <div style={{...TY.meta,fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.role?.replace(/_/g," ")}</div>
             </div>
           </div>
-          <button onClick={onChangePw} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"1px solid var(--border)",background:"transparent",color:"var(--text-muted)",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.lock size={14} color="var(--text-subtle)"/>Cambiar contraseña</button>
-          <button onClick={onLogout} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:8,border:"none",background:"transparent",color:"#EF4444",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.out size={14} color="#EF4444"/>Cerrar sesión</button>
+          <button onClick={onChangePw} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:'var(--radius-md)',border:"1px solid var(--border)",background:"transparent",color:"var(--text-muted)",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.lock size={14} color="var(--text-subtle)"/>Cambiar contraseña</button>
+          <button onClick={onLogout} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:'var(--radius-md)',border:"none",background:"transparent",color:"#EF4444",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}><Ic.out size={14} color="#EF4444"/>Cerrar sesión</button>
         </div>
       </div>
     </>

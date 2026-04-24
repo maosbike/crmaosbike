@@ -240,7 +240,7 @@ export default function App(){
           <img src="/logo.png" alt="MaosBike" style={{height:44,objectFit:'contain'}}
             onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextSibling.style.display='flex';}}
           />
-          <div style={{width:40,height:40,borderRadius:8,background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
+          <div style={{width:40,height:40,borderRadius:'var(--radius-md)',background:'var(--brand)',display:'none',alignItems:'center',justifyContent:'center'}}>
             <Ic.bike size={22} color="var(--text-on-brand)"/>
           </div>
         </button>
@@ -257,7 +257,7 @@ export default function App(){
                     <button key={it.id} onClick={()=>nav(it.id)} style={{
                       display:'flex',alignItems:'center',gap:10,
                       padding:'8px 12px 8px 16px',marginBottom:1,
-                      borderRadius:8,
+                      borderRadius:'var(--radius-md)',
                       background:act?'var(--brand-soft)':'transparent',
                       color:act?'#C2680A':'var(--text-muted)',
                       fontSize:13,fontWeight:act?600:500,

@@ -22,7 +22,7 @@ function displayRut(raw) {
 }
 
 const slaBox = (bg, border, color) => ({
-  background:bg, border:`1px solid ${border}`, borderRadius:8,
+  background:bg, border:`1px solid ${border}`, borderRadius:'var(--radius-md)',
   padding:'7px 10px', marginBottom:8, fontSize:11, color,
   display:'flex', alignItems:'flex-start', gap:6, lineHeight:1.4,
 });
@@ -293,7 +293,7 @@ export function TicketView({lead,user,nav,updLead}){
         <button onClick={()=>nav("leads")}
           style={{ ...S.gh, display:'flex', alignItems:'center', gap:5, padding:'4px 10px',
             fontSize:12, fontWeight:500, color:'var(--text-subtle)',
-            border:'1px solid var(--border)', background:'var(--surface)', borderRadius:7 }}>
+            border:'1px solid var(--border)', background:'var(--surface)', borderRadius:'var(--radius-md)' }}>
           <Ic.back size={13} color="var(--text-disabled)"/> Leads
         </button>
         <span style={{ color:'var(--border-strong)' }}>›</span>
@@ -308,7 +308,7 @@ export function TicketView({lead,user,nav,updLead}){
               {!isPerdido&&!isGanado&&(
                 <button onClick={()=>{resetContact();setShowContact(true);}}
                   style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
-                    background:'#2563EB', color:'var(--text-on-dark)', border:'none', borderRadius:8,
+                    background:'#2563EB', color:'var(--text-on-dark)', border:'none', borderRadius:'var(--radius-md)',
                     fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                     boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
                   <Ic.msg size={13} color="var(--text-on-dark)"/>Registrar contacto
@@ -320,7 +320,7 @@ export function TicketView({lead,user,nav,updLead}){
                     background: isGanado||isEarly?'transparent':'#10B981',
                     color: isGanado?'#10B981':isEarly?'var(--text-subtle)':'var(--text-on-dark)',
                     border: isGanado?'1.5px solid #6EE7B7':isEarly?'1px solid var(--border-strong)':'none',
-                    borderRadius:8, fontSize:12, fontWeight:isEarly?500:700,
+                    borderRadius:'var(--radius-md)', fontSize:12, fontWeight:isEarly?500:700,
                     cursor:'pointer', fontFamily:'inherit',
                     boxShadow: isGanado||isEarly?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
                   <Ic.sale size={13} color={isGanado?"#10B981":isEarly?"var(--text-subtle)":"var(--text-on-dark)"}/>
@@ -339,7 +339,7 @@ export function TicketView({lead,user,nav,updLead}){
             <button onClick={()=>{resetContact();setShowContact(true);}}
               style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
                 padding:'10px 14px', background:'#2563EB', color:'var(--text-on-dark)', border:'none',
-                borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                borderRadius:'var(--radius-md)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
                 boxShadow:'0 2px 8px rgba(37,99,235,0.25)' }}>
               <Ic.msg size={14} color="var(--text-on-dark)"/>Registrar contacto
             </button>
@@ -350,7 +350,7 @@ export function TicketView({lead,user,nav,updLead}){
               background:isGanado?'transparent':'#10B981',
               color:isGanado?'#10B981':'var(--text-on-dark)',
               border:isGanado?'1.5px solid #6EE7B7':'none',
-              borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+              borderRadius:'var(--radius-md)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
               boxShadow:isGanado?'none':'0 2px 8px rgba(16,185,129,0.25)' }}>
             <Ic.sale size={14} color={isGanado?"#10B981":"var(--text-on-dark)"}/>
             {isGanado?'Registrar otra unidad':'Registrar venta'}
@@ -360,14 +360,14 @@ export function TicketView({lead,user,nav,updLead}){
 
       {/* ── BANNER: Necesita atención ── */}
       {lead.needs_attention&&!isPerdido&&!isGanado&&(
-        <div style={{ background:'rgba(239,68,68,0.07)',border:'2px solid rgba(239,68,68,0.3)',borderRadius:12,padding:'14px 18px',marginBottom:12,display:'flex',alignItems:'center',gap:14 }}>
+        <div style={{ background:'rgba(239,68,68,0.07)',border:'2px solid rgba(239,68,68,0.3)',borderRadius:'var(--radius-lg)',padding:'14px 18px',marginBottom:12,display:'flex',alignItems:'center',gap:14 }}>
           <Ic.alert size={22} color="#B91C1C"/>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead lleva más de 48h sin contacto</div>
             <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Registra el seguimiento para continuar gestionando este lead.</div>
           </div>
           <button onClick={()=>{resetFq();setShowFollowup(true);}}
-            style={{ padding:'10px 20px',background:'#DC2626',color:'var(--text-on-dark)',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
+            style={{ padding:'10px 20px',background:'#DC2626',color:'var(--text-on-dark)',border:'none',borderRadius:'var(--radius-md)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
             Registrar seguimiento
           </button>
         </div>
@@ -377,7 +377,7 @@ export function TicketView({lead,user,nav,updLead}){
       {lead.followup_next_step&&!isPerdido&&!isGanado&&(()=>{
         const vencida=lead.next_followup_at&&new Date(lead.next_followup_at)<new Date();
         return(
-          <div style={{ background:vencida?'rgba(239,68,68,0.05)':'#F0FDF4',border:`1px solid ${vencida?'rgba(239,68,68,0.25)':'#BBF7D0'}`,borderRadius:10,padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
+          <div style={{ background:vencida?'rgba(239,68,68,0.05)':'#F0FDF4',border:`1px solid ${vencida?'rgba(239,68,68,0.25)':'#BBF7D0'}`,borderRadius:'var(--radius-lg)',padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
             <Ic.target size={18} color={vencida?'#EF4444':'#15803D'} style={{ flexShrink:0,marginTop:1 }}/>
             <div style={{ flex:1,minWidth:0 }}>
               <div style={{ fontSize:10,fontWeight:700,color:vencida?'#B91C1C':'#15803D',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3 }}>Próximo paso acordado{vencida?' · VENCIDO':''}</div>
@@ -390,7 +390,7 @@ export function TicketView({lead,user,nav,updLead}){
 
       {/* ── CARD: Último contacto real (Historial claro) ── */}
       {lead.last_contact_entry&&(
-        <div style={{ background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:10,padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
+        <div style={{ background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:'var(--radius-lg)',padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
           <Ic.check size={16} color="#0284C7" style={{ flexShrink:0,marginTop:2 }}/>
           <div style={{ flex:1,minWidth:0 }}>
             <div style={{ fontSize:10,fontWeight:700,color:'#0284C7',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3 }}>Último contacto real</div>
@@ -398,7 +398,7 @@ export function TicketView({lead,user,nav,updLead}){
             {lead.last_contact_entry.note&&<div style={{ fontSize:11,color:'var(--text-muted)',marginTop:2,lineHeight:1.4 }}>{lead.last_contact_entry.note}</div>}
             <div style={{ fontSize:10,color:'var(--text-disabled)',marginTop:4 }}>
               {lead.last_contact_entry.user_fn?`${lead.last_contact_entry.user_fn} ${lead.last_contact_entry.user_ln||''}`:''} · {fDT(lead.last_contact_entry.date||lead.last_contact_entry.created_at)}
-              {lead.reassignment_summary?.count>0&&<span style={{ marginLeft:10,background:'rgba(139,92,246,0.12)',color:'#7C3AED',padding:'1px 7px',borderRadius:6,fontWeight:600 }}>{lead.reassignment_summary.count} reasignación{lead.reassignment_summary.count!==1?'es':''}</span>}
+              {lead.reassignment_summary?.count>0&&<span style={{ marginLeft:10,background:'rgba(139,92,246,0.12)',color:'#7C3AED',padding:'1px 7px',borderRadius:'var(--radius-sm)',fontWeight:600 }}>{lead.reassignment_summary.count} reasignación{lead.reassignment_summary.count!==1?'es':''}</span>}
             </div>
           </div>
         </div>
@@ -448,7 +448,7 @@ export function TicketView({lead,user,nav,updLead}){
                 {m.year && (
                   <span style={{
                     fontSize:10, fontWeight:800, letterSpacing:'0.06em',
-                    padding:'2px 8px', borderRadius:99,
+                    padding:'2px 8px', borderRadius:'var(--radius-pill)',
                     background:'rgba(255,255,255,0.2)', color:'var(--text-on-dark)',
                     backdropFilter:'blur(6px)',
                   }}>{m.year}</span>
@@ -475,7 +475,7 @@ export function TicketView({lead,user,nav,updLead}){
                 <div style={{ marginTop:8 }}>
                   <span style={{
                     fontSize:10, fontWeight:600, letterSpacing:'0.03em',
-                    padding:'3px 9px', borderRadius:6,
+                    padding:'3px 9px', borderRadius:'var(--radius-sm)',
                     background:'rgba(255,255,255,0.18)', color:'#FFFFFF',
                     backdropFilter:'blur(6px)',
                   }}>Color · {lead.colorPref}</span>
@@ -522,7 +522,7 @@ export function TicketView({lead,user,nav,updLead}){
               {lead.priority && PRIORITY[lead.priority] && (
                 <span style={{
                   fontSize:11, fontWeight:700,
-                  padding:'3px 10px', borderRadius:99,
+                  padding:'3px 10px', borderRadius:'var(--radius-pill)',
                   color:PRIORITY[lead.priority].c,
                   background:`${PRIORITY[lead.priority].c}18`,
                   border:`1px solid ${PRIORITY[lead.priority].c}30`,
@@ -533,7 +533,7 @@ export function TicketView({lead,user,nav,updLead}){
               {sinContactoH>0 && (
                 <span style={{
                   fontSize:11, fontWeight:700,
-                  padding:'3px 10px', borderRadius:99,
+                  padding:'3px 10px', borderRadius:'var(--radius-pill)',
                   color: slaBreach?'#EF4444':slaWarning?'#F97316':'var(--text-subtle)',
                   background: slaBreach?'#FEF2F2':slaWarning?'#FFF7ED':'var(--surface-sunken)',
                   border: `1px solid ${slaBreach?'#FECACA':slaWarning?'#FED7AA':'var(--border)'}`,
@@ -555,7 +555,7 @@ export function TicketView({lead,user,nav,updLead}){
           <div>
             <div style={{ fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Estado del lead</div>
             {isPerdido?(
-              <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
+              <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'var(--radius-lg)',padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
                 <Ic.x size={16} color="#EF4444"/>
                 <div>
                   <div style={{ fontSize:13,fontWeight:800,color:'#EF4444' }}>Lead Perdido</div>
@@ -563,7 +563,7 @@ export function TicketView({lead,user,nav,updLead}){
                 </div>
               </div>
             ):isGanado?(
-              <div style={{ background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
+              <div style={{ background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:'var(--radius-lg)',padding:'10px 14px',display:'flex',alignItems:'center',gap:10 }}>
                 <Ic.check size={16} color="#10B981"/>
                 <div style={{ fontSize:13,fontWeight:800,color:'#10B981' }}>Lead Ganado</div>
               </div>
@@ -573,7 +573,7 @@ export function TicketView({lead,user,nav,updLead}){
                   const active=lead.status===k;
                   return(
                     <button key={k} onClick={()=>handleStatusChange(k)}
-                      style={{ display:'flex',alignItems:'center',gap:7,padding:'6px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
+                      style={{ display:'flex',alignItems:'center',gap:7,padding:'6px 12px',borderRadius:'var(--radius-md)',cursor:'pointer',fontFamily:'inherit',
                         fontSize:12,fontWeight:active?700:500,textAlign:'left',transition:'all 0.1s',
                         background:active?v.c+'18':'transparent',
                         color:active?v.c:'var(--text-subtle)',
@@ -585,7 +585,7 @@ export function TicketView({lead,user,nav,updLead}){
                   );
                 })}
                 <button onClick={()=>handleStatusChange('perdido')}
-                  style={{ display:'flex',alignItems:'center',gap:7,padding:'6px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',
+                  style={{ display:'flex',alignItems:'center',gap:7,padding:'6px 12px',borderRadius:'var(--radius-md)',cursor:'pointer',fontFamily:'inherit',
                     fontSize:12,fontWeight:500,textAlign:'left',
                     background:'transparent',color:'var(--text-disabled)',border:'1px dashed var(--border)' }}>
                   <span style={{ width:7,height:7,borderRadius:'50%',flexShrink:0,background:'var(--border)' }}/>
@@ -601,7 +601,7 @@ export function TicketView({lead,user,nav,updLead}){
             const ev = fd?.eval_autofin || fd?.pre_eval_autofin;
             if (!ev) return null;
             const color = /aprob/i.test(ev)?'#10B981':/rechaz/i.test(ev)?'#EF4444':'#F59E0B';
-            return <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:color+'18', border:`1px solid ${color}40`, fontSize:10, fontWeight:700, color, alignSelf:'flex-start' }}><span style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>Autofin: {ev}</div>;
+            return <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:'var(--radius-xl)', background:color+'18', border:`1px solid ${color}40`, fontSize:10, fontWeight:700, color, alignSelf:'flex-start' }}><span style={{ width:6, height:6, borderRadius:'50%', background:color, flexShrink:0 }}/>Autofin: {ev}</div>;
           })()}
 
           {/* Meta info con mini-íconos */}
@@ -656,7 +656,7 @@ export function TicketView({lead,user,nav,updLead}){
                   updLead(lead.id,{priority:k});
                   try{await api.updateTicket(lead.id,{priority:k});}
                   catch(err){updLead(lead.id,{priority:prev});toast.error('Error al cambiar prioridad');}
-                }} style={{ flex:1, padding:'6px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer',
+                }} style={{ flex:1, padding:'6px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:'var(--radius-md)', cursor:'pointer',
                   border:'none', background:active?v.c:'var(--surface-sunken)', color:active?'var(--text-on-dark)':'var(--text-disabled)' }}>
                   {v.l}
                 </button>
@@ -670,7 +670,7 @@ export function TicketView({lead,user,nav,updLead}){
           <div style={{ display:'flex', gap:4 }}>
             {[true,false].map(v=>(
               <button key={String(v)} onClick={async()=>{const prev=lead.testRide;updLead(lead.id,{testRide:v});try{await api.updateTicket(lead.id,{test_ride:v});}catch(ex){updLead(lead.id,{testRide:prev});toast.error('No se pudo actualizar Test Ride: '+(ex.message||'Error'));}}}
-                style={{ padding:'6px 14px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:7, cursor:'pointer', border:'none',
+                style={{ padding:'6px 14px', fontSize:11, fontWeight:700, fontFamily:'inherit', borderRadius:'var(--radius-md)', cursor:'pointer', border:'none',
                   background: lead.testRide===v?(v?'#10B981':'var(--text-body)'):'var(--surface-sunken)', color: lead.testRide===v?'var(--text-on-dark)':'var(--text-disabled)' }}>
                 {v?'Sí':'No'}
               </button>
@@ -747,7 +747,7 @@ export function TicketView({lead,user,nav,updLead}){
 
           <AccordionSection title="Financiamiento" icon={<Ic.invoice size={13} color="var(--text-disabled)"/>} isOpen={openSections.financiamiento} onToggle={()=>toggleSection('financiamiento')}>
             {/* Toggle — siempre visible primero */}
-            <div style={{ padding:'10px 12px', background:'var(--surface-muted)', borderRadius:8, border:'1px solid var(--border)', marginBottom:12 }}>
+            <div style={{ padding:'10px 12px', background:'var(--surface-muted)', borderRadius:'var(--radius-md)', border:'1px solid var(--border)', marginBottom:12 }}>
               <label style={{ ...S.lbl, marginBottom:5 }}>Solicita financiamiento</label>
               <div style={{ display:'flex', gap:6 }}>
                 {[true,false].map(v=>(
@@ -780,12 +780,12 @@ export function TicketView({lead,user,nav,updLead}){
                 </div>
               </div>
               {lead.finStatus==="rechazado"&&lead.rechazoMotivo&&(
-                <div style={{ background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#EF4444' }}>
+                <div style={{ background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:'var(--radius-md)', padding:'8px 12px', marginBottom:10, fontSize:12, color:'#EF4444' }}>
                   Rechazado: {lead.rechazoMotivo}
                 </div>
               )}
               {lead.finStatus==="aprobado"&&(
-                <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:8, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#10B981' }}>
+                <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:'var(--radius-md)', padding:'8px 12px', marginBottom:10, fontSize:12, color:'#10B981' }}>
                   Financiamiento aprobado
                 </div>
               )}
@@ -802,7 +802,7 @@ export function TicketView({lead,user,nav,updLead}){
             return(
               <div style={{ borderTop:'1px solid var(--surface-sunken)', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between', alignItems:'center', position: isDirty?'sticky':'static', bottom:0, background:'var(--surface)', zIndex:10, paddingBottom: isDirty?10:0, boxShadow: isDirty?'0 -2px 8px rgba(0,0,0,0.08)':'none' }}>
                 {isDirty?(
-                  <span style={{ fontSize:11, fontWeight:700, color:'var(--brand)', background:'#FFF7ED', padding:'3px 10px', borderRadius:6, border:'1px solid #FDBA74' }}>Cambios sin guardar</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:'var(--brand)', background:'#FFF7ED', padding:'3px 10px', borderRadius:'var(--radius-sm)', border:'1px solid #FDBA74' }}>Cambios sin guardar</span>
                 ):<span/>}
                 <button onClick={async()=>{
                   const orig=savedRef.current||{};
@@ -839,7 +839,7 @@ export function TicketView({lead,user,nav,updLead}){
       <div style={secCard}>
         <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--surface-sunken)', display:'flex', alignItems:'center', gap:10 }}>
           <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Comunicación Interna</span>
-          <span style={{ fontSize:10, color:'var(--text-disabled)', background:'var(--surface-sunken)', borderRadius:6, padding:'2px 8px' }}>Solo visible para el equipo</span>
+          <span style={{ fontSize:10, color:'var(--text-disabled)', background:'var(--surface-sunken)', borderRadius:'var(--radius-sm)', padding:'2px 8px' }}>Solo visible para el equipo</span>
         </div>
         <div style={{ padding:'16px 20px' }}>
           {/* Mensajes */}
@@ -858,7 +858,7 @@ export function TicketView({lead,user,nav,updLead}){
                 <div key={t.id||i} style={{ display:'flex', flexDirection:'column', alignItems:isMe?'flex-end':'flex-start' }}>
                   <div style={{ display:'flex', gap:5, alignItems:'center', marginBottom:3 }}>
                     <span style={{ fontSize:10, fontWeight:700, color:'var(--text-body)' }}>{name}</span>
-                    <span style={{ fontSize:9, fontWeight:600, color:roleColor, background:roleColor+'15', padding:'1px 6px', borderRadius:8 }}>{roleLabel}</span>
+                    <span style={{ fontSize:9, fontWeight:600, color:roleColor, background:roleColor+'15', padding:'1px 6px', borderRadius:'var(--radius-md)' }}>{roleLabel}</span>
                     <span style={{ fontSize:9, color:'var(--text-disabled)' }}>{fDT(t.date||t.created_at)}</span>
                   </div>
                   <div style={{ maxWidth:'80%', background:isMe?'#EFF6FF':'var(--surface-muted)', borderRadius:isMe?'12px 4px 12px 12px':'4px 12px 12px 12px', padding:'8px 12px', fontSize:12, color:'var(--text-body)', border:`1px solid ${isMe?'#BFDBFE':'var(--border)'}`, lineHeight:1.45, wordBreak:'break-word' }}>
@@ -906,7 +906,7 @@ export function TicketView({lead,user,nav,updLead}){
                 <span style={{ fontSize:11, color:'var(--text-subtle)', minWidth:110 }}>Evaluación:</span>
                 <span style={{ fontSize:12, fontWeight:700, color:evalColor(fd.eval_autofin) }}>{fd.eval_autofin}</span>
               </div>}
-              {fd.obs_autofin && <div style={{ fontSize:11, color:'var(--text-subtle)', background:'var(--surface-muted)', borderRadius:6, padding:'8px 10px', lineHeight:1.5 }}>{fd.obs_autofin}</div>}
+              {fd.obs_autofin && <div style={{ fontSize:11, color:'var(--text-subtle)', background:'var(--surface-muted)', borderRadius:'var(--radius-sm)', padding:'8px 10px', lineHeight:1.5 }}>{fd.obs_autofin}</div>}
               {fd.opcion_compra && <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                 <span style={{ fontSize:11, color:'var(--text-subtle)', minWidth:110 }}>Opción compra:</span>
                 <span style={{ fontSize:12, fontWeight:600, color:'var(--text-body)' }}>{fd.opcion_compra}</span>
@@ -925,7 +925,7 @@ export function TicketView({lead,user,nav,updLead}){
         </div>
         <div style={{ padding:'16px 20px' }}>
           {/* Agregar nota */}
-          <form onSubmit={submitNote} style={{ marginBottom:18, padding:12, background:'var(--surface-muted)', borderRadius:10, border:'1px solid var(--border)' }}>
+          <form onSubmit={submitNote} style={{ marginBottom:18, padding:12, background:'var(--surface-muted)', borderRadius:'var(--radius-lg)', border:'1px solid var(--border)' }}>
             <label style={{ ...S.lbl, marginBottom:6 }}>Agregar nota <span style={{ color:'var(--text-disabled)', fontWeight:400 }}>(mín. 20 caracteres)</span></label>
             <textarea value={noteForm} onChange={e=>{setNoteForm(e.target.value);if(noteErr)setNoteErr("");}}
               maxLength={5000}
@@ -962,7 +962,7 @@ export function TicketView({lead,user,nav,updLead}){
                     {t.note&&<div style={{ fontSize:13, color:'var(--text-body)', lineHeight:1.5 }}>{t.note}</div>}
                     {isEvidence&&t.evidence_url&&(
                       <a href={t.evidence_url} target="_blank" rel="noopener noreferrer"
-                        style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:6, fontSize:12, fontWeight:600, color:'#0D9488', textDecoration:'none', background:'#CCFBF1', padding:'4px 10px', borderRadius:6 }}>
+                        style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:6, fontSize:12, fontWeight:600, color:'#0D9488', textDecoration:'none', background:'#CCFBF1', padding:'4px 10px', borderRadius:'var(--radius-sm)' }}>
                         <Ic.file size={12} color="#0D9488"/> Ver evidencia adjunta
                       </a>
                     )}
@@ -999,18 +999,18 @@ export function TicketView({lead,user,nav,updLead}){
               background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
             <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Historial de Asignación</span>
             <span style={{ fontSize:11, color:'var(--text-disabled)', display:'flex', alignItems:'center', gap:6 }}>
-              {lead.reassignment_count>0&&<span style={{ fontWeight:600, padding:'2px 8px', borderRadius:10, background:'rgba(139,92,246,0.1)', color:'#7C3AED' }}>{lead.reassignment_count} reasignación{lead.reassignment_count!==1?"es":""}</span>}
+              {lead.reassignment_count>0&&<span style={{ fontWeight:600, padding:'2px 8px', borderRadius:'var(--radius-lg)', background:'rgba(139,92,246,0.1)', color:'#7C3AED' }}>{lead.reassignment_count} reasignación{lead.reassignment_count!==1?"es":""}</span>}
               <Ic.chev size={14} color="var(--text-disabled)" style={{ transform: histOpen?'rotate(90deg)':'rotate(0deg)', transition:'transform 0.15s' }}/>
             </span>
           </button>
           {histOpen&&(
             <div style={{ padding:'0 20px 18px' }}>
               {assignHistoryErr
-                ?<div style={{ background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:8, padding:'12px 16px', fontSize:12, color:'#B91C1C' }}>No se pudo cargar el historial. Verifica permisos o intenta de nuevo.</div>
+                ?<div style={{ background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:'var(--radius-md)', padding:'12px 16px', fontSize:12, color:'#B91C1C' }}>No se pudo cargar el historial. Verifica permisos o intenta de nuevo.</div>
                 :assignHistory.length===0
                 ?<div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-disabled)', fontSize:12 }}>Cargando historial...</div>
                 :<div style={{ position:'relative', paddingLeft:24 }}>
-                  <div style={{ position:'absolute', left:9, top:14, bottom:14, width:2, background:'var(--border)', borderRadius:2 }}/>
+                  <div style={{ position:'absolute', left:9, top:14, bottom:14, width:2, background:'var(--border)', borderRadius:'var(--radius-xs)' }}/>
                   {assignHistory.map((ev,i)=>{
                     const isInit=ev.type==="initial_assignment";
                     const isSLA=ev.reason==="sla_breach";
@@ -1022,7 +1022,7 @@ export function TicketView({lead,user,nav,updLead}){
                     return(
                       <div key={ev.id||i} style={{ position:'relative', paddingBottom:i<assignHistory.length-1?14:0, paddingLeft:18 }}>
                         <div style={{ position:'absolute', left:-12, top:11, width:14, height:14, borderRadius:'50%', background:dotC, border:'2px solid var(--surface-muted)', boxShadow:isCurrent?`0 0 0 3px ${dotC}25`:"none" }}/>
-                        <div style={{ padding:'10px 14px', borderRadius:10, background:cardBg, border:`1px solid ${cardBorder}` }}>
+                        <div style={{ padding:'10px 14px', borderRadius:'var(--radius-lg)', background:cardBg, border:`1px solid ${cardBorder}` }}>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:5 }}>
                             <div style={{ fontSize:12, fontWeight:700, color:'var(--text)', lineHeight:1.3 }}>
                               {isInit?<>↳ Asignado a <span style={{ color:dotC }}>{ev.to_name}</span></>:<><span style={{ color:'var(--text-subtle)' }}>{ev.from_name}</span> <span style={{ color:dotC, fontWeight:800 }}>→</span> <span style={{ color:'var(--text)' }}>{ev.to_name}</span></>}
@@ -1036,7 +1036,7 @@ export function TicketView({lead,user,nav,updLead}){
                             <span style={{ fontSize:11, color:'var(--text-subtle)' }}>por {ev.by_name}</span>
                           </div>
                           <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                            <span style={{ fontSize:10, color:isCurrent?"var(--brand)":"var(--text-disabled)", padding:'2px 8px', borderRadius:6, background:isCurrent?"var(--brand-soft)":"rgba(0,0,0,0.04)", fontWeight:isCurrent?600:400 }}>
+                            <span style={{ fontSize:10, color:isCurrent?"var(--brand)":"var(--text-disabled)", padding:'2px 8px', borderRadius:'var(--radius-sm)', background:isCurrent?"var(--brand-soft)":"rgba(0,0,0,0.04)", fontWeight:isCurrent?600:400 }}>
                               {isCurrent?"En curso · "+ev.duration_label:ev.duration_label}
                             </span>
                           </div>
@@ -1060,7 +1060,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>Registrar seguimiento</div>
               <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
             </div>
-            {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',lineHeight:1,borderRadius:6 }}><Ic.x size={18}/></button>}
+            {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',lineHeight:1,borderRadius:'var(--radius-sm)' }}><Ic.x size={18}/></button>}
           </div>
         }
       >
@@ -1099,7 +1099,7 @@ export function TicketView({lead,user,nav,updLead}){
               min={new Date().toISOString().split('T')[0]}
               style={{ ...S.inp,width:'100%',fontSize:12 }}/>
           </div>
-          {fqErr&&<div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:8,padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600,display:'flex',alignItems:'flex-start',gap:6 }}><Ic.alert size={14} color="#DC2626" style={{ flexShrink:0,marginTop:1 }}/>{fqErr}</div>}
+          {fqErr&&<div style={{ background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:'var(--radius-md)',padding:'10px 14px',fontSize:12,color:'#DC2626',fontWeight:600,display:'flex',alignItems:'flex-start',gap:6 }}><Ic.alert size={14} color="#DC2626" style={{ flexShrink:0,marginTop:1 }}/>{fqErr}</div>}
           <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
             {!fqSaving&&<button onClick={()=>{setShowFollowup(false);resetFq();}} style={{ ...S.btn2,padding:'9px 18px',fontSize:12 }}>Cancelar</button>}
             <button onClick={submitFollowup} disabled={fqSaving}
@@ -1119,7 +1119,7 @@ export function TicketView({lead,user,nav,updLead}){
               <div style={{ fontSize:15,fontWeight:800,color:'#B91C1C' }}>Marcar como perdido</div>
               <div style={{ fontSize:11,color:'#EF4444',marginTop:1 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
             </div>
-            {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',lineHeight:1,borderRadius:6 }}><Ic.x size={18}/></button>}
+            {!perdidoSaving&&<button onClick={()=>setPerdidoModal(false)} style={{ background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',lineHeight:1,borderRadius:'var(--radius-sm)' }}><Ic.x size={18}/></button>}
           </div>
         }
       >
@@ -1160,7 +1160,7 @@ export function TicketView({lead,user,nav,updLead}){
         headerContent={
           <div style={{ padding:'16px 20px 14px',borderBottom:'1px solid var(--border)',background:'linear-gradient(180deg, #FFFBF5 0%, #FFF4E6 100%)',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'16px 16px 0 0' }}>
             <div style={{ display:'flex',alignItems:'center',gap:11 }}>
-              <div style={{ width:34,height:34,borderRadius:10,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px var(--brand-strong)' }}>
+              <div style={{ width:34,height:34,borderRadius:'var(--radius-lg)',background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px var(--brand-strong)' }}>
                 <Ic.msg size={15} color="var(--text-on-brand)"/>
               </div>
               <div>
@@ -1168,7 +1168,7 @@ export function TicketView({lead,user,nav,updLead}){
                 <div style={{ fontSize:11,color:'var(--text-subtle)',marginTop:2,fontWeight:500 }}>#{lead.num} · {lead.fn} {lead.ln}</div>
               </div>
             </div>
-            {!cfSaving&&<button onClick={closeContact} style={{ background:'var(--surface)',border:'1px solid var(--border)',cursor:'pointer',padding:6,borderRadius:8,color:'var(--text-subtle)',lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center' }}><Ic.x size={16}/></button>}
+            {!cfSaving&&<button onClick={closeContact} style={{ background:'var(--surface)',border:'1px solid var(--border)',cursor:'pointer',padding:6,borderRadius:'var(--radius-md)',color:'var(--text-subtle)',lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center' }}><Ic.x size={16}/></button>}
           </div>
         }
       >
@@ -1194,7 +1194,7 @@ export function TicketView({lead,user,nav,updLead}){
                   const active=cf.method===mt;
                   return(
                     <button key={mt} type="button" onClick={()=>setCf(p=>({...p,method:mt}))}
-                      style={{ padding:'8px 16px',fontSize:12,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:8,transition:'all 0.12s',
+                      style={{ padding:'8px 16px',fontSize:12,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:'var(--radius-md)',transition:'all 0.12s',
                         background:active?'var(--text)':'var(--surface)',
                         color:active?'var(--text-on-dark)':'var(--text-body)',
                         border:`1.5px solid ${active?'var(--text)':'var(--border)'}`,
@@ -1210,7 +1210,7 @@ export function TicketView({lead,user,nav,updLead}){
             <div>
               <div style={{ fontSize:10,fontWeight:800,color:'var(--text-subtle)',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:9 }}>Resultado del contacto</div>
               <select value={cf.result} onChange={e=>setCf(p=>({...p,result:e.target.value,note:'',evMode:'file'}))}
-                style={{ ...S.inp,width:'100%',fontSize:13,padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:9,fontWeight:cf.result?600:400,color:cf.result?'var(--text)':'var(--text-disabled)' }}>
+                style={{ ...S.inp,width:'100%',fontSize:13,padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--radius-md)',fontWeight:cf.result?600:400,color:cf.result?'var(--text)':'var(--text-disabled)' }}>
                 <option value="">Seleccionar resultado...</option>
                 <optgroup label="— Contacto real">
                   <option value="Contactado">Contactado</option>
@@ -1230,9 +1230,9 @@ export function TicketView({lead,user,nav,updLead}){
 
             {/* EVIDENCIA — solo si result requiere evidencia */}
             {needsEvidence&&(
-              <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:12,padding:'14px 16px' }}>
+              <div style={{ background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:'var(--radius-lg)',padding:'14px 16px' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:12 }}>
-                  <div style={{ width:28,height:28,borderRadius:8,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                  <div style={{ width:28,height:28,borderRadius:'var(--radius-md)',background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
                     <Ic.alert size={14} color="#B45309"/>
                   </div>
                   <div style={{ fontSize:12,fontWeight:700,color:'#92400E',lineHeight:1.35 }}>
@@ -1240,10 +1240,10 @@ export function TicketView({lead,user,nav,updLead}){
                   </div>
                 </div>
                 {/* Toggle file/note — segmentado */}
-                <div style={{ display:'flex',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:9,padding:3,marginBottom:12 }}>
+                <div style={{ display:'flex',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-md)',padding:3,marginBottom:12 }}>
                   {[{v:'file',l:'Subir captura'},{v:'note',l:'Nota detallada'}].map(o=>(
                     <button key={o.v} type="button" onClick={()=>setCf(p=>({...p,evMode:o.v}))}
-                      style={{ flex:1,padding:'7px 10px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:6,transition:'all 0.12s',
+                      style={{ flex:1,padding:'7px 10px',fontSize:11.5,fontWeight:700,fontFamily:'inherit',cursor:'pointer',borderRadius:'var(--radius-sm)',transition:'all 0.12s',
                         background:cf.evMode===o.v?'var(--text)':'transparent',
                         color:cf.evMode===o.v?'var(--text-on-dark)':'var(--text-subtle)',
                         border:'none' }}>
@@ -1260,7 +1260,7 @@ export function TicketView({lead,user,nav,updLead}){
                         const active=cf.evType===t.v;
                         return(
                           <button key={t.v} type="button" onClick={()=>setCf(p=>({...p,evType:t.v}))}
-                            style={{ padding:'5px 12px',fontSize:11,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:99,
+                            style={{ padding:'5px 12px',fontSize:11,fontWeight:active?700:600,fontFamily:'inherit',cursor:'pointer',borderRadius:'var(--radius-pill)',
                               background:active?'var(--surface)':'transparent',
                               color:active?'#92400E':'#78716C',
                               border:`1.5px solid ${active?'#F59E0B':'#FDE68A'}`,
@@ -1272,12 +1272,12 @@ export function TicketView({lead,user,nav,updLead}){
                     </div>
                     {evPreview?(
                       <div style={{ position:'relative',marginBottom:4 }}>
-                        <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:180,objectFit:'cover',borderRadius:10,border:'1px solid var(--border)' }}/>
+                        <img src={evPreview} alt="preview" style={{ width:'100%',maxHeight:180,objectFit:'cover',borderRadius:'var(--radius-lg)',border:'1px solid var(--border)' }}/>
                         <button onClick={()=>{setEvFile(null);setEvPreview(null);}}
-                          style={{ position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',color:'var(--text-on-dark)',border:'none',borderRadius:6,padding:'5px',display:'flex',alignItems:'center',cursor:'pointer' }}><Ic.x size={12} color="var(--text-on-dark)"/></button>
+                          style={{ position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',color:'var(--text-on-dark)',border:'none',borderRadius:'var(--radius-sm)',padding:'5px',display:'flex',alignItems:'center',cursor:'pointer' }}><Ic.x size={12} color="var(--text-on-dark)"/></button>
                       </div>
                     ):(
-                      <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:'24px 18px',borderRadius:10,border:'2px dashed #F59E0B',background:'var(--surface)',cursor:'pointer',fontSize:12,color:'var(--text-subtle)',transition:'all 0.12s' }}>
+                      <label style={{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:'24px 18px',borderRadius:'var(--radius-lg)',border:'2px dashed #F59E0B',background:'var(--surface)',cursor:'pointer',fontSize:12,color:'var(--text-subtle)',transition:'all 0.12s' }}>
                         <div style={{ width:40,height:40,borderRadius:'50%',background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center' }}>
                           <Ic.upload size={18} color="#B45309"/>
                         </div>
@@ -1299,7 +1299,7 @@ export function TicketView({lead,user,nav,updLead}){
                       <div style={{ fontSize:10,color:'var(--text-disabled)' }}>mín. 50 caracteres</div>
                     </div>
                     <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                      rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:9 }}
+                      rows={4} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:'var(--radius-md)' }}
                       placeholder="Describe el contacto en detalle: qué se habló, qué se acordó, próximos pasos..."/>
                     <div style={{ textAlign:'right',fontSize:10,fontWeight:600,color:cf.note.length>=50?'#10B981':'var(--text-disabled)',marginTop:4 }}>{cf.note.length}/50</div>
                   </div>
@@ -1317,7 +1317,7 @@ export function TicketView({lead,user,nav,updLead}){
                   <div style={{ fontSize:10,color:'var(--text-disabled)' }}>mín. 40 caracteres</div>
                 </div>
                 <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:9 }}
+                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:'var(--radius-md)' }}
                   placeholder="Ej: Llamé a las 14:30, entró al buzón. Volver a intentar mañana a las 11:00..."/>
                 <div style={{ textAlign:'right',fontSize:10,fontWeight:600,color:cf.note.length>=40?'#10B981':'var(--text-disabled)',marginTop:4 }}>{cf.note.length}/40</div>
               </div>
@@ -1328,23 +1328,23 @@ export function TicketView({lead,user,nav,updLead}){
               <div>
                 <div style={{ fontSize:10,fontWeight:800,color:'var(--text-subtle)',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:9 }}>Nota adicional <span style={{ fontWeight:500,color:'var(--text-disabled)',letterSpacing:0,textTransform:'none' }}>(opcional)</span></div>
                 <textarea value={cf.note} onChange={e=>setCf(p=>({...p,note:e.target.value}))} maxLength={5000}
-                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:9 }}
+                  rows={3} style={{ ...S.inp,width:'100%',resize:'none',fontSize:12,padding:'10px 12px',borderRadius:'var(--radius-md)' }}
                   placeholder="Comentario adicional..."/>
               </div>
             )}
 
             {/* Error */}
             {cfErr&&(
-              <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#B91C1C',fontWeight:600,display:'flex',alignItems:'flex-start',gap:8 }}>
+              <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'var(--radius-lg)',padding:'10px 14px',fontSize:12,color:'#B91C1C',fontWeight:600,display:'flex',alignItems:'flex-start',gap:8 }}>
                 <Ic.alert size={14} color="#DC2626" style={{ flexShrink:0,marginTop:1 }}/>{cfErr}
               </div>
             )}
 
             {/* Acciones */}
             <div style={{ display:'flex',gap:8,justifyContent:'flex-end',marginTop:4,borderTop:'1px solid var(--surface-sunken)',paddingTop:14 }}>
-              <button onClick={closeContact} style={{ ...S.btn2,padding:'10px 20px',fontSize:12,fontWeight:600,borderRadius:9 }}>Cancelar</button>
+              <button onClick={closeContact} style={{ ...S.btn2,padding:'10px 20px',fontSize:12,fontWeight:600,borderRadius:'var(--radius-md)' }}>Cancelar</button>
               <button onClick={submitContact} disabled={cfSaving||!cf.result}
-                style={{ ...S.btn,padding:'10px 22px',fontSize:12,fontWeight:700,borderRadius:9,opacity:(cfSaving||!cf.result)?0.5:1,boxShadow:(cfSaving||!cf.result)?'none':'0 2px 8px var(--brand-strong)' }}>
+                style={{ ...S.btn,padding:'10px 22px',fontSize:12,fontWeight:700,borderRadius:'var(--radius-md)',opacity:(cfSaving||!cf.result)?0.5:1,boxShadow:(cfSaving||!cf.result)?'none':'0 2px 8px var(--brand-strong)' }}>
                 {cfSaving?'Guardando...':'Guardar contacto'}
               </button>
             </div>

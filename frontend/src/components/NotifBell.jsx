@@ -26,11 +26,11 @@ export function NotifBell({nav}){
     <div style={{position:"relative"}}>
       <button onClick={()=>open?setOpen(false):handleOpen()} style={{...S.gh,padding:6,position:"relative"}}>
         <Ic.bell size={17} color={unread>0?"var(--brand)":"var(--text-disabled)"}/>
-        {unread>0&&<span style={{position:"absolute",top:1,right:1,minWidth:16,height:16,borderRadius:8,background:"#EF4444",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-on-dark)",padding:"0 3px"}}>{unread>9?"9+":unread}</span>}
+        {unread>0&&<span style={{position:"absolute",top:1,right:1,minWidth:16,height:16,borderRadius:'var(--radius-md)',background:"#EF4444",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-on-dark)",padding:"0 3px"}}>{unread>9?"9+":unread}</span>}
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,zIndex:50}} onClick={()=>setOpen(false)}>
-          <div onClick={e=>e.stopPropagation()} className="crm-notif-dropdown" style={{position:"fixed",top:52,right:12,width:340,maxWidth:"calc(100vw - 24px)",maxHeight:400,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:"var(--z-overlay-ui, 200)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div onClick={e=>e.stopPropagation()} className="crm-notif-dropdown" style={{position:"fixed",top:52,right:12,width:340,maxWidth:"calc(100vw - 24px)",maxHeight:400,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:'var(--radius-lg)',boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:"var(--z-overlay-ui, 200)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"12px 16px",borderBottom:"1px solid var(--surface-sunken)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontWeight:700,fontSize:13}}>Notificaciones{unread>0&&<span style={{color:"var(--brand)"}}> ({unread})</span>}</span>
               {unread>0&&<button onClick={markAll} style={{...S.gh,fontSize:11,color:"var(--brand)",padding:"2px 6px"}}>Marcar todo leído</button>}

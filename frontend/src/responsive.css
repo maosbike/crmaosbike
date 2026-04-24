@@ -56,7 +56,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .crm-modal-inner {
     max-width: 100% !important;
     width: 100% !important;
-    border-radius: 18px 18px 0 0 !important;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0 !important;
     max-height: 92vh !important;
     margin: 0 !important;
   }
@@ -67,7 +67,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .grid-4col { grid-template-columns: 1fr 1fr !important; }
 
   /* ── Tables: horizontal scroll ── */
-  .crm-table-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+  .crm-table-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); }
   .crm-table-scroll table { min-width: 500px; }
 
   /* ── Ticket detail: stack vertically ── */
@@ -248,7 +248,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 /* ─── SALES VIEW — table scroll + form grids ─── */
 @media (max-width: 767px) {
-  .crm-sales-table { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; border-radius: 12px; }
+  .crm-sales-table { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; border-radius: var(--radius-lg); }
   .grid-2col { grid-template-columns: 1fr !important; }
 }
 
@@ -325,6 +325,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
 /* Scrollbar global — más discreta */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-pill); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-disabled); }
 * { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }

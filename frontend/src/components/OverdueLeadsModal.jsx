@@ -106,7 +106,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
       <div
         style={{
           background: 'var(--surface)',
-          borderRadius: 16,
+          borderRadius: 'var(--radius-xl)',
           width: '100%',
           maxWidth: 540,
           maxHeight: '90vh',
@@ -167,7 +167,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
                     fontWeight: 600,
                     color: statusDef.c,
                     background: `${statusDef.c}1F`,
-                    borderRadius: 12,
+                    borderRadius: 'var(--radius-lg)',
                     padding: '2px 8px',
                     lineHeight: '18px',
                   }}>
@@ -202,7 +202,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
               return (
                 <div style={ctxRowStyle}>
                   <span style={ctxLabelStyle}>Sucursal</span>
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:bc.c, background:bc.bg, border:`1px solid ${bc.c}30`, padding:'2px 8px', borderRadius:99 }}>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:bc.c, background:bc.bg, border:`1px solid ${bc.c}30`, padding:'2px 8px', borderRadius:'var(--radius-pill)' }}>
                     <span style={{ width:6, height:6, borderRadius:'50%', background:bc.c }} />
                     {lead.branch_name}
                   </span>
@@ -216,7 +216,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
               return (
                 <div style={ctxRowStyle}>
                   <span style={ctxLabelStyle}>Vendedor</span>
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:sc.c, background:sc.bg, border:`1px solid ${sc.c}30`, padding:'2px 8px', borderRadius:99 }}>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:sc.c, background:sc.bg, border:`1px solid ${sc.c}30`, padding:'2px 8px', borderRadius:'var(--radius-pill)' }}>
                     <span style={{ width:6, height:6, borderRadius:'50%', background:sc.c }} />
                     {sellerName}
                   </span>
@@ -249,7 +249,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
               <div style={{ color: 'var(--text-disabled)', marginBottom: 4, fontSize: 11 }}>Ultima observacion</div>
               <div style={{
                 background: 'var(--surface-sunken)',
-                borderRadius: 6,
+                borderRadius: 'var(--radius-sm)',
                 padding: '6px 10px',
                 overflow: 'hidden',
                 display: '-webkit-box',
@@ -351,7 +351,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
               style={{
                 background: 'rgba(239,68,68,0.07)',
                 border: '1px solid rgba(239,68,68,0.25)',
-                borderRadius: 8,
+                borderRadius: 'var(--radius-md)',
                 padding: '10px 14px',
                 fontSize: 12,
                 color: '#DC2626',
@@ -370,7 +370,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
                 style={{
                   background: 'none',
                   border: '1px solid var(--border-strong)',
-                  borderRadius: 8,
+                  borderRadius: 'var(--radius-md)',
                   padding: '9px 16px',
                   fontSize: 12,
                   fontWeight: 600,

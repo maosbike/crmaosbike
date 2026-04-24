@@ -21,11 +21,11 @@ export function ForceChangeView({user,onSaved}){
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg, #FFF7ED 0%, var(--surface) 50%, var(--surface-sunken) 100%)",fontFamily:"'Inter',system-ui,sans-serif",padding:"24px"}}>
       <div style={{width:"100%",maxWidth:400}}>
         <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{width:52,height:52,borderRadius:14,background:"var(--brand-muted)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:12}}><Ic.lock size={24} color="var(--brand)"/></div>
+          <div style={{width:52,height:52,borderRadius:'var(--radius-xl)',background:"var(--brand-muted)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:12}}><Ic.lock size={24} color="var(--brand)"/></div>
           <h1 style={{fontSize:20,fontWeight:800,color:"var(--text)",margin:0}}>Cambio de contraseña requerido</h1>
           <p style={{color:"var(--text-subtle)",fontSize:12,marginTop:6}}>Hola {user.fn}, debes cambiar tu contraseña antes de continuar.</p>
         </div>
-        <form onSubmit={submit} style={{background:"var(--surface)",border:"1px solid var(--surface-sunken)",borderRadius:16,padding:"36px 32px",boxShadow:"0 4px 24px rgba(0,0,0,0.10)"}}>
+        <form onSubmit={submit} style={{background:"var(--surface)",border:"1px solid var(--surface-sunken)",borderRadius:'var(--radius-xl)',padding:"36px 32px",boxShadow:"0 4px 24px rgba(0,0,0,0.10)"}}>
           <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
             <Field label="Contraseña temporal *" value={form.current} onChange={v=>setForm({...form,current:v})} type="password" ph="La contraseña que te dieron" req/>
             <Field label="Nueva contraseña *" value={form.next} onChange={v=>setForm({...form,next:v})} type="password" ph="Mínimo 8 caracteres" req/>

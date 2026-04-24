@@ -130,18 +130,18 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         return(
           <div style={{marginBottom:12}}>
             <button onClick={()=>setAttF(!attF)} style={{
-              display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:12,
+              display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:'var(--radius-lg)',
               border:attF?'2px solid #EF4444':'1.5px solid #FECACA',
               background:attF?'#FEF2F2':'var(--surface)',cursor:'pointer',fontFamily:'inherit',
               boxShadow:attF?'0 3px 14px rgba(239,68,68,0.18)':'0 1px 3px rgba(0,0,0,0.04)'}}>
-              <div style={{width:32,height:32,borderRadius:8,background:'rgba(239,68,68,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <div style={{width:32,height:32,borderRadius:'var(--radius-md)',background:'rgba(239,68,68,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                 <Ic.alert size={18} color="#DC2626"/>
               </div>
               <div style={{textAlign:'left'}}>
                 <div style={{fontSize:22,fontWeight:900,color:'#DC2626',lineHeight:1}}>{attCount}</div>
                 <div style={{fontSize:11,fontWeight:700,color:'#B91C1C',marginTop:2}}>Necesita atención · 48h sin gestión</div>
               </div>
-              {attF&&<span style={{marginLeft:12,fontSize:10,fontWeight:700,color:'#EF4444',background:'#FEE2E2',padding:'3px 8px',borderRadius:6}}>FILTRADO</span>}
+              {attF&&<span style={{marginLeft:12,fontSize:10,fontWeight:700,color:'#EF4444',background:'#FEE2E2',padding:'3px 8px',borderRadius:'var(--radius-sm)'}}>FILTRADO</span>}
             </button>
           </div>
         );
@@ -154,18 +154,18 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         return(
           <div style={{marginBottom:12}}>
             <button onClick={()=>setOrpF(!orpF)} style={{
-              display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:12,
+              display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderRadius:'var(--radius-lg)',
               border:orpF?'2px solid #F59E0B':'1.5px solid #FCD34D',
               background:orpF?'#FFFBEB':'var(--surface)',cursor:'pointer',fontFamily:'inherit',
               boxShadow:orpF?'0 3px 14px rgba(245,158,11,0.18)':'0 1px 3px rgba(0,0,0,0.04)'}}>
-              <div style={{width:32,height:32,borderRadius:8,background:'rgba(245,158,11,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <div style={{width:32,height:32,borderRadius:'var(--radius-md)',background:'rgba(245,158,11,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                 <Ic.user size={18} color="#B45309"/>
               </div>
               <div style={{textAlign:'left'}}>
                 <div style={{fontSize:22,fontWeight:900,color:'#B45309',lineHeight:1}}>{orpCount}</div>
                 <div style={{fontSize:11,fontWeight:700,color:'#92400E',marginTop:2}}>Sin asignar · sin vendedor</div>
               </div>
-              {orpF&&<span style={{marginLeft:12,fontSize:10,fontWeight:700,color:'#F59E0B',background:'#FEF3C7',padding:'3px 8px',borderRadius:6}}>FILTRADO</span>}
+              {orpF&&<span style={{marginLeft:12,fontSize:10,fontWeight:700,color:'#F59E0B',background:'#FEF3C7',padding:'3px 8px',borderRadius:'var(--radius-sm)'}}>FILTRADO</span>}
             </button>
           </div>
         );
@@ -178,7 +178,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           const active = !stF;
           return (
             <button onClick={()=>setStF('')} style={{
-              padding:'5px 12px',borderRadius:99,
+              padding:'5px 12px',borderRadius:'var(--radius-pill)',
               border:active?'1.5px solid var(--text)':'1.5px solid transparent',
               background:active?'var(--text)':'var(--surface-sunken)',
               color:active?'var(--text-on-dark)':'var(--text-subtle)',
@@ -192,7 +192,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 fontSize:10,fontWeight:700,
                 background:active?'rgba(255,255,255,0.2)':'var(--border)',
                 color:active?'var(--text-on-dark)':'var(--text-disabled)',
-                padding:'1px 5px',borderRadius:99,
+                padding:'1px 5px',borderRadius:'var(--radius-pill)',
               }}>
                 {totalCnt}
               </span>
@@ -204,7 +204,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           const active=stF===k;
           return(
             <button key={k} onClick={()=>setStF(stF===k?'':k)} style={{
-              padding:'5px 12px',borderRadius:99,
+              padding:'5px 12px',borderRadius:'var(--radius-pill)',
               border:active?`1.5px solid ${v.c}`:'1.5px solid transparent',
               background:active?v.bg:'var(--surface-sunken)',
               color:active?v.c:'var(--text-subtle)',
@@ -218,7 +218,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 fontSize:10,fontWeight:700,
                 background:active?'rgba(255,255,255,0.5)':'var(--border)',
                 color:active?v.c:'var(--text-disabled)',
-                padding:'1px 5px',borderRadius:99,
+                padding:'1px 5px',borderRadius:'var(--radius-pill)',
               }}>
                 {cnt}
               </span>
@@ -236,7 +236,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             const col=colorFor(s.id);
             return(
               <button key={s.id} onClick={()=>setSelF(isSel?'':s.id)}
-                style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,
+                style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:'var(--radius-lg)',
                   border:isSel?`2px solid ${col.c}`:'1px solid var(--border)',
                   background:isSel?col.bg:'var(--surface)',
                   borderLeft:`4px solid ${col.c}`,
@@ -256,7 +256,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       <div style={{
         background:'var(--surface)',
         border:'1px solid var(--border)',
-        borderRadius:12,
+        borderRadius:'var(--radius-lg)',
         padding:'12px 16px',
         marginBottom:16,
         display:'flex',flexDirection:'column',gap:10,
@@ -270,7 +270,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
             value={search}
             onChange={e=>setSearch(e.target.value)}
             placeholder="Buscar por nombre, RUT, teléfono o N° ficha..."
-            style={{...S.inp,paddingLeft:36,fontSize:13,border:'1px solid var(--border)',borderRadius:8}}
+            style={{...S.inp,paddingLeft:36,fontSize:13,border:'1px solid var(--border)',borderRadius:'var(--radius-md)'}}
           />
         </div>
         {/* Fila 2: selects en línea */}
@@ -298,7 +298,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
           {hasFilters&&(
             <button onClick={clearFilters} style={{
               ...S.gh,height:34,fontSize:12,fontWeight:600,
-              border:'1px solid var(--border)',borderRadius:8,padding:'0 14px',flexShrink:0,
+              border:'1px solid var(--border)',borderRadius:'var(--radius-md)',padding:'0 14px',flexShrink:0,
             }}>
               Limpiar filtros
             </button>
@@ -328,7 +328,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                   display:'flex',alignItems:'stretch',
                   background:'var(--surface)',
-                  border:'1px solid var(--border)',borderRadius:14,
+                  border:'1px solid var(--border)',borderRadius:'var(--radius-xl)',
                   overflow:'hidden',
                   cursor:'pointer',minHeight:130,
                   boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
@@ -349,7 +349,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       <span title="Necesita atención" style={{
                         position:'absolute',top:6,left:6,
                         fontSize:9,fontWeight:800,color:'var(--text-on-dark)',
-                        background:'#DC2626',padding:'2px 6px',borderRadius:5,
+                        background:'#DC2626',padding:'2px 6px',borderRadius:'var(--radius-sm)',
                       }}>!</span>
                     )}
                   </div>
@@ -367,7 +367,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
                       <span style={{
                         fontSize:10,fontWeight:700,
-                        padding:'2px 8px',borderRadius:99,
+                        padding:'2px 8px',borderRadius:'var(--radius-pill)',
                         background:stCfg.bg,color:stCfg.c,whiteSpace:'nowrap',
                       }}>
                         {stCfg.l}
@@ -384,7 +384,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                 display:'flex',alignItems:'stretch',
                 background:'var(--surface)',
-                border:'1px solid var(--border)',borderRadius:14,
+                border:'1px solid var(--border)',borderRadius:'var(--radius-xl)',
                 overflow:'hidden',
                 cursor:'pointer',
                 minHeight:148,
@@ -413,7 +413,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       position:'absolute',top:8,left:8,
                       fontSize:10,fontWeight:700,color:'var(--text-body)',
                       background:'rgba(255,255,255,0.92)',
-                      padding:'3px 8px',borderRadius:6,
+                      padding:'3px 8px',borderRadius:'var(--radius-sm)',
                       backdropFilter:'blur(4px)',
                     }}>#{x.num}</span>
                   )}
@@ -421,7 +421,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                     <span title="Necesita atención · 48h sin gestión" style={{
                       position:'absolute',top:8,right:8,
                       fontSize:10,fontWeight:800,color:'var(--text-on-dark)',
-                      background:'#DC2626',padding:'3px 7px',borderRadius:6,
+                      background:'#DC2626',padding:'3px 7px',borderRadius:'var(--radius-sm)',
                       boxShadow:'0 2px 6px rgba(220,38,38,0.35)',
                     }}>! Atención</span>
                   )}
@@ -454,7 +454,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       <span style={{
                         fontSize:10,fontWeight:700,
                         color:'#4F46E5',background:'#EEF2FF',
-                        padding:'2px 8px',borderRadius:99,
+                        padding:'2px 8px',borderRadius:'var(--radius-pill)',
                       }}>{x.model_year}</span>
                     )}
                   </div>
@@ -466,7 +466,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       return (
                         <span style={{display:'inline-flex',alignItems:'center',gap:5,
                           fontSize:11,color:sc.c,fontWeight:700,
-                          background:sc.bg,padding:'3px 9px',borderRadius:99,
+                          background:sc.bg,padding:'3px 9px',borderRadius:'var(--radius-pill)',
                           border:`1px solid ${sc.c}30`}}>
                           <span style={{width:6,height:6,borderRadius:'50%',background:sc.c,flexShrink:0}}/>
                           {x.seller_fn} {x.seller_ln||''}
@@ -477,7 +477,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       const bc = colorFor(x.branch_id || brName);
                       return (
                         <span style={{fontSize:11,color:bc.c,fontWeight:700,
-                          background:bc.bg,padding:'3px 9px',borderRadius:99,
+                          background:bc.bg,padding:'3px 9px',borderRadius:'var(--radius-pill)',
                           border:`1px solid ${bc.c}30`,
                           display:'inline-flex',alignItems:'center',gap:5}}>
                           <span style={{width:6,height:6,borderRadius:'50%',background:bc.c,flexShrink:0}}/>
@@ -487,7 +487,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                     })()}
                     {x.source&&(
                       <span style={{fontSize:11,color:'var(--text-subtle)',fontWeight:500,
-                        background:'var(--surface-muted)',padding:'3px 9px',borderRadius:99,border:'1px solid var(--surface-sunken)'}}>
+                        background:'var(--surface-muted)',padding:'3px 9px',borderRadius:'var(--radius-pill)',border:'1px solid var(--surface-sunken)'}}>
                         {SRC[x.source]||x.source}
                       </span>
                     )}
@@ -502,13 +502,13 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                       <div style={{
                         marginTop:2,
                         display:'inline-flex',alignItems:'center',gap:8,
-                        padding:'6px 10px 6px 8px',borderRadius:8,
+                        padding:'6px 10px 6px 8px',borderRadius:'var(--radius-md)',
                         background:venc?'#FEF2F2':'#F0FDF4',
                         border:`1px solid ${venc?'#FECACA':'#BBF7D0'}`,
                         alignSelf:'flex-start',maxWidth:'100%',
                       }}>
                         <div style={{
-                          width:22,height:22,borderRadius:6,flexShrink:0,
+                          width:22,height:22,borderRadius:'var(--radius-sm)',flexShrink:0,
                           background:venc?'#FEE2E2':'#DCFCE7',
                           display:'flex',alignItems:'center',justifyContent:'center',
                         }}>
@@ -543,7 +543,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 }}>
                   <span style={{
                     fontSize:12,fontWeight:700,
-                    padding:'5px 14px',borderRadius:99,
+                    padding:'5px 14px',borderRadius:'var(--radius-pill)',
                     background:stCfg.bg||'var(--surface-sunken)',
                     color:stCfg.c||'var(--text-subtle)',
                     whiteSpace:'nowrap',
@@ -592,7 +592,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                     ) : (
                       <button
                         onClick={e=>{e.stopPropagation();setReassigningId(x.id);setReassignTo('');}}
-                        style={{fontSize:11,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'1px solid #DBEAFE',padding:'5px 11px',borderRadius:7,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}
+                        style={{fontSize:11,fontWeight:600,color:'#3B82F6',background:'#EFF6FF',border:'1px solid #DBEAFE',padding:'5px 11px',borderRadius:'var(--radius-md)',cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}
                       >
                         Traspasar
                       </button>

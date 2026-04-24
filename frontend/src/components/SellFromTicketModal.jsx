@@ -163,11 +163,11 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             </span>
           </div>
           {quoted ? (
-            <div style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--surface-muted)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-muted)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
               {quoted.image && (
                 <img
                   src={quoted.image} alt=""
-                  style={{ width: 52, height: 38, padding: 4, boxSizing: 'border-box', objectFit: 'contain', objectPosition: 'center', borderRadius: 5, background: 'var(--surface-sunken)', flexShrink: 0 }}
+                  style={{ width: 52, height: 38, padding: 4, boxSizing: 'border-box', objectFit: 'contain', objectPosition: 'center', borderRadius: 'var(--radius-sm)', background: 'var(--surface-sunken)', flexShrink: 0 }}
                 />
               )}
               <div>
@@ -185,7 +185,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               </div>
             </div>
           ) : (
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--surface-muted)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-disabled)' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface-muted)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-disabled)' }}>
               Sin modelo cotizado registrado en este ticket
             </div>
           )}
@@ -198,13 +198,13 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
           {/* Toggle: inventario real vs. nota sin stock */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <button type="button" onClick={() => setNoStock(false)}
-              style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
+              style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 'var(--radius-md)',
                 background: !noStock ? '#1E40AF' : 'var(--surface-sunken)', color: !noStock ? 'var(--text-on-dark)' : 'var(--text-subtle)',
                 border: !noStock ? 'none' : '1px solid var(--border)' }}>
               Del inventario real
             </button>
             <button type="button" onClick={() => setNoStock(true)}
-              style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 8,
+              style={{ flex: 1, padding: '8px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 'var(--radius-md)',
                 background: noStock ? '#D97706' : 'var(--surface-sunken)', color: noStock ? 'var(--text-on-dark)' : 'var(--text-subtle)',
                 border: noStock ? 'none' : '1px solid var(--border)' }}>
               Nota sin stock
@@ -213,7 +213,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
           {noStock ? (
             /* ── Nota de venta sin unidad real ── */
-            <div style={{ padding: '12px 14px', borderRadius: 10, background: '#FFFBEB', border: '1px solid #FCD34D' }}>
+            <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-lg)', background: '#FFFBEB', border: '1px solid #FCD34D' }}>
               <div style={{ fontSize: 11, color: '#92400E', fontWeight: 600, marginBottom: 10 }}>
                 Se registrará en Ventas como nota comercial — no descuenta stock del inventario.
               </div>
@@ -242,7 +242,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
               {loading ? (
                 <div style={{ fontSize: 12, color: 'var(--text-subtle)', padding: '8px 0' }}>Cargando unidades disponibles...</div>
               ) : inv.length === 0 ? (
-                <div style={{ padding: '10px 12px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
+                <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
                   No hay unidades disponibles en stock. Registra la unidad primero en Inventario, o usa "Nota sin stock".
                 </div>
               ) : (
@@ -257,7 +257,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
                 </select>
               )}
               {selectedUnit && (
-                <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 7, background: '#F0FDF4', border: '1px solid #BBF7D0', fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 'var(--radius-md)', background: '#F0FDF4', border: '1px solid #BBF7D0', fontSize: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model} {selectedUnit.year}</span>
                   <span style={{ color: '#166534' }}>· {selectedUnit.color}</span>
                   <span style={{ color: 'var(--text-muted)' }}>· Chasis: {selectedUnit.chassis}</span>
@@ -275,16 +275,16 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
         {/* Diferencia detectada */}
         {isMismatch && (
-          <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.4)' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.4)' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
               El producto vendido es distinto al cotizado
             </div>
             <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <div style={{ padding: '8px 10px', borderRadius: 6, background: '#FFF7ED', border: '1px solid #FED7AA' }}>
+              <div style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: '#FFF7ED', border: '1px solid #FED7AA' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Cotizado</div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-body)' }}>{quoted.brand} {quoted.model}</div>
               </div>
-              <div style={{ padding: '8px 10px', borderRadius: 6, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+              <div style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Vendido</div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#15803D' }}>{selectedUnit.brand} {selectedUnit.model}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-body)' }}>{selectedUnit.color} · {selectedUnit.chassis}</div>
@@ -298,7 +298,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
         {/* Coincidencia confirmada */}
         {isMatch && (
-          <div style={{ padding: '7px 12px', borderRadius: 7, background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.3)', fontSize: 11, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ padding: '7px 12px', borderRadius: 'var(--radius-md)', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.3)', fontSize: 11, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6 }}>
             La unidad coincide con el modelo cotizado
           </div>
         )}
@@ -359,7 +359,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
             const pieAmt   = Number(finAmt) || 0;
             const saldoFin = Math.max(0, total - pieAmt);
             return (
-              <div style={{ background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 8, padding: '10px 12px', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#9A3412', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Pie inicial (Autofin)
                 </div>
@@ -396,7 +396,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
                   </div>
                 </div>
                 {total > 0 && (
-                  <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12' }}>
+                  <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: 11.5, color: '#7C2D12' }}>
                     <div>Pie inicial: <strong>{fmt(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
                     <div>Saldo a financiar: <strong>{fmt(saldoFin)}</strong></div>
                   </div>
@@ -439,7 +439,7 @@ export function SellFromTicketModal({ ticketId, lead, user, onClose, onSuccess }
 
           {/* Campos solo admin */}
           {isAdmin && (
-            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--brand-soft)', borderRadius: 8, border: '1px solid var(--brand-muted)' }}>
+            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--brand-soft)', borderRadius: 'var(--radius-md)', border: '1px solid var(--brand-muted)' }}>
               <div>
                 <label style={{ ...S.lbl, color: 'var(--text-disabled)' }}>Costo Interno</label>
                 <input type="number" value={form.cost_price} onChange={e => set('cost_price', e.target.value)} style={{ ...S.inp, width: '100%' }} placeholder="Solo visible para admin" min="0" />

@@ -30,16 +30,16 @@ export function ColorPicker({ value = 'var(--text)', onChange }) {
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
       {/* Fila de controles */}
       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-        <div style={{ width:28, height:28, borderRadius:6, background:hex, border:'1.5px solid var(--border)', flexShrink:0 }} />
+        <div style={{ width:28, height:28, borderRadius:'var(--radius-sm)', background:hex, border:'1.5px solid var(--border)', flexShrink:0 }} />
         <input type="color" value={hex} onChange={e=>emit(e.target.value)}
-          style={{ width:28, height:28, padding:2, border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', background:'var(--surface)' }} />
+          style={{ width:28, height:28, padding:2, border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', cursor:'pointer', background:'var(--surface)' }} />
         <input value={hex} onChange={e=>handleText(e.target.value)}
           placeholder="#000000" maxLength={7}
-          style={{ width:82, padding:'3px 7px', border:'1px solid var(--border)', borderRadius:6, fontSize:12, fontFamily:'inherit', color:'var(--text)' }} />
+          style={{ width:82, padding:'3px 7px', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', fontSize:12, fontFamily:'inherit', color:'var(--text)' }} />
         {'EyeDropper' in window && (
           <button type="button" onClick={pickScreen}
             title="Cuentagotas — toma un color de cualquier parte de la pantalla"
-            style={{ border:'1px solid var(--border)', borderRadius:6, background:'var(--surface-muted)', cursor:'pointer', lineHeight:1, padding:'5px 7px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            style={{ border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', background:'var(--surface-muted)', cursor:'pointer', lineHeight:1, padding:'5px 7px', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-subtle)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L3 14.67V20h5.33l10.06-10.06a5.5 5.5 0 0 0 0-7.78z"/>
               <line x1="3" y1="20" x2="7.33" y2="20"/>
@@ -51,7 +51,7 @@ export function ColorPicker({ value = 'var(--text)', onChange }) {
       <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
         {PRESET.map(c => (
           <button key={c} type="button" onClick={() => emit(c)} title={c}
-            style={{ width:20, height:20, borderRadius:4, background:c,
+            style={{ width:20, height:20, borderRadius:'var(--radius-xs)', background:c,
               border: hex===c ? '2.5px solid var(--brand)' : '1.5px solid rgba(0,0,0,0.13)',
               cursor:'pointer', padding:0, flexShrink:0 }} />
         ))}

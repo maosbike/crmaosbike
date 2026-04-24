@@ -66,7 +66,7 @@ function DocBadge({ url }) {
        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: '#10B981',
                 fontWeight: 700, fontSize: 10, textDecoration: 'none',
                 background: '#ECFDF5', border: '1px solid #A7F3D0',
-                borderRadius: 5, padding: '2px 7px' }}>
+                borderRadius: 'var(--radius-sm)', padding: '2px 7px' }}>
       <Ic.file size={11} color="#10B981" /> Ver
     </a>
   );
@@ -77,7 +77,7 @@ function DistributorBadge({ paid }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
-      fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
+      fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-xl)',
       background: paid ? '#ECFDF5' : '#FEF3C7',
       color: paid ? '#065F46' : '#92400E',
       border: `1px solid ${paid ? '#A7F3D0' : '#FCD34D'}`,
@@ -278,7 +278,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       {/* ── Hero: foto + datos unidad + precio ── */}
       <div style={{
         background: 'var(--surface)',
-        borderRadius: 14, marginBottom: 18,
+        borderRadius: 'var(--radius-xl)', marginBottom: 18,
         overflow: 'hidden',
         display: 'flex', alignItems: 'stretch',
         minHeight: 150,
@@ -304,7 +304,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
             <span style={{
               position:'absolute', top:8, left:8,
               fontSize:9, fontWeight:800, color:'var(--text-on-dark)',
-              background:'rgba(124,58,237,0.9)', borderRadius:4, padding:'2px 7px',
+              background:'rgba(124,58,237,0.9)', borderRadius:'var(--radius-xs)', padding:'2px 7px',
               letterSpacing:'0.06em',
             }}>
               BODEGA
@@ -321,13 +321,13 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           <div style={{ minWidth: 0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
               {isRes ? (
-                <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
+                <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:'var(--radius-pill)',
                   background:'#FEF3C7', color:'#92400E',
                   letterSpacing:'0.08em', border:'1px solid #FDE68A' }}>
                   ◐ RESERVA
                 </span>
               ) : (
-                <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:99,
+                <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:'var(--radius-pill)',
                   background:'#D1FAE5', color:'#065F46',
                   letterSpacing:'0.08em', border:'1px solid #A7F3D0' }}>
                   ✓ VENTA
@@ -369,11 +369,11 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       {!isRes && (
         <button onClick={handleToggleDelivered} disabled={toggling}
           style={{ display:'flex', alignItems:'center', gap:10, width:'100%', marginBottom:14,
-            padding:'12px 16px', borderRadius:10, border:'none', cursor:'pointer', fontFamily:'inherit',
+            padding:'12px 16px', borderRadius:'var(--radius-lg)', border:'none', cursor:'pointer', fontFamily:'inherit',
             background: sale.delivered ? '#ECFDF5' : '#FFF7ED',
             outline: `2px solid ${sale.delivered ? '#059669' : 'var(--brand)'}`,
             transition:'all 0.15s' }}>
-          <div style={{ width:28, height:28, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+          <div style={{ width:28, height:28, borderRadius:'var(--radius-md)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
             background: sale.delivered ? '#059669' : 'var(--brand)' }}>
             <span style={{ color:'var(--text-on-dark)', fontSize:16, lineHeight:1 }}>{sale.delivered ? '✓' : '○'}</span>
           </div>
@@ -392,7 +392,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Cliente */}
         <div style={{
-          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 12,
+          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 'var(--radius-lg)',
           padding: '14px 16px',
         }}>
           <div style={{
@@ -417,7 +417,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
 
         {/* Operación */}
         <div style={{
-          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 12,
+          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 'var(--radius-lg)',
           padding: '14px 16px',
         }}>
           <div style={{
@@ -452,7 +452,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
 
       {sale.sale_notes && (
         <div style={{
-          background: '#FFFBEB', borderRadius: 10, padding: '12px 14px', marginBottom: 16,
+          background: '#FFFBEB', borderRadius: 'var(--radius-lg)', padding: '12px 14px', marginBottom: 16,
           fontSize: 12, color: '#713F12', border: '1px solid #FEF3C7', borderLeft: '3px solid #CA8A04',
           whiteSpace: 'pre-wrap',
         }}>
@@ -496,7 +496,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)', textTransform: 'uppercase',
                           letterSpacing: '0.09em', marginBottom: 10 }}>Desglose de la venta</div>
-            <div style={{ background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 'var(--radius-lg)', padding: '12px 16px' }}>
               {motoAmt > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
                               padding: '6px 0', fontSize: 13 }}>
@@ -559,7 +559,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
               <div key={field} style={{
                 background: hasDoc ? '#F0FDF4' : 'var(--surface)',
                 border: `1px solid ${hasDoc ? '#A7F3D0' : '#EAECEF'}`,
-                borderRadius: 10, padding: '10px 12px',
+                borderRadius: 'var(--radius-lg)', padding: '10px 12px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
                 transition: 'border-color 0.1s',
               }}>
@@ -578,7 +578,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                     <span style={{
                       fontSize: 12, fontWeight: 700,
                       color: uploading === field ? 'var(--brand)' : (hasDoc ? '#059669' : 'var(--text-disabled)'),
-                      padding: '4px 8px', borderRadius: 6,
+                      padding: '4px 8px', borderRadius: 'var(--radius-sm)',
                       background: hasDoc ? 'rgba(5,150,105,0.08)' : 'var(--surface-muted)',
                       border: `1px solid ${hasDoc ? '#A7F3D0' : 'var(--border)'}`,
                       display: 'inline-flex', alignItems: 'center', gap: 3,
@@ -594,7 +594,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       </div>
 
       {/* Ítems post-venta */}
-      <div style={{ marginBottom:16, background:'var(--surface-muted)', borderRadius:10, padding:'12px 14px', border:'1px solid var(--border)' }}>
+      <div style={{ marginBottom:16, background:'var(--surface-muted)', borderRadius:'var(--radius-lg)', padding:'12px 14px', border:'1px solid var(--border)' }}>
         <div style={{ fontSize:11, fontWeight:700, color:'var(--text-body)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
           + Ítems adicionales post-venta
         </div>
@@ -1391,13 +1391,13 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button onClick={() => { setHasInvUnit(true); setStep(1); }}
-              style={{ padding: '12px 28px', borderRadius: 10, border: '2px solid var(--text)',
+              style={{ padding: '12px 28px', borderRadius: 'var(--radius-lg)', border: '2px solid var(--text)',
                        background: 'var(--text)', color: 'var(--text-on-dark)', fontSize: 14, fontWeight: 700,
                        cursor: 'pointer', fontFamily: 'inherit' }}>
               Sí, está en stock
             </button>
             <button onClick={() => { setHasInvUnit(false); setStep(2); }}
-              style={{ padding: '12px 28px', borderRadius: 10, border: '2px solid var(--border)',
+              style={{ padding: '12px 28px', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border)',
                        background: 'var(--surface-muted)', color: 'var(--text-body)', fontSize: 14, fontWeight: 700,
                        cursor: 'pointer', fontFamily: 'inherit' }}>
               No, ingresar datos
@@ -1421,7 +1421,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             )}
             {filteredUnits.map(u => (
               <button key={u.id} onClick={() => pickUnit(u)}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                 <div style={{ flex: 1 }}>
@@ -1448,7 +1448,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               ← Volver
             </button>
             {selUnit && (
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '4px 12px' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 'var(--radius-md)', padding: '4px 12px' }}>
                 Unidad: {selUnit.brand} {selUnit.model}{selUnit.chassis ? ` · ${selUnit.chassis}` : ''}
               </div>
             )}
@@ -1488,7 +1488,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8, marginBottom: 4 }}>
               {['persona', 'empresa'].map(t => (
                 <button key={t} type="button" onClick={() => set('client_type')(t)}
-                  style={{ padding: '5px 16px', borderRadius: 20, border: `1.5px solid ${form.client_type === t ? 'var(--brand)' : 'var(--border)'}`,
+                  style={{ padding: '5px 16px', borderRadius: 'var(--radius-xl)', border: `1.5px solid ${form.client_type === t ? 'var(--brand)' : 'var(--border)'}`,
                            background: form.client_type === t ? '#FFF7ED' : 'var(--surface)',
                            color: form.client_type === t ? 'var(--brand)' : 'var(--text-subtle)',
                            fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
@@ -1524,7 +1524,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <div style={{ display: 'flex', gap: 8, marginBottom: titularSame ? 0 : 12 }}>
                 {[{ v: true, l: 'Sí' }, { v: false, l: 'No' }].map(opt => (
                   <button key={String(opt.v)} type="button" onClick={() => setTitularSame(opt.v)}
-                    style={{ padding: '5px 20px', borderRadius: 20,
+                    style={{ padding: '5px 20px', borderRadius: 'var(--radius-xl)',
                              border: `1.5px solid ${titularSame === opt.v ? 'var(--brand)' : 'var(--border)'}`,
                              background: titularSame === opt.v ? '#FFF7ED' : 'var(--surface)',
                              color: titularSame === opt.v ? 'var(--brand)' : 'var(--text-subtle)',
@@ -1548,7 +1548,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
             {/* OPERACIÓN */}
             <SEC>{isReserva ? 'Reserva' : 'Venta'}</SEC>
             {isVendedor ? (
-              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#065F46', fontWeight: 600 }}>
+              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12, color: '#065F46', fontWeight: 600 }}>
                 Vendedor: {user?.fn} {user?.ln}
               </div>
             ) : (
@@ -1568,7 +1568,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <>
                 <Field label="Abono inicial ($)" value={abono} onChange={setAbono} type="number" ph="0" />
                 {form.sale_price > 0 && abono > 0 && (
-                  <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'space-between', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 14px', fontSize: 12 }}>
+                  <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'space-between', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 'var(--radius-md)', padding: '8px 14px', fontSize: 12 }}>
                     <span style={{ color: '#92400E' }}>
                       Abono hoy: <strong>{fmtCLP(totals.abonoAmt)}</strong>
                       {totals.cardSurcharge > 0 && <span style={{ fontSize: 10, color: '#B45309' }}> (incl. recargo 2%)</span>}
@@ -1591,7 +1591,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                   { v:'transferencia', l:'Transferencia vehicular', hint:'Moto ya inscrita',                            amt: TRANSFERENCIA_AMT },
                 ].map(opt => (
                   <button key={opt.v} type="button" onClick={() => setChargeType(opt.v)}
-                    style={{ padding:'10px 14px', borderRadius:8, textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+                    style={{ padding:'10px 14px', borderRadius:'var(--radius-md)', textAlign:'left', cursor:'pointer', fontFamily:'inherit',
                       border:`2px solid ${chargeType===opt.v ? '#059669' : 'var(--border)'}`,
                       background: chargeType===opt.v ? 'rgba(5,150,105,0.06)' : 'var(--surface-muted)' }}>
                     <div style={{ fontSize:12, fontWeight:700, color: chargeType===opt.v ? '#065F46' : 'var(--text-body)', marginBottom:3 }}>
@@ -1605,7 +1605,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 ))}
               </div>
               {chargeType === 'completa' && (
-                <div style={{ fontSize:11, color:'var(--text-subtle)', marginTop:6, padding:'5px 10px', background:'var(--surface-muted)', borderRadius:6, border:'1px solid var(--border)' }}>
+                <div style={{ fontSize:11, color:'var(--text-subtle)', marginTop:6, padding:'5px 10px', background:'var(--surface-muted)', borderRadius:'var(--radius-sm)', border:'1px solid var(--border)' }}>
                   Moto {Number(form.sale_price) > 4000000 ? 'sobre' : 'hasta'} $4.000.000 → <strong>{fmtCLP(docCompletaAmt(form.sale_price))}</strong>
                 </div>
               )}
@@ -1646,13 +1646,13 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 </div>
 
                 {isTarjeta(payMode) && totals.netTotal > 0 && (
-                  <div style={{ gridColumn: '1/-1', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
+                  <div style={{ gridColumn: '1/-1', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12, color: '#92400E' }}>
                     Recargo 2% tarjeta: <strong>+{fmtCLP(totals.cardSurcharge)}</strong> — Total con recargo: <strong>{fmtCLP(totals.grandTotal)}</strong>
                   </div>
                 )}
 
                 {payMode === 'Crédito Autofin' && (
-                  <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8, background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8, background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
                     <div style={{ fontSize: 11, fontWeight: 800, color: '#9A3412', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                       Condiciones de financiamiento
                     </div>
@@ -1684,7 +1684,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                       const pieAmt = Number(finAmt) || 0;
                       const saldoFin = Math.max(0, totals.grandTotal - pieAmt);
                       return (
-                        <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <div style={{ background: 'var(--surface)', border: '1px solid #FED7AA', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: 11.5, color: '#7C2D12', display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <div>Pie inicial: <strong>{fmtCLP(pieAmt)}</strong> {finPct && `(${finPct}%)`}</div>
                           <div>Saldo a financiar: <strong>{fmtCLP(saldoFin)}</strong></div>
                         </div>
@@ -1720,7 +1720,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                       + Agregar línea de pago
                     </button>
                     {totals.grandTotal > 0 && (
-                      <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
+                      <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12 }}>
                         Abono: <strong>{fmtCLP(totals.abonoAmt)}</strong> · Saldo: <strong style={{ color: totals.saldo > 0 ? '#B45309' : '#065F46' }}>{fmtCLP(totals.saldo)}</strong>
                       </div>
                     )}
@@ -1731,7 +1731,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
             {/* RESUMEN */}
             {totals.grandTotal > 0 && (
-              <div style={{ gridColumn: '1/-1', background: 'var(--text)', borderRadius: 10, padding: '12px 16px', marginTop: 4 }}>
+              <div style={{ gridColumn: '1/-1', background: 'var(--text)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginTop: 4 }}>
                 {[
                   ['Precio moto', fmtCLP(totals.motoAmt), 'var(--border-strong)'],
                   totals.accAmt > 0  ? [`Accesorios`, fmtCLP(totals.accAmt), 'var(--border-strong)'] : null,
@@ -1745,7 +1745,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     <span>{lbl}</span><span style={{ color: clr }}>{val}</span>
                   </div>
                 ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-on-dark)', fontSize: 15, fontWeight: 900, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-on-dark)', fontSize: 15, fontWeight: 900, paddingTop: 8, borderTop: '1px solid var(--white-soft)', marginTop: 4 }}>
                   <span>TOTAL</span><span style={{ color: 'var(--brand)' }}>{fmtCLP(totals.grandTotal)}</span>
                 </div>
                 {totals.saldo > 0 && (
@@ -1782,7 +1782,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginBottom: 20 }}>
             El documento está listo para imprimir o descargar como PDF.
           </div>
-          <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 18px', marginBottom: 20, textAlign: 'left' }}>
+          <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px', marginBottom: 20, textAlign: 'left' }}>
             {[
               ['Cliente',  savedDoc.client_name || '—'],
               ['RUT',      savedDoc.client_rut  || '—'],
@@ -1800,11 +1800,11 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => openNote(savedDoc, noteType)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px var(--brand-strong)', fontFamily: 'inherit' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)', borderRadius: 'var(--radius-lg)', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '12px 24px', boxShadow: '0 4px 12px var(--brand-strong)', fontFamily: 'inherit' }}>
               Descargar PDF
             </button>
             <button onClick={onClose}
-              style={{ background: 'var(--surface)', border: '1.5px solid var(--border-strong)', color: 'var(--text-body)', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '12px 20px', fontFamily: 'inherit' }}>
+              style={{ background: 'var(--surface)', border: '1.5px solid var(--border-strong)', color: 'var(--text-body)', borderRadius: 'var(--radius-lg)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '12px 20px', fontFamily: 'inherit' }}>
               Cerrar
             </button>
           </div>
@@ -1995,7 +1995,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             <button onClick={() => setShowNew('reserva')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'var(--surface)', border: '1.5px solid var(--text-body)', color: 'var(--text-body)',
-              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600,
               cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
               whiteSpace: 'nowrap',
             }}>
@@ -2004,7 +2004,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             <button onClick={() => setShowNew('venta')} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)',
-              borderRadius: 8, fontSize: 12, fontWeight: 700,
+              borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 700,
               cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
               whiteSpace: 'nowrap', boxShadow: '0 2px 6px var(--brand-strong)',
             }}>
@@ -2017,7 +2017,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
       {/* ── Mensajes de estado ── */}
       {deleteMsg && (
         <div style={{
-          marginBottom: 12, padding: '10px 16px', borderRadius: 8,
+          marginBottom: 12, padding: '10px 16px', borderRadius: 'var(--radius-md)',
           fontSize: 12, fontFamily: 'inherit',
           background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#166534',
         }}>
@@ -2075,7 +2075,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             return cards.map(k => (
               <div key={k.label} style={{
                 background: 'var(--surface)', border: '1px solid #EAECEF',
-                borderRadius: 12, padding: '16px 18px',
+                borderRadius: 'var(--radius-lg)', padding: '16px 18px',
                 boxShadow: '0 1px 3px rgba(16,24,40,0.04), 0 1px 2px rgba(16,24,40,0.02)',
               }}>
                 <div style={{
@@ -2108,7 +2108,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
       {/* ── Filtros ── */}
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
-        borderRadius: 10, padding: '12px 16px',
+        borderRadius: 'var(--radius-lg)', padding: '12px 16px',
         marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8,
       }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2127,7 +2127,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           <div style={{ display: 'flex', gap: 4 }}>
             {[{ v: '', l: 'Todas' }, { v: 'reservada', l: 'Reservas' }, { v: 'vendida', l: 'Ventas' }].map(t => (
               <button key={t.v} onClick={() => setFType(t.v)} style={{
-                padding: '5px 12px', borderRadius: 99, border: '1px solid',
+                padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: '1px solid',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 transition: 'all 0.12s',
                 borderColor: fType === t.v ? 'var(--brand)' : 'var(--border)',
@@ -2164,7 +2164,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           {hasFilters && (
             <button onClick={clearFilters} style={{
               ...S.gh, height: 34, fontSize: 12, fontWeight: 600,
-              border: '1px solid var(--border)', borderRadius: 8,
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
               padding: '0 12px', flexShrink: 0, color: 'var(--text-subtle)',
             }}>
               Limpiar
@@ -2199,7 +2199,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                 background: 'var(--surface)',
                 border: '1px solid #EAECEF',
                 borderLeft: `3px solid ${accentColor}`,
-                borderRadius: 10, overflow: 'hidden',
+                borderRadius: 'var(--radius-lg)', overflow: 'hidden',
                 display: 'flex', alignItems: 'stretch',
                 cursor: 'pointer', boxShadow: '0 1px 3px rgba(16,24,40,0.04)',
               }}>
@@ -2225,7 +2225,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                       <span style={{
-                        fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 99,
+                        fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 'var(--radius-pill)',
                         background: isRes ? '#FEF08A' : '#D1FAE5',
                         color: isRes ? '#713F12' : '#065F46',
                         textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
@@ -2283,7 +2283,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     )}
                     {isRes ? (
                       <span style={{
-                        fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                        fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--radius-pill)',
                         background: '#FEF08A', color: '#713F12', whiteSpace: 'nowrap',
                       }}>
                         Pend. entrega
@@ -2291,14 +2291,14 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     ) : (
                       <>
                         <span style={{
-                          fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                          fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--radius-pill)',
                           background: s.delivered ? '#D1FAE5' : '#F1F5F9',
                           color: s.delivered ? '#065F46' : '#475569', whiteSpace: 'nowrap',
                         }}>
                           {s.delivered ? '✓ Entreg.' : 'Sin entreg.'}
                         </span>
                         <span style={{
-                          fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                          fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--radius-pill)',
                           background: docsOk ? '#D1FAE5' : docCount > 0 ? '#FEF9C3' : 'var(--surface-sunken)',
                           color: docsOk ? '#065F46' : docCount > 0 ? '#854D0E' : 'var(--text-disabled)',
                           whiteSpace: 'nowrap',
@@ -2326,7 +2326,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           )}
           {!loading && sales.length === 0 && (
             <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-disabled)', fontFamily: 'inherit',
-              background:'var(--surface)', border:'1px solid #EAECEF', borderRadius:14 }}>
+              background:'var(--surface)', border:'1px solid #EAECEF', borderRadius:'var(--radius-xl)' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-body)', marginBottom: 4 }}>Sin ventas</div>
               <div style={{ fontSize: 12 }}>{hasFilters ? 'Prueba con otros filtros' : 'No hay ventas registradas aún'}</div>
             </div>
@@ -2349,7 +2349,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                 style={{
                   display: 'flex', alignItems: 'stretch',
                   background: 'var(--surface)',
-                  border: '1px solid var(--border)', borderRadius: 14,
+                  border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)',
                   overflow: 'hidden',
                   cursor: 'pointer',
                   minHeight: 148,
@@ -2384,7 +2384,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     <span style={{
                       position:'absolute', top:8, left:8,
                       fontSize:9, fontWeight:800, color:'#7C3AED',
-                      background:'#EDE9FE', borderRadius:4, padding:'2px 7px',
+                      background:'#EDE9FE', borderRadius:'var(--radius-xs)', padding:'2px 7px',
                       letterSpacing:'0.06em', fontFamily:'inherit',
                     }}>
                       BODEGA
@@ -2425,7 +2425,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     {s.year && (
                       <span style={{
                         fontSize: 10, fontWeight: 700, color: '#4F46E5',
-                        background: '#EEF2FF', padding: '2px 7px', borderRadius: 6,
+                        background: '#EEF2FF', padding: '2px 7px', borderRadius: 'var(--radius-sm)',
                         flexShrink: 0,
                       }}>
                         {s.year}
@@ -2434,7 +2434,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     {s.color && (
                       <span style={{
                         fontSize: 11, fontWeight: 500, color: 'var(--text-subtle)',
-                        background: 'var(--surface-muted)', padding: '2px 8px', borderRadius: 6,
+                        background: 'var(--surface-muted)', padding: '2px 8px', borderRadius: 'var(--radius-sm)',
                         flexShrink: 0,
                       }}>
                         {s.color}
@@ -2449,7 +2449,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                       return (
                         <span style={{ display:'inline-flex', alignItems:'center', gap:5,
                           fontSize: 11, fontWeight: 700, color: sc.c,
-                          background: sc.bg, padding: '3px 9px', borderRadius: 99,
+                          background: sc.bg, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
                           border: `1px solid ${sc.c}30`,
                         }}>
                           <span style={{width:6,height:6,borderRadius:'50%',background:sc.c,flexShrink:0}}/>
@@ -2462,7 +2462,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                       return (
                         <span style={{ display:'inline-flex', alignItems:'center', gap:5,
                           fontSize: 11, fontWeight: 700, color: bc.c,
-                          background: bc.bg, padding: '3px 9px', borderRadius: 99,
+                          background: bc.bg, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
                           border: `1px solid ${bc.c}30`,
                         }}>
                           <span style={{width:6,height:6,borderRadius:'50%',background:bc.c,flexShrink:0}}/>
@@ -2491,7 +2491,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                     {isRes ? (
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                        fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
                         background: '#FEF08A', color: '#713F12',
                       }}>
                         Pend. entrega
@@ -2499,14 +2499,14 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     ) : (
                       <>
                         <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
                           background: s.delivered ? '#D1FAE5' : '#F1F5F9',
                           color: s.delivered ? '#065F46' : '#475569',
                         }}>
                           {s.delivered ? '✓ Entregada' : 'Sin entregar'}
                         </span>
                         <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
                           background: docsOk ? '#D1FAE5' : docCount > 0 ? '#FEF9C3' : 'var(--surface-sunken)',
                           color: docsOk ? '#065F46' : docCount > 0 ? '#854D0E' : 'var(--text-disabled)',
                         }}>
@@ -2514,7 +2514,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                         </span>
                         {isAdmin && (
                           <span style={{
-                            fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                            fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
                             background: s.distributor_paid ? '#D1FAE5' : '#F1F5F9',
                             color: s.distributor_paid ? '#065F46' : '#475569',
                           }}>
@@ -2536,7 +2536,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                   {/* Pill Venta/Reserva */}
                   <span style={{
                     fontSize: 11, fontWeight: 800,
-                    padding: '4px 12px', borderRadius: 99,
+                    padding: '4px 12px', borderRadius: 'var(--radius-pill)',
                     background: accentChip, color: accentFg,
                     whiteSpace: 'nowrap',
                     textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -2575,7 +2575,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                         title={isRes ? 'Ver nota de reserva' : 'Ver nota de venta'}
                         onClick={() => openNoteFromSale(s)}
                         style={{
-                          padding: '5px 7px', borderRadius: 7,
+                          padding: '5px 7px', borderRadius: 'var(--radius-md)',
                           border: '1px solid var(--border)', background: 'var(--surface)',
                           color: 'var(--text-subtle)', cursor: 'pointer',
                           display: 'inline-flex', alignItems: 'center',
@@ -2591,14 +2591,14 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                       {isSuperAdmin && confirmDeleteId === s.id ? (
                         <>
                           <button onClick={() => handleDeleteRow(s)} disabled={deleting} style={{
-                            padding: '5px 9px', borderRadius: 7, border: 'none',
+                            padding: '5px 9px', borderRadius: 'var(--radius-md)', border: 'none',
                             background: '#EF4444', color: 'var(--text-on-dark)',
                             fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                           }}>
                             {deleting ? '…' : 'Borrar'}
                           </button>
                           <button onClick={() => setConfirmDeleteId(null)} style={{
-                            padding: '5px 8px', borderRadius: 7,
+                            padding: '5px 8px', borderRadius: 'var(--radius-md)',
                             border: '1px solid var(--border)', background: 'var(--surface-muted)',
                             color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
                           }}>
@@ -2607,7 +2607,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                         </>
                       ) : isSuperAdmin ? (
                         <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar" style={{
-                          padding: '5px 7px', borderRadius: 7,
+                          padding: '5px 7px', borderRadius: 'var(--radius-md)',
                           border: '1px solid #FECACA', background: 'var(--surface)',
                           color: '#F87171', cursor: 'pointer',
                           display: 'inline-flex', alignItems: 'center',

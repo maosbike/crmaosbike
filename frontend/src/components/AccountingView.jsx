@@ -93,7 +93,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
     <div style={{
       flex: 1, minWidth: 130,
       background: 'rgba(255,255,255,0.08)',
-      borderRadius: 10, padding: '10px 14px',
+      borderRadius: 'var(--radius-lg)', padding: '10px 14px',
       border: '1px solid rgba(255,255,255,0.08)',
     }}>
       <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -108,7 +108,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
   return (
     <div style={{
       background: 'linear-gradient(135deg, var(--text) 0%, var(--text-strong) 100%)',
-      borderRadius: 16,
+      borderRadius: 'var(--radius-xl)',
       padding: isMobile ? '16px' : '20px 24px',
       marginBottom: 16,
       color: 'var(--text-on-dark)',
@@ -118,7 +118,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <button onClick={onPrev} style={{
           background: 'rgba(255,255,255,0.08)', border: 'none', color: 'var(--text-on-dark)',
-          width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+          width: 32, height: 32, borderRadius: 'var(--radius-md)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'inherit',
         }}>‹</button>
@@ -132,7 +132,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
         </div>
         <button onClick={onNext} style={{
           background: 'rgba(255,255,255,0.08)', border: 'none', color: 'var(--text-on-dark)',
-          width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+          width: 32, height: 32, borderRadius: 'var(--radius-md)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'inherit',
         }}>›</button>
@@ -161,7 +161,7 @@ function MonthHero({ stats, ym, onPrev, onNext, loading, isMobile }) {
                   style={{
                     flex: 1, height: h,
                     background: isActive ? 'var(--brand)' : 'rgba(255,255,255,0.25)',
-                    borderRadius: 3,
+                    borderRadius: 'var(--radius-xs)',
                     transition: 'height 0.2s',
                   }} />
               );
@@ -230,7 +230,7 @@ function CatalogModelPicker({ brand, modelId, onSelect }) {
     if (!selBrand) { setModels([]); return; }
     api.getModels({ brand: selBrand }).then(r => setModels(Array.isArray(r) ? r : r.data || [])).catch(() => {});
   }, [selBrand]);
-  const sel = { height:36, borderRadius:8, border:'1px solid var(--border-strong)', background:'var(--surface-muted)', color:'var(--text-body)', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
+  const sel = { height:36, borderRadius:'var(--radius-md)', border:'1px solid var(--border-strong)', background:'var(--surface-muted)', color:'var(--text-body)', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
       <div>
@@ -281,7 +281,7 @@ function InvoiceCard({ inv, onOpen }) {
         background:'var(--surface)',
         border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
-        borderRadius:14, overflow:'hidden',
+        borderRadius:'var(--radius-xl)', overflow:'hidden',
         cursor:'pointer',
         boxShadow: hov ? '0 6px 16px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.04)',
         transform: hov ? 'translateY(-1px)' : 'translateY(0)',
@@ -303,7 +303,7 @@ function InvoiceCard({ inv, onOpen }) {
           <span style={{
             position:'absolute', top:8, left:8,
             fontSize:9, fontWeight:800, color:'#991B1B',
-            background:'rgba(254,226,226,0.95)', borderRadius:4, padding:'2px 7px',
+            background:'rgba(254,226,226,0.95)', borderRadius:'var(--radius-xs)', padding:'2px 7px',
             letterSpacing:'0.06em', border:'1px solid #FCA5A5',
           }}>
             ANULADA
@@ -313,7 +313,7 @@ function InvoiceCard({ inv, onOpen }) {
           <span style={{
             position:'absolute', top:8, left:8,
             fontSize:9, fontWeight:800, color:'#991B1B',
-            background:'rgba(254,226,226,0.95)', borderRadius:4, padding:'2px 7px',
+            background:'rgba(254,226,226,0.95)', borderRadius:'var(--radius-xs)', padding:'2px 7px',
             letterSpacing:'0.06em', border:'1px solid #FCA5A5',
           }}>
             NC
@@ -336,7 +336,7 @@ function InvoiceCard({ inv, onOpen }) {
             letterSpacing:'-0.2px',
             background: isNC ? '#FEE2E2' : '#EEF2FF',
             border:`1px solid ${isNC ? '#FCA5A5' : '#C7D2FE'}`,
-            padding:'1px 10px', borderRadius:6,
+            padding:'1px 10px', borderRadius:'var(--radius-sm)',
           }}>
             #{folioLbl}
           </div>
@@ -423,7 +423,7 @@ function InvoiceCard({ inv, onOpen }) {
               display:'inline-flex', alignItems:'center', gap:4,
               background:'var(--brand-soft)',
               border:'1px solid var(--brand-muted)',
-              padding:'3px 8px', borderRadius:6,
+              padding:'3px 8px', borderRadius:'var(--radius-sm)',
             }}
           >
             <Ic.file size={11} color="var(--brand)" /> PDF
@@ -439,14 +439,14 @@ function DetailCard({ title, accent='var(--text-body)', children }) {
   return (
     <div style={{
       background:'var(--surface)', border:'1px solid var(--border)',
-      borderRadius:12, overflow:'hidden',
+      borderRadius:'var(--radius-lg)', overflow:'hidden',
     }}>
       <div style={{
         padding:'10px 16px', background:'var(--surface-muted)',
         borderBottom:'1px solid var(--surface-sunken)',
         display:'flex', alignItems:'center', gap:8,
       }}>
-        <span style={{ width:3, height:14, background:accent, borderRadius:2 }}/>
+        <span style={{ width:3, height:14, background:accent, borderRadius:'var(--radius-xs)' }}/>
         <span style={{ fontSize:12, fontWeight:700, color:'var(--text)', letterSpacing:'0.01em' }}>
           {title}
         </span>
@@ -535,7 +535,7 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
   const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
   const colorOpts = catalogColorsFromRow(selModel);
 
-  const selStyle = { height:36, borderRadius:8, border:'1px solid var(--border-strong)', background:'var(--surface-muted)', color:'var(--text-body)', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
+  const selStyle = { height:36, borderRadius:'var(--radius-md)', border:'1px solid var(--border-strong)', background:'var(--surface-muted)', color:'var(--text-body)', fontSize:12, padding:'0 10px', cursor:'pointer', fontFamily:'inherit', outline:'none', width:'100%' };
 
   return (
     <Modal onClose={onClose} maxWidth={1500}
@@ -553,7 +553,7 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
           <div style={{
             background:'var(--surface)', border:'1px solid var(--border)',
             borderLeft:`4px solid ${st.c}`,
-            borderRadius:14, overflow:'hidden',
+            borderRadius:'var(--radius-xl)', overflow:'hidden',
             boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
           }}>
             {/* Foto grande: ocupa todo el ancho de la columna */}
@@ -571,7 +571,7 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
                 <span style={{
                   position:'absolute', top:10, left:10,
                   fontSize:10, fontWeight:800, color:'#991B1B',
-                  background:'rgba(254,226,226,0.95)', borderRadius:4, padding:'3px 9px',
+                  background:'rgba(254,226,226,0.95)', borderRadius:'var(--radius-xs)', padding:'3px 9px',
                   letterSpacing:'0.06em', border:'1px solid #FCA5A5',
                 }}>ANULADA</span>
               )}
@@ -629,7 +629,7 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
                     fontSize:13, fontWeight:700, color:'var(--text-on-brand)', background:'var(--brand)',
                     textDecoration:'none',
                     display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
-                    padding:'10px 14px', borderRadius:10, marginTop:6,
+                    padding:'10px 14px', borderRadius:'var(--radius-lg)', marginTop:6,
                   }}>
                   <Ic.file size={14} color="var(--text-on-brand)" /> Ver PDF
                 </a>
@@ -695,14 +695,14 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
           {/* Vincular con catálogo — manual */}
           <div style={{
             background:'var(--surface)', border:'1px solid var(--border)',
-            borderRadius:12, overflow:'hidden',
+            borderRadius:'var(--radius-lg)', overflow:'hidden',
           }}>
             <div style={{
               padding:'10px 16px', background:'#FFF7ED',
               borderBottom:'1px solid #FED7AA',
               display:'flex', alignItems:'center', gap:8,
             }}>
-              <span style={{ width:3, height:14, background:'var(--brand)', borderRadius:2 }}/>
+              <span style={{ width:3, height:14, background:'var(--brand)', borderRadius:'var(--radius-xs)' }}/>
               <span style={{ fontSize:12, fontWeight:700, color:'#9A3412', letterSpacing:'0.02em' }}>
                 VINCULAR CON CATÁLOGO
               </span>
@@ -749,14 +749,14 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
           {/* Notas internas */}
           <div style={{
             background:'var(--surface)', border:'1px solid var(--border)',
-            borderRadius:12, overflow:'hidden',
+            borderRadius:'var(--radius-lg)', overflow:'hidden',
           }}>
             <div style={{
               padding:'10px 16px', background:'var(--surface-muted)',
               borderBottom:'1px solid var(--surface-sunken)',
               display:'flex', alignItems:'center', gap:8,
             }}>
-              <span style={{ width:3, height:14, background:'var(--text-subtle)', borderRadius:2 }}/>
+              <span style={{ width:3, height:14, background:'var(--text-subtle)', borderRadius:'var(--radius-xs)' }}/>
               <span style={{ fontSize:12, fontWeight:700, color:'var(--text)' }}>NOTAS INTERNAS</span>
             </div>
             <div style={{ padding:'12px 16px' }}>
@@ -887,7 +887,7 @@ export function AccountingView() {
         <div style={{
           background: syncResult.error ? 'rgba(220,38,38,0.06)' : 'rgba(21,128,61,0.06)',
           border: `1px solid ${syncResult.error ? '#FCA5A5' : '#86EFAC'}`,
-          borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13,
+          borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16, fontSize: 13,
         }}>
           {syncResult.error
             ? <span style={{ color: '#DC2626' }}>{syncResult.error}</span>
@@ -952,7 +952,7 @@ export function AccountingView() {
           style={{ ...S.inp, flex: 1, minWidth: 180, height: 36, fontSize: 13 }}
         />
         <select value={linkStatus} onChange={e => { setLinkStatus(e.target.value); setPage(1); }}
-          style={{ height: 36, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-muted)',
+          style={{ height: 36, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', background: 'var(--surface-muted)',
             color: 'var(--text-body)', fontSize: 13, padding: '0 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
           <option value="">Todos</option>
           <option value="vinculada">Vinculadas</option>

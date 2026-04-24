@@ -190,21 +190,21 @@ export const S={
   card:{
     background:'var(--surface)',
     border:'1px solid var(--border)',
-    borderRadius:12,
+    borderRadius:'var(--radius-lg)',
     padding:16,
     boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
   },
   secCard:{
     background:'var(--surface-muted)',
     border:'1px solid var(--surface-sunken)',
-    borderRadius:10,
+    borderRadius:'var(--radius-lg)',
     padding:14,
   },
   btn:{
     background:'var(--brand)',
     color:'var(--text-on-brand)',
     border:'none',
-    borderRadius:8,
+    borderRadius:'var(--radius-md)',
     padding:'8px 16px',
     fontSize:13,
     fontWeight:600,
@@ -221,7 +221,7 @@ export const S={
     background:'var(--surface)',
     color:'var(--text-body)',
     border:'1px solid var(--border-strong)',
-    borderRadius:8,
+    borderRadius:'var(--radius-md)',
     padding:'8px 16px',
     fontSize:13,
     fontWeight:500,
@@ -238,7 +238,7 @@ export const S={
     background:'transparent',
     color:'var(--text-subtle)',
     border:'none',
-    borderRadius:8,
+    borderRadius:'var(--radius-md)',
     padding:'6px 10px',
     fontSize:13,
     fontWeight:500,
@@ -251,7 +251,7 @@ export const S={
   },
   inp:{
     border:'1px solid var(--border-strong)',
-    borderRadius:8,
+    borderRadius:'var(--radius-md)',
     padding:'8px 12px',
     fontSize:13,
     color:'var(--text)',
@@ -280,7 +280,7 @@ S.lbl = { fontSize:11, fontWeight:600, lineHeight:1.3, color:'var(--text-muted)'
 
 // Shared components
 export const Bdg=({l,c,bg,size})=>{
-  const z=size==='sm'?{padding:"2px 7px",fontSize:9,borderRadius:8}:{padding:"3px 10px",fontSize:11,borderRadius:20};
+  const z=size==='sm'?{padding:"2px 7px",fontSize:9,borderRadius:'var(--radius-md)'}:{padding:"3px 10px",fontSize:11,borderRadius:'var(--radius-xl)'};
   return <span style={{display:"inline-flex",...z,fontWeight:600,color:c,background:bg||`${c}18`,whiteSpace:"nowrap",fontFamily:'inherit'}}>{l}</span>;
 };
 export const TBdg=({s})=>{const x=TICKET_STATUS[s];return x?<Bdg l={x.l} c={x.c}/>:<Bdg l={s} c="var(--text-subtle)"/>;};
@@ -304,7 +304,7 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
     }}>
       {Ico&&ib&&(
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{padding:6,borderRadius:8,background:ib}}><Ico size={16} color={ic}/></div>
+          <div style={{padding:6,borderRadius:'var(--radius-md)',background:ib}}><Ico size={16} color={ic}/></div>
           <span style={{fontSize:10,color:"var(--text-subtle)",textTransform:"uppercase",letterSpacing:"0.07em",fontWeight:700,fontFamily:'inherit'}}>{label}</span>
         </div>
       )}
@@ -318,11 +318,11 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
 };
 export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>(
   <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
-    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'var(--surface)',borderRadius:16,width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
+    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'var(--surface)',borderRadius:'var(--radius-xl)',width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
       {headerContent ? headerContent : (
         <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--surface-sunken)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <h2 style={{fontSize:15,fontWeight:700,color:'var(--text)',margin:0}}>{title}</h2>
-          {onClose&&<button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>}
+          {onClose&&<button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',fontSize:20,lineHeight:1,borderRadius:'var(--radius-sm)'}}><Ic.x size={18}/></button>}
         </div>
       )}
       <div style={{padding:'20px'}}>{children}</div>
@@ -460,7 +460,7 @@ export function Loader({ label='Cargando…' }) {
 // selectCtrl / filterLabel — estilos de controles de filtro centralizados.
 // Importar en LeadsList, InventoryView, SupplierPaymentsView en lugar de definir local.
 export const selectCtrl = {
-  height:34, border:'1px solid #E2E8F0', borderRadius:8,
+  height:34, border:'1px solid #E2E8F0', borderRadius:'var(--radius-md)',
   fontSize:12.5, fontWeight:500, padding:'0 10px', background:'var(--surface)',
   color:'var(--text)', outline:'none', cursor:'pointer',
   fontFamily:'inherit',
@@ -527,7 +527,7 @@ export function ErrorMsg({ msg }) {
   return (
     <div style={{
       background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.20)',
-      borderRadius:8, padding:'9px 13px', marginBottom:12,
+      borderRadius:'var(--radius-md)', padding:'9px 13px', marginBottom:12,
       fontSize:13, fontWeight:400, lineHeight:1.5, color:'#DC2626', fontFamily:'inherit',
     }}>{msg}</div>
   );
@@ -568,7 +568,7 @@ export const TY = {
 export function AccordionSection({ title, icon, isOpen, onToggle, children }) {
   return (
     <div style={{
-      border:'1px solid var(--surface-sunken)', borderRadius:10,
+      border:'1px solid var(--surface-sunken)', borderRadius:'var(--radius-lg)',
       marginBottom:8, overflow:'hidden',
     }}>
       <button

@@ -214,7 +214,7 @@ export function CalendarView({user,nav}){
           {c:'#8B5CF6',l:'Reasignado'},
         ].map(({c,l})=>(
           <div key={l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'var(--text-disabled)'}}>
-            <div style={{width:10,height:10,borderRadius:2,background:c}}/>{l}
+            <div style={{width:10,height:10,borderRadius:'var(--radius-xs)',background:c}}/>{l}
           </div>
         ))}
       </div>
@@ -284,7 +284,7 @@ export function CalendarView({user,nav}){
                         <div key={ei}
                           onClick={e=>{e.stopPropagation();openEdit(ev);}}
                           title={ev.title}
-                          style={{fontSize:9,padding:'2px 5px',borderRadius:3,background:`${c}22`,color:c,marginBottom:2,cursor:'pointer',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontWeight:600}}
+                          style={{fontSize:9,padding:'2px 5px',borderRadius:'var(--radius-xs)',background:`${c}22`,color:c,marginBottom:2,cursor:'pointer',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontWeight:600}}
                         >
                           {ev.title}
                         </div>
@@ -310,11 +310,11 @@ export function CalendarView({user,nav}){
               return(
                 <div key={i}
                   onClick={()=>openEdit(ev)}
-                  style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:8,background:'var(--surface-muted)',cursor:'pointer'}}
+                  style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:'var(--radius-md)',background:'var(--surface-muted)',cursor:'pointer'}}
                   onMouseEnter={e=>e.currentTarget.style.background='var(--surface-sunken)'}
                   onMouseLeave={e=>e.currentTarget.style.background='var(--surface-muted)'}
                 >
-                  <div style={{width:4,height:36,borderRadius:2,background:c,flexShrink:0}}/>
+                  <div style={{width:4,height:36,borderRadius:'var(--radius-xs)',background:c,flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ev.title}</div>
                     <div style={{fontSize:11,color:'var(--text-subtle)'}}>{ev.meta?.client_name||ev.meta?.assigned_name||''}{lbl?` · ${lbl}`:''}</div>

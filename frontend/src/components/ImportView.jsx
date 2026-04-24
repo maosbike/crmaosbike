@@ -262,7 +262,7 @@ export function ImportView() {
                           <tr key={i} style={{borderBottom:'1px solid var(--surface-muted)',background:i%2?'transparent':'rgba(255,255,255,0.01)'}}>
                             <td style={{padding:'6px 10px',color:'var(--text-subtle)'}}>{r._row}</td>
                             <td style={{padding:'6px 10px'}}>
-                              <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:12,fontSize:10,fontWeight:600,color:sc.c,background:sc.bg,whiteSpace:'nowrap'}}>{sc.l}</span>
+                              <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:'var(--radius-lg)',fontSize:10,fontWeight:600,color:sc.c,background:sc.bg,whiteSpace:'nowrap'}}>{sc.l}</span>
                             </td>
                             <td style={{padding:'6px 10px',fontWeight:500}}>{r.nombre}{r.apellido?` ${r.apellido}`:''}</td>
                             <td style={{padding:'6px 10px',color:'var(--text-disabled)'}}>{r.telefono||'—'}</td>
@@ -325,7 +325,7 @@ export function ImportView() {
                 ))}
               </div>
               {result.no_seller>0&&(
-                <div style={{background:'rgba(245,158,11,0.07)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:10,padding:'12px 16px',display:'flex',alignItems:'flex-start',gap:10,fontSize:12,color:'#92400E'}}>
+                <div style={{background:'rgba(245,158,11,0.07)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:'var(--radius-lg)',padding:'12px 16px',display:'flex',alignItems:'flex-start',gap:10,fontSize:12,color:'#92400E'}}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                     <line x1="12" y1="9" x2="12" y2="13"/>
@@ -339,7 +339,7 @@ export function ImportView() {
                   <h3 style={{fontSize:12,fontWeight:600,margin:'0 0 10px',color:'var(--text-disabled)'}}>Tickets creados</h3>
                   <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
                     {result.tickets.map(n=>(
-                      <span key={n} style={{padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:600,color:'var(--brand)',background:'var(--brand-soft)'}}>{n}</span>
+                      <span key={n} style={{padding:'3px 10px',borderRadius:'var(--radius-lg)',fontSize:11,fontWeight:600,color:'var(--brand)',background:'var(--brand-soft)'}}>{n}</span>
                     ))}
                   </div>
                 </div>

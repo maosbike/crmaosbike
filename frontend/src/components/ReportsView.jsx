@@ -5,12 +5,12 @@ import { S, TICKET_STATUS, FIN_STATUS, fmt, ViewHeader, Loader } from '../ui.jsx
 const TABS = ['General','Marca','Modelo','Sucursal','Vendedor','Financiamiento','Color','Estado','Tiempo'];
 
 const card = { ...S.card, padding: 16 };
-const kpiBox = { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'12px 16px', display:'flex', flexDirection:'column', gap:2, minWidth:120, flex:1 };
+const kpiBox = { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', padding:'12px 16px', display:'flex', flexDirection:'column', gap:2, minWidth:120, flex:1 };
 const kpiVal = { fontSize:22, fontWeight:800, lineHeight:1 };
 const kpiLbl = { fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.07em' };
 const thS = { textAlign:'left', padding:'10px 14px', color:'var(--text-disabled)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', background:'var(--surface-muted)', borderBottom:'2px solid var(--border)', whiteSpace:'nowrap' };
 const tdS = { padding:'10px 14px', fontSize:12, borderBottom:'1px solid var(--surface-sunken)' };
-const btnF = (active) => ({ padding:'5px 12px', borderRadius:8, border:'1px solid '+(active?'var(--brand)':'var(--border-strong)'), background:active?'var(--brand)':'var(--surface)', color:active?'var(--text-on-brand)':'var(--text-body)', fontSize:11, fontWeight:600, cursor:'pointer' });
+const btnF = (active) => ({ padding:'5px 12px', borderRadius:'var(--radius-md)', border:'1px solid '+(active?'var(--brand)':'var(--border-strong)'), background:active?'var(--brand)':'var(--surface)', color:active?'var(--text-on-brand)':'var(--text-body)', fontSize:11, fontWeight:600, cursor:'pointer' });
 const selectS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
 const inputS = { ...S.inp, height:32, padding:'0 10px', fontSize:11, width:'auto' };
 
@@ -23,8 +23,8 @@ function Bar({ items, colorKey, maxVal }) {
   return <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
     {items.map((it, i) => <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
       <div style={{ width:100, fontSize:11, textAlign:'right', flexShrink:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.label}</div>
-      <div style={{ flex:1, background:'var(--surface-sunken)', borderRadius:4, height:20, position:'relative', overflow:'hidden' }}>
-        <div style={{ width:`${(it.value/mx)*100}%`, height:'100%', background:colorKey||'var(--brand)', borderRadius:4, transition:'width .3s' }}/>
+      <div style={{ flex:1, background:'var(--surface-sunken)', borderRadius:'var(--radius-xs)', height:20, position:'relative', overflow:'hidden' }}>
+        <div style={{ width:`${(it.value/mx)*100}%`, height:'100%', background:colorKey||'var(--brand)', borderRadius:'var(--radius-xs)', transition:'width .3s' }}/>
         <span style={{ position:'absolute', right:6, top:2, fontSize:10, color:'var(--text-body)' }}>{it.value}</span>
       </div>
     </div>)}
@@ -112,7 +112,7 @@ export function ReportsView({ branches = [] }) {
     <ViewHeader size="sm" title="Reportes" />
 
     {/* ── Filtros ── */}
-    <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:10, display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:'10px 14px' }}>
+    <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', display:'flex', flexWrap:'wrap', gap:8, alignItems:'center', marginBottom:14, padding:'10px 14px' }}>
       <span style={{ fontSize:9, color:'var(--text-disabled)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>Filtros</span>
       <input type="date" value={filters.from} onChange={e=>applyFilter('from',e.target.value)} style={inputS} title="Desde"/>
       <input type="date" value={filters.to} onChange={e=>applyFilter('to',e.target.value)} style={inputS} title="Hasta"/>

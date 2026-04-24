@@ -116,7 +116,7 @@ export function PipelineView({leads,user,nav,updLead}){
             const act = mobStage === stage;
             return (
               <button key={stage} onClick={() => setMobStage(stage)} style={{
-                flexShrink:0, padding:'8px 14px', borderRadius:99,
+                flexShrink:0, padding:'8px 14px', borderRadius:'var(--radius-pill)',
                 border:'none', cursor:'pointer', fontFamily:'inherit',
                 fontSize:13, fontWeight:600,
                 background: act ? x.c  : 'var(--surface-sunken)',
@@ -129,7 +129,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   fontSize:11, fontWeight:700,
                   background: act ? 'rgba(255,255,255,0.25)' : 'var(--border)',
                   color:      act ? 'var(--text-on-dark)' : 'var(--text-disabled)',
-                  padding:'1px 7px', borderRadius:99,
+                  padding:'1px 7px', borderRadius:'var(--radius-pill)',
                 }}>
                   {cnt}
                 </span>
@@ -143,7 +143,7 @@ export function PipelineView({leads,user,nav,updLead}){
           {sorted.length === 0 && (
             <div style={{
               padding:'48px 24px', textAlign:'center',
-              border:'2px dashed var(--border)', borderRadius:14,
+              border:'2px dashed var(--border)', borderRadius:'var(--radius-xl)',
               color:'#C4C9D4',
             }}>
               <Ic.leads size={32} color="var(--border)"/>
@@ -156,7 +156,7 @@ export function PipelineView({leads,user,nav,updLead}){
 
             return (
               <div key={l.id} style={{
-                background:'var(--surface)', borderRadius:14,
+                background:'var(--surface)', borderRadius:'var(--radius-xl)',
                 border:'1px solid var(--border)',
                 overflow:'hidden',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
@@ -168,7 +168,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   {l.model_image ? (
                     <div style={{flexShrink:0, padding:'14px 0 14px 14px'}}>
                       <img src={l.model_image} alt="" style={{
-                        width:104, height:104, borderRadius:12,
+                        width:104, height:104, borderRadius:'var(--radius-lg)',
                         objectFit:'cover', display:'block',
                         background:'var(--surface-muted)',
                       }}/>
@@ -176,7 +176,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   ) : (
                     <div style={{
                       flexShrink:0, margin:'14px 0 14px 14px',
-                      width:104, height:104, borderRadius:12,
+                      width:104, height:104, borderRadius:'var(--radius-lg)',
                       background:'var(--surface-muted)', display:'flex',
                       alignItems:'center', justifyContent:'center',
                     }}>
@@ -213,7 +213,7 @@ export function PipelineView({leads,user,nav,updLead}){
                         display:'inline-flex', alignItems:'center', gap:4,
                         marginTop:8,
                         fontSize:11, fontWeight:600, color:'var(--text-subtle)',
-                        padding:'3px 8px', borderRadius:99,
+                        padding:'3px 8px', borderRadius:'var(--radius-pill)',
                         background:'var(--surface-sunken)',
                         alignSelf:'flex-start',
                       }}>
@@ -228,7 +228,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   <button onClick={() => setMoveLead(l)} style={{
                     flex:1, padding:'9px 0', fontSize:12, fontWeight:600,
                     background:'var(--surface-muted)', color:'var(--text-body)',
-                    border:'1px solid var(--border)', borderRadius:8,
+                    border:'1px solid var(--border)', borderRadius:'var(--radius-md)',
                     cursor:'pointer', fontFamily:'inherit',
                   }}>
                     Mover etapa
@@ -236,7 +236,7 @@ export function PipelineView({leads,user,nav,updLead}){
                   <button onClick={() => goToSale(l)} style={{
                     flex:1, padding:'9px 0', fontSize:12, fontWeight:700,
                     background:'#10B981', color:'var(--text-on-dark)',
-                    border:'none', borderRadius:8,
+                    border:'none', borderRadius:'var(--radius-md)',
                     cursor:'pointer', fontFamily:'inherit',
                   }}>
                     Registrar venta
@@ -259,7 +259,7 @@ export function PipelineView({leads,user,nav,updLead}){
                     padding:'14px 16px',
                     border:`1.5px solid ${x?.c}40`,
                     background:`${x?.c}10`,
-                    borderRadius:10, cursor: moving ? 'default' : 'pointer',
+                    borderRadius:'var(--radius-lg)', cursor: moving ? 'default' : 'pointer',
                     fontFamily:'inherit', textAlign:'left', opacity: moving ? 0.6 : 1,
                   }}>
                     <span style={{width:10, height:10, borderRadius:'50%', background:x?.c, flexShrink:0}}/>
@@ -319,7 +319,7 @@ export function PipelineView({leads,user,nav,updLead}){
                 flex:'1 1 240px', minWidth:220, maxWidth:320,
                 display:'flex', flexDirection:'column',
                 background:'var(--surface-muted)',
-                borderRadius:14,
+                borderRadius:'var(--radius-xl)',
                 border:'1px solid var(--border)',
                 overflow:'hidden',
               }}
@@ -343,7 +343,7 @@ export function PipelineView({leads,user,nav,updLead}){
                 </div>
                 <span style={{
                   fontSize:12, fontWeight:700,
-                  padding:'3px 10px', borderRadius:99,
+                  padding:'3px 10px', borderRadius:'var(--radius-pill)',
                   background:'var(--surface)', color:sc?.c,
                   border:`1px solid ${sc?.c}30`,
                   minWidth:28, textAlign:'center',
@@ -367,7 +367,7 @@ export function PipelineView({leads,user,nav,updLead}){
                     alignItems:'center', justifyContent:'center',
                     padding:'40px 20px', margin:'4px 0',
                     border:'2px dashed var(--border)',
-                    borderRadius:12,
+                    borderRadius:'var(--radius-lg)',
                     color:'var(--border-strong)',
                     gap:10,
                     minHeight:180,
@@ -395,7 +395,7 @@ export function PipelineView({leads,user,nav,updLead}){
                       onClick={() => nav('ticket', l.id)}
                       style={{
                         background:'var(--surface)',
-                        borderRadius:14,
+                        borderRadius:'var(--radius-xl)',
                         border:'1px solid var(--border)',
                         cursor:'grab',
                         transition:'transform 0.15s, box-shadow 0.15s',
@@ -411,7 +411,7 @@ export function PipelineView({leads,user,nav,updLead}){
                           <img
                             src={l.model_image} alt=""
                             style={{
-                              width:84, height:84, borderRadius:10,
+                              width:84, height:84, borderRadius:'var(--radius-lg)',
                               objectFit:'cover', display:'block',
                               background:'var(--surface-muted)',
                             }}
@@ -420,7 +420,7 @@ export function PipelineView({leads,user,nav,updLead}){
                       ) : (
                         <div style={{
                           flexShrink:0, margin:'12px 0 12px 12px',
-                          width:84, height:84, borderRadius:10,
+                          width:84, height:84, borderRadius:'var(--radius-lg)',
                           background:'var(--surface-muted)', display:'flex',
                           alignItems:'center', justifyContent:'center',
                         }}>
@@ -472,7 +472,7 @@ export function PipelineView({leads,user,nav,updLead}){
                             display:'inline-flex', alignItems:'center', gap:4,
                             marginTop:4,
                             fontSize:11, fontWeight:600, color:'var(--text-subtle)',
-                            padding:'3px 8px', borderRadius:99,
+                            padding:'3px 8px', borderRadius:'var(--radius-pill)',
                             background:'var(--surface-sunken)',
                             alignSelf:'flex-start',
                           }}>
@@ -492,7 +492,7 @@ export function PipelineView({leads,user,nav,updLead}){
                                 display:'inline-flex', alignItems:'center', gap:5,
                                 fontSize:11, color:sc.c, fontWeight:700,
                                 background:sc.bg,
-                                padding:'2px 8px', borderRadius:99,
+                                padding:'2px 8px', borderRadius:'var(--radius-pill)',
                                 border:`1px solid ${sc.c}30`,
                                 flex:1, minWidth:0,
                                 whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
@@ -516,7 +516,7 @@ export function PipelineView({leads,user,nav,updLead}){
                               padding:'5px 10px', fontSize:10, fontWeight:700,
                               background:'#10B981', color:'var(--text-on-dark)',
                               border:'none',
-                              borderRadius:6, cursor:'pointer', fontFamily:'inherit',
+                              borderRadius:'var(--radius-sm)', cursor:'pointer', fontFamily:'inherit',
                               letterSpacing:'0.02em',
                             }}
                           >

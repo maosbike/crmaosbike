@@ -148,18 +148,18 @@ function TimeOffCalendar({ users }) {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <button onClick={prevMonth} title="Mes anterior"
-            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)' }}>
+            style={{ ...S.gh, padding:'4px 8px', borderRadius:'var(--radius-sm)', border:'1px solid var(--border)' }}>
             <Ic.chev size={14}/>
           </button>
           <div style={{ fontSize:12, fontWeight:700, minWidth:150, textAlign:'center' }}>
             {MONTHS_ES[cursor.getMonth()]} {cursor.getFullYear()}
           </div>
           <button onClick={nextMonth} title="Mes siguiente"
-            style={{ ...S.gh, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)', transform:'rotate(180deg)' }}>
+            style={{ ...S.gh, padding:'4px 8px', borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', transform:'rotate(180deg)' }}>
             <Ic.chev size={14}/>
           </button>
           <button onClick={() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}
-            style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid var(--border)', marginLeft:4 }}>
+            style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', marginLeft:4 }}>
             Hoy
           </button>
         </div>
@@ -181,7 +181,7 @@ function TimeOffCalendar({ users }) {
               key={idx}
               onClick={() => setDayModal({ date: key })}
               style={{
-                minHeight:96, borderRadius:8, padding:'6px 7px',
+                minHeight:96, borderRadius:'var(--radius-md)', padding:'6px 7px',
                 background: isToday(d) ? '#FFF7ED' : (isPast ? '#FAFAFA' : 'var(--surface)'),
                 border: isToday(d) ? '1.5px solid var(--brand)' : '1px solid var(--border)',
                 cursor:'pointer', transition:'background 0.1s', opacity: isPast ? 0.75 : 1,
@@ -200,7 +200,7 @@ function TimeOffCalendar({ users }) {
                   return (
                     <span key={e.id} title={`${fullName}${e.note ? ' · ' + e.note : ''}`}
                       style={{
-                        fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:6,
+                        fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:'var(--radius-sm)',
                         background: c.bg, color: c.fg,
                         whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
                         maxWidth:'100%',
@@ -210,7 +210,7 @@ function TimeOffCalendar({ users }) {
                   );
                 })}
                 {list.length > 3 && (
-                  <span style={{ fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:6, background:'var(--surface-sunken)', color:'var(--text-subtle)' }}>
+                  <span style={{ fontSize:10, fontWeight:600, padding:'2px 6px', borderRadius:'var(--radius-sm)', background:'var(--surface-sunken)', color:'var(--text-subtle)' }}>
                     +{list.length - 3} más
                   </span>
                 )}
@@ -240,14 +240,14 @@ function TimeOffCalendar({ users }) {
                       onClick={() => !saving && toggleSeller(u.id, dayModal.date)}
                       style={{
                         display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
-                        borderRadius:8, cursor: saving ? 'wait' : 'pointer',
+                        borderRadius:'var(--radius-md)', cursor: saving ? 'wait' : 'pointer',
                         background: isOff ? c.bg : 'var(--surface-muted)',
                         border: `1px solid ${isOff ? c.fg : 'var(--border)'}`,
                         transition:'background 0.1s',
                       }}
                     >
                       <div style={{
-                        width:16, height:16, borderRadius:4, flexShrink:0,
+                        width:16, height:16, borderRadius:'var(--radius-xs)', flexShrink:0,
                         border: isOff ? 'none' : '2px solid var(--border-strong)',
                         background: isOff ? c.fg : 'transparent',
                         display:'flex', alignItems:'center', justifyContent:'center',
@@ -284,12 +284,12 @@ function ActiveToggle({ value, onChange }) {
       onClick={() => onChange(!value)}
       style={{
         display:'flex', alignItems:'center', gap:8, padding:'10px 12px',
-        borderRadius:8, background:'var(--surface-muted)', border:'1px solid var(--border)',
+        borderRadius:'var(--radius-md)', background:'var(--surface-muted)', border:'1px solid var(--border)',
         cursor:'pointer', marginBottom:16, userSelect:'none',
       }}
     >
       <div style={{
-        width:16, height:16, borderRadius:4, flexShrink:0,
+        width:16, height:16, borderRadius:'var(--radius-xs)', flexShrink:0,
         border: value ? 'none' : '2px solid var(--border-strong)',
         background: value ? '#10B981' : 'transparent',
         display:'flex', alignItems:'center', justifyContent:'center',
@@ -677,7 +677,7 @@ export function AdminView() {
                       {/* Estado */}
                       <td style={{ padding:'12px 14px' }}>
                         <span style={{
-                          fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:20,
+                          fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:'var(--radius-xl)',
                           background: u.active ? '#F0FDF4' : 'var(--surface-muted)',
                           color: u.active ? '#16A34A' : 'var(--text-disabled)',
                           border:`1px solid ${u.active ? '#BBF7D0' : 'var(--border)'}`,
@@ -689,25 +689,25 @@ export function AdminView() {
                       <td style={{ padding:'12px 14px' }}>
                         <div style={{ display:'flex', gap:5 }}>
                           <button onClick={() => openEdit(u)} title="Editar usuario"
-                            style={{ ...S.gh, padding:'4px 9px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid var(--border)', color:'var(--text-body)' }}>
+                            style={{ ...S.gh, padding:'4px 9px', fontSize:11, fontWeight:600, borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', color:'var(--text-body)' }}>
                             Editar
                           </button>
                           <button onClick={() => handleReset(u)} title="Restablecer contraseña"
-                            style={{ ...S.gh, padding:'4px 8px', fontSize:11, borderRadius:6, border:'1px solid var(--border)', color:'var(--text-subtle)' }}>
+                            style={{ ...S.gh, padding:'4px 8px', fontSize:11, borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', color:'var(--text-subtle)' }}>
                             <Ic.lock size={13}/>
                           </button>
                           {u.active
                             ? <button onClick={() => openDeactivate(u)} title="Desactivar usuario"
-                                style={{ padding:'4px 9px',fontSize:10,fontWeight:700,borderRadius:6,cursor:'pointer',border:'1px solid #FECACA',background:'#FEF2F2',color:'#DC2626' }}>
+                                style={{ padding:'4px 9px',fontSize:10,fontWeight:700,borderRadius:'var(--radius-sm)',cursor:'pointer',border:'1px solid #FECACA',background:'#FEF2F2',color:'#DC2626' }}>
                                 Desactivar
                               </button>
                             : <button onClick={() => handleActivate(u)} title="Activar usuario"
-                                style={{ padding:'4px 9px',fontSize:10,fontWeight:700,borderRadius:6,cursor:'pointer',border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#16A34A' }}>
+                                style={{ padding:'4px 9px',fontSize:10,fontWeight:700,borderRadius:'var(--radius-sm)',cursor:'pointer',border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#16A34A' }}>
                                 Activar
                               </button>
                           }
                           <button onClick={() => openDelete(u)} title="Eliminar usuario (solo si no tiene historial)"
-                            style={{ padding:'4px 8px',fontSize:11,borderRadius:6,cursor:'pointer',border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text-disabled)' }}>
+                            style={{ padding:'4px 8px',fontSize:11,borderRadius:'var(--radius-sm)',cursor:'pointer',border:'1px solid var(--border)',background:'var(--surface)',color:'var(--text-disabled)' }}>
                             <Ic.trash size={12}/>
                           </button>
                         </div>
@@ -725,13 +725,13 @@ export function AdminView() {
       <div style={{ ...S.card, marginBottom:14 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
           <h3 style={{ fontSize:12, fontWeight:600, margin:0 }}>Sucursales</h3>
-          <button onClick={openBranchNew} style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:6, border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:4 }}>
+          <button onClick={openBranchNew} style={{ ...S.gh, padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:4 }}>
             <Ic.plus size={12}/> Nueva sucursal
           </button>
         </div>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
           {branches.map(b => (
-            <div key={b.id} style={{ background:'var(--surface-muted)', borderRadius:10, padding:12, minWidth:220, flex:'1 1 220px', position:'relative' }}>
+            <div key={b.id} style={{ background:'var(--surface-muted)', borderRadius:'var(--radius-lg)', padding:12, minWidth:220, flex:'1 1 220px', position:'relative' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8 }}>
                 <div style={{ minWidth:0 }}>
                   <div style={{ fontWeight:700, marginBottom:4 }}>{b.name}</div>
@@ -742,11 +742,11 @@ export function AdminView() {
                 </div>
                 <div style={{ display:'flex', gap:4, flexShrink:0 }}>
                   <button onClick={() => openBranchEdit(b)} title="Editar sucursal"
-                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-subtle)' }}>
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:'var(--radius-sm)', cursor:'pointer', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-subtle)' }}>
                     <Ic.edit size={12}/>
                   </button>
                   <button onClick={() => openBranchDelete(b)} title="Eliminar sucursal"
-                    style={{ padding:'4px 6px', fontSize:11, borderRadius:6, cursor:'pointer', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-disabled)' }}>
+                    style={{ padding:'4px 6px', fontSize:11, borderRadius:'var(--radius-sm)', cursor:'pointer', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-disabled)' }}>
                     <Ic.trash size={12}/>
                   </button>
                 </div>
@@ -760,7 +760,7 @@ export function AdminView() {
       <TimeOffCalendar users={users} />
 
       {/* ── DANGER ZONE ── */}
-      <div style={{ border:'2px solid #FECACA', borderRadius:12, padding:'16px 20px', marginBottom:14, background:'#FFF5F5' }}>
+      <div style={{ border:'2px solid #FECACA', borderRadius:'var(--radius-lg)', padding:'16px 20px', marginBottom:14, background:'#FFF5F5' }}>
         <div style={{ fontSize:13, fontWeight:700, color:'#DC2626', marginBottom:4 }}>Zona restringida</div>
         <p style={{ fontSize:12, color:'var(--text-subtle)', marginBottom:14 }}>Las acciones de esta sección son permanentes y no se pueden deshacer.</p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -785,7 +785,7 @@ export function AdminView() {
         <p style={{ fontSize:11, color:'var(--text-subtle)', margin:'0 0 12px' }}>Mapea nombres alternativos (como vienen en los leads) al modelo del catálogo. Ej: "R15 V4" → YZF-R15A</p>
 
         {/* Probador — valida a qué modelo resolvería un texto sin re-importar */}
-        <form onSubmit={handleAliasTest} style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap', background:'var(--surface-muted)', padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)' }}>
+        <form onSubmit={handleAliasTest} style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap', background:'var(--surface-muted)', padding:'10px 12px', borderRadius:'var(--radius-md)', border:'1px solid var(--border)' }}>
           <input value={aliasTestText} onChange={e=>setAliasTestText(e.target.value)}
             placeholder='Probar: pega el texto como viene en el lead…' style={{ ...S.inp, flex:1, minWidth:200 }}/>
           <button type="submit" disabled={aliasTesting||!aliasTestText.trim()}
@@ -793,7 +793,7 @@ export function AdminView() {
         </form>
         {aliasTestResult && (
           <div style={{
-            fontSize:12, padding:'8px 12px', borderRadius:8, marginBottom:12,
+            fontSize:12, padding:'8px 12px', borderRadius:'var(--radius-md)', marginBottom:12,
             background: aliasTestResult.matched ? '#F0FDF4' : aliasTestResult.error ? '#FEF2F2' : '#FFFBEB',
             border: `1px solid ${aliasTestResult.matched ? '#BBF7D0' : aliasTestResult.error ? '#FECACA' : '#FCD34D'}`,
             color:  aliasTestResult.matched ? '#166534' : aliasTestResult.error ? '#DC2626' : '#92400E',
@@ -827,7 +827,7 @@ export function AdminView() {
           ? <div style={{ fontSize:12,color:'var(--text-subtle)',padding:'8px 0' }}>Sin aliases configurados.</div>
           : <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
               {aliases.map(a=>(
-                <div key={a.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:'var(--surface-muted)',borderRadius:8,fontSize:12 }}>
+                <div key={a.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:'var(--surface-muted)',borderRadius:'var(--radius-md)',fontSize:12 }}>
                   <div>
                     <span style={{ fontWeight:600,color:'var(--brand)' }}>"{a.alias}"</span>
                     <span style={{ color:'var(--text-subtle)',margin:'0 6px' }}>→</span>
@@ -877,7 +877,7 @@ export function AdminView() {
       {/* ══ MODAL — EDITAR USUARIO ══ */}
       {editTarget && (
         <Modal onClose={()=>setEditTarget(null)} title={`Editar usuario`}>
-          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#F8F9FB',borderRadius:9,border:'1px solid var(--border)',marginBottom:16 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#F8F9FB',borderRadius:'var(--radius-md)',border:'1px solid var(--border)',marginBottom:16 }}>
             <div style={{ width:34,height:34,borderRadius:'50%',background:'var(--brand-soft)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--brand)',fontSize:12,fontWeight:700,flexShrink:0 }}>
               {((editTarget.first_name||'?')[0]+(editTarget.last_name||'?')[0]).toUpperCase()}
             </div>
@@ -916,7 +916,7 @@ export function AdminView() {
       {deactivateTarget && (
         <Modal onClose={() => { setDeactivateTarget(null); setDeactivateInfo(null); }} title="Desactivar usuario">
           {/* Identidad */}
-          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#FEF2F2',borderRadius:9,border:'1px solid #FECACA',marginBottom:16 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#FEF2F2',borderRadius:'var(--radius-md)',border:'1px solid #FECACA',marginBottom:16 }}>
             <div style={{ width:34,height:34,borderRadius:'50%',background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',color:'#DC2626',fontSize:12,fontWeight:700,flexShrink:0 }}>
               {((deactivateTarget.first_name||'?')[0]+(deactivateTarget.last_name||'?')[0]).toUpperCase()}
             </div>
@@ -930,7 +930,7 @@ export function AdminView() {
           {deactivateInfo?.loading
             ? <div style={{ fontSize:12,color:'var(--text-subtle)',marginBottom:14 }}>Verificando leads activos...</div>
             : deactivateInfo?.count > 0
-              ? <div style={{ padding:'10px 14px',borderRadius:9,background:'#FFFBEB',border:'1px solid #FCD34D',marginBottom:14 }}>
+              ? <div style={{ padding:'10px 14px',borderRadius:'var(--radius-md)',background:'#FFFBEB',border:'1px solid #FCD34D',marginBottom:14 }}>
                   <div style={{ fontSize:12,fontWeight:700,color:'#92400E',marginBottom:6 }}>
                     Este usuario tiene {deactivateInfo.count} lead{deactivateInfo.count!==1?'s':''} activo{deactivateInfo.count!==1?'s':''}
                   </div>
@@ -960,13 +960,13 @@ export function AdminView() {
                   </div>
                 </div>
               : deactivateInfo?.count === 0
-                ? <div style={{ padding:'8px 12px',borderRadius:8,background:'#F0FDF4',border:'1px solid #BBF7D0',fontSize:11,color:'#16A34A',marginBottom:14 }}>
+                ? <div style={{ padding:'8px 12px',borderRadius:'var(--radius-md)',background:'#F0FDF4',border:'1px solid #BBF7D0',fontSize:11,color:'#16A34A',marginBottom:14 }}>
                     Sin leads activos asignados — se puede desactivar sin impacto.
                   </div>
                 : null
           }
 
-          <div style={{ padding:'8px 12px',borderRadius:8,background:'var(--surface-muted)',border:'1px solid var(--border)',fontSize:11,color:'var(--text-subtle)',marginBottom:14 }}>
+          <div style={{ padding:'8px 12px',borderRadius:'var(--radius-md)',background:'var(--surface-muted)',border:'1px solid var(--border)',fontSize:11,color:'var(--text-subtle)',marginBottom:14 }}>
             El usuario <strong>no podrá iniciar sesión</strong> ni aparecerá en selectores de vendedores ni en la rotación de asignaciones. El historial y trazabilidad se mantienen íntegros.
           </div>
 
@@ -988,7 +988,7 @@ export function AdminView() {
       {/* ══ MODAL — ELIMINAR USUARIO ══ */}
       {deleteTarget && (
         <Modal onClose={() => { setDeleteTarget(null); setDeleteErr(''); setDeleteDetail(null); }} title="Eliminar usuario">
-          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#FEF2F2',borderRadius:9,border:'1px solid #FECACA',marginBottom:14 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:'#FEF2F2',borderRadius:'var(--radius-md)',border:'1px solid #FECACA',marginBottom:14 }}>
             <div style={{ width:34,height:34,borderRadius:'50%',background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',color:'#DC2626',fontSize:12,fontWeight:700,flexShrink:0 }}>
               {((deleteTarget.first_name||'?')[0]+(deleteTarget.last_name||'?')[0]).toUpperCase()}
             </div>
@@ -997,11 +997,11 @@ export function AdminView() {
               <div style={{ fontSize:11,color:'var(--text-disabled)' }}>{deleteTarget.email}</div>
             </div>
           </div>
-          <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:8, fontSize:11, color:'#92400E', marginBottom:14 }}>
+          <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:'var(--radius-md)', fontSize:11, color:'#92400E', marginBottom:14 }}>
             Esta acción <strong>borra al usuario definitivamente</strong>. Solo funciona si el usuario no tiene leads, ventas, recordatorios, inventario ni reasignaciones en su historial. Si tiene historial, el sistema te lo avisa y deberás usar «Desactivar».
           </div>
           {deleteDetail && (
-            <div style={{ padding:'10px 12px', background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:8, fontSize:11, color:'var(--text-body)', marginBottom:14 }}>
+            <div style={{ padding:'10px 12px', background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', fontSize:11, color:'var(--text-body)', marginBottom:14 }}>
               <div style={{ fontWeight:600, marginBottom:4 }}>Historial detectado:</div>
               {Object.entries(deleteDetail).filter(([,v]) => v > 0).map(([k,v]) => (
                 <div key={k} style={{ color:'var(--text-subtle)' }}>· {k}: {v}</div>
@@ -1047,11 +1047,11 @@ export function AdminView() {
       {/* ══ MODAL — ELIMINAR SUCURSAL ══ */}
       {branchDeleteTarget && (
         <Modal onClose={()=>{ setBranchDeleteTarget(null); setBranchDeleteErr(''); }} title="Eliminar sucursal">
-          <div style={{ padding:'10px 14px', background:'#FEF2F2', borderRadius:9, border:'1px solid #FECACA', marginBottom:14 }}>
+          <div style={{ padding:'10px 14px', background:'#FEF2F2', borderRadius:'var(--radius-md)', border:'1px solid #FECACA', marginBottom:14 }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#DC2626' }}>{branchDeleteTarget.name}</div>
             <div style={{ fontSize:11, color:'var(--text-disabled)', marginTop:2 }}>{branchDeleteTarget.code} · {branchDeleteTarget.address || '—'}</div>
           </div>
-          <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:8, fontSize:11, color:'#92400E', marginBottom:14 }}>
+          <div style={{ padding:'10px 12px', background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:'var(--radius-md)', fontSize:11, color:'#92400E', marginBottom:14 }}>
             Se eliminará definitivamente. Si la sucursal tiene usuarios, leads o inventario, el sistema bloqueará el borrado — en ese caso edítala y desactívala en su lugar.
           </div>
           <ErrorMsg msg={branchDeleteErr}/>
@@ -1074,7 +1074,7 @@ export function AdminView() {
             </div>
             <p style={{ fontWeight:600,marginBottom:4 }}>{resetInfo.name}</p>
             <p style={{ color:'var(--text-subtle)',fontSize:12,marginBottom:12 }}>Contraseña temporal generada. El usuario deberá cambiarla al ingresar.</p>
-            <div style={{ background:'var(--surface-muted)',borderRadius:10,padding:'14px 20px',marginBottom:16,fontFamily:'inherit',fontSize:18,fontWeight:700,letterSpacing:2,color:'var(--brand)' }}>
+            <div style={{ background:'var(--surface-muted)',borderRadius:'var(--radius-lg)',padding:'14px 20px',marginBottom:16,fontFamily:'inherit',fontSize:18,fontWeight:700,letterSpacing:2,color:'var(--brand)' }}>
               {resetInfo.temp}
             </div>
             <p style={{ color:'var(--text-subtle)',fontSize:11,marginBottom:16 }}>Comparte esta contraseña con el usuario de forma segura.</p>

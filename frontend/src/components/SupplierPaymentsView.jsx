@@ -66,7 +66,7 @@ function ColorChip({color}) {
   if(!color) return null;
   const hex=colorHex(color);
   const light = ['blanco','plata','plateado','celeste','amarillo'].includes(color.toLowerCase().split(' ')[0]);
-  return <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px 3px 6px',borderRadius:20,border:'1px solid var(--border)',background:'var(--surface-muted)',fontSize:11,fontWeight:600,color:'var(--text-body)',whiteSpace:'nowrap'}}>
+  return <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px 3px 6px',borderRadius:'var(--radius-xl)',border:'1px solid var(--border)',background:'var(--surface-muted)',fontSize:11,fontWeight:600,color:'var(--text-body)',whiteSpace:'nowrap'}}>
     <span style={{width:10,height:10,borderRadius:'50%',background:hex,border:light?'1px solid var(--border-strong)':'none',flexShrink:0}}/>
     {color}
   </span>;
@@ -82,7 +82,7 @@ function CatalogModelPicker({ brand, model, onSelect }) {
     if(!selBrand){setModels([]);return;}
     api.getModels({brand:selBrand}).then(r=>setModels(Array.isArray(r)?r:r.data||[])).catch(()=>{});
   },[selBrand]);
-  const sel = {height:36,borderRadius:8,border:'1px solid var(--border-strong)',background:'var(--surface-muted)',color:'var(--text-body)',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
+  const sel = {height:36,borderRadius:'var(--radius-md)',border:'1px solid var(--border-strong)',background:'var(--surface-muted)',color:'var(--text-body)',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
   return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
     <div>
       <label style={{...S.lbl,fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Marca</label>
@@ -115,7 +115,7 @@ function catalogColors(modelRow) {
 }
 function CatalogColorPicker({ modelRow, value, onChange }) {
   const opts = catalogColors(modelRow);
-  const sel = {height:36,borderRadius:8,border:'1px solid var(--border-strong)',background:'var(--surface-muted)',color:'var(--text-body)',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
+  const sel = {height:36,borderRadius:'var(--radius-md)',border:'1px solid var(--border-strong)',background:'var(--surface-muted)',color:'var(--text-body)',fontSize:12,padding:'0 10px',cursor:'pointer',fontFamily:'inherit',outline:'none',width:'100%'};
   if (opts.length === 0) {
     return (
       <input value={value||''} onChange={e=>onChange(e.target.value)}
@@ -169,13 +169,13 @@ function FileZone({ label, file, onFile, url, onUrl, accent='var(--brand)' }) {
       <div style={{ display:'flex',gap:6,marginBottom:10 }}>
         {[['upload','Subir PDF'],['url','URL Drive']].map(([m,l])=>(
           <button key={m} type="button" onClick={()=>setMode(m)}
-            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:20,cursor:'pointer',border:`1.5px solid ${mode===m?accent:'var(--border-strong)'}`,background:mode===m?accent:'var(--surface)',color:mode===m?'var(--text-on-dark)':'var(--text-subtle)' }}>{l}</button>
+            style={{ fontFamily:'inherit',fontSize:11,fontWeight:600,padding:'4px 12px',borderRadius:'var(--radius-xl)',cursor:'pointer',border:`1.5px solid ${mode===m?accent:'var(--border-strong)'}`,background:mode===m?accent:'var(--surface)',color:mode===m?'var(--text-on-dark)':'var(--text-subtle)' }}>{l}</button>
         ))}
       </div>
       {mode==='upload' ? (
         <label onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)}
           onDrop={e=>{e.preventDefault();setDrag(false);if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0])}}
-          style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'16px 12px',border:`2px dashed ${drag?accent:'var(--border-strong)'}`,borderRadius:8,cursor:'pointer' }}>
+          style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'16px 12px',border:`2px dashed ${drag?accent:'var(--border-strong)'}`,borderRadius:'var(--radius-md)',cursor:'pointer' }}>
           <Ic.file size={16} color={drag?accent:'var(--text-disabled)'}/>
           <span style={{ fontFamily:'inherit',fontSize:12,color:'var(--text-subtle)' }}>{file?<strong style={{color:'var(--text)'}}>{file.name}</strong>:'Arrastra o haz click'}</span>
           <input type="file" accept=".pdf" style={{display:'none'}} onChange={e=>{if(e.target.files[0])onFile(e.target.files[0])}}/>
@@ -262,7 +262,7 @@ function NewModal({ onClose, onCreated }) {
     <Modal onClose={onClose} title={step===1?'Nuevo pago a proveedor':'Revisar datos'} wide>
       {step===1&&(
         <div style={{display:'flex',flexDirection:'column',gap:14}}>
-          <div style={{fontSize:12,color:'var(--text-subtle)',background:'var(--surface-muted)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',fontFamily:'inherit'}}>Sube los PDF o pega los links de Google Drive.</div>
+          <div style={{fontSize:12,color:'var(--text-subtle)',background:'var(--surface-muted)',border:'1px solid var(--border)',borderRadius:'var(--radius-md)',padding:'10px 14px',fontFamily:'inherit'}}>Sube los PDF o pega los links de Google Drive.</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}}>
             <FileZone label="Factura proveedor" file={invFile} onFile={setInvFile} url={invUrl} onUrl={setInvUrl}/>
             <FileZone label="Comprobante de pago" file={recFile} onFile={setRecFile} url={recUrl} onUrl={setRecUrl} accent="#2563EB"/>
@@ -276,7 +276,7 @@ function NewModal({ onClose, onCreated }) {
       )}
       {step===2&&(
         <div style={{maxHeight:'74vh',overflowY:'auto',paddingRight:4}}>
-          {Object.keys(hl).length>0&&<div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:8,padding:'8px 14px',marginBottom:14,fontSize:11,color:'#92400E',fontFamily:'inherit'}}>Campos con * fueron extraidos. Revisa antes de guardar.</div>}
+          {Object.keys(hl).length>0&&<div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:'var(--radius-md)',padding:'8px 14px',marginBottom:14,fontSize:11,color:'#92400E',fontFamily:'inherit'}}>Campos con * fueron extraidos. Revisa antes de guardar.</div>}
           <Sec title="Factura" color="#F28100">
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:10}}>
               <F label="N° Factura" value={form.invoice_number} onChange={s('invoice_number')} half hl={!!hl.invoice_number}/>
@@ -358,7 +358,7 @@ function DetailView({ p, dv, overdue, onSaved }) {
         display:'flex', alignItems:'stretch', minHeight:120,
         background:'var(--surface)', border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
-        borderRadius:12, overflow:'hidden',
+        borderRadius:'var(--radius-lg)', overflow:'hidden',
         boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
       }}>
         <div style={{
@@ -435,7 +435,7 @@ function DetailView({ p, dv, overdue, onSaved }) {
 
       {/* Notas / Detalle — edición inline */}
       <div style={{
-        padding:'12px 14px', borderRadius:10,
+        padding:'12px 14px', borderRadius:'var(--radius-lg)',
         background:'#FFFBEB', border:'1px solid #FDE68A', borderLeft:'3px solid #D97706',
       }}>
         <div style={{
@@ -456,7 +456,7 @@ function DetailView({ p, dv, overdue, onSaved }) {
           placeholder='Ej: "Arriendo Marzo", "Cuenta de luz", "Honorarios contador"…'
           style={{
             width:'100%', resize:'vertical', fontSize:13, fontFamily:'inherit',
-            padding:'8px 10px', borderRadius:8, border:'1px solid #FDE68A',
+            padding:'8px 10px', borderRadius:'var(--radius-md)', border:'1px solid #FDE68A',
             background:'var(--surface)', color:'var(--text-body)', outline:'none',
           }}
         />
@@ -483,7 +483,7 @@ function DetailView({ p, dv, overdue, onSaved }) {
           {p.invoice_url && (
             <a href={p.invoice_url} target="_blank" rel="noreferrer"
               style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px',
-                       background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:8,
+                       background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:'var(--radius-md)',
                        textDecoration:'none', fontSize:12, fontWeight:600, color:'#C2410C', fontFamily:'inherit' }}>
               <Ic.file size={13}/> Ver factura
             </a>
@@ -491,7 +491,7 @@ function DetailView({ p, dv, overdue, onSaved }) {
           {p.receipt_url && (
             <a href={p.receipt_url} target="_blank" rel="noreferrer"
               style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px',
-                       background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8,
+                       background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:'var(--radius-md)',
                        textDecoration:'none', fontSize:12, fontWeight:600, color:'#1D4ED8', fontFamily:'inherit' }}>
               <Ic.file size={13}/> Ver comprobante
             </a>
@@ -506,14 +506,14 @@ function DetailCard({ title, accent='var(--text-body)', children }) {
   return (
     <div style={{
       background:'var(--surface)', border:'1px solid var(--border)',
-      borderRadius:12, overflow:'hidden',
+      borderRadius:'var(--radius-lg)', overflow:'hidden',
     }}>
       <div style={{
         padding:'10px 16px', background:'var(--surface-muted)',
         borderBottom:`1px solid var(--surface-sunken)`,
         display:'flex', alignItems:'center', gap:8,
       }}>
-        <span style={{ width:3, height:14, background:accent, borderRadius:2 }}/>
+        <span style={{ width:3, height:14, background:accent, borderRadius:'var(--radius-xs)' }}/>
         <span style={{ fontSize:12, fontWeight:700, color:'var(--text)', letterSpacing:'0.01em' }}>
           {title}
         </span>
@@ -618,7 +618,7 @@ function DetailModal({ payment:p0, onClose, onSaved, onDeleted, canDel, startInE
       </div>
       <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
         <Bdg l={st_badge.l} c={st_badge.c} bg={st_badge.bg}/>
-        <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',fontSize:20,lineHeight:1,borderRadius:6}}><Ic.x size={18}/></button>
+        <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:'var(--text-disabled)',fontSize:20,lineHeight:1,borderRadius:'var(--radius-sm)'}}><Ic.x size={18}/></button>
       </div>
     </div>
   );
@@ -644,7 +644,7 @@ function DetailModal({ payment:p0, onClose, onSaved, onDeleted, canDel, startInE
 
         {/* Confirmacion eliminar */}
         {cd&&(
-          <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:12,marginBottom:14}}>
+          <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'var(--radius-md)',padding:12,marginBottom:14}}>
             <div style={{fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:8}}>¿Eliminar este registro?</div>
             <div style={{display:'flex',gap:8}}>
               <Btn variant='danger' size='sm' onClick={del} disabled={deleting}>{deleting?'Eliminando...':'Eliminar'}</Btn>
@@ -720,7 +720,7 @@ function MobileCard({ p, onClick }) {
   return (
     <div onClick={onClick} style={{
       background:'var(--surface)',
-      borderRadius:14,
+      borderRadius:'var(--radius-xl)',
       border:'1px solid var(--border)',
       borderLeft:`4px solid ${st.c}`,
       padding:12,
@@ -735,7 +735,7 @@ function MobileCard({ p, onClick }) {
       <div style={{
         width:104, height:104,
         flexShrink:0,
-        borderRadius:10,
+        borderRadius:'var(--radius-lg)',
         background:'var(--surface-muted)',
         border:'1px solid var(--surface-sunken)',
         display:'flex',alignItems:'center',justifyContent:'center',
@@ -810,7 +810,7 @@ function RowCard({ p, onClick }) {
         background:'var(--surface)',
         border:'1px solid var(--border)',
         borderLeft:`4px solid ${st.c}`,
-        borderRadius:14, overflow:'hidden',
+        borderRadius:'var(--radius-xl)', overflow:'hidden',
         cursor:'pointer',
         boxShadow: hov ? '0 6px 16px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.04)',
         transform: hov ? 'translateY(-1px)' : 'translateY(0)',
@@ -832,7 +832,7 @@ function RowCard({ p, onClick }) {
           <span style={{
             position:'absolute', top:8, left:8,
             fontSize:9, fontWeight:800, color:'#92400E',
-            background:'rgba(254,243,199,0.95)', borderRadius:4, padding:'2px 7px',
+            background:'rgba(254,243,199,0.95)', borderRadius:'var(--radius-xs)', padding:'2px 7px',
             letterSpacing:'0.06em', border:'1px solid #FDE68A',
           }}>
             SIN CATÁLOGO
@@ -851,12 +851,12 @@ function RowCard({ p, onClick }) {
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
             <div style={{ fontSize:16, fontWeight:800, color:'#4F46E5', letterSpacing:'-0.2px',
                           background:'#EEF2FF', border:'1px solid #C7D2FE',
-                          padding:'2px 10px', borderRadius:8 }}>
+                          padding:'2px 10px', borderRadius:'var(--radius-md)' }}>
               #{p.invoice_number||'—'}
             </div>
             <span style={{
               fontSize:10, fontWeight:700, color:'var(--text-subtle)',
-              background:'var(--surface-muted)', padding:'2px 8px', borderRadius:20, border:'1px solid var(--border)',
+              background:'var(--surface-muted)', padding:'2px 8px', borderRadius:'var(--radius-xl)', border:'1px solid var(--border)',
             }}>
               {fd(p.invoice_date)}
             </span>
@@ -869,19 +869,19 @@ function RowCard({ p, onClick }) {
             {p.color && <ColorChip color={p.color}/>}
             {p.commercial_year && (
               <span style={{ fontSize:10, fontWeight:700, color:'#4F46E5',
-                             background:'#EEF2FF', padding:'2px 8px', borderRadius:20, border:'1px solid #C7D2FE' }}>
+                             background:'#EEF2FF', padding:'2px 8px', borderRadius:'var(--radius-xl)', border:'1px solid #C7D2FE' }}>
                 {p.commercial_year}
               </span>
             )}
             {p.chassis && (
               <span style={{ fontSize:10, fontWeight:600, color:'var(--text-subtle)',
-                             background:'var(--surface-sunken)', padding:'2px 8px', borderRadius:20 }}>
+                             background:'var(--surface-sunken)', padding:'2px 8px', borderRadius:'var(--radius-xl)' }}>
                 {p.chassis}
               </span>
             )}
             {p.motor_num && (
               <span style={{ fontSize:10, fontWeight:600, color:'var(--text-subtle)',
-                             background:'var(--surface-sunken)', padding:'2px 8px', borderRadius:20 }}>
+                             background:'var(--surface-sunken)', padding:'2px 8px', borderRadius:'var(--radius-xl)' }}>
                 {p.motor_num}
               </span>
             )}
@@ -1065,7 +1065,7 @@ export function SupplierPaymentsView({ user }) {
     color:'var(--text)',
     background:'var(--surface)',
     border:'1px solid var(--border)',
-    borderRadius:8,
+    borderRadius:'var(--radius-md)',
     fontFamily:'inherit',
     outline:'none',
     cursor:'pointer',
@@ -1093,7 +1093,7 @@ export function SupplierPaymentsView({ user }) {
 
       {/* Sync banner */}
       {syncRes&&(
-        <div style={{marginBottom:12,padding:'10px 14px',borderRadius:8,fontSize:12,fontFamily:'inherit',background:syncRes.ok?'#F0FDF4':'#FEF2F2',border:`1px solid ${syncRes.ok?'#BBF7D0':'#FECACA'}`,color:syncRes.ok?'#166534':'#991B1B',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+        <div style={{marginBottom:12,padding:'10px 14px',borderRadius:'var(--radius-md)',fontSize:12,fontFamily:'inherit',background:syncRes.ok?'#F0FDF4':'#FEF2F2',border:`1px solid ${syncRes.ok?'#BBF7D0':'#FECACA'}`,color:syncRes.ok?'#166534':'#991B1B',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
           {syncRes.ok?`Sincronización exitosa: ${syncRes.created} nuevos, ${syncRes.updated} actualizados`:syncRes.error}
           <Btn variant='ghost' onClick={()=>setSyncRes(null)} style={{marginLeft:'auto',padding:4,lineHeight:1}}><Ic.x size={14}/></Btn>
         </div>
@@ -1113,7 +1113,7 @@ export function SupplierPaymentsView({ user }) {
         ].map(k=>(
           <div key={k.label} style={{
             background:'var(--surface)', border:'1px solid var(--border)',
-            borderRadius:10, padding:'10px 16px',
+            borderRadius:'var(--radius-lg)', padding:'10px 16px',
             flex: isMobile ? '1 1 calc(50% - 5px)' : '1 1 100px',
           }}>
             <div style={{fontSize:18, fontWeight:800, color:k.color, lineHeight:1, marginBottom:3}}>
@@ -1179,13 +1179,13 @@ export function SupplierPaymentsView({ user }) {
         <div style={{
           display:'flex', flexDirection:'column', gap:10,
           background:'var(--surface)', border:'1px solid var(--border)',
-          borderRadius:12, padding:'12px 14px', marginBottom:14,
+          borderRadius:'var(--radius-lg)', padding:'12px 14px', marginBottom:14,
         }}>
           {/* Fila 1: buscador + limpiar */}
           <div style={{
             display:'flex', alignItems:'center', gap:10,
             background:'var(--surface-muted)', border:'1px solid var(--border)',
-            borderRadius:10, padding:'8px 12px',
+            borderRadius:'var(--radius-lg)', padding:'8px 12px',
           }}>
             <Ic.search size={15} color="var(--text-disabled)"/>
             <input value={q} onChange={e=>setQ(e.target.value)}
@@ -1200,7 +1200,7 @@ export function SupplierPaymentsView({ user }) {
                 style={{
                   height:28, padding:'0 12px', fontSize:12, fontWeight:600,
                   color:'var(--text-subtle)', background:'var(--surface)', border:'1px solid var(--border)',
-                  borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                  borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
                   display:'flex', alignItems:'center', gap:4,
                 }}>
                 <Ic.x size={12}/> Limpiar filtros
@@ -1257,7 +1257,7 @@ export function SupplierPaymentsView({ user }) {
                   style={{
                     padding:'0 12px', height:36, fontSize:14, fontWeight:700,
                     color:'var(--text-body)', background:'var(--surface)', border:'1px solid var(--border)',
-                    borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                    borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
                   }}>
                   {sortDir==='asc'?'↑':'↓'}
                 </button>
