@@ -239,7 +239,24 @@ router.put('/reorder', roleCheck('super_admin'), async (req, res) => {
 router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), asyncHandler(async (req, res) => {
     let { branch_id, status, color, color_hex, price, notes, brand, model, model_id, year, chassis, motor_num,
           sold_by, sold_at, sale_price, invoice_amount, sale_notes, client_name, client_rut, payment_method,
-          accessories, charge_type, charge_amt, discount_amt } = req.body;
+          accessories, charge_type, charge_amt, discount_amt, abono_lines } = req.body;
+
+    // abono_lines: array de {method, amount} para reservas con varios medios.
+    // Si viene, deriva invoice_amount (suma) y payment_method ('Mixto' si >1).
+    let abonoLinesArr = null;
+    if (abono_lines !== undefined) {
+      abonoLinesArr = Array.isArray(abono_lines)
+        ? abono_lines
+            .filter(l => l && l.method && Number(l.amount) > 0)
+            .map(l => ({ method: String(l.method).slice(0, 50), amount: parseInt(l.amount) || 0 }))
+        : null;
+      if (abonoLinesArr && abonoLinesArr.length) {
+        invoice_amount = abonoLinesArr.reduce((s, l) => s + l.amount, 0);
+        if (payment_method === undefined || payment_method == null || payment_method === '') {
+          payment_method = abonoLinesArr.length > 1 ? 'Mixto' : abonoLinesArr[0].method;
+        }
+      }
+    }
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
     if (status === 'vendida') {
@@ -324,6 +341,10 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     if (discount_amt !== undefined) {
       sets.push(`discount_amt = $${idx++}`);
       params.push(discount_amt === '' || discount_amt == null ? null : (parseInt(discount_amt) || 0));
+    }
+    if (abono_lines !== undefined) {
+      sets.push(`abono_lines = $${idx++}`);
+      params.push(abonoLinesArr && abonoLinesArr.length ? JSON.stringify(abonoLinesArr) : null);
     }
 
     if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
