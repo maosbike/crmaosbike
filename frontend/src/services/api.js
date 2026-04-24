@@ -39,11 +39,12 @@ const requestBlob = async (method, path) => {
   return res.blob();
 };
 
-const request = async (method, path, body, _retry = false) => {
+const request = async (method, path, body, _retry = false, signal = undefined) => {
   const headers = { 'Content-Type': 'application/json' };
   if (_token) headers['Authorization'] = `Bearer ${_token}`;
 
   const opts = { method, headers, credentials: 'include' };
+  if (signal) opts.signal = signal;
   if (body && !(body instanceof FormData)) opts.body = JSON.stringify(body);
   if (body instanceof FormData) {
     delete headers['Content-Type'];
@@ -51,7 +52,13 @@ const request = async (method, path, body, _retry = false) => {
     opts.body = body;
   }
 
-  const res = await fetch(`${BASE}${path}`, opts);
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, opts);
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    throw e;
+  }
 
   // Los endpoints de sesión NO deben pasar por el retry-con-refresh:
   // — /auth/login es quien crea la sesión (un 401 acá = credenciales malas, no sesión caída)
@@ -66,7 +73,7 @@ const request = async (method, path, body, _retry = false) => {
     if (!_refreshing) _refreshing = tryRefresh();
     const ok = await _refreshing;
     _refreshing = null;
-    if (ok) return request(method, path, body, true);
+    if (ok) return request(method, path, body, true, signal);
     // Refresh falló — limpiar sesión
     _token = null;
     window.location.reload();
@@ -130,7 +137,7 @@ export const api = {
   },
 
   // Catalog
-  getModels: (params) => request('GET', `/catalog/models?${new URLSearchParams(params || {})}`),
+  getModels: (params, { signal } = {}) => request('GET', `/catalog/models?${new URLSearchParams(params || {})}`, undefined, false, signal),
   getCategories: () => request('GET', '/catalog/categories'),
   renameCategory: (from, to) => request('PATCH', '/catalog/categories/rename', { from, to }),
   getBrands: () => request('GET', '/catalog/brands'),
@@ -222,7 +229,7 @@ export const api = {
   manualReassign: (data) => request('POST', '/reassignments/manual', data),
 
   // Dashboard comercial
-  getCommercialStats: () => request('GET', '/dashboard/commercial'),
+  getCommercialStats: ({ signal } = {}) => request('GET', '/dashboard/commercial', undefined, false, signal),
 
   // Reportes
   getReports: (params) => request('GET', `/reports?${new URLSearchParams(params || {})}`),
@@ -245,7 +252,7 @@ export const api = {
       return data;
     });
   },
-  getPriceBatches: () => request('GET', '/priceimport/batches'),
+  getPriceBatches: ({ signal } = {}) => request('GET', '/priceimport/batches', undefined, false, signal),
   getPriceBatch:   (id) => request('GET', `/priceimport/batches/${id}`),
   updatePriceRow:  (id, data) => request('PATCH', `/priceimport/rows/${id}`, data),
   rejectPriceRow:  (id) => request('DELETE', `/priceimport/rows/${id}`),

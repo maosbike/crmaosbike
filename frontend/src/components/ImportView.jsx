@@ -10,7 +10,7 @@ export function ImportView() {
   const [result, setResult]     = useState(null);
   const [skipDups, setSkipDups] = useState(true);
   const [filter, setFilter]     = useState('all');
-  const { data: catalogModelsRaw } = useApiQuery(() => api.getModels(), []);
+  const { data: catalogModelsRaw } = useApiQuery(({ signal }) => api.getModels(undefined, { signal }), []);
   const catalogModels = Array.isArray(catalogModelsRaw) ? catalogModelsRaw : [];
   const [dragOver, setDragOver] = useState(false);
   const [logs, setLogs]         = useState(null);

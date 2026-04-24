@@ -9,7 +9,7 @@ export function StagingImportView() {
   const [step, setStep]           = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [batchData, setBatchData] = useState(null);
-  const { data: batchesRaw, refetch: loadBatches } = useApiQuery(() => api.getPriceBatches(), []);
+  const { data: batchesRaw, refetch: loadBatches } = useApiQuery(({ signal }) => api.getPriceBatches({ signal }), []);
   const batches = Array.isArray(batchesRaw) ? batchesRaw : [];
   const [publishing, setPublishing] = useState(false);
   const [result, setResult]       = useState(null);

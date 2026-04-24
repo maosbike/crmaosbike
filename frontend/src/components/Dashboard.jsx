@@ -3,7 +3,7 @@ import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, ACTIVE_STATU
 import { useApiQuery } from '../hooks/useApiQuery.js';
 
 export function Dashboard({leads,inv,user,nav,branches=[]}){
-  const { data: stats, error: statsRawErr } = useApiQuery(() => api.getCommercialStats(), []);
+  const { data: stats, error: statsRawErr } = useApiQuery(({ signal }) => api.getCommercialStats({ signal }), []);
   const statsErr = statsRawErr ? 'No se pudieron cargar los datos.' : '';
   const isMobile = useIsMobile();
   const active=leads.filter(l=>ACTIVE_STATUSES.includes(l.status));

@@ -6,11 +6,11 @@ export function useApiQuery(fetcher, deps) {
   const [error, setError] = useState(null);
   const epochRef = useRef(0);
 
-  const run = useCallback(async (epoch) => {
+  const run = useCallback(async (epoch, signal) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetcher();
+      const result = await fetcher({ signal });
       if (epoch === epochRef.current) {
         setData(result);
       }
@@ -25,8 +25,10 @@ export function useApiQuery(fetcher, deps) {
 
   useEffect(() => {
     const epoch = ++epochRef.current;
-    run(epoch);
+    const ctrl = new AbortController();
+    run(epoch, ctrl.signal);
     return () => {
+      ctrl.abort();
       epochRef.current++;
     };
   }, deps); // eslint-disable-line react-hooks/exhaustive-deps
