@@ -161,10 +161,11 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       chassis:          sale.chassis          || '',
     });
     // Editor de accesorios — copia editable del array persistido.
+    // Usamos .name para que coincida con el input del modal de creación.
     const accs = Array.isArray(sale.accessories)
       ? sale.accessories
           .filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
-          .map(a => ({ description: a.description || a.name || '', amount: Number(a.amount) || 0 }))
+          .map(a => ({ name: a.description || a.name || '', amount: Number(a.amount) || 0 }))
       : [];
     setEditAccs(accs);
     // Editor de abonos — copia editable. Si la reserva ya tiene abono_lines
@@ -182,10 +183,12 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
   async function handleSave() {
     setSaving(true); setErr('');
     try {
-      // Limpieza: accesorios y abono_lines válidos (descartan filas vacías)
+      // Limpieza: accesorios y abono_lines válidos (descartan filas vacías).
+      // El form usa `.name` (mismo patrón que el modal de creación); el backend
+      // espera `description` en la JSONB, así que mapeamos al guardar.
       const accsClean = editAccs
-        .filter(a => a.description && Number(a.amount) > 0)
-        .map(a => ({ description: a.description.trim().slice(0, 200), amount: parseInt(a.amount) || 0 }));
+        .filter(a => (a.name || a.description) && Number(a.amount) > 0)
+        .map(a => ({ description: String(a.name || a.description).trim().slice(0, 200), amount: parseInt(a.amount) || 0 }));
       const abonoClean = editAbonoLines
         .filter(l => l.method && Number(l.amount) > 0)
         .map(l => ({ method: l.method, amount: parseInt(l.amount) || 0 }));
@@ -730,111 +733,122 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                 onChange={set('cost_price')} type="number" />
             )}
             {!isRes && (
-              <Field label="Forma de pago" value={form.payment_method} onChange={set('payment_method')}
-                opts={[{ v: '', l: '— Forma de pago —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]} />
-            )}
-            {!isRes && (
               <Field label="Tipo de entrega" value={form.sale_type}
                 onChange={set('sale_type')} opts={SALE_TYPES} />
             )}
           </div>
 
-          {/* ── Abonos múltiples — sólo en reservas (admin puede editar) ── */}
-          {isRes && (
-            <div style={{ background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:'var(--radius-md)', padding:'12px 14px' }}>
-              <div style={{ fontSize:10, fontWeight:800, color:'#92400E', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
-                Abonos recibidos
-              </div>
-              {editAbonoLines.length === 0 && (
-                <div style={{ fontSize:12, color:'#A16207', marginBottom:8 }}>
-                  Sin abonos cargados todavía.
-                </div>
-              )}
-              {editAbonoLines.map((l, i) => (
-                <div key={i} style={{ display:'flex', gap:8, marginBottom:6, alignItems:'center', flexWrap:'wrap' }}>
-                  <select
-                    value={l.method}
-                    onChange={e => setEditAbonoLines(p => p.map((x, j) => j === i ? { ...x, method: e.target.value } : x))}
-                    disabled={!isAdmin}
-                    style={{ ...S.inp, flex:'1 1 160px', fontSize:12 }}>
-                    <option value="">— Medio de pago —</option>
-                    {PAYMENT_TYPES.filter(p => p !== 'Mixto' && p !== 'Crédito Autofin').map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    value={l.amount}
-                    onChange={e => setEditAbonoLines(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
-                    disabled={!isAdmin}
-                    placeholder="Monto $"
-                    style={{ ...S.inp, flex:'1 1 130px', fontSize:12 }}
-                  />
-                  {isAdmin && (
-                    <button onClick={() => setEditAbonoLines(p => p.filter((_, j) => j !== i))}
-                      style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', fontSize:18, padding:'0 6px', lineHeight:1 }}>×</button>
-                  )}
-                </div>
-              ))}
-              {isAdmin && (
-                <button onClick={() => setEditAbonoLines(p => [...p, { method:'', amount:'' }])}
-                  style={{ ...S.btn2, fontSize:11, padding:'5px 12px', marginTop:4 }}>
-                  + Agregar abono
-                </button>
-              )}
-              {/* Totales y saldo */}
-              {(() => {
-                const totalAbono = editAbonoLines.reduce((s, l) => s + (parseInt(l.amount) || 0), 0);
-                const total = parseInt(form.sale_price || 0)
-                            + editAccs.reduce((s, a) => s + (parseInt(a.amount) || 0), 0);
-                const saldo = Math.max(0, total - totalAbono);
-                return (
-                  <div style={{ marginTop:10, paddingTop:10, borderTop:'1px dashed #FCD34D', fontSize:12, color:'#92400E', display:'flex', flexDirection:'column', gap:3 }}>
-                    <div>Total a pagar: <strong>{fmt(total)}</strong></div>
-                    <div>Total abonado: <strong>{fmt(totalAbono)}</strong></div>
-                    <div style={{ fontWeight:700 }}>Saldo: <strong style={{ color:'#B45309' }}>{fmt(saldo)}</strong></div>
+          {/* ── ACCESORIOS (sólo admin) — mismo patrón que el modal de creación ── */}
+          {isAdmin && (
+            <div>
+              <SEC>Accesorios</SEC>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                {editAccs.map((a, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input value={a.name}
+                      onChange={e => setEditAccs(p => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                      placeholder="Descripción accesorio" style={{ ...S.inp, flex: 2, fontSize: 12 }} />
+                    <input value={a.amount} type="number"
+                      onChange={e => setEditAccs(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                      placeholder="Monto $" style={{ ...S.inp, flex: 1, fontSize: 12 }} />
+                    <button onClick={() => setEditAccs(p => p.filter((_, j) => j !== i))}
+                      style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0, lineHeight: 1 }}>✕</button>
                   </div>
-                );
-              })()}
+                ))}
+                <button onClick={() => setEditAccs(p => [...p, { name: '', amount: '' }])}
+                  style={{ ...S.btn2, fontSize: 11, padding: '5px 12px', alignSelf: 'flex-start' }}>
+                  + Agregar accesorio
+                </button>
+              </div>
             </div>
           )}
 
-          {/* ── Accesorios — admin edita en cualquier modo ── */}
-          {isAdmin && (
-            <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px' }}>
-              <div style={{ fontSize:10, fontWeight:800, color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
-                Accesorios
+          {/* ── FORMA DE PAGO / ABONOS — mismo patrón que creación ── */}
+          <div>
+            <SEC>Forma de pago</SEC>
+            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 6 }}>
+              <div style={{ gridColumn: '1/-1' }}>
+                <Field label="Medio de pago" value={form.payment_method}
+                  opts={[{ v:'', l:'— Seleccionar —' }, ...PAYMENT_TYPES.map(p => ({ v: p, l: p }))]}
+                  onChange={v => {
+                    setForm(f => ({ ...f, payment_method: v }));
+                    // Al cambiar a Mixto desde otro modo, resetear a 1 línea vacía si no hay
+                    if (v === 'Mixto' && (!editAbonoLines || editAbonoLines.length === 0)) {
+                      setEditAbonoLines([{ method: '', amount: '' }]);
+                    }
+                    // Al salir de Mixto, colapsar a un solo line con el medio elegido y el abono existente
+                    if (v !== 'Mixto' && editAbonoLines.length > 1) {
+                      const total = editAbonoLines.reduce((s, l) => s + (parseInt(l.amount) || 0), 0);
+                      setEditAbonoLines(total > 0 ? [{ method: v, amount: total }] : []);
+                    }
+                  }} />
               </div>
-              {editAccs.length === 0 && (
-                <div style={{ fontSize:12, color:'var(--text-disabled)', marginBottom:8 }}>
-                  Sin accesorios incluidos en la venta.
+
+              {/* Abono simple cuando no es Mixto y es reserva */}
+              {isRes && form.payment_method !== 'Mixto' && (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <Field label="Abono recibido ($)" value={form.invoice_amount}
+                    onChange={v => {
+                      setForm(f => ({ ...f, invoice_amount: v }));
+                      // Mantener editAbonoLines coherente para guardar bien en DB
+                      if (v && parseInt(v) > 0 && form.payment_method) {
+                        setEditAbonoLines([{ method: form.payment_method, amount: v }]);
+                      } else if (!v || parseInt(v) === 0) {
+                        setEditAbonoLines([]);
+                      }
+                    }} type="number" />
+                  {form.sale_price > 0 && form.invoice_amount > 0 && (
+                    <div style={{ fontSize: 11, marginTop: 4, color: '#B45309' }}>
+                      Saldo: <strong>{fmt(Math.max(0, parseInt(form.sale_price||0) - parseInt(form.invoice_amount||0)))}</strong>
+                    </div>
+                  )}
                 </div>
               )}
-              {editAccs.map((a, i) => (
-                <div key={i} style={{ display:'flex', gap:8, marginBottom:6, alignItems:'center' }}>
-                  <input
-                    value={a.description}
-                    onChange={e => setEditAccs(p => p.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
-                    placeholder="Ej: Casco, Guantes…"
-                    style={{ ...S.inp, flex:2, fontSize:12 }}
-                  />
-                  <input
-                    type="number"
-                    value={a.amount}
-                    onChange={e => setEditAccs(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
-                    placeholder="Monto $"
-                    style={{ ...S.inp, flex:1, fontSize:12 }}
-                  />
-                  <button onClick={() => setEditAccs(p => p.filter((_, j) => j !== i))}
-                    style={{ background:'none', border:'none', color:'#DC2626', cursor:'pointer', fontSize:18, padding:'0 6px', lineHeight:1 }}>×</button>
+
+              {/* Multi-línea cuando es Mixto — igual que creación */}
+              {form.payment_method === 'Mixto' && isAdmin && (
+                <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {editAbonoLines.map((l, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <select value={l.method}
+                        onChange={e => setEditAbonoLines(p => p.map((x, j) => j === i ? { ...x, method: e.target.value } : x))}
+                        style={{ ...S.inp, flex: '2 1 120px', fontSize: 12 }}>
+                        <option value="">— Forma —</option>
+                        {PAYMENT_TYPES.filter(p => p !== 'Mixto').map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <input value={l.amount} type="number"
+                        onChange={e => setEditAbonoLines(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                        placeholder="Monto $" style={{ ...S.inp, flex: '1 1 80px', fontSize: 12 }} />
+                      {isTarjeta(l.method) && Number(l.amount) > 0 && (
+                        <span style={{ fontSize: 10, color: '#B45309', whiteSpace: 'nowrap' }}>
+                          +2% = {fmt(Math.round(Number(l.amount) * 0.02))}
+                        </span>
+                      )}
+                      {editAbonoLines.length > 1 && (
+                        <button onClick={() => setEditAbonoLines(p => p.filter((_, j) => j !== i))}
+                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', flexShrink: 0, lineHeight: 1 }}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={() => setEditAbonoLines(p => [...p, { method: '', amount: '' }])}
+                    style={{ ...S.btn2, fontSize: 11, padding: '5px 12px', alignSelf: 'flex-start' }}>
+                    + Agregar línea de pago
+                  </button>
+                  {form.sale_price > 0 && (() => {
+                    const totalAb = editAbonoLines.reduce((s, l) => s + (parseInt(l.amount) || 0), 0);
+                    const total   = parseInt(form.sale_price || 0)
+                                  + editAccs.reduce((s, a) => s + (parseInt(a.amount) || 0), 0);
+                    const saldo   = Math.max(0, total - totalAb);
+                    return (
+                      <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12 }}>
+                        Abono: <strong>{fmt(totalAb)}</strong> · Saldo: <strong style={{ color: saldo > 0 ? '#B45309' : '#065F46' }}>{fmt(saldo)}</strong>
+                      </div>
+                    );
+                  })()}
                 </div>
-              ))}
-              <button onClick={() => setEditAccs(p => [...p, { description:'', amount:'' }])}
-                style={{ ...S.btn2, fontSize:11, padding:'5px 12px', marginTop:4 }}>
-                + Agregar accesorio
-              </button>
+              )}
             </div>
-          )}
+          </div>
           {!isRes && isAdmin && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
               <input type="checkbox" checked={!!form.distributor_paid}
