@@ -1,5 +1,6 @@
 // ─── Shared UI: constants, styles, icons, utils ───────────────────────────────
 import { useState, useEffect, useContext, useRef, useCallback, createContext } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { T } from './tokens';
 
 // Breakpoints + hook — fuente única para ramas isMobile en JS.
@@ -782,5 +783,24 @@ function _ConfirmDialog({ opts, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+export function PageBoundary({ pageName, onGoHome, children }) {
+  return (
+    <ErrorBoundary
+      resetKey={pageName}
+      fallback={(err, reset) => (
+        <div style={{padding:40,textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:16}}>
+          <h2 style={{margin:0,fontSize:18,fontWeight:700,color:'var(--text)'}}>Esta sección falló</h2>
+          <p style={{margin:0,color:'var(--text-subtle)',fontSize:13,maxWidth:380}}>{String(err?.message || err)}</p>
+          <Btn variant="primary" onClick={() => { reset(); onGoHome?.(); }}>
+            Volver al inicio
+          </Btn>
+        </div>
+      )}
+    >
+      {children}
+    </ErrorBoundary>
   );
 }

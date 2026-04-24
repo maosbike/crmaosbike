@@ -16,8 +16,21 @@ export class ErrorBoundary extends Component {
     this.setState({ componentStack: info.componentStack || '' });
   }
 
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null, componentStack: '' });
+    }
+  }
+
+  _reset() {
+    this.setState({ hasError: false, error: null, componentStack: '' });
+  }
+
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback(this.state.error, () => this._reset());
+      }
       const stack = (this.state.componentStack || this.state.error?.stack || '').slice(0, 800);
       return (
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'var(--surface-muted)',color:'var(--text)',fontFamily:"'Inter',system-ui,sans-serif",gap:16,padding:24}}>
@@ -40,13 +53,13 @@ export class ErrorBoundary extends Component {
           )}
           <div style={{display:'flex',gap:10,flexWrap:'wrap',justifyContent:'center'}}>
             <button
-              onClick={() => this.setState({ hasError: false, error: null, componentStack: '' })}
+              onClick={() => this._reset()}
               style={{...S.btn, padding:'9px 20px'}}
             >
               Reintentar
             </button>
             <button
-              onClick={() => { this.setState({ hasError: false, error: null, componentStack: '' }); if (typeof window !== 'undefined' && window.history) window.history.replaceState(null, '', '/'); }}
+              onClick={() => { this._reset(); if (typeof window !== 'undefined' && window.history) window.history.replaceState(null, '', '/'); }}
               style={{...S.btn2, padding:'9px 20px'}}
             >
               Volver al inicio

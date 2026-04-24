@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, setToken, clearToken } from "./services/api";
-import { Ic, S, TY, mapTicket, ROLES, hasRole, ROLE_ADMIN_WRITE, ROLE_ADMIN_READ, TERMINAL_STATUSES } from "./ui";
+import { Ic, S, TY, mapTicket, ROLES, hasRole, ROLE_ADMIN_WRITE, ROLE_ADMIN_READ, TERMINAL_STATUSES, PageBoundary } from "./ui";
 import { OverdueLeadsModal } from "./components/OverdueLeadsModal";
 
 import { Login } from "./components/Login";
@@ -301,20 +301,20 @@ export default function App(){
           <div style={{display:'flex',alignItems:'center',gap:8}}><NotifBell nav={nav}/></div>
         </header>
         <main className="crm-scroll-area" style={{flex:1,overflow:"auto",padding:"16px 20px"}}>
-          {page==="dashboard"&&<Dashboard leads={leads} inv={inv} user={user} nav={nav} branches={realBranches}/>}
-          {page==="leads"&&<LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches} filter={leadsFilter} onFilterChange={setLeadsFilter}/>}
-          {page==="pipeline"&&<PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/>}
-          {page==="ticket"&&selLead&&<TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/>}
-          {page==="inventory"&&<InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/>}
-          {page==="sales"&&<SalesView user={user} realBranches={realBranches} prefillClient={saleClient} prefillNoteType={saleNoteType} onPrefillConsumed={()=>{setSaleClient(null);setSaleNoteType(null);}}/>}
-          {page==="supplier-payments"&&<SupplierPaymentsView user={user}/>}
-          {page==="accounting"&&hasRole(user,...ROLE_ADMIN_WRITE)&&<AccountingView user={user}/>}
-          {page==="catalog"&&<CatalogView user={user}/>}
-          {page==="reports"&&<ReportsView branches={realBranches}/>}
-          {page==="admin"&&<AdminView/>}
-          {page==="import"&&hasRole(user, ROLES.SUPER)&&<ImportView/>}
-          {page==="priceimport"&&hasRole(user, ROLES.SUPER)&&<StagingImportView/>}
-          {page==="calendar"&&<CalendarView user={user} nav={nav}/>}
+          {page==="dashboard"&&<PageBoundary pageName="dashboard" onGoHome={()=>nav('dashboard')}><Dashboard leads={leads} inv={inv} user={user} nav={nav} branches={realBranches}/></PageBoundary>}
+          {page==="leads"&&<PageBoundary pageName="leads" onGoHome={()=>nav('dashboard')}><LeadsList leads={leads} user={user} nav={nav} addLead={addLead} onRefresh={reloadLeads} realBranches={realBranches} filter={leadsFilter} onFilterChange={setLeadsFilter}/></PageBoundary>}
+          {page==="pipeline"&&<PageBoundary pageName="pipeline" onGoHome={()=>nav('dashboard')}><PipelineView leads={leads} user={user} nav={nav} updLead={updLead}/></PageBoundary>}
+          {page==="ticket"&&selLead&&<PageBoundary pageName="ticket" onGoHome={()=>nav('dashboard')}><TicketView lead={selLead} user={user} nav={nav} updLead={updLead}/></PageBoundary>}
+          {page==="inventory"&&<PageBoundary pageName="inventory" onGoHome={()=>nav('dashboard')}><InventoryView inv={inv} setInv={setInv} user={user} realBranches={realBranches} nav={nav}/></PageBoundary>}
+          {page==="sales"&&<PageBoundary pageName="sales" onGoHome={()=>nav('dashboard')}><SalesView user={user} realBranches={realBranches} prefillClient={saleClient} prefillNoteType={saleNoteType} onPrefillConsumed={()=>{setSaleClient(null);setSaleNoteType(null);}}/></PageBoundary>}
+          {page==="supplier-payments"&&<PageBoundary pageName="supplier-payments" onGoHome={()=>nav('dashboard')}><SupplierPaymentsView user={user}/></PageBoundary>}
+          {page==="accounting"&&hasRole(user,...ROLE_ADMIN_WRITE)&&<PageBoundary pageName="accounting" onGoHome={()=>nav('dashboard')}><AccountingView user={user}/></PageBoundary>}
+          {page==="catalog"&&<PageBoundary pageName="catalog" onGoHome={()=>nav('dashboard')}><CatalogView user={user}/></PageBoundary>}
+          {page==="reports"&&<PageBoundary pageName="reports" onGoHome={()=>nav('dashboard')}><ReportsView branches={realBranches}/></PageBoundary>}
+          {page==="admin"&&<PageBoundary pageName="admin" onGoHome={()=>nav('dashboard')}><AdminView/></PageBoundary>}
+          {page==="import"&&hasRole(user, ROLES.SUPER)&&<PageBoundary pageName="import" onGoHome={()=>nav('dashboard')}><ImportView/></PageBoundary>}
+          {page==="priceimport"&&hasRole(user, ROLES.SUPER)&&<PageBoundary pageName="priceimport" onGoHome={()=>nav('dashboard')}><StagingImportView/></PageBoundary>}
+          {page==="calendar"&&<PageBoundary pageName="calendar" onGoHome={()=>nav('dashboard')}><CalendarView user={user} nav={nav}/></PageBoundary>}
         </main>
       </div>
       <BottomNav page={page} nav={nav} user={user} onMenuOpen={()=>setDrawerOpen(true)}/>
