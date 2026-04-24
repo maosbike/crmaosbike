@@ -317,6 +317,59 @@ export const Stat=({icon:Ico,ic,ib,label,val,value,sub,sc,al,color,bg,border,ale
     </div>
   );
 };
+// ─── Card primitive ────────────────────────────────────────────────────────────
+// Aditivo: no migra call-sites de S.card. S.card permanece intacto.
+const CARD_PADDINGS = { none: 0, sm: T.space[3], md: T.space[4], lg: T.space[5] };
+export function Card({ padding = 'md', style, children, ...rest }) {
+  return (
+    <div style={{
+      background: T.color.surface,
+      border: `1px solid ${T.color.border}`,
+      borderRadius: T.radius.lg,
+      padding: CARD_PADDINGS[padding],
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      ...style,
+    }} {...rest}>
+      {children}
+    </div>
+  );
+}
+Card.Header = function CardHeader({ title, subtitle, actions, style }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: T.space[3],
+      padding: `${T.space[3]}px ${T.space[4]}px`,
+      borderBottom: `1px solid ${T.color.surfaceSunken}`,
+      ...style,
+    }}>
+      <div>
+        <div style={{ fontSize: T.fs.base, fontWeight: T.fw.bold, color: T.color.text }}>{title}</div>
+        {subtitle && <div style={{ fontSize: T.fs.sm, color: T.color.textSubtle, marginTop: 2 }}>{subtitle}</div>}
+      </div>
+      {actions && <div style={{ display: 'flex', gap: T.space[2] }}>{actions}</div>}
+    </div>
+  );
+};
+Card.Body = function CardBody({ padding = 'md', style, children }) {
+  return (
+    <div style={{ padding: CARD_PADDINGS[padding], ...style }}>{children}</div>
+  );
+};
+Card.Actions = function CardActions({ style, children }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'flex-end', gap: T.space[2],
+      padding: `${T.space[3]}px ${T.space[4]}px`,
+      borderTop: `1px solid ${T.color.surfaceSunken}`,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+};
+// ───────────────────────────────────────────────────────────────────────────────
+
 export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>(
   <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
     <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'var(--surface)',borderRadius:'var(--radius-xl)',width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
