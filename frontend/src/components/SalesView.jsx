@@ -1363,10 +1363,31 @@ async function openNote(data, type) {
   }
 
   // ── OBSERVACIONES ──
+  // sale_notes guarda 'Tel: X | Email: X | Dir: X | Autofin: X | <user>'.
+  // Esos prefijos ya se muestran arriba en CLIENTE / Autofin — acá sólo va
+  // la nota libre del usuario. Si todo sale_notes son prefijos, no imprime
+  // nada y evita el "Obs.: cliente reserva modelo, parte en efectivo..."
+  // cortado al pie del documento.
   if (data.sale_notes) {
-    doc.setFontSize(8); doc.setTextColor(...gray); doc.setFont('helvetica', 'italic');
-    doc.text(`Obs.: ${data.sale_notes}`, M, y);
-    y += 7;
+    const cleanNotes = String(data.sale_notes)
+      .split('|')
+      .map(s => s.trim())
+      .filter(p =>
+        p &&
+        !/^Tel(?:éfono|efono)?\s*:/i.test(p) &&
+        !/^Email\s*:/i.test(p) &&
+        !/^Dir(?:ección|eccion)?\s*:/i.test(p) &&
+        !/^Autofin\s*:/i.test(p) &&
+        !/^Empresa\s*:/i.test(p)
+      )
+      .join(' · ');
+    if (cleanNotes) {
+      doc.setFontSize(8); doc.setTextColor(...gray); doc.setFont('helvetica', 'italic');
+      // wrap automático para que no se corte si la nota es larga
+      const wrapped = doc.splitTextToSize(`Obs.: ${cleanNotes}`, W - 2 * M);
+      doc.text(wrapped, M, y);
+      y += wrapped.length * 4 + 3;
+    }
   }
 
   // ── CONDICIONES ──
