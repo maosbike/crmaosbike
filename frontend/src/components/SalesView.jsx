@@ -1986,12 +1986,17 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     </div>
 
                     <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <Field label="Pie inicial (%)" value={finPct} type="number"
+                      <Field label="Pie inicial (% de la moto)" value={finPct} type="number"
                         onChange={v => {
                           setFinPct(v);
                           const pct = Number(v);
-                          if (totals.grandTotal > 0 && !isNaN(pct) && v !== '') {
-                            setFinAmt(String(Math.round(totals.grandTotal * pct / 100)));
+                          // El pie de Autofin se calcula SÓLO sobre el precio de la
+                          // moto (motoAmt). La inscripción/documentación y los
+                          // accesorios el cliente los paga aparte en sucursal y NO
+                          // entran ni en el % ni en el saldo a financiar.
+                          const motoAmt = Number(form.sale_price) || 0;
+                          if (motoAmt > 0 && !isNaN(pct) && v !== '') {
+                            setFinAmt(String(Math.round(motoAmt * pct / 100)));
                           } else if (v === '') {
                             setFinAmt('');
                           }
@@ -2000,8 +2005,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                         onChange={v => {
                           setFinAmt(v);
                           const amt = Number(v);
-                          if (totals.grandTotal > 0 && !isNaN(amt) && v !== '') {
-                            setFinPct(String(Math.round(amt / totals.grandTotal * 1000) / 10));
+                          const motoAmt = Number(form.sale_price) || 0;
+                          if (motoAmt > 0 && !isNaN(amt) && v !== '') {
+                            setFinPct(String(Math.round(amt / motoAmt * 1000) / 10));
                           } else if (v === '') {
                             setFinPct('');
                           }
