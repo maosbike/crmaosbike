@@ -102,6 +102,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
 
   const [editing,           setEditing]           = useState(false);
   const [showEditModal,     setShowEditModal]     = useState(false);
+  const [showLinkInvoice,   setShowLinkInvoice]   = useState(false);
   const [form,              setForm]              = useState({});
   const [saving,            setSaving]            = useState(false);
   const [converting,        setConverting]        = useState(false);
@@ -711,6 +712,13 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
               {isRes ? 'Editar reserva' : (isAdmin ? 'Editar venta' : 'Editar seguimiento')}
             </button>
           )}
+          {/* Vincular a factura existente — sólo admin, útil para backfill
+              de ventas viejas con su DTE en contabilidad. */}
+          {isAdmin && !isRes && (
+            <button onClick={() => setShowLinkInvoice(true)} style={{ ...S.btn2, flex: 1 }}>
+              Vincular factura
+            </button>
+          )}
           {/* Convertir a venta (solo reservas saldadas o cualquiera) */}
           {isRes && canEdit && (
             <button onClick={() => setShowConfirmConvert(true)} disabled={converting}
@@ -945,6 +953,111 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           onCreated={() => { onSaved(); setShowEditModal(false); }}
         />
       )}
+      {showLinkInvoice && (
+        <LinkInvoiceModal
+          sale={sale}
+          onClose={() => setShowLinkInvoice(false)}
+          onLinked={() => { onSaved(); setShowLinkInvoice(false); }}
+        />
+      )}
+    </Modal>
+  );
+}
+
+// ─── Modal: vincular venta con una factura sin vincular ──────────────────────
+// Para backfill de ventas que ocurrieron antes del CRM y cuya factura ya está
+// en Contabilidad pero el sistema no las matcheó automáticamente (chasis vacío,
+// RUT distinto, etc.). El admin elige a mano de una lista de invoices con
+// link_status='sin_vincular'.
+function LinkInvoiceModal({ sale, onClose, onLinked }) {
+  const toast = useToast();
+  const [q, setQ]         = useState(sale.client_rut || '');
+  const [list, setList]   = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]     = useState('');
+  const [linking, setLinking] = useState(null);
+
+  useEffect(() => {
+    setLoading(true); setErr('');
+    api.getAccounting({ link_status: 'sin_vincular', q, limit: 30 })
+      .then(r => setList(Array.isArray(r) ? r : (r?.data || [])))
+      .catch(e => setErr(e.message))
+      .finally(() => setLoading(false));
+  }, [q]);
+
+  async function link(inv) {
+    setLinking(inv.id); setErr('');
+    try {
+      // Si la venta vive en inventory (no es nota suelta) → invoice.inventory_id.
+      // Si es sales_notes → invoice.sale_note_id.
+      const payload = sale.is_note_only
+        ? { sale_note_id: sale.id, link_status: 'vinculada' }
+        : { inventory_id: sale.id, link_status: 'vinculada' };
+      await api.patchAccounting(inv.id, payload);
+      toast.success(`Factura Nº ${inv.folio || inv.id} vinculada`);
+      onLinked();
+    } catch (e) {
+      setErr(e.message || 'Error al vincular');
+    } finally { setLinking(null); }
+  }
+
+  return (
+    <Modal onClose={onClose} title="Vincular factura existente" wide>
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        <div style={{ fontSize:12, color:'var(--text-subtle)', lineHeight:1.45 }}>
+          Buscá entre las facturas <strong>sin vincular</strong> de Contabilidad
+          y elegí cuál corresponde a esta venta. Por defecto filtramos por el
+          RUT del cliente; podés cambiar el filtro.
+        </div>
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Folio, RUT, cliente, chasis…"
+          style={{ ...S.inp, width:'100%', height:36, fontSize:13 }}
+        />
+        {err && <ErrorMsg msg={err} />}
+        {loading && <div style={{ fontSize:12, color:'var(--text-disabled)' }}>Cargando…</div>}
+        {!loading && list.length === 0 && (
+          <div style={{ fontSize:12, color:'var(--text-disabled)', padding:'18px 0', textAlign:'center' }}>
+            No hay facturas sin vincular que coincidan con la búsqueda.
+          </div>
+        )}
+        {!loading && list.length > 0 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:'45vh', overflowY:'auto' }}>
+            {list.map(inv => (
+              <button key={inv.id}
+                onClick={() => link(inv)}
+                disabled={!!linking}
+                style={{
+                  display:'grid', gridTemplateColumns:'auto 1fr auto', gap:10, alignItems:'center',
+                  padding:'10px 12px', borderRadius:'var(--radius-md)',
+                  border:'1px solid var(--border)', background:'var(--surface)',
+                  cursor: linking ? 'wait' : 'pointer', textAlign:'left', fontFamily:'inherit',
+                  opacity: linking && linking !== inv.id ? 0.5 : 1,
+                }}>
+                <span style={{ fontSize:11, fontWeight:800, color:'var(--brand)', background:'rgba(242,129,0,0.10)', padding:'3px 8px', borderRadius:'var(--radius-sm)' }}>
+                  #{inv.folio || '—'}
+                </span>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {inv.cliente_nombre || '—'}
+                  </div>
+                  <div style={{ fontSize:11, color:'var(--text-subtle)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {inv.rut_cliente || '—'} · {inv.brand || ''} {inv.model || ''}{inv.chassis ? ` · ${inv.chassis}` : ''}
+                  </div>
+                </div>
+                <div style={{ textAlign:'right', flexShrink:0 }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:'var(--text)' }}>{fmt(inv.total)}</div>
+                  <div style={{ fontSize:10, color:'var(--text-disabled)' }}>{fD(inv.fecha_emision)}</div>
+                  {linking === inv.id && (
+                    <div style={{ fontSize:10, color:'var(--brand)', fontWeight:700, marginTop:2 }}>Vinculando…</div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </Modal>
   );
 }
