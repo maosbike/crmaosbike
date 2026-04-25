@@ -427,78 +427,125 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       )}
 
       {/* ── Info: Cliente + Operación en cards paralelas ── */}
-      <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        {/* Cliente */}
-        <div style={{
-          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 'var(--radius-lg)',
-          padding: '14px 16px',
-        }}>
-          <div style={{
-            fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)',
-            textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10,
-          }}>
-            Cliente
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              ['Nombre', sale.client_name || '—'],
-              ['RUT',    sale.client_rut  || '—'],
-              ...(sale.ticket_num ? [['Ticket', `#${sale.ticket_num}`]] : []),
-            ].map(([label, val]) => (
-              <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--text-disabled)', fontSize: 11, minWidth: 60, flexShrink: 0 }}>{label}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word' }}>{val}</span>
+      {(() => {
+        // Parsear contacto del cliente que vive serializado dentro de sale_notes
+        // ("Tel: ... | Email: ... | Dir: addr, comuna | <user notes>"). Lo que
+        // sobre va al bloque Notas como nota libre del vendedor.
+        const parsed = (() => {
+          const out = { phone:'', email:'', address:'', commune:'', clean:'' };
+          if (!sale.sale_notes) return out;
+          const extras = [];
+          String(sale.sale_notes).split('|').map(s => s.trim()).filter(Boolean).forEach(p => {
+            const mTel  = p.match(/^Tel(?:éfono|efono)?\s*:\s*(.+)$/i);
+            const mMail = p.match(/^Email\s*:\s*(.+)$/i);
+            const mDir  = p.match(/^Dir(?:ección|eccion)?\s*:\s*(.+)$/i);
+            if (mTel)        out.phone = mTel[1].trim();
+            else if (mMail)  out.email = mMail[1].trim();
+            else if (mDir) {
+              const dir = mDir[1].trim();
+              const lc  = dir.lastIndexOf(',');
+              if (lc > 0) { out.address = dir.slice(0, lc).trim(); out.commune = dir.slice(lc + 1).trim(); }
+              else        { out.address = dir; }
+            }
+            else if (/^Autofin\s*:/i.test(p) || /^Empresa\s*:/i.test(p)) { /* skip */ }
+            else extras.push(p);
+          });
+          out.clean = extras.join(' · ');
+          return out;
+        })();
+        const dir = parsed.address
+          ? parsed.address + (parsed.commune ? ', ' + parsed.commune : '')
+          : '';
+        const clientRows = [
+          ['Nombre', sale.client_name || '—'],
+          ['RUT',    sale.client_rut  || '—'],
+          ...(parsed.phone   ? [['Teléfono', parsed.phone]]   : []),
+          ...(parsed.email   ? [['Correo',   parsed.email]]   : []),
+          ...(dir            ? [['Dirección', dir]]           : []),
+          ...(sale.ticket_num ? [['Ticket', `#${sale.ticket_num}`]] : []),
+        ];
+        return (
+          <>
+            <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              {/* Cliente */}
+              <div style={{
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+                padding: '14px 16px',
+              }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)',
+                  textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10,
+                }}>
+                  Cliente
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {clientRows.map(([label, val]) => (
+                    <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                      <span style={{ color: 'var(--text-disabled)', fontSize: 11, minWidth: 64, flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word' }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Operación */}
-        <div style={{
-          background: 'var(--surface)', border: '1px solid #EAECEF', borderRadius: 'var(--radius-lg)',
-          padding: '14px 16px',
-        }}>
-          <div style={{
-            fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)',
-            textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10,
-          }}>
-            Operación
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              ['Vendedor',   sellerName],
-              ['Sucursal',   sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega' : (sale.branch_name || '—')],
-              ['Forma pago', sale.payment_method || '—'],
-              ['Modalidad',  (() => {
-                const t = sale.charge_type || sale.sale_type || (sale.status === 'reservada' ? null : 'inscripcion');
-                return SALE_TYPES.find(s => s.v === t)?.l
-                    || (t === 'inscripcion' ? 'Inscripción vehicular'
-                      : t === 'transferencia' ? 'Transferencia vehicular'
-                      : t === 'completa' ? 'Documentación completa'
-                      : '—');
-              })()],
-              ...(isAdmin && sale.cost_price > 0 ? [['Precio lista', fmt(sale.price)]] : []),
-            ].map(([label, val]) => (
-              <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                <span style={{ color: 'var(--text-disabled)', fontSize: 11, minWidth: 72, flexShrink: 0 }}>{label}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{val}</span>
+              {/* Operación */}
+              <div style={{
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+                padding: '14px 16px',
+              }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)',
+                  textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10,
+                }}>
+                  Operación
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    ['Vendedor',   sellerName],
+                    ['Sucursal',   sale.added_as_sold ? (sale.branch_name || '—') + ' · Bodega' : (sale.branch_name || '—')],
+                    ['Forma pago', sale.payment_method || '—'],
+                    ['Modalidad',  (() => {
+                      const t = sale.charge_type || sale.sale_type || (sale.status === 'reservada' ? null : 'inscripcion');
+                      return SALE_TYPES.find(s => s.v === t)?.l
+                          || (t === 'inscripcion' ? 'Inscripción vehicular'
+                            : t === 'transferencia' ? 'Transferencia vehicular'
+                            : t === 'completa' ? 'Documentación completa'
+                            : '—');
+                    })()],
+                    ...(isAdmin && sale.cost_price > 0 ? [['Precio lista', fmt(sale.price)]] : []),
+                  ].map(([label, val]) => (
+                    <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                      <span style={{ color: 'var(--text-disabled)', fontSize: 11, minWidth: 72, flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
+            </div>
 
-      {sale.sale_notes && (
-        <div style={{
-          background: '#FFFBEB', borderRadius: 'var(--radius-lg)', padding: '12px 14px', marginBottom: 16,
-          fontSize: 12, color: '#713F12', border: '1px solid #FEF3C7', borderLeft: '3px solid #CA8A04',
-          whiteSpace: 'pre-wrap',
-        }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#A16207', textTransform: 'uppercase',
-                        letterSpacing: '0.08em', marginBottom: 4 }}>Notas</div>
-          {sale.sale_notes}
-        </div>
-      )}
+            {parsed.clean && (
+              <div style={{
+                background: 'var(--surface-muted)',
+                border: '1px solid var(--border)',
+                borderLeft: '3px solid var(--brand)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '12px 14px',
+                marginBottom: 16,
+                fontSize: 13,
+                color: 'var(--text-body)',
+                lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
+              }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: 'var(--text-disabled)',
+                  textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4,
+                }}>Notas</div>
+                {parsed.clean}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* ── Desglose de la venta (siempre visible) ── */}
       {(() => {
