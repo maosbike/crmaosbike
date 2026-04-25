@@ -1068,8 +1068,14 @@ function LinkInvoiceModal({ sale, onClose, onLinked }) {
       //    paso que faltaba: el link se hacía pero la venta no recibía el
       //    PDF de factura cliente, ni el monto, ni el cliente cuando estaba
       //    vacío. Sólo pisamos campos vacíos para no destruir data manual.
+      // Para el PDF preferimos el link de Drive (drive_file_id) por sobre el
+      // pdf_url de Cloudinary — Cloudinary sirve los PDFs como 'raw' sin
+      // extensión y el browser muestra texto basura. Drive abre el viewer.
+      const facturaUrl = inv.drive_file_id
+        ? `https://drive.google.com/file/d/${inv.drive_file_id}/view`
+        : inv.pdf_url;
       const salePatch = { is_note_only: !!sale.is_note_only };
-      if (inv.pdf_url)                                 salePatch.doc_factura_cli = inv.pdf_url;
+      if (facturaUrl)                                  salePatch.doc_factura_cli = facturaUrl;
       if (inv.cliente_nombre && !sale.client_name)     salePatch.client_name     = inv.cliente_nombre;
       if (inv.rut_cliente    && !sale.client_rut)      salePatch.client_rut      = inv.rut_cliente;
       if (Number(inv.total) > 0 && !Number(sale.sale_price)) salePatch.sale_price = parseInt(inv.total);

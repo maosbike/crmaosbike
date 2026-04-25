@@ -948,6 +948,13 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
     }
   }
 
+  // URL del PDF para guardar en doc_factura_cli — preferir Drive viewer
+  // por sobre Cloudinary raw (que no tiene extensión .pdf y el browser
+  // muestra texto basura).
+  const facturaPdfUrl = inv.drive_file_id
+    ? `https://drive.google.com/file/d/${inv.drive_file_id}/view`
+    : (inv.pdf_url || null);
+
   // Resolver model_id del catálogo a partir de brand/model del invoice (best effort).
   // Si no matchea, queda null — no es bloqueante.
   let resolvedModelId = inv.model_id || null;
@@ -992,7 +999,7 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
           inv.cliente_nombre || null,
           inv.rut_cliente    || null,
           chType,
-          inv.pdf_url || null,
+          facturaPdfUrl,
           branch_id,
           matchedInvUnit.id,
         ]
@@ -1036,7 +1043,7 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
           inv.cliente_nombre || null,
           inv.rut_cliente    || null,
           resolvedModelId,
-          inv.pdf_url || null,
+          facturaPdfUrl,
           matchedSaleNote.id,
         ]
       );
@@ -1080,7 +1087,7 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
           req.user.id,
           resolvedModelId,
           chType,
-          inv.pdf_url || null,
+          facturaPdfUrl,
         ]
       );
       sale = saleRows[0];
