@@ -34,11 +34,13 @@ app.use(helmet({
 const PORT = process.env.PORT || 4000;
 
 // ── Rate limiting global ───────────────────────────────────────────────────
-// 300 req / 15 min por IP — razonable para uso normal del CRM,
-// protege contra scraping y abuso básico.
+// 2000 req / 15 min por IP — uso normal del CRM en sesión de trabajo
+// (admin filtrando ventas, abriendo fichas, vinculando facturas) supera
+// fácilmente las 300 req/15min del límite anterior. Sigue protegiendo
+// contra scraping/abuso pero no estrangula al usuario legítimo.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Demasiadas solicitudes, intenta en unos minutos' },
