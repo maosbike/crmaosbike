@@ -1782,7 +1782,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   );
   const [chargeType, setChargeType]= useState(() => {
     const t = editSale?.charge_type || editSale?.sale_type;
-    return ['completa','transferencia','inscripcion'].includes(t) ? t : 'inscripcion';
+    return ['completa','transferencia','inscripcion','sin_detalle'].includes(t) ? t : 'inscripcion';
   });
 
   // Titular del vehículo
@@ -2612,7 +2612,7 @@ async function openNoteFromSale(s) {
     sale_price: s.sale_price, abono: s.invoice_amount||0,
     accessories: loadedAccessories, discount: loadedDiscountPct,
     payMode: s.payment_method||'', payLines:[],
-    chargeType: ['completa','transferencia','inscripcion'].includes(s.charge_type || s.sale_type)
+    chargeType: ['completa','transferencia','inscripcion','sin_detalle'].includes(s.charge_type || s.sale_type)
       ? (s.charge_type || s.sale_type)
       : 'inscripcion',
     sale_notes: s.sale_notes, titularSame:true, titular:null,
