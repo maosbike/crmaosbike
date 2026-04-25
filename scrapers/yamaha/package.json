@@ -1,0 +1,20 @@
+{
+  "name": "yamaha-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Worker que descarga leads de YamaImport (Yamaha Chile) y los importa al CRM cada cron tick.",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --env-file=.env src/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "form-data": "^4.0.1",
+    "playwright": "^1.59.1",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
