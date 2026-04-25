@@ -695,8 +695,10 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
            FROM moto_models
           WHERE active = true
             AND i.brand IS NOT NULL AND i.model IS NOT NULL
-            AND LOWER(brand) = LOWER(i.brand)
-            AND LOWER(model) = LOWER(i.model)
+            AND UPPER(REGEXP_REPLACE(brand, '[\\s\\-\\.]', '', 'g'))
+              = UPPER(REGEXP_REPLACE(i.brand, '[\\s\\-\\.]', '', 'g'))
+            AND UPPER(REGEXP_REPLACE(model, '[\\s\\-\\.]', '', 'g'))
+              = UPPER(REGEXP_REPLACE(i.model, '[\\s\\-\\.]', '', 'g'))
             AND (i.commercial_year IS NULL OR year = i.commercial_year OR year IS NULL)
           ORDER BY CASE WHEN year = i.commercial_year THEN 0 ELSE 1 END
           LIMIT 1
@@ -739,8 +741,10 @@ router.get('/:id', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
            FROM moto_models
           WHERE active = true
             AND i.brand IS NOT NULL AND i.model IS NOT NULL
-            AND LOWER(brand) = LOWER(i.brand)
-            AND LOWER(model) = LOWER(i.model)
+            AND UPPER(REGEXP_REPLACE(brand, '[\\s\\-\\.]', '', 'g'))
+              = UPPER(REGEXP_REPLACE(i.brand, '[\\s\\-\\.]', '', 'g'))
+            AND UPPER(REGEXP_REPLACE(model, '[\\s\\-\\.]', '', 'g'))
+              = UPPER(REGEXP_REPLACE(i.model, '[\\s\\-\\.]', '', 'g'))
             AND (i.commercial_year IS NULL OR year = i.commercial_year OR year IS NULL)
           ORDER BY CASE WHEN year = i.commercial_year THEN 0 ELSE 1 END
           LIMIT 1
