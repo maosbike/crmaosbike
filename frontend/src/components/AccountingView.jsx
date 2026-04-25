@@ -1104,14 +1104,37 @@ export function AccountingView() {
           onChange={e => { setQ(e.target.value); setPage(1); }}
           style={{ ...S.inp, flex: 1, minWidth: 180, height: 36, fontSize: 13 }}
         />
-        <select value={linkStatus} onChange={e => { setLinkStatus(e.target.value); setPage(1); }}
-          style={{ height: 36, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', background: 'var(--surface-muted)',
-            color: 'var(--text-body)', fontSize: 13, padding: '0 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
-          <option value="">Todos</option>
-          <option value="vinculada">Vinculadas</option>
-          <option value="revisar">Revisar</option>
-          <option value="sin_vincular">Sin vincular</option>
-        </select>
+        {/* Pills de estado de vinculación — colores idénticos al chip de la
+            tarjeta para reconocimiento visual instantáneo */}
+        {(() => {
+          const opts = [
+            { v: '',             l: 'Todos',         c: 'var(--text)',     bg: 'var(--surface-muted)' },
+            { v: 'vinculada',    l: 'Vinculadas',    c: '#15803D',        bg: 'rgba(21,128,61,0.10)' },
+            { v: 'revisar',      l: 'Revisar',       c: '#D97706',        bg: 'rgba(217,119,6,0.10)' },
+            { v: 'sin_vincular', l: 'Sin vincular',  c: 'var(--text-subtle)', bg: 'rgba(107,114,128,0.10)' },
+          ];
+          return (
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+              {opts.map(o => {
+                const active = linkStatus === o.v;
+                return (
+                  <button key={o.v || 'all'}
+                    onClick={() => { setLinkStatus(o.v); setPage(1); }}
+                    style={{
+                      height:32, padding:'0 12px', borderRadius:'var(--radius-xl)',
+                      background: active ? o.c : o.bg,
+                      color:      active ? '#FFFFFF' : o.c,
+                      border:     `1px solid ${active ? o.c : 'transparent'}`,
+                      fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                      transition:'all 0.12s',
+                    }}>
+                    {o.l}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
         <span style={{ fontSize: 12, color: 'var(--text-disabled)' }}>
           {loading ? '...' : `${total} ${total === 1 ? 'documento' : 'documentos'}`}
         </span>
