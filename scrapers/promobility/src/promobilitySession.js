@@ -7,9 +7,17 @@
 //      el date picker).
 //   4. Click botón "Excel" → captura el download.
 
-import { chromium } from 'playwright';
+import { chromium as basePlaywrightChromium } from 'playwright';
+import { chromium as extraChromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import path from 'node:path';
 import os from 'node:os';
+
+// Stealth plugin oficial — oculta ~30 banderas de automation que Cloudflare
+// Turnstile inspecciona. Mucho más efectivo que el stealth manual.
+const stealth = StealthPlugin();
+extraChromium.use(stealth);
+const chromium = extraChromium;
 
 const BASE = 'https://track.promobility.cl';
 const NAV_TIMEOUT = 30_000;
@@ -64,42 +72,78 @@ async function applyStealth(context) {
   });
 }
 
-// Resuelve el Cloudflare Turnstile (checkbox).
-// La idea: el iframe del widget tiene un checkbox que cuando se clickea,
-// dispara la verificación passiva. Si pasamos las heurísticas (stealth bien),
-// se valida solo en 1-3 segundos.
+// Resuelve el Cloudflare Turnstile.
+// Estrategia:
+//   1. Esperar a que el iframe del widget cargue.
+//   2. Esperar a que Turnstile valide pasivamente (con stealth fuerte
+//      a veces auto-aprueba sin necesidad de click).
+//   3. Si tras X segundos no se validó, intentar click manual al checkbox.
+//   4. Esperar el token cf-turnstile-response.
 async function solveTurnstile(page) {
   console.log('[promobility] esperando widget Turnstile…');
 
-  // Buscar el iframe del Turnstile (URL contiene challenges.cloudflare.com).
-  const turnstileFrame = page.frameLocator('iframe[src*="challenges.cloudflare.com"]').first();
+  // Espera a que el iframe del widget esté en el DOM.
+  await page.waitForSelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]', {
+    timeout: 15_000,
+  }).catch(() => {
+    console.log('[promobility] no se detectó iframe Turnstile (puede ser invisible)');
+  });
 
-  // Esperar a que el checkbox aparezca dentro del iframe.
-  const checkbox = turnstileFrame.locator('input[type="checkbox"]');
+  // Damos hasta CAPTCHA_TIMEOUT para que el token se setee.
+  // Si stealth funciona, Turnstile valida automático en 1-5 seg sin click.
+  console.log('[promobility] esperando validación pasiva…');
+  let validated = false;
   try {
-    await checkbox.waitFor({ state: 'visible', timeout: 10_000 });
+    await page.waitForFunction(
+      () => {
+        const tokenInput = document.querySelector(
+          'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]',
+        );
+        return tokenInput && tokenInput.value && tokenInput.value.length > 10;
+      },
+      { timeout: 8_000 },
+    );
+    validated = true;
+    console.log('[promobility] Turnstile validado pasivamente ✓');
   } catch {
-    // Si no aparece checkbox visible, capaz Turnstile validó automático en background.
-    console.log('[promobility] no se encontró checkbox visible — Turnstile pudo haber pasado solo');
-    return;
+    // Pasiva no funcionó — intentamos click manual al checkbox.
+    console.log('[promobility] pasiva no, intentando click manual al checkbox…');
   }
 
-  console.log('[promobility] click checkbox Turnstile');
-  await checkbox.click({ force: true });
+  if (!validated) {
+    // Intentar todos los iframes que puedan ser del widget.
+    const frames = page.frames();
+    for (const f of frames) {
+      const url = f.url();
+      if (!url.includes('challenges.cloudflare.com') && !url.includes('turnstile')) continue;
+      try {
+        const checkbox = f.locator('input[type="checkbox"]');
+        await checkbox.waitFor({ state: 'visible', timeout: 5_000 });
+        await checkbox.click({ force: true });
+        console.log('[promobility] click checkbox aplicado');
+        break;
+      } catch {
+        // probar siguiente frame
+      }
+    }
 
-  // Esperar a que el token se setee — Turnstile crea un input oculto
-  // <input name="cf-turnstile-response"> con el token cuando pasa.
-  console.log('[promobility] esperando validación…');
-  await page.waitForFunction(
-    () => {
-      const tokenInput = document.querySelector('input[name="cf-turnstile-response"]');
-      return tokenInput && tokenInput.value && tokenInput.value.length > 10;
-    },
-    { timeout: CAPTCHA_TIMEOUT },
-  ).catch(() => {
-    throw new Error('Cloudflare Turnstile no validó dentro del timeout. Probable detección anti-bot.');
-  });
-  console.log('[promobility] Turnstile validado ✓');
+    // Esperar token tras el click.
+    await page.waitForFunction(
+      () => {
+        const tokenInput = document.querySelector(
+          'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]',
+        );
+        return tokenInput && tokenInput.value && tokenInput.value.length > 10;
+      },
+      { timeout: CAPTCHA_TIMEOUT },
+    ).catch(() => {
+      throw new Error(
+        'Cloudflare Turnstile no validó. Probable detección anti-bot persistente. ' +
+        'Opciones: subir stealth aún más o integrar 2Captcha.',
+      );
+    });
+    console.log('[promobility] Turnstile validado tras click ✓');
+  }
 }
 
 export async function downloadPromobilityLeads({ user, pass, desde, hasta }) {
