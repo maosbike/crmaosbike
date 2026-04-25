@@ -1335,6 +1335,37 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   const [savedDoc,   setSavedDoc] = useState(null);
   // Vendedor: pre-fill sold_by con su propio id.
   // Si viene un `initial` (cliente desde un lead), lo fusionamos sobre el formulario vacío.
+  // Cuando es edición, descomponemos el sale_notes que guardamos como
+  // "Tel: X | Email: X | Dir: X, Comuna | Autofin: ... | <notas usuario>"
+  // para que cada campo del form (teléfono, email, dirección, comuna, sale_notes)
+  // vuelva a tener su valor original — sin esto, esos inputs salían vacíos y la
+  // nota cruda terminaba en Observaciones.
+  const editClientParsed = (() => {
+    if (!editSale?.sale_notes) return { phone:'', email:'', address:'', commune:'', clean:'' };
+    const parts = String(editSale.sale_notes).split('|').map(s => s.trim()).filter(Boolean);
+    const out = { phone:'', email:'', address:'', commune:'', extras:[] };
+    for (const p of parts) {
+      const mTel  = p.match(/^Tel(?:éfono|efono)?\s*:\s*(.+)$/i);
+      const mMail = p.match(/^Email\s*:\s*(.+)$/i);
+      const mDir  = p.match(/^Dir(?:ección|eccion)?\s*:\s*(.+)$/i);
+      if (mTel)        out.phone = mTel[1].trim();
+      else if (mMail)  out.email = mMail[1].trim();
+      else if (mDir) {
+        const dir = mDir[1].trim();
+        const lastComma = dir.lastIndexOf(',');
+        if (lastComma > 0) {
+          out.address = dir.slice(0, lastComma).trim();
+          out.commune = dir.slice(lastComma + 1).trim();
+        } else {
+          out.address = dir;
+        }
+      }
+      else if (/^Autofin\s*:/i.test(p)) { /* skip — se hidrata por su propio parser */ }
+      else if (/^Empresa\s*:/i.test(p)) { /* skip — empresa va aparte */ }
+      else out.extras.push(p);
+    }
+    return { ...out, clean: out.extras.join(' | ') };
+  })();
   const [form,       setForm]     = useState(() => {
     const base = { ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' };
     // Edición: hidratar TODO desde el sale existente
@@ -1344,10 +1375,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         ticket_id:       editSale.ticket_id      || '',
         client_name:     editSale.client_name    || '',
         client_rut:      editSale.client_rut     || '',
-        client_phone:    '',
-        client_email:    '',
-        client_address:  '',
-        client_commune:  '',
+        client_phone:    editClientParsed.phone,
+        client_email:    editClientParsed.email,
+        client_address:  editClientParsed.address,
+        client_commune:  editClientParsed.commune,
         client_type:     'persona',
         branch_id:       editSale.branch_id      || '',
         sold_by:         editSale.seller_id      || editSale.sold_by || '',
@@ -1359,7 +1390,9 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         chassis:         editSale.chassis        || '',
         motor_num:       editSale.motor_num      || '',
         sale_price:      editSale.sale_price     || '',
-        sale_notes:      editSale.sale_notes     || '',
+        // sale_notes 'limpia' — sin las líneas Tel:/Email:/Dir:/Autofin: que
+        // ya alimentan inputs específicos. Al guardar volverá a recomponerse.
+        sale_notes:      editClientParsed.clean,
       };
     }
     if (!initial) return base;
