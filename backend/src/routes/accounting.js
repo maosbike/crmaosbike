@@ -917,10 +917,12 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
   const finalSoldAt = sold_at || inv.fecha_emision || new Date().toISOString().slice(0, 10);
 
   // ── Match con inventario por chasis ───────────────────────────────────────
-  // Si la factura tiene chasis y hay una unidad en inventario que coincide y
-  // NO está vendida, vendemos esa unidad directamente — evita duplicar el dato
-  // entre inventory y sales_notes, y hace que desaparezca del stock disponible.
-  let matchedInvUnit = null;
+  // Match por chasis: prioridad inventory (es la unidad real); si no hay match
+  // ahí, buscamos en sales_notes (las reservas comerciales viven en esa tabla).
+  // Lo importante es no duplicar: si ya existe una reserva con ese chasis, la
+  // convertimos en venta — no creamos una segunda fila.
+  let matchedInvUnit  = null;
+  let matchedSaleNote = null;
   if (inv.chassis) {
     const chassisCanon = String(inv.chassis).replace(/\s+/g, '').toUpperCase();
     const { rows: invUnit } = await db.query(
@@ -930,7 +932,20 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
         LIMIT 1`,
       [chassisCanon]
     );
-    if (invUnit[0]) matchedInvUnit = invUnit[0];
+    if (invUnit[0]) {
+      matchedInvUnit = invUnit[0];
+    } else {
+      // Buscar reserva existente como nota comercial (sin unidad de inventario)
+      const { rows: noteRow } = await db.query(
+        `SELECT * FROM sales_notes
+          WHERE UPPER(REPLACE(chassis,' ','')) = $1
+            AND status != 'vendida'
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        [chassisCanon]
+      );
+      if (noteRow[0]) matchedSaleNote = noteRow[0];
+    }
   }
 
   // Resolver model_id del catálogo a partir de brand/model del invoice (best effort).
@@ -996,8 +1011,40 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
 
       linkField = 'inventory_id';
       linkId    = matchedInvUnit.id;
+    } else if (matchedSaleNote) {
+      // ── Camino B: existe una reserva en sales_notes → convertir a venta ───
+      // Mantiene el id original (no duplica), preserva el seller si el admin
+      // no eligió otro distinto.
+      const { rows: updatedNote } = await client.query(
+        `UPDATE sales_notes SET
+           status='vendida', sold_at=$1, sold_by=$2, branch_id=$3, ticket_id=COALESCE(ticket_id,$4),
+           payment_method=$5, sale_type=$6, charge_type=$7,
+           sale_notes=COALESCE(NULLIF(sale_notes,''), $8),
+           sale_price=COALESCE($9, sale_price),
+           client_name=COALESCE(NULLIF(client_name,''), $10),
+           client_rut=COALESCE(NULLIF(client_rut,''),  $11),
+           model_id=COALESCE(model_id, $12),
+           delivered=true,
+           doc_factura_cli=COALESCE(doc_factura_cli, $13),
+           updated_at=NOW()
+         WHERE id=$14 RETURNING *`,
+        [
+          finalSoldAt, sold_by, branch_id, inv.lead_id || null,
+          payment_method || null, chType, chType,
+          `Convertida en venta desde Contabilidad — factura Nº ${inv.folio || inv.id}`,
+          price,
+          inv.cliente_nombre || null,
+          inv.rut_cliente    || null,
+          resolvedModelId,
+          inv.pdf_url || null,
+          matchedSaleNote.id,
+        ]
+      );
+      sale = updatedNote[0];
+      linkField = 'sale_note_id';
+      linkId    = matchedSaleNote.id;
     } else {
-      // ── Camino B: no hay unidad en inventario → nota de venta suelta ──────
+      // ── Camino C: no hay match en ningún lado → nota de venta nueva ───────
       const { rows: saleRows } = await client.query(
         `INSERT INTO sales_notes (
            status, branch_id, year, brand, model, color, chassis, motor_num, price,
@@ -1068,7 +1115,7 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
     res.status(201).json({
       sale,
       invoice: updatedInv[0],
-      linked_to: matchedInvUnit ? 'inventory' : 'sales_notes',
+      linked_to: matchedInvUnit ? 'inventory' : (matchedSaleNote ? 'sales_notes_existing' : 'sales_notes_new'),
     });
   } catch (e) {
     await client.query('ROLLBACK');
