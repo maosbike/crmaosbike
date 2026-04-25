@@ -370,9 +370,19 @@ Card.Actions = function CardActions({ style, children }) {
 };
 // ───────────────────────────────────────────────────────────────────────────────
 
-export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>(
-  <div onClick={onClose} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
-    <div onClick={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'var(--surface)',borderRadius:'var(--radius-xl)',width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
+export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>{
+  // Cerrar por click en el overlay SÓLO si el press Y el release fueron ahí.
+  // Antes, si arrastrabas desde un input para seleccionar texto y soltabas
+  // afuera, el click se disparaba en el overlay y cerraba el modal sin querer.
+  const downOnOverlayRef=useRef(false);
+  const handleMouseDown=e=>{ downOnOverlayRef.current=(e.target===e.currentTarget); };
+  const handleClick=e=>{
+    if(e.target===e.currentTarget && downOnOverlayRef.current && onClose) onClose();
+    downOnOverlayRef.current=false;
+  };
+  return(
+  <div onMouseDown={handleMouseDown} onClick={handleClick} className="crm-modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:80,padding:16}}>
+    <div onClick={e=>e.stopPropagation()} onMouseDown={e=>e.stopPropagation()} className="crm-modal-inner" style={{background:'var(--surface)',borderRadius:'var(--radius-xl)',width:'100%',maxWidth:maxWidth||(wide?680:480),maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 20px 60px rgba(0,0,0,0.18)'}}>
       {headerContent ? headerContent : (
         <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--surface-sunken)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <h2 style={{fontSize:15,fontWeight:700,color:'var(--text)',margin:0}}>{title}</h2>
@@ -382,7 +392,8 @@ export const Modal=({onClose,title,children,wide,maxWidth,headerContent})=>(
       <div style={{padding:'20px'}}>{children}</div>
     </div>
   </div>
-);
+  );
+};
 export const Field=({label,value,onChange,type="text",ph,req,opts,rows,disabled})=>{
   const renderInput=()=>{
     if(opts)return <select value={value} onChange={e=>onChange(e.target.value)} style={{...S.inp,width:"100%"}} disabled={disabled}>{opts.map(o=><option key={o.v!==undefined?o.v:o} value={o.v!==undefined?o.v:o}>{o.l||o}</option>)}</select>;
