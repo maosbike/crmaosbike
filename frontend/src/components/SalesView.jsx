@@ -25,6 +25,27 @@ function chargeAmtFor(chargeType, motoPrice) {
   return 0;
 }
 
+// Foto del modelo: si la venta tiene color y el catálogo tiene una foto
+// específica para ese color (color_photos), usá esa. Si no, fallback a
+// image_url del modelo. Sin esto, todas las motos del mismo modelo
+// muestran la misma foto sin importar el color real de la unidad.
+function saleImage(s) {
+  if (!s) return null;
+  const photos = Array.isArray(s.model_color_photos)
+    ? s.model_color_photos
+    : (typeof s.model_color_photos === 'string'
+        ? (() => { try { return JSON.parse(s.model_color_photos); } catch { return []; } })()
+        : []);
+  if (s.color && Array.isArray(photos)) {
+    const want = String(s.color).toLowerCase().trim();
+    const match = photos.find(p => p.color && String(p.color).toLowerCase().trim() === want)
+               || photos.find(p => p.color && want.startsWith(String(p.color).toLowerCase().trim()))
+               || photos.find(p => p.color && String(p.color).toLowerCase().trim().startsWith(want));
+    if (match?.url) return match.url;
+  }
+  return s.image_url || null;
+}
+
 const DOC_LABELS = {
   doc_factura_dist: 'Factura dist.',
   doc_factura_cli:  'Factura cliente',
@@ -333,8 +354,8 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden', position: 'relative',
         }}>
-          {sale.image_url ? (
-            <img src={sale.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+          {saleImage(sale) ? (
+            <img src={saleImage(sale)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
           ) : (
             <Ic.bike size={64} color={isRes ? '#D97706' : '#059669'}/>
           )}
@@ -2994,11 +3015,11 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                 {/* Foto del modelo */}
                 <div style={{
                   width: 92, flexShrink: 0,
-                  background: s.image_url ? 'var(--surface-muted)' : 'linear-gradient(135deg, var(--surface-sunken), var(--border))',
+                  background: saleImage(s) ? 'var(--surface-muted)' : 'linear-gradient(135deg, var(--surface-sunken), var(--border))',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  {s.image_url ? (
-                    <img src={s.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+                  {saleImage(s) ? (
+                    <img src={saleImage(s)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
                   ) : (
                     <Ic.bike size={32} color="var(--border-strong)"/>
                   )}
@@ -3163,8 +3184,8 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   position: 'relative',
                 }}>
-                  {s.image_url ? (
-                    <img src={s.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
+                  {saleImage(s) ? (
+                    <img src={saleImage(s)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}/>
                   ) : (
                     <Ic.bike size={56} color={accentFg}/>
                   )}
