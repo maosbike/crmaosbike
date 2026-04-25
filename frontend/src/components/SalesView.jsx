@@ -1057,10 +1057,36 @@ function LinkInvoiceModal({ sale, onClose, onLinked }) {
   async function link(inv) {
     setLinking(inv.id); setErr('');
     try {
-      const payload = sale.is_note_only
+      // 1) Vincular la factura del lado de Contabilidad
+      //    (invoice.sale_note_id o invoice.inventory_id + link_status).
+      const linkPayload = sale.is_note_only
         ? { sale_note_id: sale.id, link_status: 'vinculada' }
         : { inventory_id: sale.id, link_status: 'vinculada' };
-      await api.patchAccounting(inv.id, payload);
+      await api.patchAccounting(inv.id, linkPayload);
+
+      // 2) Copiar datos de la factura al registro de venta — éste era el
+      //    paso que faltaba: el link se hacía pero la venta no recibía el
+      //    PDF de factura cliente, ni el monto, ni el cliente cuando estaba
+      //    vacío. Sólo pisamos campos vacíos para no destruir data manual.
+      const salePatch = { is_note_only: !!sale.is_note_only };
+      if (inv.pdf_url)                                 salePatch.doc_factura_cli = inv.pdf_url;
+      if (inv.cliente_nombre && !sale.client_name)     salePatch.client_name     = inv.cliente_nombre;
+      if (inv.rut_cliente    && !sale.client_rut)      salePatch.client_rut      = inv.rut_cliente;
+      if (Number(inv.total) > 0 && !Number(sale.sale_price)) salePatch.sale_price = parseInt(inv.total);
+      // Si la venta tampoco tenía marca/modelo/chasis, se traen de la factura
+      if (inv.brand   && !sale.brand)   salePatch.brand   = inv.brand;
+      if (inv.model   && !sale.model)   salePatch.model   = inv.model;
+      if (inv.chassis && !sale.chassis) salePatch.chassis = inv.chassis;
+      if (inv.motor_num && !sale.motor_num) salePatch.motor_num = inv.motor_num;
+      if (inv.color   && !sale.color)   salePatch.color   = inv.color;
+      try {
+        await api.updateSale(sale.id, salePatch);
+      } catch (eSale) {
+        // Si falla el patch, la vinculación del invoice ya quedó hecha.
+        // Avisamos pero no revertimos para no desorientar al admin.
+        console.warn('[link] invoice vinculada pero patch de sale falló:', eSale);
+      }
+
       toast.success(`Factura Nº ${inv.folio || inv.id} vinculada`);
       onLinked();
     } catch (e) {
