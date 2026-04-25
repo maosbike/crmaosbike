@@ -9,7 +9,8 @@
 
 import { chromium as extraChromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { Solver } from '2captcha-ts';
+import twoCaptcha from '2captcha';
+const { Solver } = twoCaptcha;
 import path from 'node:path';
 import os from 'node:os';
 
