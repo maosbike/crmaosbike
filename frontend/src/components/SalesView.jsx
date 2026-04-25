@@ -759,9 +759,10 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
               {isRes ? 'Editar reserva' : (isAdmin ? 'Editar venta' : 'Editar seguimiento')}
             </button>
           )}
-          {/* Vincular a factura existente — sólo admin, útil para backfill
-              de ventas viejas con su DTE en contabilidad. */}
-          {isAdmin && !isRes && (
+          {/* Vincular a factura existente — sólo admin. Útil para backfill
+              de ventas viejas con su DTE en contabilidad, y también para
+              reservas que se facturaron antes de pasar a venta. */}
+          {isAdmin && (
             <button onClick={() => setShowLinkInvoice(true)} style={{ ...S.btn2, flex: 1 }}>
               Vincular factura
             </button>
