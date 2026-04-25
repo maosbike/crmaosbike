@@ -2380,6 +2380,27 @@ async function openNoteFromSale(s) {
   const finData = s.payment_method === 'Crédito Autofin'
     ? parseAutofinFromNotes(s.sale_notes)
     : null;
+  // Tel/Email/Dir/Comuna del cliente: vienen empaquetados dentro de
+  // sale_notes con prefijos. Parseamos para devolverlos como campos
+  // estructurados al PDF (la tabla CLIENTE los muestra arriba).
+  const clientParsed = (() => {
+    if (!s.sale_notes) return { phone:'', email:'', address:'', commune:'' };
+    const out = { phone:'', email:'', address:'', commune:'' };
+    String(s.sale_notes).split('|').map(p => p.trim()).forEach(p => {
+      const mTel  = p.match(/^Tel(?:éfono|efono)?\s*:\s*(.+)$/i);
+      const mMail = p.match(/^Email\s*:\s*(.+)$/i);
+      const mDir  = p.match(/^Dir(?:ección|eccion)?\s*:\s*(.+)$/i);
+      if (mTel)        out.phone = mTel[1].trim();
+      else if (mMail)  out.email = mMail[1].trim();
+      else if (mDir) {
+        const dir = mDir[1].trim();
+        const lc  = dir.lastIndexOf(',');
+        if (lc > 0) { out.address = dir.slice(0, lc).trim(); out.commune = dir.slice(lc + 1).trim(); }
+        else        { out.address = dir; }
+      }
+    });
+    return out;
+  })();
   // Extras persistidos en la DB (migración 055): accesorios, descuento y tipo
   // de cobro. openNoteFromSale los ignoraba → al regenerar el PDF faltaban
   // (ej: un casco vendido no aparecía en la nota descargada).
@@ -2402,6 +2423,14 @@ async function openNoteFromSale(s) {
     branchName: s.branch_name || '',
     sellerName: s.seller_fn ? `${s.seller_fn} ${s.seller_ln||''}`.trim() : '',
     client_name: s.client_name||'', client_rut: s.client_rut||'', client_type:'persona',
+    // Datos de contacto del cliente — vienen serializados dentro de sale_notes
+    // como 'Tel: X | Email: X | Dir: addr, comuna | ...'. Los parseamos para
+    // que la tabla CLIENTE del PDF los muestre arriba (en vez de aparecer
+    // duplicados en la línea Obs.: del pie).
+    client_phone:   clientParsed.phone   || '',
+    client_email:   clientParsed.email   || '',
+    client_address: clientParsed.address || '',
+    client_commune: clientParsed.commune || '',
     sale_price: s.sale_price, abono: s.invoice_amount||0,
     accessories: loadedAccessories, discount: loadedDiscountPct,
     payMode: s.payment_method||'', payLines:[],
