@@ -25,6 +25,7 @@ async function main() {
 
   const promoUser = required('PROMOBILITY_USER');
   const promoPass = required('PROMOBILITY_PASS');
+  const twoCaptchaKey = required('TWOCAPTCHA_KEY');
   const crmUrl = required('CRM_BASE_URL');
   const crmUser = required('CRM_USER');
   const crmPass = required('CRM_PASS');
@@ -40,6 +41,7 @@ async function main() {
     pass: promoPass,
     desde,
     hasta,
+    twoCaptchaKey,
   });
 
   // 2. Normalizar

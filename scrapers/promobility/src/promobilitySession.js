@@ -7,14 +7,14 @@
 //      el date picker).
 //   4. Click botón "Excel" → captura el download.
 
-import { chromium as basePlaywrightChromium } from 'playwright';
 import { chromium as extraChromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { Solver } from '2captcha-ts';
 import path from 'node:path';
 import os from 'node:os';
 
-// Stealth plugin oficial — oculta ~30 banderas de automation que Cloudflare
-// Turnstile inspecciona. Mucho más efectivo que el stealth manual.
+// Stealth plugin oficial — reduce detección, pero Cloudflare Turnstile sigue
+// pidiendo solve activo. Para eso usamos 2Captcha.
 const stealth = StealthPlugin();
 extraChromium.use(stealth);
 const chromium = extraChromium;
@@ -72,81 +72,97 @@ async function applyStealth(context) {
   });
 }
 
-// Resuelve el Cloudflare Turnstile.
-// Estrategia:
-//   1. Esperar a que el iframe del widget cargue.
-//   2. Esperar a que Turnstile valide pasivamente (con stealth fuerte
-//      a veces auto-aprueba sin necesidad de click).
-//   3. Si tras X segundos no se validó, intentar click manual al checkbox.
-//   4. Esperar el token cf-turnstile-response.
-async function solveTurnstile(page) {
-  console.log('[promobility] esperando widget Turnstile…');
+// Resuelve Cloudflare Turnstile usando 2Captcha como solver externo.
+// Flujo:
+//   1. Extraer el sitekey del widget (desde el iframe URL o data-sitekey).
+//   2. Pedir a 2Captcha que resuelva (5-30s, ~$0.002 USD por solve).
+//   3. Inyectar el token recibido en input[name="cf-turnstile-response"].
+//   4. Si el sitio usa callback de Turnstile, dispararlo.
+async function solveTurnstileWith2Captcha(page, apiKey) {
+  console.log('[promobility] localizando widget Turnstile…');
 
-  // Espera a que el iframe del widget esté en el DOM.
-  await page.waitForSelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]', {
-    timeout: 15_000,
-  }).catch(() => {
-    console.log('[promobility] no se detectó iframe Turnstile (puede ser invisible)');
+  // Esperar a que el widget cargue.
+  await page.waitForSelector(
+    '.cf-turnstile, [data-sitekey], iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]',
+    { timeout: 15_000 },
+  );
+
+  // 1. Extraer sitekey. Probamos primero el atributo data-sitekey, luego el URL del iframe.
+  const sitekey = await page.evaluate(() => {
+    // a) data-sitekey en el div del widget
+    const widget = document.querySelector('.cf-turnstile, [data-sitekey]');
+    if (widget) {
+      const k = widget.getAttribute('data-sitekey');
+      if (k) return k;
+    }
+    // b) sitekey en el URL del iframe (?k=XXXX)
+    const iframe = document.querySelector(
+      'iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]',
+    );
+    if (iframe) {
+      const m = iframe.src.match(/[?&]k=([^&]+)/);
+      if (m) return decodeURIComponent(m[1]);
+    }
+    return null;
   });
 
-  // Damos hasta CAPTCHA_TIMEOUT para que el token se setee.
-  // Si stealth funciona, Turnstile valida automático en 1-5 seg sin click.
-  console.log('[promobility] esperando validación pasiva…');
-  let validated = false;
-  try {
-    await page.waitForFunction(
-      () => {
-        const tokenInput = document.querySelector(
-          'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]',
-        );
-        return tokenInput && tokenInput.value && tokenInput.value.length > 10;
-      },
-      { timeout: 8_000 },
-    );
-    validated = true;
-    console.log('[promobility] Turnstile validado pasivamente ✓');
-  } catch {
-    // Pasiva no funcionó — intentamos click manual al checkbox.
-    console.log('[promobility] pasiva no, intentando click manual al checkbox…');
+  if (!sitekey) {
+    throw new Error('No se pudo extraer el sitekey de Turnstile.');
   }
+  console.log(`[promobility] sitekey: ${sitekey.slice(0, 12)}…`);
 
-  if (!validated) {
-    // Intentar todos los iframes que puedan ser del widget.
-    const frames = page.frames();
-    for (const f of frames) {
-      const url = f.url();
-      if (!url.includes('challenges.cloudflare.com') && !url.includes('turnstile')) continue;
-      try {
-        const checkbox = f.locator('input[type="checkbox"]');
-        await checkbox.waitFor({ state: 'visible', timeout: 5_000 });
-        await checkbox.click({ force: true });
-        console.log('[promobility] click checkbox aplicado');
-        break;
-      } catch {
-        // probar siguiente frame
+  // 2. Pedir solve a 2Captcha.
+  const solver = new Solver(apiKey);
+  const pageurl = page.url();
+  console.log('[promobility] solicitando solve a 2Captcha (5-30s)…');
+  const startSolve = Date.now();
+  const result = await solver.turnstile({
+    pageurl,
+    sitekey,
+  });
+  const dur = ((Date.now() - startSolve) / 1000).toFixed(1);
+  const token = result.data;
+  if (!token || token.length < 10) {
+    throw new Error('2Captcha devolvió token inválido.');
+  }
+  console.log(`[promobility] 2Captcha resolvió en ${dur}s, token recibido`);
+
+  // 3. Inyectar token en el input oculto de cf-turnstile-response. Si no
+  //    existe, lo creamos — algunos sitios solo lo agregan tras callback.
+  await page.evaluate((tok) => {
+    let input = document.querySelector(
+      'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]',
+    );
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'cf-turnstile-response';
+      const form = document.querySelector('form');
+      (form || document.body).appendChild(input);
+    }
+    input.value = tok;
+
+    // Si el widget tiene un callback configurado (data-callback="fnName"),
+    // disparamos esa función global. Algunos sitios lo necesitan.
+    const widget = document.querySelector('.cf-turnstile, [data-sitekey]');
+    if (widget) {
+      const cbName = widget.getAttribute('data-callback');
+      if (cbName && typeof window[cbName] === 'function') {
+        try {
+          window[cbName](tok);
+        } catch (_e) {
+          // ignorar errores del callback custom del sitio
+        }
       }
     }
-
-    // Esperar token tras el click.
-    await page.waitForFunction(
-      () => {
-        const tokenInput = document.querySelector(
-          'input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]',
-        );
-        return tokenInput && tokenInput.value && tokenInput.value.length > 10;
-      },
-      { timeout: CAPTCHA_TIMEOUT },
-    ).catch(() => {
-      throw new Error(
-        'Cloudflare Turnstile no validó. Probable detección anti-bot persistente. ' +
-        'Opciones: subir stealth aún más o integrar 2Captcha.',
-      );
-    });
-    console.log('[promobility] Turnstile validado tras click ✓');
-  }
+  }, token);
+  console.log('[promobility] token inyectado en formulario ✓');
 }
 
-export async function downloadPromobilityLeads({ user, pass, desde, hasta }) {
+export async function downloadPromobilityLeads({ user, pass, desde, hasta, twoCaptchaKey }) {
+  if (!twoCaptchaKey) {
+    throw new Error('Falta TWOCAPTCHA_KEY. Conseguila en https://2captcha.com.');
+  }
   const browser = await chromium.launch({
     headless: true,
     args: [
@@ -178,7 +194,7 @@ export async function downloadPromobilityLeads({ user, pass, desde, hasta }) {
     await page.fill('input[type="password"], input[name="password"]', pass);
 
     // Resolvé el captcha ANTES de submit.
-    await solveTurnstile(page);
+    await solveTurnstileWith2Captcha(page, twoCaptchaKey);
 
     // Submit login.
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Iniciar")');
