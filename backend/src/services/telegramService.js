@@ -387,7 +387,11 @@ const TelegramService = {
   // Aviso a super_admin / admin_comercial cada vez que se registra una venta o reserva.
   // El caller arma el objeto con los datos ya resueltos (sucursal/vendedor/cliente/montos).
   // Si el admin no tiene Telegram vinculado, se omite silenciosamente.
+  // KILL SWITCH: env DISABLE_SALES_NOTIFY=true desactiva todas las
+  // notificaciones de venta/reserva sin tocar los callsites — útil mientras
+  // se ordena data sucia y no queremos spamear admins con cada cambio.
   async notifyAdminsOfSale(info) {
+    if (process.env.DISABLE_SALES_NOTIFY === 'true') return;
     try {
       const db = require('../config/db');
       const { rows: admins } = await db.query(
