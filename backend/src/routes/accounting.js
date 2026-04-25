@@ -905,7 +905,7 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
   if (!branchRows[0]) return res.status(400).json({ error: 'Sucursal inválida' });
 
   // Tipo de cobro — default inscripción (es lo más común)
-  const VALID_CHARGES = ['inscripcion', 'completa', 'transferencia'];
+  const VALID_CHARGES = ['inscripcion', 'completa', 'transferencia', 'sin_detalle'];
   const chType = VALID_CHARGES.includes(charge_type) ? charge_type : 'inscripcion';
 
   // Precio de la moto: si no viene, usar total de la factura como mejor aproximación

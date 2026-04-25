@@ -336,7 +336,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
             amount: parseInt(a.amount) || 0,
           }))
       : null;
-    const chType = ['completa','inscripcion','transferencia'].includes(charge_type) ? charge_type : null;
+    const chType = ['completa','inscripcion','transferencia','sin_detalle'].includes(charge_type) ? charge_type : null;
     const chAmt  = charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
     const dcAmt  = discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
 
@@ -531,7 +531,7 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
         return Array.isArray(v) && v.length ? JSON.stringify(v) : null;
       }
       if (field === 'charge_type') {
-        return ['completa','inscripcion','transferencia'].includes(v) ? v : null;
+        return ['completa','inscripcion','transferencia','sin_detalle'].includes(v) ? v : null;
       }
       // UUIDs que pueden venir como '' desde selects
       if ((field === 'sold_by' || field === 'branch_id' || field === 'model_id') && v === '') return null;

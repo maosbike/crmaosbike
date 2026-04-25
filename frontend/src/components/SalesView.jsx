@@ -510,6 +510,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                           || (t === 'inscripcion' ? 'Inscripción vehicular'
                             : t === 'transferencia' ? 'Transferencia vehicular'
                             : t === 'completa' ? 'Documentación completa'
+                            : t === 'sin_detalle' ? 'Sin detalle'
                             : '—');
                     })()],
                     ...(isAdmin && sale.cost_price > 0 ? [['Precio lista', fmt(sale.price)]] : []),
@@ -576,6 +577,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
         const chargeLabel = chargeType === 'completa'      ? 'Documentación completa'
                           : chargeType === 'transferencia' ? 'Transferencia vehicular'
                           : chargeType === 'inscripcion'   ? 'Inscripción vehicular'
+                          : chargeType === 'sin_detalle'   ? 'Sin detalle'
                           : 'Documentación';
         return (
           <div style={{ marginBottom: 16 }}>
@@ -1425,6 +1427,7 @@ async function openNote(data, type) {
   if (data.chargeType === 'inscripcion')        tableBody.push(['Inscripción vehicular',    fmtCLP(INSCRIPCION_AMT)]);
   else if (data.chargeType === 'completa')      tableBody.push(['Documentación completa',   fmtCLP(t.chargeAmt)]);
   else if (data.chargeType === 'transferencia') tableBody.push(['Transferencia vehicular',  fmtCLP(TRANSFERENCIA_AMT)]);
+  // 'sin_detalle' → no agrega línea al PDF (es la opción admin de "no sumar")
   // Solo mostrar recargo en la tabla cuando aplica sobre el total (no sobre abono parcial)
   if (t.cardSurcharge > 0 && !(isRes && (data.abono > 0))) {
     tableBody.push(['Recargo tarjeta de crédito/débito (2%)', '+' + fmtCLP(t.cardSurcharge)]);
@@ -1629,6 +1632,7 @@ const SEC = ({ children }) => (
 function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta', user, initial = null, editSale = null }) {
   const isReserva  = noteType === 'reserva';
   const isVendedor = user?.role === 'vendedor';
+  const isAdmin    = hasRole(user, ...CAN_ADMIN);
   const isEdit     = !!editSale;
   // En edición arrancamos directo en el paso 2 (formulario completo).
   // Creación sigue arrancando en step 0 (¿unidad de inventario?).
@@ -2250,11 +2254,14 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <div style={{ fontSize:9, fontWeight:800, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:8 }}>
                 Documentación (obligatorio)
               </div>
-              <div className="mob-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+              <div className="mob-stack" style={{ display:'grid', gridTemplateColumns: isAdmin ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap:8 }}>
                 {[
                   { v:'inscripcion',   l:'Inscripción vehicular',   hint:'Primera inscripción',                         amt: INSCRIPCION_AMT },
                   { v:'completa',      l:'Documentación completa',  hint:'Inscripción + SOAP + permiso de circulación', amt: docCompletaAmt(form.sale_price) },
                   { v:'transferencia', l:'Transferencia vehicular', hint:'Moto ya inscrita',                            amt: TRANSFERENCIA_AMT },
+                  // 4ta opción admin-only — para casos sin documentación cargada
+                  // o ajustes manuales. No suma monto al total.
+                  ...(isAdmin ? [{ v:'sin_detalle', l:'Sin detalle', hint:'Sólo administradores · no suma',              amt: 0, adminOnly: true }] : []),
                 ].map(opt => (
                   <button key={opt.v} type="button" onClick={() => setChargeType(opt.v)}
                     style={{ padding:'10px 14px', borderRadius:'var(--radius-md)', textAlign:'left', cursor:'pointer', fontFamily:'inherit',
