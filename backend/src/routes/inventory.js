@@ -278,7 +278,11 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     // Verificar estado actual
     const { rows: cur } = await db.query('SELECT status, branch_id FROM inventory WHERE id=$1', [req.params.id]);
     if (!cur[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
-    if (cur[0].status === 'vendida') {
+    // Las unidades vendidas están bloqueadas para vendedor y backoffice — sólo
+    // los admins (super_admin, admin_comercial) pueden corregir datos sobre
+    // ventas registradas (necesario para limpiar duplicados, re-vincular
+    // facturas, ajustar precios mal cargados, etc.).
+    if (cur[0].status === 'vendida' && !['super_admin','admin_comercial'].includes(req.user.role)) {
       return res.status(400).json({ error: 'Una unidad vendida no puede modificarse.' });
     }
 
