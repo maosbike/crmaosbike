@@ -110,7 +110,14 @@ async function solveTurnstileWith2Captcha(page, apiKey) {
   if (!sitekey) {
     throw new Error('No se pudo extraer el sitekey de Turnstile.');
   }
-  console.log(`[promobility] sitekey: ${sitekey.slice(0, 12)}…`);
+  console.log(`[promobility] sitekey: ${sitekey} (length=${sitekey.length})`);
+
+  // Debug: también logueamos el src del iframe para confirmar URL real.
+  const iframeSrc = await page.evaluate(() => {
+    const f = document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]');
+    return f ? f.src : null;
+  });
+  if (iframeSrc) console.log(`[promobility] iframe src: ${iframeSrc}`);
 
   // 2. Pedir solve a 2Captcha.
   const solver = new Solver(apiKey);
