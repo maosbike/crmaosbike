@@ -2621,6 +2621,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
   const [loading,  setLoading]  = useState(true);
   const [selSale,  setSelSale]  = useState(null);
   const [showNew,  setShowNew]  = useState(null);
+  const [showDuplicates, setShowDuplicates] = useState(false);
   // Prefill del cliente cuando venimos desde un lead — abre el modal de inmediato
   const [pendingClient, setPendingClient] = useState(null);
 
@@ -2720,26 +2721,41 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
         count={sales.length}
         itemLabel={fType === 'reservada' ? 'reserva' : fType === 'vendida' ? 'venta' : 'registro'}
         filtered={hasFilters}
-        actions={canCreate && (
+        actions={(
           <>
-            <button onClick={() => setShowNew('reserva')} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'var(--surface)', border: '1.5px solid var(--text-body)', color: 'var(--text-body)',
-              borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
-              whiteSpace: 'nowrap',
-            }}>
-              <Ic.plus size={13} color="var(--text-body)" /> Reserva
-            </button>
-            <button onClick={() => setShowNew('venta')} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)',
-              borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
-              whiteSpace: 'nowrap', boxShadow: '0 2px 6px var(--brand-strong)',
-            }}>
-              <Ic.plus size={13} color="var(--text-on-brand)" /> Nueva venta
-            </button>
+            {isAdmin && (
+              <button onClick={() => setShowDuplicates(true)} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-subtle)',
+                borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', padding: '8px 12px', fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+              }} title="Buscar registros duplicados por chasis">
+                Duplicados
+              </button>
+            )}
+            {canCreate && (
+              <>
+                <button onClick={() => setShowNew('reserva')} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'var(--surface)', border: '1.5px solid var(--text-body)', color: 'var(--text-body)',
+                  borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}>
+                  <Ic.plus size={13} color="var(--text-body)" /> Reserva
+                </button>
+                <button onClick={() => setShowNew('venta')} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)',
+                  borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', padding: '8px 14px', fontFamily: 'inherit',
+                  whiteSpace: 'nowrap', boxShadow: '0 2px 6px var(--brand-strong)',
+                }}>
+                  <Ic.plus size={13} color="var(--text-on-brand)" /> Nueva venta
+                </button>
+              </>
+            )}
           </>
         )}
       />
@@ -3425,6 +3441,155 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           onCreated={() => load()}
         />
       )}
+      {showDuplicates && (
+        <DuplicatesModal
+          onClose={() => setShowDuplicates(false)}
+          onChanged={() => load()}
+          isSuperAdmin={isSuperAdmin}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── DuplicatesModal ─────────────────────────────────────────────────────────
+// Lista grupos de ventas/reservas que tienen el mismo chasis. Permite eliminar
+// las que sobran (super_admin). Mientras lo construimos para limpiar la data
+// pre-CRM, lo dejamos accesible permanentemente — siempre es útil.
+function DuplicatesModal({ onClose, onChanged, isSuperAdmin }) {
+  const toast = useToast();
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+  const [groups, setGroups] = useState([]);
+  const [busy, setBusy] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const load = useCallback(() => {
+    setLoading(true); setErr('');
+    api.getSalesDuplicates()
+      .then(r => setGroups(r.groups || []))
+      .catch(e => setErr(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function doDelete(s) {
+    setBusy(s.id); setErr('');
+    try {
+      await api.deleteSale(s.id, !!s.is_note_only);
+      toast.success('Registro eliminado');
+      onChanged();
+      load();
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(null); setConfirmDelete(null); }
+  }
+
+  return (
+    <Modal onClose={onClose} title="Registros duplicados por chasis" wide>
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        <div style={{ fontSize:12, color:'var(--text-subtle)', lineHeight:1.45 }}>
+          Cada bloque agrupa registros de venta o reserva que apuntan al mismo
+          chasis físico. Decidí cuál conservar y eliminá los que sobran. Las
+          unidades de inventario eliminadas vuelven a quedar como
+          <strong> disponible</strong>; las notas comerciales (sin stock) se
+          borran definitivamente.
+        </div>
+
+        {err && <ErrorMsg msg={err} />}
+        {loading && <div style={{ fontSize:12, color:'var(--text-disabled)' }}>Cargando…</div>}
+        {!loading && groups.length === 0 && (
+          <div style={{ fontSize:13, color:'#065F46', background:'rgba(5,150,105,0.08)',
+                        border:'1px solid rgba(5,150,105,0.25)', padding:'14px 16px',
+                        borderRadius:'var(--radius-md)', textAlign:'center', fontWeight:600 }}>
+            ✓ No hay duplicados — todos los chasis son únicos.
+          </div>
+        )}
+        {!loading && groups.map(g => (
+          <div key={g.chassis} style={{
+            border:'1px solid var(--border)', borderRadius:'var(--radius-lg)',
+            background:'var(--surface)', overflow:'hidden',
+          }}>
+            <div style={{
+              padding:'10px 14px', background:'var(--surface-muted)',
+              borderBottom:'1px solid var(--border)',
+              fontSize:12, fontWeight:700, color:'var(--text)',
+            }}>
+              Chasis <span style={{ fontFamily:'monospace', color:'var(--brand)' }}>{g.chassis}</span>
+              {' · '}{g.sales.length} registros
+            </div>
+            <div style={{ display:'flex', flexDirection:'column' }}>
+              {g.sales.map((s, i) => {
+                const isLast = i === g.sales.length - 1;
+                return (
+                  <div key={s.id} style={{
+                    display:'grid', gridTemplateColumns:'auto 1fr auto auto', gap:12,
+                    alignItems:'center', padding:'12px 14px',
+                    borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                  }}>
+                    <span style={{
+                      fontSize:9, fontWeight:800, padding:'3px 8px',
+                      borderRadius:'var(--radius-xl)', textTransform:'uppercase',
+                      letterSpacing:'0.04em', whiteSpace:'nowrap',
+                      background: s.status === 'reservada' ? 'rgba(217,119,6,0.10)' : 'rgba(21,128,61,0.10)',
+                      color:      s.status === 'reservada' ? '#D97706' : '#15803D',
+                    }}>{s.status}</span>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>
+                        {s.brand || ''} {s.model || ''}{s.year ? ` · ${s.year}` : ''}
+                      </div>
+                      <div style={{ fontSize:11, color:'var(--text-subtle)' }}>
+                        {s.client_name || '—'}
+                        {s.seller_fn && <> · Vendedor: {s.seller_fn} {s.seller_ln || ''}</>}
+                        {s.sold_at && <> · {fD(s.sold_at)}</>}
+                        {s.is_note_only && <> · <em>(nota comercial)</em></>}
+                      </div>
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', textAlign:'right' }}>
+                      {fmt(Number(s.sale_price) || 0)}
+                    </div>
+                    {isSuperAdmin ? (
+                      <button onClick={() => setConfirmDelete(s)} disabled={!!busy}
+                        style={{
+                          background:'rgba(220,38,38,0.10)', color:'#DC2626',
+                          border:'1px solid rgba(220,38,38,0.30)',
+                          padding:'6px 12px', borderRadius:'var(--radius-sm)',
+                          fontSize:11, fontWeight:700, cursor: busy ? 'wait' : 'pointer',
+                          fontFamily:'inherit', whiteSpace:'nowrap',
+                        }}>
+                        {busy === s.id ? 'Eliminando…' : 'Eliminar'}
+                      </button>
+                    ) : (
+                      <span style={{ fontSize:10, color:'var(--text-disabled)', whiteSpace:'nowrap' }}>
+                        sólo super admin
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {confirmDelete && (
+          <Modal onClose={() => setConfirmDelete(null)} title="¿Eliminar registro duplicado?">
+            <div style={{ fontSize:13, lineHeight:1.5, marginBottom:14 }}>
+              Vas a eliminar el registro de <strong>{confirmDelete.brand} {confirmDelete.model}</strong>
+              {' '}({confirmDelete.client_name || 'sin cliente'}).
+              {confirmDelete.is_note_only
+                ? ' Es una nota comercial — se borra definitivamente.'
+                : ' Es una unidad de inventario — vuelve a quedar como "disponible".'}
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setConfirmDelete(null)} style={S.btn2}>Cancelar</button>
+              <button onClick={() => doDelete(confirmDelete)}
+                style={{ ...S.btn, background:'#DC2626' }}>
+                Sí, eliminar
+              </button>
+            </div>
+          </Modal>
+        )}
+      </div>
+    </Modal>
   );
 }

@@ -257,6 +257,46 @@ router.get('/stats', asyncHandler(async (req, res) => {
     res.json(base);
 }));
 
+// ─── GET /api/sales/duplicates — sólo admin ───────────────────────────────────
+// Detecta grupos de ventas/reservas que apuntan al mismo chasis (mismo moto
+// físico registrada dos veces, ej. una en sales_notes como reserva y otra en
+// inventory como venta). Devuelve [{chassis, sales:[...]}, ...] para que el
+// admin elija cuál conservar y borre las que sobran.
+// IMPORTANTE: este route va ANTES de '/:id' para que '/duplicates' no se
+// matchee como un id.
+router.get('/duplicates', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
+  const { rows: dupChassis } = await db.query(`
+    SELECT canon FROM (
+      SELECT UPPER(REPLACE(chassis, ' ', '')) AS canon
+        FROM inventory
+       WHERE status IN ('vendida','reservada')
+         AND chassis IS NOT NULL AND TRIM(chassis) <> ''
+      UNION ALL
+      SELECT UPPER(REPLACE(chassis, ' ', '')) AS canon
+        FROM sales_notes
+       WHERE chassis IS NOT NULL AND TRIM(chassis) <> ''
+    ) c
+    GROUP BY canon
+    HAVING COUNT(*) > 1
+  `);
+  if (!dupChassis.length) return res.json({ groups: [] });
+
+  const canons = dupChassis.map(r => r.canon);
+  const { rows } = await db.query(`
+    SELECT * FROM ${COMBINED_FROM}
+     WHERE UPPER(REPLACE(c.chassis, ' ', '')) = ANY($1::text[])
+  ORDER BY c.chassis, c.sold_at DESC NULLS LAST, c.is_note_only ASC
+  `, [canons]);
+
+  const groups = new Map();
+  for (const r of rows) {
+    const key = String(r.chassis || '').replace(/\s+/g, '').toUpperCase();
+    if (!groups.has(key)) groups.set(key, { chassis: r.chassis, sales: [] });
+    groups.get(key).sales.push(sanitizeSale(r, req.user.role));
+  }
+  res.json({ groups: [...groups.values()] });
+}));
+
 // ─── GET /api/sales/:id ───────────────────────────────────────────────────────
 router.get('/:id', asyncHandler(async (req, res) => {
     const { rows } = await db.query(
