@@ -74,7 +74,8 @@ const COMBINED_FROM = `(
     i.added_as_sold,
     FALSE AS is_note_only,
     i.model_id,
-    mm.image_url,
+    COALESCE(mm.image_url, mm_txt.image_url) AS image_url,
+    COALESCE(mm.color_photos, mm_txt.color_photos) AS model_color_photos,
     sv.id          AS seller_id,
     sv.first_name  AS seller_fn,
     sv.last_name   AS seller_ln,
@@ -95,6 +96,20 @@ const COMBINED_FROM = `(
   LEFT JOIN branches    b  ON i.branch_id = b.id
   LEFT JOIN tickets     t  ON i.ticket_id = t.id
   LEFT JOIN moto_models mm ON i.model_id  = mm.id
+  -- Fallback: si i.model_id es NULL pero brand+model matchean en el
+  -- catálogo, usar esa foto. Evita que cada venta vieja necesite
+  -- re-asociación manual al modelo del catálogo.
+  LEFT JOIN LATERAL (
+    SELECT image_url, color_photos
+      FROM moto_models
+     WHERE active = true
+       AND i.brand IS NOT NULL AND i.model IS NOT NULL
+       AND LOWER(brand) = LOWER(i.brand)
+       AND LOWER(model) = LOWER(i.model)
+       AND (i.year IS NULL OR year = i.year OR year IS NULL)
+     ORDER BY CASE WHEN year = i.year THEN 0 ELSE 1 END
+     LIMIT 1
+  ) mm_txt ON mm.id IS NULL
   WHERE i.status IN ('vendida', 'reservada')
 
   UNION ALL
@@ -113,7 +128,8 @@ const COMBINED_FROM = `(
     TRUE  AS added_as_sold,
     TRUE  AS is_note_only,
     n.model_id,
-    mm.image_url,
+    COALESCE(mm.image_url, mm_txt.image_url) AS image_url,
+    COALESCE(mm.color_photos, mm_txt.color_photos) AS model_color_photos,
     sv.id          AS seller_id,
     sv.first_name  AS seller_fn,
     sv.last_name   AS seller_ln,
@@ -134,6 +150,17 @@ const COMBINED_FROM = `(
   LEFT JOIN branches    b  ON n.branch_id = b.id
   LEFT JOIN tickets     t  ON n.ticket_id = t.id
   LEFT JOIN moto_models mm ON n.model_id  = mm.id
+  LEFT JOIN LATERAL (
+    SELECT image_url, color_photos
+      FROM moto_models
+     WHERE active = true
+       AND n.brand IS NOT NULL AND n.model IS NOT NULL
+       AND LOWER(brand) = LOWER(n.brand)
+       AND LOWER(model) = LOWER(n.model)
+       AND (n.year IS NULL OR year = n.year OR year IS NULL)
+     ORDER BY CASE WHEN year = n.year THEN 0 ELSE 1 END
+     LIMIT 1
+  ) mm_txt ON mm.id IS NULL
 ) c`;
 
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
