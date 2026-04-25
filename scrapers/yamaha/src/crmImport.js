@@ -4,11 +4,22 @@
 //   3. POST /api/import/confirm con {rows, filename, skip_dups: true} → stats.
 
 import axios from 'axios';
+import https from 'node:https';
 import FormData from 'form-data';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const TIMEOUT = 60_000;
+
+// Si el CRM tiene un cert SSL imperfecto (típico cuando un custom domain no
+// está bien aprovisionado en Railway), `CRM_INSECURE_TLS=1` permite seguir.
+// Es tu propio CRM hablando con tu propio backend → no hay MITM real.
+const insecureTls = process.env.CRM_INSECURE_TLS === '1';
+const httpsAgent = insecureTls ? new https.Agent({ rejectUnauthorized: false }) : undefined;
+
+if (insecureTls) {
+  console.warn('⚠ CRM_INSECURE_TLS=1 — saltando validación de certificado SSL del CRM.');
+}
 
 export async function importToCrm({ crmUrl, user, pass, filePath }) {
   const base = crmUrl.replace(/\/+$/, ''); // sin trailing slash
@@ -18,7 +29,7 @@ export async function importToCrm({ crmUrl, user, pass, filePath }) {
   const loginResp = await axios.post(
     `${base}/api/auth/login`,
     { email: user, password: pass },
-    { timeout: TIMEOUT },
+    { timeout: TIMEOUT, httpsAgent },
   );
 
   const token = loginResp.data?.token;
@@ -43,6 +54,7 @@ export async function importToCrm({ crmUrl, user, pass, filePath }) {
       timeout: TIMEOUT,
       maxBodyLength: 10 * 1024 * 1024,
       maxContentLength: 10 * 1024 * 1024,
+      httpsAgent,
     },
   );
   const { rows, summary, filename } = previewResp.data;
@@ -64,7 +76,7 @@ export async function importToCrm({ crmUrl, user, pass, filePath }) {
   const confirmResp = await axios.post(
     `${base}/api/import/confirm`,
     { rows, filename, skip_dups: true },
-    { headers: { ...auth, 'Content-Type': 'application/json' }, timeout: TIMEOUT },
+    { headers: { ...auth, 'Content-Type': 'application/json' }, timeout: TIMEOUT, httpsAgent },
   );
   const stats = confirmResp.data;
   console.log(
