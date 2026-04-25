@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { api } from '../services/api';
-import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ROLES, hasRole, ViewHeader, ErrorMsg, selectCtrl, useIsMobile, colorFor, Btn } from '../ui.jsx';
+import { Ic, S, Stat, Modal, Field, fmt, fD, PAYMENT_TYPES, ROLE_ADMIN_WRITE, ROLE_SALES_WRITE, ROLES, hasRole, ViewHeader, ErrorMsg, selectCtrl, useIsMobile, colorFor, Btn, useToast } from '../ui.jsx';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
