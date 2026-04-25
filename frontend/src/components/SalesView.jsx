@@ -2557,11 +2557,44 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
             </select>
           )}
           {isAdmin && sellers.length > 0 && (
-            <select value={fSeller} onChange={e => setFSeller(e.target.value)}
-              style={{ ...selectCtrl, height: 34, flex: '1 1 120px', minWidth: 110, fontSize: 12 }}>
-              <option value="">Vendedor</option>
-              {sellers.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
-            </select>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', flex:'1 1 auto' }}>
+              <button onClick={() => setFSeller('')}
+                style={{
+                  height:32, padding:'0 12px', borderRadius:'var(--radius-xl)',
+                  background: !fSeller ? 'var(--text)' : 'var(--surface-muted)',
+                  color: !fSeller ? 'var(--text-on-dark)' : 'var(--text-body)',
+                  border: '1px solid ' + (!fSeller ? 'var(--text)' : 'var(--border)'),
+                  fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                  transition:'all 0.12s',
+                }}>
+                Todos
+              </button>
+              {sellers.map(s => {
+                const active = fSeller === s.id;
+                const sc = colorFor(s.id);
+                const fullName = `${s.first_name} ${s.last_name || ''}`.trim();
+                return (
+                  <button key={s.id} onClick={() => setFSeller(active ? '' : s.id)}
+                    title={fullName}
+                    style={{
+                      height:32, padding:'0 12px', borderRadius:'var(--radius-xl)',
+                      background: active ? sc.c : sc.bg,
+                      color: active ? '#FFFFFF' : sc.c,
+                      border: `1px solid ${active ? sc.c : sc.border || sc.c}40`,
+                      fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                      display:'inline-flex', alignItems:'center', gap:5,
+                      transition:'all 0.12s',
+                    }}>
+                    <span style={{
+                      width:7, height:7, borderRadius:4,
+                      background: active ? '#FFFFFF' : sc.c,
+                      flexShrink:0,
+                    }}/>
+                    {s.first_name}
+                  </button>
+                );
+              })}
+            </div>
           )}
           {hasFilters && (
             <Btn variant='ghost-bordered' size='sm' onClick={clearFilters} style={{ height: 34, flexShrink: 0 }}>
