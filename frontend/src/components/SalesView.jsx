@@ -1019,25 +1019,44 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
 // link_status='sin_vincular'.
 function LinkInvoiceModal({ sale, onClose, onLinked }) {
   const toast = useToast();
-  const [q, setQ]         = useState(sale.client_rut || '');
+  // Por defecto NO prefiltramos por RUT — si el RUT en la factura difiere
+  // (DTE de empresa, RUT escrito distinto, etc.) la factura no aparecía.
+  const [q, setQ]         = useState('');
+  // 'sin' (sin_vincular + revisar) | 'all' (todas, incluye vinculadas)
+  const [scope, setScope] = useState('sin');
   const [list, setList]   = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr]     = useState('');
   const [linking, setLinking] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(null);
 
   useEffect(() => {
     setLoading(true); setErr('');
-    api.getAccounting({ link_status: 'sin_vincular', q, limit: 30 })
+    // El backend acepta un sólo link_status. Si scope='sin' hacemos dos
+    // queries (sin_vincular + revisar) y mergeamos. Si scope='all', sin
+    // filtro de status. Más limit para que entre lo importante.
+    const fetcher = scope === 'all'
+      ? api.getAccounting({ q, limit: 80 })
+      : Promise.all([
+          api.getAccounting({ link_status: 'sin_vincular', q, limit: 50 }),
+          api.getAccounting({ link_status: 'revisar',      q, limit: 50 }),
+        ]).then(([a, b]) => ({
+          data: [
+            ...(Array.isArray(a) ? a : (a?.data || [])),
+            ...(Array.isArray(b) ? b : (b?.data || [])),
+          ].sort((x, y) =>
+            new Date(y.fecha_emision || 0) - new Date(x.fecha_emision || 0)
+          ),
+        }));
+    fetcher
       .then(r => setList(Array.isArray(r) ? r : (r?.data || [])))
       .catch(e => setErr(e.message))
       .finally(() => setLoading(false));
-  }, [q]);
+  }, [q, scope]);
 
   async function link(inv) {
     setLinking(inv.id); setErr('');
     try {
-      // Si la venta vive en inventory (no es nota suelta) → invoice.inventory_id.
-      // Si es sales_notes → invoice.sale_note_id.
       const payload = sale.is_note_only
         ? { sale_note_id: sale.id, link_status: 'vinculada' }
         : { inventory_id: sale.id, link_status: 'vinculada' };
@@ -1046,64 +1065,136 @@ function LinkInvoiceModal({ sale, onClose, onLinked }) {
       onLinked();
     } catch (e) {
       setErr(e.message || 'Error al vincular');
-    } finally { setLinking(null); }
+    } finally { setLinking(null); setShowConfirm(null); }
   }
+
+  const statusPill = (st) => {
+    const cfg = st === 'vinculada' ? { l:'Vinculada', c:'#15803D', bg:'rgba(21,128,61,0.10)' }
+              : st === 'revisar'   ? { l:'Revisar',   c:'#D97706', bg:'rgba(217,119,6,0.10)' }
+              :                       { l:'Sin vincular', c:'var(--text-subtle)', bg:'rgba(107,114,128,0.10)' };
+    return (
+      <span style={{
+        fontSize:9, fontWeight:700, color:cfg.c, background:cfg.bg,
+        padding:'2px 7px', borderRadius:'var(--radius-xl)',
+        textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap',
+      }}>{cfg.l}</span>
+    );
+  };
 
   return (
     <Modal onClose={onClose} title="Vincular factura existente" wide>
       <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
         <div style={{ fontSize:12, color:'var(--text-subtle)', lineHeight:1.45 }}>
-          Buscá entre las facturas <strong>sin vincular</strong> de Contabilidad
-          y elegí cuál corresponde a esta venta. Por defecto filtramos por el
-          RUT del cliente; podés cambiar el filtro.
+          Buscá la factura por folio, RUT, nombre del cliente o chasis. Por
+          defecto se muestran las que están <strong>Sin vincular</strong> y
+          <strong> Revisar</strong>; si necesitás re-vincular una factura ya
+          asociada a otra venta, cambiá a <em>Todas</em>.
         </div>
+
+        {/* Pills de scope */}
+        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          {[
+            { v:'sin', l:'Sin vincular + Revisar' },
+            { v:'all', l:'Todas' },
+          ].map(o => {
+            const active = scope === o.v;
+            return (
+              <button key={o.v}
+                onClick={() => setScope(o.v)}
+                style={{
+                  height:30, padding:'0 12px', borderRadius:'var(--radius-xl)',
+                  background: active ? 'var(--text)' : 'var(--surface-muted)',
+                  color: active ? 'var(--text-on-dark)' : 'var(--text-body)',
+                  border: '1px solid ' + (active ? 'var(--text)' : 'var(--border)'),
+                  fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                }}>{o.l}</button>
+            );
+          })}
+        </div>
+
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
           placeholder="Folio, RUT, cliente, chasis…"
           style={{ ...S.inp, width:'100%', height:36, fontSize:13 }}
         />
+
+        {sale.client_rut && !q && (
+          <button onClick={() => setQ(sale.client_rut)}
+            style={{
+              alignSelf:'flex-start', padding:'4px 10px', fontSize:11, fontWeight:600,
+              color:'var(--brand)', background:'rgba(242,129,0,0.08)',
+              border:'1px solid rgba(242,129,0,0.25)', borderRadius:'var(--radius-xl)',
+              cursor:'pointer', fontFamily:'inherit',
+            }}>
+            Filtrar por RUT del cliente: {sale.client_rut}
+          </button>
+        )}
+
         {err && <ErrorMsg msg={err} />}
         {loading && <div style={{ fontSize:12, color:'var(--text-disabled)' }}>Cargando…</div>}
         {!loading && list.length === 0 && (
           <div style={{ fontSize:12, color:'var(--text-disabled)', padding:'18px 0', textAlign:'center' }}>
-            No hay facturas sin vincular que coincidan con la búsqueda.
+            No hay facturas que coincidan con la búsqueda.
           </div>
         )}
         {!loading && list.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:'45vh', overflowY:'auto' }}>
-            {list.map(inv => (
-              <button key={inv.id}
-                onClick={() => link(inv)}
-                disabled={!!linking}
-                style={{
-                  display:'grid', gridTemplateColumns:'auto 1fr auto', gap:10, alignItems:'center',
-                  padding:'10px 12px', borderRadius:'var(--radius-md)',
-                  border:'1px solid var(--border)', background:'var(--surface)',
-                  cursor: linking ? 'wait' : 'pointer', textAlign:'left', fontFamily:'inherit',
-                  opacity: linking && linking !== inv.id ? 0.5 : 1,
-                }}>
-                <span style={{ fontSize:11, fontWeight:800, color:'var(--brand)', background:'rgba(242,129,0,0.10)', padding:'3px 8px', borderRadius:'var(--radius-sm)' }}>
-                  #{inv.folio || '—'}
-                </span>
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {inv.cliente_nombre || '—'}
+            {list.map(inv => {
+              const isLinked = inv.link_status === 'vinculada';
+              return (
+                <button key={inv.id}
+                  onClick={() => isLinked ? setShowConfirm(inv) : link(inv)}
+                  disabled={!!linking}
+                  style={{
+                    display:'grid', gridTemplateColumns:'auto 1fr auto', gap:10, alignItems:'center',
+                    padding:'10px 12px', borderRadius:'var(--radius-md)',
+                    border:'1px solid var(--border)', background:'var(--surface)',
+                    cursor: linking ? 'wait' : 'pointer', textAlign:'left', fontFamily:'inherit',
+                    opacity: linking && linking !== inv.id ? 0.5 : 1,
+                  }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--brand)', background:'rgba(242,129,0,0.10)', padding:'3px 8px', borderRadius:'var(--radius-sm)' }}>
+                    #{inv.folio || '—'}
+                  </span>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                      <span style={{ fontSize:13, fontWeight:700, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        {inv.cliente_nombre || '—'}
+                      </span>
+                      {statusPill(inv.link_status)}
+                    </div>
+                    <div style={{ fontSize:11, color:'var(--text-subtle)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {inv.rut_cliente || '—'} · {inv.brand || ''} {inv.model || ''}{inv.chassis ? ` · ${inv.chassis}` : ''}
+                    </div>
                   </div>
-                  <div style={{ fontSize:11, color:'var(--text-subtle)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {inv.rut_cliente || '—'} · {inv.brand || ''} {inv.model || ''}{inv.chassis ? ` · ${inv.chassis}` : ''}
+                  <div style={{ textAlign:'right', flexShrink:0 }}>
+                    <div style={{ fontSize:13, fontWeight:800, color:'var(--text)' }}>{fmt(inv.total)}</div>
+                    <div style={{ fontSize:10, color:'var(--text-disabled)' }}>{fD(inv.fecha_emision)}</div>
+                    {linking === inv.id && (
+                      <div style={{ fontSize:10, color:'var(--brand)', fontWeight:700, marginTop:2 }}>Vinculando…</div>
+                    )}
                   </div>
-                </div>
-                <div style={{ textAlign:'right', flexShrink:0 }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:'var(--text)' }}>{fmt(inv.total)}</div>
-                  <div style={{ fontSize:10, color:'var(--text-disabled)' }}>{fD(inv.fecha_emision)}</div>
-                  {linking === inv.id && (
-                    <div style={{ fontSize:10, color:'var(--brand)', fontWeight:700, marginTop:2 }}>Vinculando…</div>
-                  )}
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
+        )}
+
+        {/* Confirmación si la factura ya está vinculada a otra venta */}
+        {showConfirm && (
+          <Modal onClose={() => setShowConfirm(null)} title="¿Re-vincular factura?">
+            <div style={{ fontSize:13, lineHeight:1.5, marginBottom:14 }}>
+              La factura <strong>#{showConfirm.folio || showConfirm.id}</strong> ya
+              está vinculada a otra venta. Si confirmás, se reasignará a esta
+              venta y la otra quedará sin factura adjunta.
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setShowConfirm(null)} style={{ ...S.btn2 }}>Cancelar</button>
+              <button onClick={() => link(showConfirm)} style={{ ...S.btn, background:'#DC2626' }}>
+                Sí, re-vincular
+              </button>
+            </div>
+          </Modal>
         )}
       </div>
     </Modal>
