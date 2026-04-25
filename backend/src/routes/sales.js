@@ -97,16 +97,18 @@ const COMBINED_FROM = `(
   LEFT JOIN tickets     t  ON i.ticket_id = t.id
   LEFT JOIN moto_models mm ON i.model_id  = mm.id
   -- Fallback: si i.model_id es NULL pero brand+model matchean en el
-  -- catálogo, usar esa foto. Evita que cada venta vieja necesite
-  -- re-asociación manual al modelo del catálogo.
+  -- catálogo, usar esa foto. Match canónico (sin espacios, guiones,
+  -- puntos) — así "FZ-S" matchea con "FZS", "FZ S", etc. Mismo patrón
+  -- que ya usa accounting/sync-drive.
   LEFT JOIN LATERAL (
     SELECT image_url, color_photos
       FROM moto_models
      WHERE active = true
        AND i.brand IS NOT NULL AND i.model IS NOT NULL
-       AND LOWER(brand) = LOWER(i.brand)
-       AND LOWER(model) = LOWER(i.model)
-       AND (i.year IS NULL OR year = i.year OR year IS NULL)
+       AND UPPER(REGEXP_REPLACE(brand, '[\\s\\-\\.]', '', 'g'))
+         = UPPER(REGEXP_REPLACE(i.brand, '[\\s\\-\\.]', '', 'g'))
+       AND UPPER(REGEXP_REPLACE(model, '[\\s\\-\\.]', '', 'g'))
+         = UPPER(REGEXP_REPLACE(i.model, '[\\s\\-\\.]', '', 'g'))
      ORDER BY CASE WHEN year = i.year THEN 0 ELSE 1 END
      LIMIT 1
   ) mm_txt ON mm.id IS NULL
@@ -155,9 +157,10 @@ const COMBINED_FROM = `(
       FROM moto_models
      WHERE active = true
        AND n.brand IS NOT NULL AND n.model IS NOT NULL
-       AND LOWER(brand) = LOWER(n.brand)
-       AND LOWER(model) = LOWER(n.model)
-       AND (n.year IS NULL OR year = n.year OR year IS NULL)
+       AND UPPER(REGEXP_REPLACE(brand, '[\\s\\-\\.]', '', 'g'))
+         = UPPER(REGEXP_REPLACE(n.brand, '[\\s\\-\\.]', '', 'g'))
+       AND UPPER(REGEXP_REPLACE(model, '[\\s\\-\\.]', '', 'g'))
+         = UPPER(REGEXP_REPLACE(n.model, '[\\s\\-\\.]', '', 'g'))
      ORDER BY CASE WHEN year = n.year THEN 0 ELSE 1 END
      LIMIT 1
   ) mm_txt ON mm.id IS NULL
