@@ -272,6 +272,7 @@ function catalogColorsFromRow(modelRow) {
 /* ── InvoiceCard (RowCard estilo SupplierPayments) ────────────────────────── */
 function InvoiceCard({ inv, onOpen }) {
   const [hov, setHov] = useState(false);
+  const isMobile = useIsMobile();
   const st       = invoiceStatus(inv);
   const isNC     = inv.doc_type === 'nota_credito';
   const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
@@ -279,6 +280,130 @@ function InvoiceCard({ inv, onOpen }) {
   const img      = motoImg(inv);
   const pdfUrl   = pdfViewerUrl(inv);
 
+  // ── Versión mobile: layout vertical compacto ───────────────────────────
+  // El layout desktop (foto 220px + contenido + barra derecha 200px) no
+  // entra en pantallas chicas — la fecha quedaba en 3 líneas, el monto
+  // cortado y el chasis ilegible. Aquí: foto chica arriba-izq, todo el
+  // texto en una columna que ocupa el ancho completo, monto y estado en
+  // el footer.
+  if (isMobile) {
+    return (
+      <div
+        onClick={() => onOpen(inv)}
+        style={{
+          marginBottom:10,
+          background:'var(--surface)',
+          border:'1px solid var(--border)',
+          borderLeft:`4px solid ${st.c}`,
+          borderRadius:'var(--radius-xl)', overflow:'hidden',
+          cursor:'pointer',
+          boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        <div style={{ display:'flex', alignItems:'stretch' }}>
+          {/* Foto chica */}
+          <div style={{
+            width:88, flexShrink:0,
+            background: STATUS_BG[st.k] || 'var(--surface-sunken)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            overflow:'hidden', position:'relative',
+          }}>
+            {img
+              ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+              : <Ic.bike size={32} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
+            }
+          </div>
+
+          {/* Contenido */}
+          <div style={{
+            flex:1, minWidth:0, padding:'10px 12px',
+            display:'flex', flexDirection:'column', gap:4,
+          }}>
+            {/* Folio + fecha + estado pill */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+              <span style={{
+                fontSize:12, fontWeight:800,
+                color: isNC ? '#DC2626' : '#4F46E5',
+                background: isNC ? '#FEE2E2' : '#EEF2FF',
+                border:`1px solid ${isNC ? '#FCA5A5' : '#C7D2FE'}`,
+                padding:'1px 8px', borderRadius:'var(--radius-sm)',
+              }}>
+                #{folioLbl}
+              </span>
+              <span style={{ fontSize:10, color:'var(--text-disabled)', whiteSpace:'nowrap' }}>
+                {fd(inv.fecha_emision)}
+              </span>
+              <span style={{ marginLeft:'auto' }}>
+                <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
+              </span>
+            </div>
+
+            {/* Cliente */}
+            <div style={{
+              fontSize:13, fontWeight:700, color:'var(--text)',
+              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+            }}>
+              {inv.cliente_nombre || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
+            </div>
+
+            {/* Vehículo */}
+            {modelo && (
+              <div style={{
+                fontSize:11, fontWeight:600, color:'var(--text-body)',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+              }}>
+                {modelo}
+                {inv.commercial_year && <span style={{ color:'var(--text-disabled)', fontWeight:500 }}> · {inv.commercial_year}</span>}
+                {inv.color && <span style={{ color:'var(--text-disabled)', fontWeight:500 }}> · {inv.color}</span>}
+              </div>
+            )}
+
+            {/* Footer: monto + PDF */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginTop:2 }}>
+              <span style={{
+                fontSize:14, fontWeight:800,
+                color: isNC ? '#DC2626' : 'var(--text)',
+                letterSpacing:'-0.3px',
+              }}>
+                {isNC ? '−' : ''}{$(inv.total)}
+              </span>
+              {pdfUrl && (
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    fontSize:10, fontWeight:700, color:'var(--brand)', textDecoration:'none',
+                    display:'inline-flex', alignItems:'center', gap:4,
+                    background:'var(--brand-soft)',
+                    border:'1px solid var(--brand-muted)',
+                    padding:'3px 8px', borderRadius:'var(--radius-sm)',
+                  }}
+                >
+                  <Ic.file size={11} color="var(--brand)" /> PDF
+                </a>
+              )}
+            </div>
+
+            {/* Chasis / RUT al pie en línea sutil */}
+            {(inv.chassis || inv.rut_cliente) && (
+              <div style={{
+                display:'flex', gap:8, fontSize:10, color:'var(--text-disabled)',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                marginTop:2,
+              }}>
+                {inv.chassis && <span style={{ fontWeight:600, color:'var(--text-subtle)' }}>{inv.chassis}</span>}
+                {inv.rut_cliente && <span>RUT {rutFmt(inv.rut_cliente)}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Versión desktop (original) ─────────────────────────────────────────
   return (
     <div
       onClick={() => onOpen(inv)}
