@@ -3116,6 +3116,43 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                         </span>
                       </>
                     )}
+                    {/* Eliminar — sólo super_admin. Confirmación inline para
+                        no abrir un modal pesado en mobile. Stop propagation
+                        para que el click no abra la ficha. */}
+                    {isSuperAdmin && (
+                      <span onClick={e => e.stopPropagation()} style={{ marginLeft:'auto', display:'inline-flex', gap:4 }}>
+                        {confirmDeleteId === s.id ? (
+                          <>
+                            <button onClick={() => handleDeleteRow(s)} disabled={deleting} style={{
+                              padding:'4px 9px', borderRadius:'var(--radius-md)', border:'none',
+                              background:'#EF4444', color:'var(--text-on-dark)',
+                              fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                            }}>
+                              {deleting ? '…' : 'Borrar'}
+                            </button>
+                            <button onClick={() => setConfirmDeleteId(null)} style={{
+                              padding:'4px 7px', borderRadius:'var(--radius-md)',
+                              border:'1px solid var(--border)', background:'var(--surface-muted)',
+                              color:'var(--text-subtle)', fontSize:10, cursor:'pointer', fontFamily:'inherit',
+                            }}>No</button>
+                          </>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteId(s.id)} title="Eliminar" style={{
+                            padding:'3px 5px', borderRadius:'var(--radius-md)',
+                            border:'1px solid #FECACA', background:'var(--surface)',
+                            color:'#F87171', cursor:'pointer',
+                            display:'inline-flex', alignItems:'center',
+                          }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                              <path d="M10 11v6M14 11v6"/>
+                              <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                            </svg>
+                          </button>
+                        )}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
