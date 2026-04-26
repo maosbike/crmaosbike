@@ -2,11 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Ic, S, TY, Bdg, TBdg, PBdg, Stat, Modal, Field, TICKET_STATUS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket } from '../ui.jsx';
 
-// Grupos del sidebar — misma estructura que App.jsx SIDEBAR_GROUPS
+// Grupos del sidebar — IDÉNTICOS a App.jsx SIDEBAR_GROUPS para que mobile
+// y desktop muestren la misma navegación. Antes el drawer mobile no tenía
+// 'accounting' (Contabilidad) ni 'catalog' en Stock y Ventas, así que el
+// admin desde el celular no podía llegar a Contabilidad.
 const DRAWER_GROUPS = [
-  { label: 'Comercial',       ids: ['dashboard','leads','pipeline','calendar'] },
-  { label: 'Stock y Ventas',  ids: ['inventory','sales','supplier-payments'] },
-  { label: 'Configuración',   ids: ['catalog','reports','admin','import','priceimport'] },
+  { label: 'Comercial',       ids: ['dashboard','leads','pipeline','calendar','reports'] },
+  { label: 'Stock y Ventas',  ids: ['catalog','inventory','sales','supplier-payments','accounting'] },
+  { label: 'Configuración',   ids: ['admin','import','priceimport'] },
 ];
 
 export function MobileDrawer({open,onClose,items,page,nav,user,onChangePw,onLogout}){
