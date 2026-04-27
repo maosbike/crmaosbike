@@ -2133,6 +2133,37 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     if (!selUnit && !form.branch_id) { setErr('Sucursal obligatoria'); return; }
     if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
 
+    // Precio y forma de pago siempre obligatorios — sin esto la venta queda
+    // sin monto o sin medio de pago registrado, lo que después es imposible
+    // de auditar contra contabilidad.
+    if (!form.sale_price || Number(form.sale_price) <= 0) {
+      setErr('Precio de la moto obligatorio'); return;
+    }
+    if (!payMode) {
+      setErr('Forma de pago obligatoria'); return;
+    }
+    if (payMode === 'Mixto') {
+      const validLines = (payLines || []).filter(l => l.method && Number(l.amount) > 0);
+      if (validLines.length < 1) {
+        setErr('En pago mixto agregá al menos una línea con método y monto'); return;
+      }
+    }
+
+    // Tipo de cargo (inscripción / documentación / transferencia) obligatorio.
+    // Hay reservas viejas que quedaron sin esto y al regenerar la nota faltaba
+    // el desglose. Ahora todas pasan por acá.
+    if (!['inscripcion','completa','transferencia','sin_detalle'].includes(chargeType)) {
+      setErr('Documentación obligatoria (inscripción / completa / transferencia)'); return;
+    }
+
+    // Reserva: el abono inicial es obligatorio — una reserva sin abono no
+    // tiene sentido (no compromete al cliente y rompe la lógica de saldo).
+    if (isReserva) {
+      if (!abono || Number(abono) <= 0) {
+        setErr('Abono inicial obligatorio para registrar una reserva'); return;
+      }
+    }
+
     // Validación de datos del cliente — obligatorios para no terminar con
     // ventas/reservas huérfanas. Email queda como recomendado pero no
     // bloqueante (algunos clientes mayores no lo dan).
@@ -2590,10 +2621,10 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
 
             {/* FORMA DE PAGO */}
             <div style={{ gridColumn: '1/-1' }}>
-              <SEC>Forma de pago</SEC>
+              <SEC>Forma de pago (obligatorio)</SEC>
               <div className="mob-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 6 }}>
                 <div style={{ gridColumn: '1/-1' }}>
-                  <Field label="Medio de pago" value={payMode} opts={PAY_MODES}
+                  <Field label="Medio de pago *" value={payMode} opts={PAY_MODES}
                     onChange={v => {
                       setPayMode(v);
                       setPayLines([{ method: '', amount: '' }]);
