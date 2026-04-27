@@ -343,7 +343,7 @@ function InvoiceCard({ inv, onOpen }) {
               fontSize:13, fontWeight:700, color:'var(--text)',
               whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             }}>
-              {inv.cliente_nombre || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
+              {(inv.source === 'recibida' ? inv.emisor_nombre : inv.cliente_nombre) || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>{inv.source === 'recibida' ? 'Sin proveedor' : 'Sin cliente'}</span>}
             </div>
 
             {/* Vehículo */}
@@ -1077,6 +1077,11 @@ export function AccountingView() {
   const [q, setQ]               = useState('');
   const [linkStatus, setLinkStatus] = useState('');
   const [page, setPage]         = useState(1);
+  // Origen del documento: emitidas (Maosbike → cliente) vs recibidas
+  // (proveedor → Maosbike). Cada origen tiene su propio Drive de sync.
+  const [source, setSource]     = useState('emitida');
+  // Para recibidas, filtramos por categoría auto-detectada.
+  const [recCategory, setRecCategory] = useState('');
   const LIMIT = 50;
 
   // Rango del mes activo (primer y último día)
@@ -1101,7 +1106,9 @@ export function AccountingView() {
     setLoading(true);
     setError('');
     try {
-      const params = { source: 'emitida', page, limit: LIMIT, desde, hasta, tab };
+      const params = { source, page, limit: LIMIT, desde, hasta };
+      if (source === 'emitida') params.tab = tab;
+      if (source === 'recibida' && recCategory) params.category = recCategory;
       if (q)          params.q = q;
       if (linkStatus) params.link_status = linkStatus;
       const r = await api.getAccounting(params);
@@ -1112,7 +1119,7 @@ export function AccountingView() {
     } finally {
       setLoading(false);
     }
-  }, [tab, q, linkStatus, desde, hasta, page]);
+  }, [tab, q, linkStatus, desde, hasta, page, source, recCategory]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadStats(); }, [loadStats]);
@@ -1121,7 +1128,10 @@ export function AccountingView() {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const r = await api.syncAccountingFromDrive();
+      // Sync usa la carpeta correspondiente al origen activo
+      const r = source === 'recibida'
+        ? await api.syncAccountingRecibidasFromDrive()
+        : await api.syncAccountingFromDrive();
       setSyncResult(r);
       load();
       loadStats();
@@ -1221,22 +1231,56 @@ export function AccountingView() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border)' }}>
+      {/* Toggle Emitidas / Recibidas */}
+      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
         {[
+          { v:'emitida',  l:'Emitidas',  hint:'Facturas que emitimos al cliente' },
+          { v:'recibida', l:'Recibidas', hint:'Facturas que nos emiten proveedores' },
+        ].map(opt => (
+          <button key={opt.v}
+            onClick={() => { setSource(opt.v); setPage(1); setRecCategory(''); setLinkStatus(''); }}
+            title={opt.hint}
+            style={{
+              padding:'8px 18px', borderRadius:'var(--radius-md)',
+              fontSize:13, fontWeight:700, fontFamily:'inherit', cursor:'pointer',
+              border:`1.5px solid ${source===opt.v ? 'var(--brand)' : 'var(--border)'}`,
+              background: source===opt.v ? '#FFF7ED' : 'var(--surface)',
+              color: source===opt.v ? 'var(--brand)' : 'var(--text-subtle)',
+            }}>
+            {opt.l}
+          </button>
+        ))}
+      </div>
+
+      {/* Tabs (cambian según el origen) */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border)' }}>
+        {(source === 'recibida' ? [
+          { key: '',          label: 'Todas' },
+          { key: 'motos',     label: 'Motos' },
+          { key: 'partes',    label: 'Partes' },
+          { key: 'servicios', label: 'Servicios' },
+          { key: 'municipal', label: 'Municipal' },
+          { key: 'otros',     label: 'Otros' },
+        ] : [
           { key: 'facturas', label: 'Ventas de motos' },
           { key: 'notas',    label: 'Notas de crédito' },
           { key: 'otras',    label: 'Otras / anuladas' },
-        ].map(t => (
+        ]).map(t => {
+          const activeKey = source === 'recibida' ? recCategory : tab;
+          return (
           <button
             key={t.key}
-            onClick={() => { setTab(t.key); setPage(1); }}
+            onClick={() => {
+              if (source === 'recibida') setRecCategory(t.key);
+              else                       setTab(t.key);
+              setPage(1);
+            }}
             style={{
               background: 'transparent',
               border: 'none',
-              borderBottom: tab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
-              color: tab === t.key ? 'var(--brand)' : 'var(--text-subtle)',
-              fontWeight: tab === t.key ? 700 : 500,
+              borderBottom: activeKey === t.key ? '2px solid var(--brand)' : '2px solid transparent',
+              color: activeKey === t.key ? 'var(--brand)' : 'var(--text-subtle)',
+              fontWeight: activeKey === t.key ? 700 : 500,
               fontSize: 13,
               padding: '8px 14px',
               cursor: 'pointer',
@@ -1246,7 +1290,8 @@ export function AccountingView() {
           >
             {t.label}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Filtros */}
