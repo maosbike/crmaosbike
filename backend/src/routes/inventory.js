@@ -41,7 +41,18 @@ router.get('/', asyncHandler(async (req, res) => {
 
     if (branch_id) { where.push(`i.branch_id = $${idx++}`); params.push(branch_id); }
     if (status) { where.push(`i.status = $${idx++}`); params.push(status); }
-    else { where.push(`i.status != 'vendida'`); where.push(`i.added_as_sold = false`); }
+    else {
+      // Una unidad sale del inventario activo cuando se entregó al cliente
+      // (delivered = true). Las vendidas o reservadas que aún no se entregan
+      // siguen apareciendo — el vendedor todavía tiene que coordinar la
+      // entrega física, así que deben verse en el listado.
+      // added_as_sold=true son imports legacy de motos ya vendidas — esas
+      // sí se ocultan siempre.
+      // IS NOT TRUE en vez de = false para tratar NULL como "no entregada"
+      // (filas viejas con delivered NULL no deben desaparecer del listado).
+      where.push(`i.delivered IS NOT TRUE`);
+      where.push(`i.added_as_sold IS NOT TRUE`);
+    }
     if (search) { where.push(`(i.brand ILIKE $${idx} OR i.model ILIKE $${idx} OR i.chassis ILIKE $${idx} OR i.color ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
 
     const { rows } = await db.query(
@@ -86,8 +97,12 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // Inventory counts
 router.get('/counts', asyncHandler(async (req, res) => {
+    // Mismo criterio que el listado: ignorar entregadas y added_as_sold legacy.
+    // Una vendida-pero-aún-no-entregada cuenta como vendida activa.
     const { rows } = await db.query(
-      `SELECT status, COUNT(*) as count FROM inventory GROUP BY status`
+      `SELECT status, COUNT(*) as count FROM inventory
+        WHERE delivered IS NOT TRUE AND added_as_sold IS NOT TRUE
+        GROUP BY status`
     );
     const counts = { disponible: 0, reservada: 0, vendida: 0, preinscrita: 0 };
     rows.forEach(r => { counts[r.status] = parseInt(r.count); });
