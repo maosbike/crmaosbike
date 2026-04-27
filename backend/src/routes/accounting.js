@@ -529,25 +529,61 @@ async function resolveLinks(parsed) {
     if (rows[0]) lead_id = rows[0].id;
   }
 
-  // 2. Buscar inventario por chasis
+  // 2. Buscar inventario por chasis. Match canónico: ignora espacios,
+  //    guiones, puntos y barras. Las facturas a veces traen "ME3-DJERT5"
+  //    y la unidad cargada como "ME3DJERT5" o viceversa.
   if (chassisNorm) {
     const { rows } = await db.query(
-      `SELECT id FROM inventory WHERE UPPER(REPLACE(chassis,' ','')) = $1 LIMIT 1`,
+      `SELECT id FROM inventory
+        WHERE chassis IS NOT NULL
+          AND UPPER(REGEXP_REPLACE(chassis, '[\\s\\-\\._/]', '', 'g')) = $1
+        ORDER BY created_at DESC LIMIT 1`,
       [chassisNorm]
     );
     if (rows[0]) inventory_id = rows[0].id;
   }
 
-  // 3. Buscar nota de venta por chasis
+  // 3. Buscar nota de venta por chasis (mismo match canónico)
   if (chassisNorm) {
     const { rows } = await db.query(
-      `SELECT id FROM sales_notes WHERE UPPER(REPLACE(chassis,' ','')) = $1 ORDER BY created_at DESC LIMIT 1`,
+      `SELECT id FROM sales_notes
+        WHERE chassis IS NOT NULL
+          AND UPPER(REGEXP_REPLACE(chassis, '[\\s\\-\\._/]', '', 'g')) = $1
+        ORDER BY created_at DESC LIMIT 1`,
       [chassisNorm]
     );
     if (rows[0]) sale_note_id = rows[0].id;
   }
 
-  // 4. Determinar estado de vinculación
+  // 4. Si no matcheó por chasis, intentar por RUT del cliente — captura
+  //    casos donde la factura trae chasis distinto/ausente pero el cliente
+  //    sí está cargado en una venta del mismo RUT y misma marca/modelo.
+  if (!inventory_id && !sale_note_id && rutNorm && parsed.brand && parsed.model) {
+    const brandModelNorm = `[\\s\\-\\.]`;
+    const { rows } = await db.query(
+      `SELECT id FROM inventory
+        WHERE status IN ('vendida','reservada')
+          AND REPLACE(REPLACE(client_rut,'.',''),'-','') = $1
+          AND UPPER(REGEXP_REPLACE(brand, $2, '', 'g')) = UPPER(REGEXP_REPLACE($3, $2, '', 'g'))
+          AND UPPER(REGEXP_REPLACE(model, $2, '', 'g')) = UPPER(REGEXP_REPLACE($4, $2, '', 'g'))
+        ORDER BY sold_at DESC NULLS LAST, created_at DESC LIMIT 1`,
+      [rutNorm, brandModelNorm, parsed.brand, parsed.model]
+    );
+    if (rows[0]) inventory_id = rows[0].id;
+    if (!inventory_id) {
+      const r2 = await db.query(
+        `SELECT id FROM sales_notes
+          WHERE REPLACE(REPLACE(client_rut,'.',''),'-','') = $1
+            AND UPPER(REGEXP_REPLACE(brand, $2, '', 'g')) = UPPER(REGEXP_REPLACE($3, $2, '', 'g'))
+            AND UPPER(REGEXP_REPLACE(model, $2, '', 'g')) = UPPER(REGEXP_REPLACE($4, $2, '', 'g'))
+          ORDER BY sold_at DESC NULLS LAST, created_at DESC LIMIT 1`,
+        [rutNorm, brandModelNorm, parsed.brand, parsed.model]
+      );
+      if (r2.rows[0]) sale_note_id = r2.rows[0].id;
+    }
+  }
+
+  // 5. Determinar estado de vinculación
   if (lead_id && (inventory_id || sale_note_id)) {
     link_status = 'vinculada';
   } else if (lead_id || inventory_id || sale_note_id) {
@@ -1142,6 +1178,49 @@ router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) =>
     const { rows } = await db.query('DELETE FROM invoices WHERE id=$1 RETURNING id', [req.params.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Factura no encontrada' });
     res.json({ ok: true });
+}));
+
+// ─── POST /api/accounting/relink ────────────────────────────────────────────
+// Re-corre el cruce automático para todas las facturas sin_vincular o
+// revisar SIN re-bajar nada del Drive. Útil cuando:
+// — la unidad se cargó al inventario después de subida la factura,
+// — el chasis tenía un guion/punto que ahora el matcher tolerante captura,
+// — se ajustó manualmente el RUT del cliente.
+router.post('/relink', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
+  const { rows: pending } = await db.query(
+    `SELECT id, rut_cliente, chassis, brand, model
+       FROM invoices
+      WHERE source = 'emitida'
+        AND link_status IN ('sin_vincular','revisar')
+        AND (inventory_id IS NULL OR sale_note_id IS NULL OR lead_id IS NULL)`
+  );
+
+  let linked = 0;
+  let updated = 0;
+  for (const inv of pending) {
+    const links = await resolveLinks({
+      rut_cliente: inv.rut_cliente,
+      chassis:     inv.chassis,
+      brand:       inv.brand,
+      model:       inv.model,
+    });
+    // Sólo escribimos si hay algo nuevo que aportar — COALESCE en SQL para
+    // preservar vínculos manuales que un admin haya seteado.
+    const { rowCount } = await db.query(
+      `UPDATE invoices SET
+         lead_id      = COALESCE(lead_id,      $1),
+         inventory_id = COALESCE(inventory_id, $2),
+         sale_note_id = COALESCE(sale_note_id, $3),
+         link_status  = $4,
+         updated_at   = NOW()
+       WHERE id = $5`,
+      [links.lead_id, links.inventory_id, links.sale_note_id, links.link_status, inv.id]
+    );
+    if (rowCount) updated++;
+    if (links.inventory_id || links.sale_note_id || links.lead_id) linked++;
+  }
+
+  res.json({ scanned: pending.length, linked, updated });
 }));
 
 // ─── POST /api/accounting/sync-drive ─────────────────────────────────────────
