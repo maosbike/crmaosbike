@@ -90,7 +90,14 @@ const SLAService = {
 
   // Least-loaded excluyendo un conjunto de vendedores (para reasignación por SLA).
   // También excluye a quienes están libres hoy.
+  // `branch_id` puede ser null → busca en TODOS los vendedores activos sin
+  // restringir por sucursal (escalada cuando el pool local se agota).
   async findBestSeller(branch_id, excluded_ids = []) {
+    const branchClause = branch_id
+      ? `AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))`
+      : '';
+    const params = branch_id ? [branch_id, excluded_ids] : [excluded_ids];
+    const excIdx = branch_id ? '$2' : '$1';
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.telegram_chat_id,
               COUNT(t.id) FILTER (WHERE t.status ${NOT_TERMINAL_SQL}) AS active_tickets
@@ -98,8 +105,8 @@ const SLAService = {
        LEFT JOIN tickets t ON t.assigned_to = u.id
        WHERE u.role = 'vendedor'
          AND u.active = true
-         AND (u.branch_id = $1 OR $1 = ANY(u.extra_branches))
-         AND u.id != ALL($2::uuid[])
+         ${branchClause}
+         AND u.id != ALL(${excIdx}::uuid[])
          AND NOT EXISTS (
            SELECT 1 FROM user_time_off o
             WHERE o.user_id = u.id
@@ -108,12 +115,25 @@ const SLAService = {
        GROUP BY u.id, u.first_name, u.last_name, u.telegram_chat_id
        ORDER BY active_tickets ASC
        LIMIT 1`,
-      [branch_id, excluded_ids]
+      params
     );
     return rows[0] || null;
   },
 
-  // Reasignar un ticket (infinite rotation: todos los vendedores de la sucursal, rotando)
+  // Reasignar un ticket por incumplimiento de SLA.
+  //
+  // Política (acordada con negocio):
+  // 1. Castigo: el primer vendedor que no respondió NO vuelve a recibir el
+  //    lead. Tampoco vuelve a nadie que ya lo tuvo. reassignment_log es la
+  //    fuente de verdad de "quién ya pasó".
+  // 2. Rotación geográfica progresiva: arranca por el pool de la misma
+  //    sucursal (branch_id + extra_branches). Cuando todos los locales ya
+  //    pasaron, expande a TODOS los vendedores activos del CRM, sin
+  //    restricción de sucursal — Camila pasa de MPN a MPS si todos los de
+  //    MPN ya tuvieron el ticket.
+  // 3. Sin re-ciclo: si todo el plantel completo ya pasó, escalar a admin.
+  //    Antes el código reiniciaba la rotación y devolvía el ticket a
+  //    cualquiera (incluyendo al original) — eso quitaba el efecto castigo.
   async reassignTicket(ticket, reason = 'sla_breach', reassigned_by = null) {
     // Construir la lista completa de vendedores que ya tuvieron este ticket
     const { rows: logRows } = await db.query(
@@ -128,23 +148,24 @@ const SLAService = {
     if (ticket.assigned_to) seen.add(ticket.assigned_to);
     const excludedAll = [...seen];
 
-    // Intento 1: alguien de la sucursal que aún no tuvo el ticket
+    // Intento 1: alguien de la sucursal que aún no tuvo el ticket.
     let newSeller = await this.findBestSeller(ticket.branch_id, excludedAll);
 
-    // Intento 2: todos ya lo tuvieron — reiniciar rotación, solo excluir al holder actual
-    if (!newSeller && excludedAll.length > 1) {
-      logger.info(`[SLA] Rotación completa para ticket #${ticket.ticket_number}, reiniciando ciclo`);
-      newSeller = await this.findBestSeller(ticket.branch_id, [ticket.assigned_to]);
+    // Intento 2: pool local agotado → buscar entre TODOS los vendedores
+    // activos del sistema, excluyendo a los que ya pasaron por el ticket.
+    if (!newSeller) {
+      logger.info(`[SLA] Pool de sucursal agotado para ticket #${ticket.ticket_number || ticket.id}, expandiendo a todas las sucursales`);
+      newSeller = await this.findBestSeller(null, excludedAll);
     }
 
     if (!newSeller) {
-      logger.info(`[SLA] No hay vendedor disponible para reasignar ticket #${ticket.id}`);
-      // Notificar a admins que no hay vendedor
+      // Todo el plantel pasó por el ticket — sin re-ciclo. Escalar a admin.
+      logger.info(`[SLA] Todos los vendedores ya tuvieron ticket #${ticket.id} — sin más rotación, escalando a admin`);
       const adminIds = await this.getAdminIds(ticket.branch_id);
       await NotificationService.notifyMany(adminIds, {
         type: 'sla_breach',
         title: `⚠ Sin vendedor para reasignar ticket #${ticket.ticket_number}`,
-        message: 'No hay vendedores disponibles en la sucursal. Reasignación manual requerida.',
+        message: 'Todos los vendedores activos ya tuvieron este ticket. Reasignación manual requerida.',
         link_type: 'ticket',
         link_id: ticket.id
       });
