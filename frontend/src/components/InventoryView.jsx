@@ -43,73 +43,89 @@ const ST_CFG = Object.fromEntries(
   Object.entries(ST_PALETTE).map(([k, v]) => [k, { ...v, label: INV_ST[k]?.l || k }])
 );
 
-// Transiciones válidas desde el dropdown de inventario.
+// Transiciones válidas para vendedores desde el dropdown de inventario.
 // Reservada y Vendida sólo se pueden alcanzar desde el flujo de Ventas
-// (que captura nombre, RUT y datos del cliente). Desde Inventario sólo se
-// permite mover entre Disponible/Preinscrita y cancelar una reserva.
-const ALLOWED_FROM = {
+// (que captura nombre, RUT y datos del cliente). Esto evita unidades
+// huérfanas registradas como vendidas sin dueño.
+// Los admins (super_admin / admin_comercial) NO tienen este límite — ellos
+// pueden mover entre cualquier estado libremente para corregir cagadas.
+const ALLOWED_FROM_VENDOR = {
   disponible:  ['disponible', 'preinscrita'],
   preinscrita: ['disponible', 'preinscrita'],
   reservada:   ['disponible', 'reservada'],
   vendida:     ['vendida'],
 };
+const ALL_STATES = ['disponible', 'preinscrita', 'reservada', 'vendida'];
 
 // Chip unificado de estado — pill colored, mismo aspecto en mobile y desktop.
-// Acepta callbacks distintos según la transición: cambiar estado libre vs
-// abrir flujo de venta/reserva (que va por SalesView con datos del cliente).
-function StatusChip({ status, soldAt, onChange, compact = false }) {
+// Si isAdmin, el dropdown muestra los 4 estados. Si vendedor, sólo
+// transiciones libres (sin pasar a Reservada/Vendida sin pasar por Ventas).
+function StatusChip({ status, soldAt, onChange, compact = false, isAdmin = false }) {
   const cfg = ST_CFG[status] || ST_CFG.disponible;
-  const allowed = ALLOWED_FROM[status] || [status];
-  const isTerminal = status === 'vendida' || allowed.length === 1;
-  const isReadOnly = isTerminal;
+  const allowed = isAdmin ? ALL_STATES : (ALLOWED_FROM_VENDOR[status] || [status]);
+  const isReadOnly = allowed.length === 1;
+
+  const padV = compact ? 4 : 6;
+  const padH = compact ? 8 : 10;
+  const fontSz = compact ? 10 : 10.5;
+  const iconSz = compact ? 10 : 11;
 
   const baseStyle = {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: compact ? '5px 11px' : '7px 14px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+    padding: `${padV}px ${padH}px`,
     background: cfg.bg, color: cfg.color,
     border: `1.5px solid ${cfg.border}`,
     borderRadius: '999px',
-    fontSize: compact ? 10 : 11, fontWeight: 800,
-    letterSpacing: '0.04em', textTransform: 'uppercase',
+    fontSize: fontSz, fontWeight: 800,
+    letterSpacing: '0.02em',
     fontFamily: 'inherit',
     boxShadow: `0 1px 2px ${cfg.color}1A`,
+    minWidth: 0,
+    width: '100%',
+    boxSizing: 'border-box',
   };
 
   if (isReadOnly) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, minWidth: 0, width: '100%' }}>
         <div style={baseStyle}>
-          <span style={{ fontSize: compact ? 11 : 12 }}>{cfg.icon}</span>
-          <span>{cfg.label}</span>
+          <span style={{ fontSize: iconSz, lineHeight: 1, flexShrink: 0 }}>{cfg.icon}</span>
+          <span style={{ textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cfg.label}</span>
         </div>
         {status === 'vendida' && soldAt && (
-          <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 700 }}>{fD(soldAt)}</span>
+          <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 700, textAlign: 'center' }}>{fD(soldAt)}</span>
         )}
       </div>
     );
   }
 
-  // Editable (disponible/preinscrita) — select estilizado como pill
+  // Editable — el icono + chevron flanquean al select
   return (
-    <div style={{ ...baseStyle, position: 'relative', padding: 0, cursor: 'pointer' }}>
-      <span style={{ position: 'absolute', left: compact ? 10 : 12, top: '50%', transform: 'translateY(-50%)', fontSize: compact ? 11 : 12, color: cfg.color, pointerEvents: 'none' }}>{cfg.icon}</span>
-      <select value={status}
-        onClick={e => e.stopPropagation()}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          width: '100%', background: 'transparent', border: 'none',
-          fontSize: compact ? 10 : 11, fontWeight: 800, color: cfg.color,
-          cursor: 'pointer',
-          padding: compact ? '5px 26px 5px 28px' : '7px 30px 7px 32px',
-          outline: 'none', fontFamily: 'inherit',
-          appearance: 'none', WebkitAppearance: 'none',
-          letterSpacing: '0.04em', textTransform: 'uppercase',
-        }}>
-        {allowed.map(k => (
-          <option key={k} value={k}>{ST_CFG[k].label}</option>
-        ))}
-      </select>
-      <span style={{ position: 'absolute', right: compact ? 10 : 12, top: '50%', transform: 'translateY(-50%)', fontSize: 8, color: cfg.color, pointerEvents: 'none' }}>▼</span>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 3, minWidth: 0, width: '100%' }}>
+      <div style={{ ...baseStyle, padding: 0, cursor: 'pointer', position: 'relative' }}>
+        <span style={{ position: 'absolute', left: padH, top: '50%', transform: 'translateY(-50%)', fontSize: iconSz, color: cfg.color, pointerEvents: 'none', lineHeight: 1 }}>{cfg.icon}</span>
+        <select value={status}
+          onClick={e => e.stopPropagation()}
+          onChange={e => onChange(e.target.value)}
+          style={{
+            width: '100%', background: 'transparent', border: 'none',
+            fontSize: fontSz, fontWeight: 800, color: cfg.color,
+            cursor: 'pointer',
+            padding: `${padV}px ${padH + 12}px ${padV}px ${padH + 14}px`,
+            outline: 'none', fontFamily: 'inherit',
+            appearance: 'none', WebkitAppearance: 'none',
+            letterSpacing: '0.02em', textTransform: 'uppercase',
+            textOverflow: 'ellipsis', overflow: 'hidden',
+          }}>
+          {allowed.map(k => (
+            <option key={k} value={k}>{ST_CFG[k].label}</option>
+          ))}
+        </select>
+        <span style={{ position: 'absolute', right: padH, top: '50%', transform: 'translateY(-50%)', fontSize: 7, color: cfg.color, pointerEvents: 'none', lineHeight: 1 }}>▼</span>
+      </div>
+      {status === 'vendida' && soldAt && (
+        <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 700, textAlign: 'center' }}>{fD(soldAt)}</span>
+      )}
     </div>
   );
 }
@@ -926,7 +942,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                             <button onClick={()=>openEdit(x)} style={{ ...miniBtn, background:'var(--surface-muted)', color:'var(--text-subtle)', border:'1px solid var(--border)' }}>Editar</button>
                           )}
                           <StatusChip status={x.status} soldAt={x.sold_at}
-                            onChange={s => handleStatus(x.id, s)} compact />
+                            onChange={s => handleStatus(x.id, s)} compact
+                            isAdmin={isAdmin} />
 
                           {isAdmin && (
                             <button onClick={()=>toggleHist(x.id)}
@@ -1102,14 +1119,15 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     flexShrink:0, padding:'14px 14px',
                     display:'flex', flexDirection:'column',
                     alignItems:'stretch', justifyContent:'center',
-                    gap:8, width:160,
+                    gap:8, width:185,
                     borderLeft:'1px solid #F1F5F9',
                     background:'#FAFBFC',
                   }}>
                     {/* Estado — chip unificado para los 4 estados */}
-                    <div style={{ display:'flex', justifyContent:'center' }}>
+                    <div style={{ display:'flex', justifyContent:'stretch', width:'100%' }}>
                       <StatusChip status={x.status} soldAt={x.sold_at}
-                        onChange={s => handleStatus(x.id, s)} />
+                        onChange={s => handleStatus(x.id, s)}
+                        isAdmin={isAdmin} />
                     </div>
 
                     {/* Historial — solo admins */}
