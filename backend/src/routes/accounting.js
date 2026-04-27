@@ -510,6 +510,159 @@ function extractEmitida(text, fileName = '') {
   };
 }
 
+// ─── Parser de factura recibida (proveedores → Maosbike) ────────────────────
+// Las recibidas vienen en formatos heterogéneos (Yamaha, Suzuki, talleres,
+// servicios varios, municipalidad). El parser es más laxo que extractEmitida:
+// identifica cualquier RUT que NO sea Maosbike como emisor (proveedor) y el
+// nuestro como receptor. Auto-clasifica por contenido en motos / partes /
+// servicios / otros.
+function extractRecibida(text, fileName = '') {
+  const t = text.replace(/\r/g, ' ').replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ');
+  const lines = text.split(/\r?\n/).map(l => l.replace(/\s{2,}/g,' ').trim()).filter(Boolean);
+
+  const MAOS_RUT_NORM = '764058402';
+  const normalizeRut = (r) => String(r || '').replace(/[^0-9kK]/g,'').toLowerCase();
+  const parseAmt = (s) => parseInt(String(s || '').replace(/[^\d]/g,''), 10) || 0;
+
+  // ── Tipo de documento ──
+  const doc_type = /NOTA\s+DE\s+CR[EÉ]DITO/i.test(t) ? 'nota_credito'
+                 : /NOTA\s+DE\s+D[EÉ]BITO/i.test(t)  ? 'nota_debito'
+                 : /BOLETA/i.test(t)                  ? 'boleta'
+                 : 'factura';
+
+  // ── Folio: nombre del archivo primero, después del texto ──
+  let folio = null;
+  const fnMatch = fileName.match(/(\d{3,9})/);
+  if (fnMatch) folio = fnMatch[1];
+  if (!folio) {
+    folio =
+      t.match(/FACTURA(?:\s+ELECTR[OÓ]NICA)?[^\d]*N[°º\.]?\s*(\d{3,9})/i)?.[1] ||
+      t.match(/FOLIO[^\d]*(\d{3,9})/i)?.[1] ||
+      t.match(/N[°º]\s*(\d{3,9})/i)?.[1] ||
+      null;
+  }
+
+  // ── RUTs en el texto ──
+  // Captura todos los RUTs y filtra los Maosbike. El primer RUT no-Maos = proveedor.
+  const rutMatches = [...t.matchAll(/(\d{1,2}\.?\d{3}\.?\d{3}\s*-\s*[\dkK])/g)]
+    .map(m => m[1].replace(/\s/g,''));
+  const ruts = [...new Set(rutMatches)];
+  let rut_emisor = null;     // proveedor que nos factura
+  let rut_receptor = null;   // nosotros (Maosbike)
+  for (const r of ruts) {
+    const n = normalizeRut(r);
+    if (n === MAOS_RUT_NORM) rut_receptor = r;
+    else if (!rut_emisor)    rut_emisor   = r;
+  }
+
+  // ── Nombre proveedor ──
+  // Heurística: la primera línea no vacía que tenga 3+ palabras y no sea ruido.
+  // Suele ser razón social del emisor, arriba a la izquierda.
+  let emisor_nombre = null;
+  for (const l of lines.slice(0, 15)) {
+    const v = l.trim();
+    if (v.length < 4 || v.length > 200) continue;
+    if (/^(R\.?U\.?T|FACTURA|BOLETA|NOTA|N[°º]|FOLIO|FECHA|EMISI[OÓ]N|GIRO|TEL[EÉ]F|DIRECCI[OÓ]N)/i.test(v)) continue;
+    if (/^\d/.test(v)) continue;
+    if (/MAOS\s*(?:RACING|BIKE)|MAOSRACING|MAOSBIKE/i.test(v)) continue;
+    emisor_nombre = v;
+    break;
+  }
+
+  // ── Fecha emisión ──
+  let fecha_emision = null;
+  const fm = t.match(/(?:FECHA[^\d]*EMISI[OÓ]N|EMISI[OÓ]N|FECHA)[^\d]*(\d{1,2}[\s\/\-\.de]+\d{1,2}[\s\/\-\.de]+\d{2,4}|\d{1,2}\s+de\s+\w+\s+de\s+\d{4})/i);
+  if (fm) {
+    const raw = fm[1];
+    const meses = { enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12 };
+    const mEs = raw.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
+    if (mEs && meses[mEs[2].toLowerCase()]) {
+      fecha_emision = `${mEs[3]}-${String(meses[mEs[2].toLowerCase()]).padStart(2,'0')}-${String(mEs[1]).padStart(2,'0')}`;
+    } else {
+      const parts = raw.split(/[\s\/\-\.]+/).filter(Boolean);
+      if (parts.length === 3) {
+        let [a, b, c] = parts;
+        if (a.length === 4)      fecha_emision = `${a}-${String(b).padStart(2,'0')}-${String(c).padStart(2,'0')}`;
+        else                     fecha_emision = `${c.length === 2 ? '20'+c : c}-${String(b).padStart(2,'0')}-${String(a).padStart(2,'0')}`;
+      }
+    }
+  }
+
+  // ── Montos ──
+  const neto    = parseAmt(t.match(/(?:MONTO\s*)?NETO[^\d]*(\$?\s*[\d\.,]+)/i)?.[1]);
+  const iva     = parseAmt(t.match(/I\.?V\.?A\.?[^\d]*(\$?\s*[\d\.,]+)/i)?.[1]);
+  const exento  = parseAmt(t.match(/(?:MONTO\s+)?EXENTO[^\d]*(\$?\s*[\d\.,]+)/i)?.[1]);
+  const total   = parseAmt(t.match(/(?:MONTO\s+)?TOTAL[^\d]*(\$?\s*[\d\.,]+)/i)?.[1])
+               || (neto + iva + exento);
+
+  // ── Identificación moto: chasis / VIN / N° motor / marca ──
+  // Marcas conocidas en el mercado chileno de motos.
+  const MOTO_BRANDS = [
+    'YAMAHA','HONDA','SUZUKI','KAWASAKI','BAJAJ','TVS','KTM',
+    'ROYAL ENFIELD','BENELLI','HARLEY','HARLEY-DAVIDSON','HARLEY DAVIDSON',
+    'KEEWAY','CFMOTO','LIFAN','LONCIN','VOGE','UM','TAKASAKI',
+    'PEUGEOT','ZONGSHEN','SYM','SYMMOTO','GO','BERA','HMDC',
+    'SUMO','OPAI','EMCO','LINGYUE','QJMOTOR','QJ MOTOR',
+  ];
+  const brandFound = MOTO_BRANDS.find(b => new RegExp(`\\b${b.replace(/\s/g,'\\s+')}\\b`,'i').test(t));
+  const chassisMatch = t.match(/(?:CHASIS|CHASSIS|VIN|N[°º]\s*CHASIS)[^A-Z0-9]{0,8}([A-Z0-9]{8,})/i);
+  const motorMatch   = t.match(/(?:N[°º]\s*MOTOR|MOTOR\s*N[°º]?)[^A-Z0-9]{0,8}([A-Z0-9]{6,})/i);
+  const chassis  = chassisMatch?.[1] || null;
+  const motor_num= motorMatch?.[1]   || null;
+  let model = null;
+  if (brandFound) {
+    // Modelo = palabra(s) inmediatamente después de la marca
+    const modelRe = new RegExp(`\\b${brandFound.replace(/\s/g,'\\s+')}\\s+([A-Z0-9][A-Z0-9\\-\\s]{1,30})`, 'i');
+    const mm = t.match(modelRe);
+    if (mm) model = mm[1].trim().split(/\s{2,}|[,;]/)[0].slice(0, 60);
+  }
+
+  // ── Auto-categoría ──
+  const lower = t.toLowerCase();
+  let category = 'otros';
+  if (chassis || (brandFound && model)) {
+    category = 'motos';
+  } else if (/\b(repuesto|repuestos|accesorio|accesorios|filtro|aceite|cadena|llanta|neumatico|neumático|amortiguador|bater[ií]a|kit\s+arrastre|pastilla|disco)\b/i.test(lower)) {
+    category = 'partes';
+  } else if (/\b(servicio|servicios|honorarios|asesor[ií]a|consultor[ií]a|mantenci[oó]n|mantenimiento|reparaci[oó]n|arriendo|arriendo\s+local|electricidad|agua|internet|telefon[ií]a|publicidad|marketing|contabilidad|abogado|notar[ií]a|flete|transporte|delivery)\b/i.test(lower)) {
+    category = 'servicios';
+  } else if (/\b(patente|permiso\s+circulaci[oó]n|impuesto|municipal|municipalidad|tesorer[ií]a)\b/i.test(lower)) {
+    category = 'municipal';
+  }
+
+  const clip = (s, n) => s == null ? null : String(s).slice(0, n);
+  return {
+    source:           'recibida',
+    doc_type,
+    category,
+    folio:            clip(folio, 50),
+    rut_emisor:       clip(rut_emisor, 20),
+    emisor_nombre:    clip(emisor_nombre, 250),
+    rut_cliente:      clip(rut_receptor, 20),
+    cliente_nombre:   null,
+    cliente_direccion: null,
+    cliente_comuna:   null,
+    cliente_giro:     null,
+    fecha_emision,
+    monto_neto:       neto,
+    iva,
+    monto_exento:     exento,
+    total,
+    brand:            clip(brandFound, 100),
+    model:            clip(model, 200),
+    color:            null,
+    commercial_year:  null,
+    motor_num:        clip(motor_num, 100),
+    chassis:          clip(chassis, 100),
+    descripcion:      null,
+    ref_folio:        null,
+    ref_rut_emisor:   null,
+    ref_fecha:        null,
+    ref_tipo:         null,
+    notes:            null,
+  };
+}
+
 // ─── Cruce automático ─────────────────────────────────────────────────────────
 async function resolveLinks(parsed) {
   let lead_id      = null;
@@ -729,6 +882,8 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
         i.folio ILIKE $${idx} OR
         i.rut_cliente ILIKE $${idx} OR
         i.cliente_nombre ILIKE $${idx} OR
+        i.rut_emisor ILIKE $${idx} OR
+        i.emisor_nombre ILIKE $${idx} OR
         i.chassis ILIKE $${idx}
       )`);
       params.push(`%${q}%`);
@@ -1586,6 +1741,193 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
     });
   } catch (e) {
     logger.error({ err: e }, '[Accounting/sync-drive]');
+    if (e.code === 403 || (e.message || '').includes('permission')) {
+      return res.status(403).json({
+        error: `Sin acceso a la carpeta de Drive. Compartila con: ${creds.client_email}`,
+        service_account_email: creds.client_email,
+      });
+    }
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ─── POST /api/accounting/sync-drive-recibidas ───────────────────────────────
+// Sincroniza facturas RECIBIDAS (proveedores → Maosbike) desde otra carpeta
+// de Drive. Mismo flujo que sync-drive (emitidas) pero con el parser
+// extractRecibida y auto-categoría motos/partes/servicios/municipal/otros.
+// Intenta vincular al inventario por chasis si la categoría es 'motos'.
+router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res) => {
+  const FOLDER_ID = process.env.ACCOUNTING_RECIBIDAS_FOLDER_ID;
+  if (!FOLDER_ID) {
+    return res.status(503).json({
+      error: 'Carpeta de Drive no configurada. Agregá ACCOUNTING_RECIBIDAS_FOLDER_ID en Railway.',
+    });
+  }
+
+  const credsJson = process.env.GCLOUD_CREDS;
+  if (!credsJson) {
+    return res.status(503).json({ error: 'Credenciales de Google no configuradas. Agregá GCLOUD_CREDS en Railway.' });
+  }
+
+  let creds;
+  try { creds = JSON.parse(credsJson); }
+  catch { return res.status(503).json({ error: 'GCLOUD_CREDS no es JSON válido.' }); }
+
+  const { google } = require('googleapis');
+  const driveAuth = new google.auth.GoogleAuth({
+    credentials: creds,
+    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+  });
+  const drive = google.drive({ version: 'v3', auth: driveAuth });
+
+  async function listPDFs(folderId) {
+    const files = [];
+    let pageToken = null;
+    do {
+      const resp = await drive.files.list({
+        q: `'${folderId}' in parents and mimeType='application/pdf' and trashed=false`,
+        fields: 'nextPageToken, files(id, name, webViewLink)',
+        pageSize: 100,
+        pageToken: pageToken || undefined,
+      });
+      files.push(...(resp.data.files || []));
+      pageToken = resp.data.nextPageToken;
+    } while (pageToken);
+    return files;
+  }
+
+  async function downloadPDF(fileId) {
+    const resp = await drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'arraybuffer' }
+    );
+    return Buffer.from(resp.data);
+  }
+
+  try {
+    const files = await listPDFs(FOLDER_ID);
+    const results = { created: 0, updated: 0, skipped: 0, errors: [], by_category: { motos:0, partes:0, servicios:0, municipal:0, otros:0 } };
+
+    for (const file of files) {
+      try {
+        const buf  = await downloadPDF(file.id);
+        const text = (await pdfParse(buf)).text;
+        const parsed = extractRecibida(text, file.name);
+
+        if (!parsed.folio && !parsed.rut_emisor) {
+          results.errors.push(`${file.name}: no se pudo extraer folio ni RUT proveedor`);
+          continue;
+        }
+
+        // Subir PDF a Cloudinary
+        let pdf_url = file.webViewLink;
+        try {
+          const uploadResult = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: 'accounting/recibidas', resource_type: 'raw', public_id: `factura_recib_${parsed.folio || file.id}` },
+              (err, result) => { if (err) reject(err); else resolve(result); }
+            );
+            stream.end(buf);
+          });
+          pdf_url = uploadResult.secure_url;
+        } catch (_) { /* fallback Drive */ }
+
+        // Para motos, intentar vincular al inventario por chasis (resolveLinks
+        // espera el shape parsed completo — funciona igual con recibidas).
+        let links = { lead_id: null, inventory_id: null, sale_note_id: null, link_status: 'sin_vincular' };
+        if (parsed.category === 'motos' && parsed.chassis) {
+          links = await resolveLinks(parsed);
+        }
+
+        // Modelo del catálogo si pudimos identificar
+        let modelId = null;
+        if (parsed.category === 'motos' && parsed.brand && parsed.model) {
+          modelId = await resolveModelId(parsed.brand, parsed.model);
+        }
+
+        // Match por (source='recibida', folio, doc_type, rut_emisor) — un mismo
+        // proveedor no repite folio dentro del mismo doc_type.
+        const { rows: existing } = await db.query(
+          `SELECT id FROM invoices
+           WHERE source='recibida' AND folio=$1 AND doc_type=$2
+             AND ($3::text IS NULL OR rut_emisor=$3)
+           ORDER BY updated_at DESC LIMIT 1`,
+          [parsed.folio, parsed.doc_type, parsed.rut_emisor]
+        );
+
+        if (existing[0]) {
+          await db.query(
+            `UPDATE invoices SET
+               doc_type=$1, category=$2,
+               rut_emisor=COALESCE($3, rut_emisor),
+               emisor_nombre=COALESCE($4, emisor_nombre),
+               fecha_emision=$5,
+               monto_neto=$6, iva=$7, monto_exento=$8, total=$9,
+               brand=$10, model=$11, motor_num=$12, chassis=$13,
+               pdf_url=$14, drive_file_id=$15,
+               inventory_id=COALESCE(inventory_id,$16),
+               sale_note_id=COALESCE(sale_note_id,$17),
+               link_status=$18,
+               model_id=COALESCE($19, model_id),
+               updated_at=NOW()
+             WHERE id=$20`,
+            [
+              parsed.doc_type, parsed.category,
+              parsed.rut_emisor, parsed.emisor_nombre,
+              parsed.fecha_emision,
+              parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
+              parsed.brand, parsed.model, parsed.motor_num, parsed.chassis,
+              pdf_url, file.id,
+              links.inventory_id, links.sale_note_id, links.link_status,
+              modelId,
+              existing[0].id,
+            ]
+          );
+          results.updated++;
+        } else {
+          await db.query(
+            `INSERT INTO invoices (
+               source, doc_type, category,
+               folio, rut_emisor, emisor_nombre,
+               fecha_emision,
+               monto_neto, iva, monto_exento, total,
+               brand, model, motor_num, chassis,
+               pdf_url, drive_file_id,
+               inventory_id, sale_note_id, link_status,
+               model_id, created_by
+             ) VALUES (
+               'recibida',$1,$2,
+               $3,$4,$5,
+               $6,
+               $7,$8,$9,$10,
+               $11,$12,$13,$14,
+               $15,$16,
+               $17,$18,$19,
+               $20,$21
+             )`,
+            [
+              parsed.doc_type, parsed.category,
+              parsed.folio, parsed.rut_emisor, parsed.emisor_nombre,
+              parsed.fecha_emision,
+              parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
+              parsed.brand, parsed.model, parsed.motor_num, parsed.chassis,
+              pdf_url, file.id,
+              links.inventory_id, links.sale_note_id, links.link_status,
+              modelId, req.user.id,
+            ]
+          );
+          results.created++;
+        }
+        results.by_category[parsed.category] = (results.by_category[parsed.category] || 0) + 1;
+      } catch (perFile) {
+        logger.warn({ err: perFile.message, file: file.name }, '[Accounting/sync-recibidas] error procesando archivo');
+        results.errors.push(`${file.name}: ${perFile.message}`);
+      }
+    }
+
+    res.json({ ok: true, archivos_leidos: files.length, ...results });
+  } catch (e) {
+    logger.error({ err: e }, '[Accounting/sync-recibidas]');
     if (e.code === 403 || (e.message || '').includes('permission')) {
       return res.status(403).json({
         error: `Sin acceso a la carpeta de Drive. Compartila con: ${creds.client_email}`,
