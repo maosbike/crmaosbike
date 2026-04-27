@@ -97,7 +97,8 @@ const COMBINED_FROM = `(
     inv.cliente_direccion AS inv_cliente_direccion,
     inv.cliente_comuna    AS inv_cliente_comuna,
     inv.cliente_giro      AS inv_cliente_giro,
-    inv.folio             AS inv_folio
+    inv.folio             AS inv_folio,
+    inv.pdf_url           AS inv_pdf_url
   FROM inventory i
   LEFT JOIN users       sv ON i.sold_by   = sv.id
   LEFT JOIN branches    b  ON i.branch_id = b.id
@@ -123,7 +124,7 @@ const COMBINED_FROM = `(
   -- comuna y giro del cliente para que el form de edición pueda
   -- auto-completar sin pedir retipear.
   LEFT JOIN LATERAL (
-    SELECT cliente_direccion, cliente_comuna, cliente_giro, folio
+    SELECT cliente_direccion, cliente_comuna, cliente_giro, folio, pdf_url
       FROM invoices
      WHERE inventory_id = i.id
        AND source = 'emitida'
@@ -168,7 +169,8 @@ const COMBINED_FROM = `(
     inv.cliente_direccion AS inv_cliente_direccion,
     inv.cliente_comuna    AS inv_cliente_comuna,
     inv.cliente_giro      AS inv_cliente_giro,
-    inv.folio             AS inv_folio
+    inv.folio             AS inv_folio,
+    inv.pdf_url           AS inv_pdf_url
   FROM sales_notes n
   LEFT JOIN users       sv ON n.sold_by   = sv.id
   LEFT JOIN branches    b  ON n.branch_id = b.id
@@ -187,7 +189,7 @@ const COMBINED_FROM = `(
      LIMIT 1
   ) mm_txt ON mm.id IS NULL
   LEFT JOIN LATERAL (
-    SELECT cliente_direccion, cliente_comuna, cliente_giro, folio
+    SELECT cliente_direccion, cliente_comuna, cliente_giro, folio, pdf_url
       FROM invoices
      WHERE sale_note_id = n.id
        AND source = 'emitida'
