@@ -1941,8 +1941,13 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
   })();
   const [form,       setForm]     = useState(() => {
     const base = { ...EMPTY_FORM, sold_by: isVendedor ? (user?.id || '') : '' };
-    // Edición: hidratar TODO desde el sale existente
+    // Edición: hidratar TODO desde el sale existente.
+    // Si la unidad ya tiene factura electrónica vinculada (inv_cliente_*),
+    // usamos esos datos como fallback para dirección/comuna — así la
+    // vendedora no tiene que retipear lo que ya está en la factura SII.
     if (editSale) {
+      const invAddr   = editSale.inv_cliente_direccion || '';
+      const invComuna = editSale.inv_cliente_comuna    || '';
       return {
         ...base,
         ticket_id:       editSale.ticket_id      || '',
@@ -1950,8 +1955,8 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         client_rut:      editSale.client_rut     || '',
         client_phone:    editClientParsed.phone,
         client_email:    editClientParsed.email,
-        client_address:  editClientParsed.address,
-        client_commune:  editClientParsed.commune,
+        client_address:  editClientParsed.address || invAddr,
+        client_commune:  editClientParsed.commune || invComuna,
         client_type:     'persona',
         branch_id:       editSale.branch_id      || '',
         sold_by:         editSale.seller_id      || editSale.sold_by || '',
