@@ -1507,14 +1507,22 @@ function computeTotals({ sale_price, accessories = [], discount = '', payMode = 
     cardSurcharge = Math.round(base * 0.02);
   }
 
-  // grandTotal = precio total real de la moto (sin recargo sobre el saldo no pagado)
-  const grandTotal = (isReserva && abonoNum > 0) ? netTotal : netTotal + cardSurcharge;
+  // grandTotal = total de la operación. En Mixto NO incluimos el recargo en
+  // el TOTAL: el recargo aplica solo a la línea pagada con tarjeta y queda
+  // visible en el desglose de pagos. Para tarjeta única (no Mixto) sí aplica
+  // al total porque la tarjeta cubre todo.
+  const grandTotal = (payMode === 'Mixto' || (isReserva && abonoNum > 0))
+    ? netTotal
+    : netTotal + cardSurcharge;
 
   let abonoAmt = grandTotal;
   if (isReserva && abonoNum > 0) {
     abonoAmt = abonoNum + cardSurcharge; // lo que el cliente entrega hoy (abono + recargo)
   } else if (payMode === 'Mixto') {
-    abonoAmt = payLines.reduce((s, l) => s + (Number(l.amount) || 0), 0) + cardSurcharge;
+    // En Mixto el "abono" que aplica al TOTAL son los montos base de cada
+    // línea (sin recargo). El recargo es plata extra que paga el cliente
+    // por usar tarjeta, no reduce el saldo de la operación.
+    abonoAmt = payLines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
   }
 
   const saldo = (isReserva && abonoNum > 0)
@@ -1653,8 +1661,11 @@ async function openNote(data, type) {
   else if (data.chargeType === 'completa')      tableBody.push(['Documentación completa',   fmtCLP(t.chargeAmt)]);
   else if (data.chargeType === 'transferencia') tableBody.push(['Transferencia vehicular',  fmtCLP(TRANSFERENCIA_AMT)]);
   // 'sin_detalle' → no agrega línea al PDF (es la opción admin de "no sumar")
-  // Solo mostrar recargo en la tabla cuando aplica sobre el total (no sobre abono parcial)
-  if (t.cardSurcharge > 0 && !(isRes && (data.abono > 0))) {
+  // El recargo del 2% sólo va como línea del TOTAL cuando aplica a toda la
+  // operación (tarjeta única). En Mixto el recargo es de un solo pago dentro
+  // del desglose y no sumarlo al TOTAL evita confundir cliente/vendedora con
+  // un cargo que parece aplicar al precio de la moto.
+  if (t.cardSurcharge > 0 && !(isRes && (data.abono > 0)) && data.payMode !== 'Mixto') {
     tableBody.push(['Recargo tarjeta de crédito/débito (2%)', '+' + fmtCLP(t.cardSurcharge)]);
   }
   tableBody.push(['TOTAL', fmtCLP(t.grandTotal)]);
@@ -1699,9 +1710,11 @@ async function openNote(data, type) {
       doc.text('Detalle de abonos:', M + 4, y + 10);
       let ly = y + 14;
       doc.setFont('helvetica', 'normal'); doc.setTextColor(...dark);
+      let hubieronTarjetas = false;
       payLinesClean.forEach(l => {
         const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
-        doc.text('• ' + l.method, M + 6, ly);
+        if (sur > 0) hubieronTarjetas = true;
+        doc.text('• ' + l.method + (sur > 0 ? ' (incl. 2% recargo)' : ''), M + 6, ly);
         doc.text(fmtCLP(Number(l.amount) + sur), W - M - 4, ly, { align: 'right' });
         ly += 4;
       });
@@ -1711,9 +1724,14 @@ async function openNote(data, type) {
     }
     y += boxH + 5;
   } else if (data.payMode) {
+    // Si es Mixto con tarjeta, agregamos una línea aclaratoria para que el
+    // cliente entienda por qué el total cargado a la tarjeta excede al TOTAL.
+    const isMixtoConTarjeta = data.payMode === 'Mixto'
+      && (data.payLines || []).some(l => isTarjeta(l.method) && Number(l.amount) > 0);
+    const boxH = isMixtoConTarjeta ? 14 : 9;
     doc.setFillColor(249, 250, 251);
     doc.setDrawColor(...lightGray); doc.setLineWidth(0.2);
-    doc.roundedRect(M, y, cw, 9, 1, 1, 'FD');
+    doc.roundedRect(M, y, cw, boxH, 1, 1, 'FD');
     doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
     let payText = `Forma de pago: ${data.payMode}`;
     if (data.payMode === 'Mixto') {
@@ -1728,7 +1746,11 @@ async function openNote(data, type) {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(t.saldo > 0 ? 146 : 34, t.saldo > 0 ? 64 : 139, t.saldo > 0 ? 14 : 34);
     doc.text(estado, W - M - 4, y + 5.5, { align: 'right' });
-    y += 14;
+    if (isMixtoConTarjeta && t.cardSurcharge > 0) {
+      doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...gray);
+      doc.text(`El recargo del 2% (${fmtCLP(t.cardSurcharge)}) aplica solo al pago con tarjeta crédito/débito.`, M + 4, y + 11);
+    }
+    y += boxH + 5;
   }
 
   // ── BLOQUE AUTOFIN (condiciones de financiamiento) ──
@@ -2692,7 +2714,8 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     : chargeType === 'transferencia' ? 'Transferencia vehicular'
                     : 'Documentación completa', fmtCLP(totals.chargeAmt), '#A7F3D0'],
                   totals.discAmt > 0 ? [`Descuento ${discount}%`, `−${fmtCLP(totals.discAmt)}`, '#10B981'] : null,
-                  totals.cardSurcharge > 0 ? [`Recargo tarjeta 2%`, `+${fmtCLP(totals.cardSurcharge)}`, '#FCD34D'] : null,
+                  // En Mixto el recargo se muestra dentro del desglose por línea, no en el total.
+                  totals.cardSurcharge > 0 && payMode !== 'Mixto' ? [`Recargo tarjeta 2%`, `+${fmtCLP(totals.cardSurcharge)}`, '#FCD34D'] : null,
                 ].filter(Boolean).map(([lbl, val, clr]) => (
                   <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-disabled)', fontSize: 11, marginBottom: 4 }}>
                     <span>{lbl}</span><span style={{ color: clr }}>{val}</span>
