@@ -99,9 +99,9 @@ function DistributorBadge({ paid }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
       fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-xl)',
-      background: paid ? '#ECFDF5' : '#FEF3C7',
-      color: paid ? '#065F46' : '#92400E',
-      border: `1px solid ${paid ? '#A7F3D0' : '#FCD34D'}`,
+      background: paid ? '#ECFDF5' : '#F1F5F9',
+      color: paid ? '#065F46' : '#1E293B',
+      border: `1px solid ${paid ? '#A7F3D0' : '#94A3B8'}`,
       whiteSpace: 'nowrap',
     }}>
       <span style={{ fontSize: 10 }}>{paid ? '✓' : '○'}</span>
@@ -342,14 +342,14 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
         display: 'flex', alignItems: 'stretch',
         minHeight: 150,
         border: '1px solid var(--border)',
-        borderLeft: isRes ? '4px solid #4F46E5' : '4px solid #10B981',
+        borderLeft: isRes ? '4px solid #475569' : '4px solid #10B981',
         boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
       }}>
         {/* Foto */}
         <div style={{
           width: 180, flexShrink: 0,
           background: isRes
-            ? 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)'
+            ? 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)'
             : 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden', position: 'relative',
@@ -357,7 +357,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           {saleImage(sale) ? (
             <img src={saleImage(sale)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
           ) : (
-            <Ic.bike size={64} color={isRes ? '#4338CA' : '#059669'}/>
+            <Ic.bike size={64} color={isRes ? '#334155' : '#059669'}/>
           )}
           {sale.added_as_sold && (
             <span style={{
@@ -381,8 +381,8 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
               {isRes ? (
                 <span style={{ fontSize:10, fontWeight:800, padding:'3px 10px', borderRadius:'var(--radius-pill)',
-                  background:'#EEF2FF', color:'#3730A3',
-                  letterSpacing:'0.08em', border:'1px solid #A5B4FC' }}>
+                  background:'#F1F5F9', color:'#1E293B',
+                  letterSpacing:'0.08em', border:'1px solid #94A3B8' }}>
                   ◐ RESERVA
                 </span>
               ) : (
@@ -429,15 +429,15 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
         <button onClick={handleToggleDelivered} disabled={toggling}
           style={{ display:'flex', alignItems:'center', gap:10, width:'100%', marginBottom:14,
             padding:'12px 16px', borderRadius:'var(--radius-lg)', border:'none', cursor:'pointer', fontFamily:'inherit',
-            background: sale.delivered ? '#ECFDF5' : '#FFF7ED',
-            outline: `2px solid ${sale.delivered ? '#059669' : 'var(--brand)'}`,
+            background: sale.delivered ? '#ECFDF5' : '#F1F5F9',
+            outline: `2px solid ${sale.delivered ? '#059669' : '#475569'}`,
             transition:'all 0.15s' }}>
           <div style={{ width:28, height:28, borderRadius:'var(--radius-md)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
-            background: sale.delivered ? '#059669' : 'var(--brand)' }}>
+            background: sale.delivered ? '#059669' : '#475569' }}>
             <span style={{ color:'var(--text-on-dark)', fontSize:16, lineHeight:1 }}>{sale.delivered ? '✓' : '○'}</span>
           </div>
           <div style={{ textAlign:'left' }}>
-            <div style={{ fontSize:13, fontWeight:700, color: sale.delivered ? '#065F46' : '#92400E' }}>
+            <div style={{ fontSize:13, fontWeight:700, color: sale.delivered ? '#065F46' : '#1E293B' }}>
               {toggling ? 'Actualizando…' : sale.delivered ? 'Moto entregada al cliente' : 'Moto pendiente de entrega'}
             </div>
             <div style={{ fontSize:11, color:'var(--text-disabled)', marginTop:1 }}>
@@ -668,12 +668,12 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                     const saldo   = Math.max(0, total - totalAb);
                     return (
                       <>
-                        <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0 0', fontSize:12, fontWeight:700, color:'#3730A3', borderTop:'1px dashed #A5B4FC', marginTop:4 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0 0', fontSize:12, fontWeight:700, color:'#1E293B', borderTop:'1px dashed #94A3B8', marginTop:4 }}>
                           <span>Total abonado</span>
                           <span>{fmt(totalAb)}</span>
                         </div>
                         {saldo > 0 && (
-                          <div style={{ display:'flex', justifyContent:'space-between', padding:'2px 0', fontSize:12, fontWeight:700, color:'#3730A3' }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', padding:'2px 0', fontSize:12, fontWeight:700, color:'#1E293B' }}>
                             <span>Saldo pendiente</span>
                             <span>{fmt(saldo)}</span>
                           </div>
@@ -801,7 +801,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
         </div>
       ) : (
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: isRes?'#4338CA':'var(--brand)', textTransform: 'uppercase',
+          <div style={{ fontSize: 11, fontWeight: 700, color: isRes?'#334155':'var(--brand)', textTransform: 'uppercase',
                         letterSpacing: '0.08em', marginBottom: 2 }}>
             {isRes ? 'Editar reserva' : 'Editar seguimiento'}
           </div>
@@ -878,7 +878,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                       }
                     }} type="number" />
                   {form.sale_price > 0 && form.invoice_amount > 0 && (
-                    <div style={{ fontSize: 11, marginTop: 4, color: '#3730A3' }}>
+                    <div style={{ fontSize: 11, marginTop: 4, color: '#1E293B' }}>
                       Saldo: <strong>{fmt(Math.max(0, parseInt(form.sale_price||0) - parseInt(form.invoice_amount||0)))}</strong>
                     </div>
                   )}
@@ -900,7 +900,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                         onChange={e => setEditAbonoLines(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
                         placeholder="Monto $" style={{ ...S.inp, flex: '1 1 80px', fontSize: 12 }} />
                       {isTarjeta(l.method) && Number(l.amount) > 0 && (
-                        <span style={{ fontSize: 10, color: '#3730A3', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 10, color: '#1E293B', whiteSpace: 'nowrap' }}>
                           +2% = {fmt(Math.round(Number(l.amount) * 0.02))}
                         </span>
                       )}
@@ -921,7 +921,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                     const saldo   = Math.max(0, total - totalAb);
                     return (
                       <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12 }}>
-                        Abono: <strong>{fmt(totalAb)}</strong> · Saldo: <strong style={{ color: saldo > 0 ? '#3730A3' : '#065F46' }}>{fmt(saldo)}</strong>
+                        Abono: <strong>{fmt(totalAb)}</strong> · Saldo: <strong style={{ color: saldo > 0 ? '#1E293B' : '#065F46' }}>{fmt(saldo)}</strong>
                       </div>
                     );
                   })()}
@@ -1163,7 +1163,7 @@ function ConvertToSaleModal({ sale, onClose, onConverted }) {
             display:'flex', justifyContent:'space-between',
             paddingTop:6, marginTop:2, borderTop:'1px solid var(--border)',
             fontWeight:700,
-            color: saldoActual === 0 ? '#065F46' : '#3730A3',
+            color: saldoActual === 0 ? '#065F46' : '#1E293B',
           }}>
             <span>{saldoActual === 0 ? '✓ Saldado' : 'Saldo pendiente'}</span>
             <span>{fmt(saldoActual)}</span>
@@ -1697,14 +1697,14 @@ async function openNote(data, type) {
     const hasMulti = payLinesClean.length > 1;
     const detailH = hasMulti ? 4 + payLinesClean.length * 4 : 0;
     const boxH = 12 + detailH;
-    // RGB del nuevo rosa de reservada (#EEF2FF fondo) — antes era amarillo.
-    doc.setFillColor(238, 242, 255);
+    // RGB del nuevo rosa de reservada (#F1F5F9 fondo) — antes era amarillo.
+    doc.setFillColor(241, 245, 249);
     doc.setDrawColor(...lightGray); doc.setLineWidth(0.2);
     doc.roundedRect(M, y, cw, boxH, 1, 1, 'FD');
     doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
     doc.text(`Abono inicial: ${fmtCLP(t.abonoAmt)}`, M + 4, y + 5.5);
-    // Rose-800 (#3730A3) para el saldo pendiente, mismo tono que el chip
-    const saldoColor = t.saldo > 0 ? [55, 48, 163] : [34, 139, 34];
+    // Rose-800 (#1E293B) para el saldo pendiente, mismo tono que el chip
+    const saldoColor = t.saldo > 0 ? [30, 41, 59] : [34, 139, 34];
     doc.setFont('helvetica', 'bold'); doc.setTextColor(...saldoColor);
     doc.text(t.saldo > 0 ? `Saldo pendiente: ${fmtCLP(t.saldo)}` : 'Pagado en su totalidad', W - M - 4, y + 5.5, { align: 'right' });
     if (hasMulti) {
@@ -1746,7 +1746,7 @@ async function openNote(data, type) {
     doc.text(payText, M + 4, y + 5.5);
     const estado = t.saldo > 0 ? `Saldo pendiente: ${fmtCLP(t.saldo)}` : 'Cancelado en su totalidad';
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(t.saldo > 0 ? 55 : 34, t.saldo > 0 ? 48 : 139, t.saldo > 0 ? 163 : 34);
+    doc.setTextColor(t.saldo > 0 ? 30 : 34, t.saldo > 0 ? 41 : 139, t.saldo > 0 ? 59 : 34);
     doc.text(estado, W - M - 4, y + 5.5, { align: 'right' });
     if (isMixtoConTarjeta && t.cardSurcharge > 0) {
       doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...gray);
@@ -2573,12 +2573,12 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
               <>
                 <Field label="Abono inicial ($)" value={abono} onChange={setAbono} type="number" ph="0" />
                 {form.sale_price > 0 && abono > 0 && (
-                  <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'space-between', background: '#EEF2FF', border: '1px solid #A5B4FC', borderRadius: 'var(--radius-md)', padding: '8px 14px', fontSize: 12 }}>
-                    <span style={{ color: '#3730A3' }}>
+                  <div style={{ gridColumn: '1/-1', display: 'flex', justifyContent: 'space-between', background: '#F1F5F9', border: '1px solid #94A3B8', borderRadius: 'var(--radius-md)', padding: '8px 14px', fontSize: 12 }}>
+                    <span style={{ color: '#1E293B' }}>
                       Abono hoy: <strong>{fmtCLP(totals.abonoAmt)}</strong>
-                      {totals.cardSurcharge > 0 && <span style={{ fontSize: 10, color: '#3730A3' }}> (incl. recargo 2%)</span>}
+                      {totals.cardSurcharge > 0 && <span style={{ fontSize: 10, color: '#1E293B' }}> (incl. recargo 2%)</span>}
                     </span>
-                    <span style={{ color: '#3730A3', fontWeight: 700 }}>Saldo pendiente: {fmtCLP(totals.saldo)}</span>
+                    <span style={{ color: '#1E293B', fontWeight: 700 }}>Saldo pendiente: {fmtCLP(totals.saldo)}</span>
                   </div>
                 )}
               </>
@@ -2654,7 +2654,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 </div>
 
                 {isTarjeta(payMode) && totals.netTotal > 0 && (
-                  <div style={{ gridColumn: '1/-1', background: '#EEF2FF', border: '1px solid #A5B4FC', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12, color: '#3730A3' }}>
+                  <div style={{ gridColumn: '1/-1', background: '#F1F5F9', border: '1px solid #94A3B8', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12, color: '#1E293B' }}>
                     Recargo 2% tarjeta: <strong>+{fmtCLP(totals.cardSurcharge)}</strong> — Total con recargo: <strong>{fmtCLP(totals.grandTotal)}</strong>
                   </div>
                 )}
@@ -2753,7 +2753,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                         <input value={l.amount} type="number" onChange={e => setPayLines(p => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
                           placeholder="Monto $" style={{ ...S.inp, flex: '1 1 80px', fontSize: 12 }} />
                         {isTarjeta(l.method) && Number(l.amount) > 0 && (
-                          <span style={{ fontSize: 10, color: '#3730A3', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 10, color: '#1E293B', whiteSpace: 'nowrap' }}>
                             +2% = {fmtCLP(Math.round(Number(l.amount) * 0.02))}
                           </span>
                         )}
@@ -2769,7 +2769,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     </button>
                     {totals.grandTotal > 0 && (
                       <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', fontSize: 12 }}>
-                        Abono: <strong>{fmtCLP(totals.abonoAmt)}</strong> · Saldo: <strong style={{ color: totals.saldo > 0 ? '#3730A3' : '#065F46' }}>{fmtCLP(totals.saldo)}</strong>
+                        Abono: <strong>{fmtCLP(totals.abonoAmt)}</strong> · Saldo: <strong style={{ color: totals.saldo > 0 ? '#1E293B' : '#065F46' }}>{fmtCLP(totals.saldo)}</strong>
                       </div>
                     )}
                   </div>
@@ -2788,7 +2788,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                     : 'Documentación completa', fmtCLP(totals.chargeAmt), '#A7F3D0'],
                   totals.discAmt > 0 ? [`Descuento ${discount}%`, `−${fmtCLP(totals.discAmt)}`, '#10B981'] : null,
                   // En Mixto el recargo se muestra dentro del desglose por línea, no en el total.
-                  totals.cardSurcharge > 0 && payMode !== 'Mixto' ? [`Recargo tarjeta 2%`, `+${fmtCLP(totals.cardSurcharge)}`, '#A5B4FC'] : null,
+                  totals.cardSurcharge > 0 && payMode !== 'Mixto' ? [`Recargo tarjeta 2%`, `+${fmtCLP(totals.cardSurcharge)}`, '#94A3B8'] : null,
                 ].filter(Boolean).map(([lbl, val, clr]) => (
                   <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-disabled)', fontSize: 11, marginBottom: 4 }}>
                     <span>{lbl}</span><span style={{ color: clr }}>{val}</span>
@@ -2798,7 +2798,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                   <span>TOTAL</span><span style={{ color: 'var(--brand)' }}>{fmtCLP(totals.grandTotal)}</span>
                 </div>
                 {totals.saldo > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#A5B4FC', fontSize: 11, marginTop: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94A3B8', fontSize: 11, marginTop: 4 }}>
                     <span>Saldo pendiente</span><span>{fmtCLP(totals.saldo)}</span>
                   </div>
                 )}
@@ -3361,8 +3361,8 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                       <span style={{
                         fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 'var(--radius-pill)',
-                        background: isRes ? '#EEF2FF' : '#D1FAE5',
-                        color: isRes ? '#3730A3' : '#065F46',
+                        background: isRes ? '#F1F5F9' : '#D1FAE5',
+                        color: isRes ? '#1E293B' : '#065F46',
                         textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0,
                       }}>
                         {isRes ? 'Reserva' : 'Venta'}
@@ -3419,7 +3419,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     {isRes ? (
                       <span style={{
                         fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--radius-pill)',
-                        background: '#FEF08A', color: '#713F12', whiteSpace: 'nowrap',
+                        background: '#F1F5F9', color: '#1E293B', whiteSpace: 'nowrap', border: '1px solid #94A3B8',
                       }}>
                         Pend. entrega
                       </span>
@@ -3596,8 +3596,8 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     </span>
                     {s.year && (
                       <span style={{
-                        fontSize: 10, fontWeight: 700, color: '#4F46E5',
-                        background: '#EEF2FF', padding: '2px 7px', borderRadius: 'var(--radius-sm)',
+                        fontSize: 10, fontWeight: 700, color: '#475569',
+                        background: '#F1F5F9', padding: '2px 7px', borderRadius: 'var(--radius-sm)',
                         flexShrink: 0,
                       }}>
                         {s.year}
@@ -3928,8 +3928,8 @@ function DuplicatesModal({ onClose, onChanged, isSuperAdmin }) {
                       fontSize:9, fontWeight:800, padding:'3px 8px',
                       borderRadius:'var(--radius-xl)', textTransform:'uppercase',
                       letterSpacing:'0.04em', whiteSpace:'nowrap',
-                      background: s.status === 'reservada' ? 'rgba(79,70,229,0.10)' : 'rgba(21,128,61,0.10)',
-                      color:      s.status === 'reservada' ? '#4338CA' : '#15803D',
+                      background: s.status === 'reservada' ? 'rgba(71,85,105,0.10)' : 'rgba(21,128,61,0.10)',
+                      color:      s.status === 'reservada' ? '#334155' : '#15803D',
                     }}>{s.status}</span>
                     <div style={{ minWidth:0 }}>
                       <div style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>
