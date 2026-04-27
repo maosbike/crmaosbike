@@ -594,6 +594,32 @@ async function resolveLinks(parsed) {
   return { lead_id, inventory_id, sale_note_id, link_status };
 }
 
+// Propaga el PDF de la factura al campo doc_factura_cli de la unidad o
+// nota vinculada — así la venta muestra el botón "Factura cliente" en
+// sus documentos sin que el admin tenga que adjuntarla a mano.
+// COALESCE preserva un PDF que ya esté seteado manualmente.
+async function propagateInvoiceDoc({ inventory_id, sale_note_id, pdf_url }) {
+  if (!pdf_url) return;
+  if (inventory_id) {
+    await db.query(
+      `UPDATE inventory SET
+         doc_factura_cli = COALESCE(NULLIF(doc_factura_cli,''), $1),
+         updated_at = NOW()
+       WHERE id = $2`,
+      [pdf_url, inventory_id]
+    );
+  }
+  if (sale_note_id) {
+    await db.query(
+      `UPDATE sales_notes SET
+         doc_factura_cli = COALESCE(NULLIF(doc_factura_cli,''), $1),
+         updated_at = NOW()
+       WHERE id = $2`,
+      [pdf_url, sale_note_id]
+    );
+  }
+}
+
 // ─── GET /api/accounting/stats ───────────────────────────────────────────────
 // Totales mensuales (facturas emitidas, excluye notas de crédito).
 // Devuelve (a) resumen del mes pedido y (b) breakdown de los últimos 12 meses.
@@ -886,6 +912,21 @@ router.patch('/:id', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) =>
       `UPDATE invoices SET ${sets.join(', ')}, updated_at=NOW() WHERE id=$${idx}`,
       params
     );
+
+    // Si el admin cambió el vínculo a inventario o nota, propagar el PDF.
+    if (body.inventory_id !== undefined || body.sale_note_id !== undefined) {
+      const { rows: invRow } = await db.query(
+        `SELECT inventory_id, sale_note_id, pdf_url FROM invoices WHERE id=$1`,
+        [req.params.id]
+      );
+      if (invRow[0]) {
+        await propagateInvoiceDoc({
+          inventory_id: invRow[0].inventory_id,
+          sale_note_id: invRow[0].sale_note_id,
+          pdf_url:      invRow[0].pdf_url,
+        });
+      }
+    }
 
     // Devolver fila enriquecida (mismo SELECT que GET /:id).
     const { rows } = await db.query(
@@ -1188,7 +1229,7 @@ router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) =>
 // — se ajustó manualmente el RUT del cliente.
 router.post('/relink', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
   const { rows: pending } = await db.query(
-    `SELECT id, rut_cliente, chassis, brand, model
+    `SELECT id, rut_cliente, chassis, brand, model, pdf_url
        FROM invoices
       WHERE source = 'emitida'
         AND link_status IN ('sin_vincular','revisar')
@@ -1197,6 +1238,7 @@ router.post('/relink', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) 
 
   let linked = 0;
   let updated = 0;
+  let docs_propagated = 0;
   for (const inv of pending) {
     const links = await resolveLinks({
       rut_cliente: inv.rut_cliente,
@@ -1218,9 +1260,18 @@ router.post('/relink', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) 
     );
     if (rowCount) updated++;
     if (links.inventory_id || links.sale_note_id || links.lead_id) linked++;
+    // Propagar el PDF al lado de la venta — sólo si seteamos vínculo nuevo.
+    if (links.inventory_id || links.sale_note_id) {
+      await propagateInvoiceDoc({
+        inventory_id: links.inventory_id,
+        sale_note_id: links.sale_note_id,
+        pdf_url:      inv.pdf_url,
+      });
+      docs_propagated++;
+    }
   }
 
-  res.json({ scanned: pending.length, linked, updated });
+  res.json({ scanned: pending.length, linked, updated, docs_propagated });
 }));
 
 // ─── POST /api/accounting/sync-drive ─────────────────────────────────────────
@@ -1446,6 +1497,16 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
           );
           invoiceId = ins.rows[0].id;
           results.created++;
+        }
+
+        // Propagar PDF al inventario o nota vinculada para que la venta lo
+        // muestre en sus documentos descargables (Factura cliente).
+        if (links.inventory_id || links.sale_note_id) {
+          await propagateInvoiceDoc({
+            inventory_id: links.inventory_id,
+            sale_note_id: links.sale_note_id,
+            pdf_url,
+          });
         }
 
         // NC con referencia → marcar la factura original como anulada SÓLO si
