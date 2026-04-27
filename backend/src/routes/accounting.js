@@ -584,11 +584,19 @@ async function resolveLinks(parsed) {
   }
 
   // 5. Determinar estado de vinculación
-  if (lead_id && (inventory_id || sale_note_id)) {
+  // Match por chasis = match definitivo (el chasis es único). Si se logró
+  // cruzar inventario o nota por chasis, la factura queda 'vinculada' y no
+  // requiere revisión manual. 'revisar' queda reservado para casos donde
+  // sólo hubo lead match pero no se encontró la unidad física.
+  const matchedByChassis = chassisNorm && (inventory_id || sale_note_id);
+  if (matchedByChassis) {
     link_status = 'vinculada';
-  } else if (lead_id || inventory_id || sale_note_id) {
-    // Match parcial — revisar si RUT sin chasis o viceversa
-    link_status = (rutNorm && chassisNorm) ? 'revisar' : 'vinculada';
+  } else if (inventory_id || sale_note_id) {
+    // Match por fallback RUT+brand+model — confiable pero no infalible.
+    link_status = lead_id ? 'vinculada' : 'revisar';
+  } else if (lead_id) {
+    // Sólo encontramos al cliente, no la moto. Necesita revisión.
+    link_status = 'revisar';
   }
 
   return { lead_id, inventory_id, sale_note_id, link_status };
@@ -1228,50 +1236,86 @@ router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) =>
 // — el chasis tenía un guion/punto que ahora el matcher tolerante captura,
 // — se ajustó manualmente el RUT del cliente.
 router.post('/relink', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
-  const { rows: pending } = await db.query(
-    `SELECT id, rut_cliente, chassis, brand, model, pdf_url
+  // Procesamos TODAS las facturas emitidas — incluso las ya 'vinculadas'.
+  // Eso permite (a) capturar cambios de status (revisar → vinculada cuando
+  // arreglamos el threshold) y (b) propagar el PDF al inventario aunque el
+  // vínculo viniera de syncs anteriores.
+  const { rows: invoices } = await db.query(
+    `SELECT id, rut_cliente, chassis, brand, model, pdf_url,
+            inventory_id AS curr_inventory_id,
+            sale_note_id AS curr_sale_note_id,
+            lead_id      AS curr_lead_id,
+            link_status  AS curr_status
        FROM invoices
-      WHERE source = 'emitida'
-        AND link_status IN ('sin_vincular','revisar')
-        AND (inventory_id IS NULL OR sale_note_id IS NULL OR lead_id IS NULL)`
+      WHERE source = 'emitida'`
   );
 
   let linked = 0;
   let updated = 0;
   let docs_propagated = 0;
-  for (const inv of pending) {
+  let status_fixed = 0;
+  for (const inv of invoices) {
     const links = await resolveLinks({
       rut_cliente: inv.rut_cliente,
       chassis:     inv.chassis,
       brand:       inv.brand,
       model:       inv.model,
     });
-    // Sólo escribimos si hay algo nuevo que aportar — COALESCE en SQL para
-    // preservar vínculos manuales que un admin haya seteado.
-    const { rowCount } = await db.query(
-      `UPDATE invoices SET
-         lead_id      = COALESCE(lead_id,      $1),
-         inventory_id = COALESCE(inventory_id, $2),
-         sale_note_id = COALESCE(sale_note_id, $3),
-         link_status  = $4,
-         updated_at   = NOW()
-       WHERE id = $5`,
-      [links.lead_id, links.inventory_id, links.sale_note_id, links.link_status, inv.id]
-    );
-    if (rowCount) updated++;
-    if (links.inventory_id || links.sale_note_id || links.lead_id) linked++;
-    // Propagar el PDF al lado de la venta — sólo si seteamos vínculo nuevo.
-    if (links.inventory_id || links.sale_note_id) {
+    // COALESCE preserva vínculos manuales. Si nada cambió, saltamos UPDATE.
+    const newInv  = inv.curr_inventory_id || links.inventory_id;
+    const newSn   = inv.curr_sale_note_id || links.sale_note_id;
+    const newLead = inv.curr_lead_id      || links.lead_id;
+    // Re-calcular el status final con los IDs efectivos
+    let finalStatus = links.link_status;
+    const matchedByChassisFinal = inv.chassis && (newInv || newSn);
+    if (matchedByChassisFinal) finalStatus = 'vinculada';
+    else if (newInv || newSn)  finalStatus = newLead ? 'vinculada' : 'revisar';
+    else if (newLead)          finalStatus = 'revisar';
+    else                        finalStatus = 'sin_vincular';
+
+    const needsUpdate =
+      newInv  !== inv.curr_inventory_id ||
+      newSn   !== inv.curr_sale_note_id ||
+      newLead !== inv.curr_lead_id      ||
+      finalStatus !== inv.curr_status;
+
+    if (needsUpdate) {
+      await db.query(
+        `UPDATE invoices SET
+           lead_id      = $1,
+           inventory_id = $2,
+           sale_note_id = $3,
+           link_status  = $4,
+           updated_at   = NOW()
+         WHERE id = $5`,
+        [newLead, newInv, newSn, finalStatus, inv.id]
+      );
+      updated++;
+      if (finalStatus !== inv.curr_status) status_fixed++;
+    }
+    if (newInv || newSn || newLead) linked++;
+
+    // Propagar el PDF SIEMPRE que haya un vínculo a inv/nota — captura los
+    // casos viejos donde la factura ya estaba vinculada pero el PDF no
+    // había bajado al inventario. propagateInvoiceDoc usa COALESCE NULLIF
+    // así que no pisa un PDF subido a mano.
+    if ((newInv || newSn) && inv.pdf_url) {
       await propagateInvoiceDoc({
-        inventory_id: links.inventory_id,
-        sale_note_id: links.sale_note_id,
+        inventory_id: newInv,
+        sale_note_id: newSn,
         pdf_url:      inv.pdf_url,
       });
       docs_propagated++;
     }
   }
 
-  res.json({ scanned: pending.length, linked, updated, docs_propagated });
+  res.json({
+    scanned: invoices.length,
+    linked,
+    updated,
+    status_fixed,
+    docs_propagated,
+  });
 }));
 
 // ─── POST /api/accounting/sync-drive ─────────────────────────────────────────

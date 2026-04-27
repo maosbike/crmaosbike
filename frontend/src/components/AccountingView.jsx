@@ -1194,7 +1194,7 @@ export function AccountingView() {
             : syncResult.relinked
             ? (
               <div style={{ color: '#15803D' }}>
-                Re-vinculadas — {syncResult.scanned} pendientes revisadas, {syncResult.linked} con match nuevo, {syncResult.updated} actualizadas en DB.
+                Re-vinculadas — {syncResult.scanned} facturas revisadas, {syncResult.linked} con vínculo, {syncResult.updated} actualizadas, {syncResult.status_fixed || 0} cambiaron de estado, {syncResult.docs_propagated || 0} PDFs propagados a la venta.
               </div>
             )
             : (
