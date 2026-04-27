@@ -816,7 +816,11 @@ router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(
       [req.params.id]
     );
     if (!cur[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
-    if (['vendida', 'reservada'].includes(cur[0].status)) {
+    // super_admin puede borrar cualquier estado — incluso vendidas y
+    // reservadas. La UI ya pide confirmación con el botón rojo "Sí, eliminar".
+    // admin_comercial sigue bloqueado para evitar borrados accidentales en
+    // unidades con venta/reserva activa.
+    if (['vendida', 'reservada'].includes(cur[0].status) && req.user.role !== 'super_admin') {
       return res.status(409).json({ error: 'No se puede eliminar una unidad vendida o reservada. Usa la opción de revertir venta.' });
     }
     const { rows } = await db.query(
