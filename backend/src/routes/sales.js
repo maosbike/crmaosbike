@@ -90,7 +90,14 @@ const COMBINED_FROM = `(
     COALESCE(
       NULLIF(TRIM(i.client_rut), ''),
       t.rut
-    ) AS client_rut
+    ) AS client_rut,
+    -- Datos del cliente extraídos de la factura electrónica vinculada
+    -- (si la hay). Se usan como fallback en el frontend para auto-rellenar
+    -- dirección, comuna y giro cuando la unidad ya tiene factura SII.
+    inv.cliente_direccion AS inv_cliente_direccion,
+    inv.cliente_comuna    AS inv_cliente_comuna,
+    inv.cliente_giro      AS inv_cliente_giro,
+    inv.folio             AS inv_folio
   FROM inventory i
   LEFT JOIN users       sv ON i.sold_by   = sv.id
   LEFT JOIN branches    b  ON i.branch_id = b.id
@@ -112,6 +119,17 @@ const COMBINED_FROM = `(
      ORDER BY CASE WHEN year = i.year THEN 0 ELSE 1 END
      LIMIT 1
   ) mm_txt ON mm.id IS NULL
+  -- Última factura emitida vinculada a esta unidad. Trae dirección,
+  -- comuna y giro del cliente para que el form de edición pueda
+  -- auto-completar sin pedir retipear.
+  LEFT JOIN LATERAL (
+    SELECT cliente_direccion, cliente_comuna, cliente_giro, folio
+      FROM invoices
+     WHERE inventory_id = i.id
+       AND source = 'emitida'
+     ORDER BY fecha_emision DESC NULLS LAST, created_at DESC
+     LIMIT 1
+  ) inv ON TRUE
   WHERE i.status IN ('vendida', 'reservada')
 
   UNION ALL
@@ -146,7 +164,11 @@ const COMBINED_FROM = `(
     COALESCE(
       NULLIF(TRIM(n.client_rut), ''),
       t.rut
-    ) AS client_rut
+    ) AS client_rut,
+    inv.cliente_direccion AS inv_cliente_direccion,
+    inv.cliente_comuna    AS inv_cliente_comuna,
+    inv.cliente_giro      AS inv_cliente_giro,
+    inv.folio             AS inv_folio
   FROM sales_notes n
   LEFT JOIN users       sv ON n.sold_by   = sv.id
   LEFT JOIN branches    b  ON n.branch_id = b.id
@@ -164,6 +186,14 @@ const COMBINED_FROM = `(
      ORDER BY CASE WHEN year = n.year THEN 0 ELSE 1 END
      LIMIT 1
   ) mm_txt ON mm.id IS NULL
+  LEFT JOIN LATERAL (
+    SELECT cliente_direccion, cliente_comuna, cliente_giro, folio
+      FROM invoices
+     WHERE sale_note_id = n.id
+       AND source = 'emitida'
+     ORDER BY fecha_emision DESC NULLS LAST, created_at DESC
+     LIMIT 1
+  ) inv ON TRUE
 ) c`;
 
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
