@@ -2133,53 +2133,69 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     if (!selUnit && !form.branch_id) { setErr('Sucursal obligatoria'); return; }
     if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
 
-    // Precio y forma de pago siempre obligatorios — sin esto la venta queda
-    // sin monto o sin medio de pago registrado, lo que después es imposible
-    // de auditar contra contabilidad.
-    if (!form.sale_price || Number(form.sale_price) <= 0) {
-      setErr('Precio de la moto obligatorio'); return;
-    }
-    if (!payMode) {
-      setErr('Forma de pago obligatoria'); return;
-    }
-    if (payMode === 'Mixto') {
-      const validLines = (payLines || []).filter(l => l.method && Number(l.amount) > 0);
-      if (validLines.length < 1) {
-        setErr('En pago mixto agregá al menos una línea con método y monto'); return;
+    // Si la unidad ya está facturada, ablandamos las validaciones operativas.
+    // La factura electrónica es la fuente de verdad para monto, forma de
+    // pago y datos del cliente — re-pedírselo a la vendedora es ruido.
+    const yaFacturada = !!(editSale && (editSale.doc_factura_cli || editSale.accounting_invoice_id));
+
+    // Precio y forma de pago siempre obligatorios PARA NUEVAS — sin esto
+    // la venta queda sin monto o sin medio de pago registrado, lo que
+    // después es imposible de auditar contra contabilidad.
+    if (!yaFacturada) {
+      if (!form.sale_price || Number(form.sale_price) <= 0) {
+        setErr('Precio de la moto obligatorio'); return;
       }
-    }
-
-    // Tipo de cargo (inscripción / documentación / transferencia) obligatorio.
-    // Hay reservas viejas que quedaron sin esto y al regenerar la nota faltaba
-    // el desglose. Ahora todas pasan por acá.
-    if (!['inscripcion','completa','transferencia','sin_detalle'].includes(chargeType)) {
-      setErr('Documentación obligatoria (inscripción / completa / transferencia)'); return;
-    }
-
-    // Reserva: el abono inicial es obligatorio — una reserva sin abono no
-    // tiene sentido (no compromete al cliente y rompe la lógica de saldo).
-    if (isReserva) {
-      if (!abono || Number(abono) <= 0) {
-        setErr('Abono inicial obligatorio para registrar una reserva'); return;
+      if (!payMode) {
+        setErr('Forma de pago obligatoria'); return;
+      }
+      if (payMode === 'Mixto') {
+        const validLines = (payLines || []).filter(l => l.method && Number(l.amount) > 0);
+        if (validLines.length < 1) {
+          setErr('En pago mixto agregá al menos una línea con método y monto'); return;
+        }
+      }
+      if (!['inscripcion','completa','transferencia','sin_detalle'].includes(chargeType)) {
+        setErr('Documentación obligatoria (inscripción / completa / transferencia)'); return;
+      }
+      if (isReserva) {
+        if (!abono || Number(abono) <= 0) {
+          setErr('Abono inicial obligatorio para registrar una reserva'); return;
+        }
       }
     }
 
     // Validación de datos del cliente — obligatorios para no terminar con
-    // ventas/reservas huérfanas. Email queda como recomendado pero no
-    // bloqueante (algunos clientes mayores no lo dan).
+    // ventas/reservas huérfanas. Si la unidad YA tiene factura adjunta
+    // (doc_factura_cli o accounting_invoice_id), saltamos la validación
+    // estricta: la factura electrónica ya tiene nombre, RUT, dirección,
+    // comuna y giro del cliente, así que no tiene sentido forzar a la
+    // vendedora a retipearlos para editar.
+    const yaTieneFactura = !!(editSale && (editSale.doc_factura_cli || editSale.accounting_invoice_id));
     const isEmpresaCli = form.client_type === 'empresa';
-    if (isEmpresaCli) {
-      if (!form.empresa_name?.trim())  { setErr('Nombre de la empresa obligatorio'); return; }
-      if (!form.empresa_rut?.trim())   { setErr('RUT de la empresa obligatorio'); return; }
-      if (!form.client_name?.trim())   { setErr('Nombre del representante obligatorio'); return; }
-      if (!form.empresa_phone?.trim()) { setErr('Teléfono de la empresa obligatorio'); return; }
+    if (!yaTieneFactura) {
+      if (isEmpresaCli) {
+        if (!form.empresa_name?.trim())  { setErr('Nombre de la empresa obligatorio'); return; }
+        if (!form.empresa_rut?.trim())   { setErr('RUT de la empresa obligatorio'); return; }
+        if (!form.client_name?.trim())   { setErr('Nombre del representante obligatorio'); return; }
+        if (!form.empresa_phone?.trim()) { setErr('Teléfono de la empresa obligatorio'); return; }
+      } else {
+        if (!form.client_name?.trim())    { setErr('Nombre del cliente obligatorio'); return; }
+        if (!form.client_rut?.trim())     { setErr('RUT del cliente obligatorio'); return; }
+        if (!form.client_phone?.trim())   { setErr('Teléfono del cliente obligatorio'); return; }
+        if (!form.client_email?.trim())   { setErr('Email del cliente obligatorio'); return; }
+        if (!form.client_address?.trim()) { setErr('Dirección del cliente obligatoria'); return; }
+        if (!form.client_commune?.trim()) { setErr('Comuna del cliente obligatoria'); return; }
+      }
     } else {
-      if (!form.client_name?.trim())    { setErr('Nombre del cliente obligatorio'); return; }
-      if (!form.client_rut?.trim())     { setErr('RUT del cliente obligatorio'); return; }
-      if (!form.client_phone?.trim())   { setErr('Teléfono del cliente obligatorio'); return; }
-      if (!form.client_email?.trim())   { setErr('Email del cliente obligatorio'); return; }
-      if (!form.client_address?.trim()) { setErr('Dirección del cliente obligatoria'); return; }
-      if (!form.client_commune?.trim()) { setErr('Comuna del cliente obligatoria'); return; }
+      // Mínimo defendible: nombre y RUT siempre. El resto puede salir de la
+      // factura. Si ni siquiera tienen nombre, está mal.
+      if (isEmpresaCli) {
+        if (!form.empresa_name?.trim() && !form.client_name?.trim()) {
+          setErr('Falta nombre del cliente / empresa'); return;
+        }
+      } else {
+        if (!form.client_name?.trim()) { setErr('Falta nombre del cliente'); return; }
+      }
     }
 
     setSaving(true); setErr('');
