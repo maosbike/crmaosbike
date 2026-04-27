@@ -816,12 +816,11 @@ router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(
       [req.params.id]
     );
     if (!cur[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
-    // super_admin puede borrar cualquier estado — incluso vendidas y
-    // reservadas. La UI ya pide confirmación con el botón rojo "Sí, eliminar".
-    // admin_comercial sigue bloqueado para evitar borrados accidentales en
-    // unidades con venta/reserva activa.
-    if (['vendida', 'reservada'].includes(cur[0].status) && req.user.role !== 'super_admin') {
-      return res.status(409).json({ error: 'No se puede eliminar una unidad vendida o reservada. Usa la opción de revertir venta.' });
+    // BLOQUEO: borrar una unidad vendida/reservada también la borra de Ventas
+    // (porque Ventas lee del JOIN a inventory). Para "sacarla del inventario
+    // porque ya se entregó" usar el flag delivered=true en su lugar.
+    if (['vendida', 'reservada'].includes(cur[0].status)) {
+      return res.status(409).json({ error: 'No se puede eliminar una unidad vendida o reservada — borrarla también la saca de Ventas. Si ya se entregó, usá "Confirmar entrega" para sacarla del inventario sin perder la venta.' });
     }
     const { rows } = await db.query(
       'DELETE FROM inventory WHERE id=$1 RETURNING id, brand, model, chassis',
