@@ -1682,19 +1682,34 @@ async function openNote(data, type) {
 
   // ── FORMA DE PAGO / ABONO (reserva) ──
   if (isRes && t.grandTotal > 0) {
+    const payLinesClean = (data.payLines || []).filter(l => l.method && Number(l.amount) > 0);
+    const hasMulti = payLinesClean.length > 1;
+    const detailH = hasMulti ? 4 + payLinesClean.length * 4 : 0;
+    const boxH = 12 + detailH;
     doc.setFillColor(255, 248, 237);
     doc.setDrawColor(...lightGray); doc.setLineWidth(0.2);
-    doc.roundedRect(M, y, cw, 12, 1, 1, 'FD');
+    doc.roundedRect(M, y, cw, boxH, 1, 1, 'FD');
     doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...dark);
     doc.text(`Abono inicial: ${fmtCLP(t.abonoAmt)}`, M + 4, y + 5.5);
     const saldoColor = t.saldo > 0 ? [180, 83, 9] : [34, 139, 34];
     doc.setFont('helvetica', 'bold'); doc.setTextColor(...saldoColor);
     doc.text(t.saldo > 0 ? `Saldo pendiente: ${fmtCLP(t.saldo)}` : 'Pagado en su totalidad', W - M - 4, y + 5.5, { align: 'right' });
-    if (data.payMode) {
+    if (hasMulti) {
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...gray);
+      doc.text('Detalle de abonos:', M + 4, y + 10);
+      let ly = y + 14;
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(...dark);
+      payLinesClean.forEach(l => {
+        const sur = isTarjeta(l.method) ? Math.round(Number(l.amount) * 0.02) : 0;
+        doc.text('• ' + l.method, M + 6, ly);
+        doc.text(fmtCLP(Number(l.amount) + sur), W - M - 4, ly, { align: 'right' });
+        ly += 4;
+      });
+    } else if (data.payMode) {
       doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...gray);
       doc.text(`Medio: ${data.payMode}`, M + 4, y + 10);
     }
-    y += 17;
+    y += boxH + 5;
   } else if (data.payMode) {
     doc.setFillColor(249, 250, 251);
     doc.setDrawColor(...lightGray); doc.setLineWidth(0.2);
@@ -2836,7 +2851,18 @@ async function openNoteFromSale(s) {
     client_commune: clientParsed.commune || '',
     sale_price: s.sale_price, abono: s.invoice_amount||0,
     accessories: loadedAccessories, discount: loadedDiscountPct,
-    payMode: s.payment_method||'', payLines:[],
+    // abono_lines guarda el desglose real (ej: 500k transferencia + 805k crédito
+    // + 1.490k transferencia). Lo propagamos como payLines para que el PDF
+    // muestre el breakdown en vez de un único "Medio: Mixto" sin detalle.
+    ...(() => {
+      const lines = Array.isArray(s.abono_lines)
+        ? s.abono_lines
+            .filter(l => l && l.method && Number(l.amount) > 0)
+            .map(l => ({ method: String(l.method), amount: Number(l.amount) }))
+        : [];
+      const payMode = lines.length > 1 ? 'Mixto' : (s.payment_method || lines[0]?.method || '');
+      return { payMode, payLines: lines };
+    })(),
     chargeType: ['completa','transferencia','inscripcion','sin_detalle'].includes(s.charge_type || s.sale_type)
       ? (s.charge_type || s.sale_type)
       : 'inscripcion',
