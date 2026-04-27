@@ -319,6 +319,7 @@ export const api = {
   createSaleFromInvoice: (id, data) => request('POST', `/accounting/${id}/create-sale`, data),
   deleteAccounting: (id) => request('DELETE', `/accounting/${id}`),
   syncAccountingFromDrive: () => request('POST', '/accounting/sync-drive'),
+  relinkAccounting: () => request('POST', '/accounting/relink'),
 
   // Días libres (time-off)
   getTimeOff:      (params) => request('GET',    `/time-off?${new URLSearchParams(params || {})}`),

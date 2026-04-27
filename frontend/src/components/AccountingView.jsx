@@ -1132,6 +1132,21 @@ export function AccountingView() {
     }
   }
 
+  async function relink() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const r = await api.relinkAccounting();
+      setSyncResult({ relinked: true, ...r });
+      load();
+      loadStats();
+    } catch (e) {
+      setSyncResult({ error: e.message });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function handleUpdated(updated) {
     setData(prev => prev.map(d => d.id === updated.id ? { ...d, ...updated } : d));
     setSelected(prev => prev ? { ...prev, ...updated } : prev);
@@ -1143,11 +1158,18 @@ export function AccountingView() {
         title="Contabilidad"
         subtitle={ymLabel(ym)}
         actions={
-          <button onClick={syncDrive} disabled={syncing}
-            style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <Ic.refresh size={14} color="var(--text-on-brand)" />
-            {syncing ? 'Sincronizando...' : 'Sincronizar Drive'}
-          </button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={relink} disabled={syncing}
+              title="Re-correr el cruce automático de facturas pendientes con inventario y notas (sin re-bajar Drive)"
+              style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              {syncing ? '...' : 'Re-vincular'}
+            </button>
+            <button onClick={syncDrive} disabled={syncing}
+              style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <Ic.refresh size={14} color="var(--text-on-brand)" />
+              {syncing ? 'Sincronizando...' : 'Sincronizar Drive'}
+            </button>
+          </div>
         }
       />
 
@@ -1169,6 +1191,12 @@ export function AccountingView() {
         }}>
           {syncResult.error
             ? <span style={{ color: '#DC2626' }}>{syncResult.error}</span>
+            : syncResult.relinked
+            ? (
+              <div style={{ color: '#15803D' }}>
+                Re-vinculadas — {syncResult.scanned} pendientes revisadas, {syncResult.linked} con match nuevo, {syncResult.updated} actualizadas en DB.
+              </div>
+            )
             : (
               <>
                 <div style={{ color: '#15803D' }}>
