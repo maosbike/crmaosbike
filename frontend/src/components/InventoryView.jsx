@@ -35,7 +35,7 @@ const branchCfg = (code, brs) => {
 // para no duplicar texto entre módulos.
 const ST_PALETTE = {
   disponible:  { color:'#15803D', bg:'#F0FDF4', border:'#86EFAC', icon:'●' },
-  reservada:   { color:'#B45309', bg:'#FFFBEB', border:'#FCD34D', icon:'◐' },
+  reservada:   { color:'#9F1239', bg:'#FCE7F3', border:'#F9A8D4', icon:'◐' },
   vendida:     { color:'#6D28D9', bg:'#F5F3FF', border:'#C4B5FD', icon:'V' },
   preinscrita: { color:'#0E7490', bg:'#ECFEFF', border:'#67E8F9', icon:'◌' },
 };
@@ -1290,19 +1290,19 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
 
             {/* ── Sección reserva activa ─────────────────────────────────── */}
             {editTarget?.status === 'reservada' && (
-              <div style={{ marginTop:14, background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:'var(--radius-lg)', padding:'14px 16px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'#B45309', marginBottom:12, textTransform:'uppercase', letterSpacing:'0.06em' }}>
+              <div style={{ marginTop:14, background:'#FCE7F3', border:'1px solid #F9A8D4', borderRadius:'var(--radius-lg)', padding:'14px 16px' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#9F1239', marginBottom:12, textTransform:'uppercase', letterSpacing:'0.06em' }}>
                   ◐ Reserva activa
                 </div>
 
                 {/* Info cliente */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
                   <div>
-                    <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>Cliente</div>
+                    <div style={{ fontSize:11, color:'#9F1239', marginBottom:2, fontWeight:600 }}>Cliente</div>
                     <div style={{ fontSize:13, color:'var(--text)' }}>{editTarget.client_name || <span style={{color:'var(--text-disabled)'}}>—</span>}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize:11, color:'#78350F', marginBottom:2, fontWeight:600 }}>RUT</div>
+                    <div style={{ fontSize:11, color:'#9F1239', marginBottom:2, fontWeight:600 }}>RUT</div>
                     <div style={{ fontSize:13, color:'var(--text)' }}>{editTarget.client_rut || <span style={{color:'var(--text-disabled)'}}>—</span>}</div>
                   </div>
                 </div>
@@ -1310,8 +1310,8 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 {/* Totales */}
                 {editTarget.sale_price > 0 && (
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:12 }}>
-                    <div style={{ background:'#FEF3C7', borderRadius:'var(--radius-md)', padding:'8px 10px', textAlign:'center' }}>
-                      <div style={{ fontSize:10, color:'#92400E', fontWeight:700, marginBottom:2 }}>PRECIO</div>
+                    <div style={{ background:'#FCE7F3', borderRadius:'var(--radius-md)', padding:'8px 10px', textAlign:'center' }}>
+                      <div style={{ fontSize:10, color:'#9F1239', fontWeight:700, marginBottom:2 }}>PRECIO</div>
                       <div style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{fmt(editTarget.sale_price)}</div>
                     </div>
                     <div style={{ background:'#ECFDF5', borderRadius:'var(--radius-md)', padding:'8px 10px', textAlign:'center' }}>
@@ -1330,7 +1330,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                 {/* Actualizar abono + vendedor */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
                   <div>
-                    <div style={{ fontSize:11, fontWeight:600, color:'#78350F', marginBottom:4 }}>Actualizar abono ($)</div>
+                    <div style={{ fontSize:11, fontWeight:600, color:'#9F1239', marginBottom:4 }}>Actualizar abono ($)</div>
                     <input
                       type="number" value={eForm.invoice_amount}
                       onChange={e=>setEForm({...eForm,invoice_amount:e.target.value})}
@@ -1338,13 +1338,13 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                       style={{ ...S.inp, width:'100%', fontSize:13 }}
                     />
                     {eForm.invoice_amount > 0 && eForm.sale_price > 0 && (
-                      <div style={{ fontSize:11, color:'#B45309', marginTop:4 }}>
+                      <div style={{ fontSize:11, color:'#9F1239', marginTop:4 }}>
                         Saldo: <strong>{fmt(Math.max(0, parseInt(eForm.sale_price) - parseInt(eForm.invoice_amount)))}</strong>
                       </div>
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize:11, fontWeight:600, color:'#78350F', marginBottom:4 }}>Vendedor</div>
+                    <div style={{ fontSize:11, fontWeight:600, color:'#9F1239', marginBottom:4 }}>Vendedor</div>
                     <select
                       value={eForm.sold_by}
                       onChange={e=>setEForm({...eForm,sold_by:e.target.value})}
@@ -1355,7 +1355,7 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                   </div>
                 </div>
 
-                <div style={{ fontSize:11, color:'#92400E', marginTop:4 }}>
+                <div style={{ fontSize:11, color:'#9F1239', marginTop:4 }}>
                   Guarda los cambios para actualizar el abono, o conviértela en nota de venta cuando el cliente complete el pago.
                 </div>
               </div>
