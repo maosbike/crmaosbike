@@ -441,6 +441,10 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
       sale_price, cost_price, invoice_amount, client_name, client_rut,
       // Desglose (migración 055)
       accessories, charge_type, charge_amt, discount_amt,
+      // Multi-medio de pago (migración 061) — clave para conversión
+      // reserva → venta cuando el cliente termina de pagar el saldo
+      // con un medio distinto del abono inicial.
+      abono_lines,
     } = req.body;
 
     // Ownership: un vendedor SOLO puede registrarse a sí mismo como sold_by
@@ -463,6 +467,22 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     const chType = ['completa','inscripcion','transferencia','sin_detalle'].includes(charge_type) ? charge_type : null;
     const chAmt  = charge_amt  != null && charge_amt  !== '' ? (parseInt(charge_amt)  || 0) : null;
     const dcAmt  = discount_amt != null && discount_amt !== '' ? (parseInt(discount_amt) || 0) : null;
+    // abono_lines: si viene como array, normaliza, deriva invoice_amount = suma
+    // y payment_method = 'Mixto' (o el único método si es 1 línea).
+    let abonoLinesArr = null;
+    if (abono_lines !== undefined) {
+      abonoLinesArr = Array.isArray(abono_lines)
+        ? abono_lines
+            .filter(l => l && l.method && Number(l.amount) > 0)
+            .map(l => ({ method: String(l.method).slice(0, 50), amount: parseInt(l.amount) || 0 }))
+        : null;
+      if (abonoLinesArr && abonoLinesArr.length) {
+        invoice_amount = abonoLinesArr.reduce((s, l) => s + l.amount, 0);
+        if (!payment_method) {
+          payment_method = abonoLinesArr.length > 1 ? 'Mixto' : abonoLinesArr[0].method;
+        }
+      }
+    }
 
     // Verificar unidad existe y no está vendida
     const { rows: unitRows } = await db.query('SELECT * FROM inventory WHERE id = $1', [req.params.id]);
@@ -473,7 +493,7 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     const finalSoldAt = sold_at || new Date().toISOString();
     const prevStatus  = unit.status;
 
-    // Actualizar unidad — incluye campos extendidos de 024 + desglose 055
+    // Actualizar unidad — incluye campos extendidos de 024 + desglose 055 + abono_lines 061
     const { rows: updated } = await db.query(
       `UPDATE inventory SET
          status='vendida', sold_at=$1, sold_by=$2, ticket_id=$3,
@@ -481,14 +501,16 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
          sale_price=$7, cost_price=$8, invoice_amount=$9,
          client_name=$10, client_rut=$11,
          accessories=$12, charge_type=$13, charge_amt=$14, discount_amt=$15,
+         abono_lines=$16,
          updated_at=NOW()
-       WHERE id=$16 RETURNING *`,
+       WHERE id=$17 RETURNING *`,
       [finalSoldAt, sold_by, ticket_id||null, payment_method||null,
        sale_type||null, sale_notes||null,
        sale_price||null, cost_price||null, invoice_amount||null,
        client_name||null, client_rut||null,
        accArr && accArr.length ? JSON.stringify(accArr) : null,
        chType, chAmt, dcAmt,
+       abonoLinesArr && abonoLinesArr.length ? JSON.stringify(abonoLinesArr) : null,
        req.params.id]
     );
 

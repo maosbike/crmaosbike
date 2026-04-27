@@ -1003,15 +1003,11 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       )}
 
       {showConfirmConvert && (
-        <Modal open onClose={() => setShowConfirmConvert(false)} title="Confirmar conversión">
-          <p style={{ fontSize: 13, color: 'var(--text-body)', marginBottom: 8 }}>
-            Esta acción convertirá el registro a nota de venta y <strong>no se puede deshacer</strong>.
-          </p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-            <Btn variant='secondary' onClick={() => setShowConfirmConvert(false)}>Cancelar</Btn>
-            <Btn variant='primary' onClick={() => { setShowConfirmConvert(false); doConvert(); }}>Convertir a venta</Btn>
-          </div>
-        </Modal>
+        <ConvertToSaleModal
+          sale={sale}
+          onClose={() => setShowConfirmConvert(false)}
+          onConverted={() => { setShowConfirmConvert(false); onSaved(); }}
+        />
       )}
       {showEditModal && (
         <NewSaleModal
@@ -1040,6 +1036,214 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
 // en Contabilidad pero el sistema no las matcheó automáticamente (chasis vacío,
 // RUT distinto, etc.). El admin elige a mano de una lista de invoices con
 // link_status='sin_vincular'.
+// ─── ConvertToSaleModal ──────────────────────────────────────────────────────
+// Convierte una reserva en venta. Política: NO se puede convertir si todavía
+// queda saldo pendiente — la vendedora primero tiene que registrar cómo el
+// cliente terminó de pagar el monto restante (transferencia, efectivo, etc.).
+// El modal trae los abonos ya registrados, permite agregar nuevas líneas hasta
+// cubrir el total, y sólo cuando saldo=0 habilita el botón de convertir.
+function ConvertToSaleModal({ sale, onClose, onConverted }) {
+  const toast = useToast();
+  const isReserva = sale.status === 'reservada';
+
+  // Total real de la operación: precio moto + accesorios + documentación − descuento
+  const motoAmt = Number(sale.sale_price) || 0;
+  const accList = Array.isArray(sale.accessories)
+    ? sale.accessories.filter(a => a && (a.description || a.name) && Number(a.amount) > 0)
+    : [];
+  const accTotal = accList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+  const chargeAmt = Number(sale.charge_amt) || 0;
+  const discountAmt = Number(sale.discount_amt) || 0;
+  const totalOperacion = Math.max(0, motoAmt + accTotal + chargeAmt - discountAmt);
+
+  // Abonos existentes (no editables — historia)
+  const abonosExistentes = Array.isArray(sale.abono_lines)
+    ? sale.abono_lines.map(l => ({ method: l.method || '', amount: Number(l.amount) || 0 }))
+    : (Number(sale.invoice_amount) > 0
+        ? [{ method: sale.payment_method || 'Sin especificar', amount: Number(sale.invoice_amount) || 0 }]
+        : []);
+  const totalAbonado = abonosExistentes.reduce((s, l) => s + l.amount, 0);
+
+  // Abonos nuevos — los que faltan para cerrar la venta
+  const [newLines, setNewLines] = useState([{ method: '', amount: '' }]);
+  const totalNuevo = newLines.reduce((s, l) => s + (parseInt(l.amount) || 0), 0);
+  const saldoActual = Math.max(0, totalOperacion - totalAbonado - totalNuevo);
+
+  const [converting, setConverting] = useState(false);
+  const [err, setErr] = useState('');
+
+  // Auto-llenar el monto de la última línea con el saldo restante exacto
+  function setLineMethod(i, method) {
+    setNewLines(prev => prev.map((x, j) => j === i ? { ...x, method } : x));
+  }
+  function setLineAmount(i, amount) {
+    setNewLines(prev => prev.map((x, j) => j === i ? { ...x, amount } : x));
+  }
+  function addLine() {
+    setNewLines(prev => [...prev, { method: '', amount: '' }]);
+  }
+  function removeLine(i) {
+    setNewLines(prev => prev.filter((_, j) => j !== i));
+  }
+  function fillRemaining(i) {
+    const otrasLineas = newLines.reduce((s, l, j) => s + (j === i ? 0 : (parseInt(l.amount) || 0)), 0);
+    const restante = Math.max(0, totalOperacion - totalAbonado - otrasLineas);
+    setLineAmount(i, String(restante));
+  }
+
+  async function doConvert() {
+    if (saldoActual > 0) {
+      setErr('Todavía queda saldo pendiente. No se puede pasar a venta sin cubrir el total.');
+      return;
+    }
+    setConverting(true); setErr('');
+    try {
+      const newCleanLines = newLines
+        .filter(l => l.method && Number(l.amount) > 0)
+        .map(l => ({ method: l.method, amount: parseInt(l.amount) || 0 }));
+      const allAbonos = [...abonosExistentes, ...newCleanLines];
+
+      if (sale.is_note_only) {
+        await api.updateSale(sale.id, {
+          is_note_only:   true,
+          status:         'vendida',
+          sold_at:        new Date().toISOString(),
+          abono_lines:    allAbonos,
+          // invoice_amount y payment_method los recalcula el backend desde abono_lines
+        });
+      } else {
+        await api.sellInventory(sale.id, {
+          sold_by:     sale.seller_id || sale.sold_by,
+          sale_price:  sale.sale_price,
+          client_name: sale.client_name,
+          client_rut:  sale.client_rut,
+          sale_type:   sale.sale_type || sale.charge_type || 'inscripcion',
+          charge_type: sale.charge_type || sale.sale_type || 'inscripcion',
+          charge_amt:  sale.charge_amt,
+          discount_amt:sale.discount_amt,
+          accessories: sale.accessories,
+          abono_lines: allAbonos,
+          sold_at:     new Date().toISOString(),
+        });
+      }
+      toast.success('Reserva convertida en venta');
+      onConverted();
+    } catch (e) {
+      setErr(e.message || 'Error al convertir');
+    } finally {
+      setConverting(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} title={isReserva ? 'Pasar reserva a venta' : 'Cerrar venta'} wide>
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        <div style={{ fontSize:12, color:'var(--text-subtle)', lineHeight:1.5 }}>
+          Para registrar la venta, primero confirma cómo el cliente terminó de pagar
+          el saldo. Una reserva no puede convertirse en venta si queda monto pendiente.
+        </div>
+
+        {/* Resumen de montos */}
+        <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px', display:'flex', flexDirection:'column', gap:5, fontSize:13 }}>
+          <div style={{ display:'flex', justifyContent:'space-between' }}>
+            <span style={{ color:'var(--text-subtle)' }}>Total de la operación</span>
+            <strong>{fmt(totalOperacion)}</strong>
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', color:'#065F46' }}>
+            <span>Ya abonado ({abonosExistentes.length} {abonosExistentes.length === 1 ? 'pago' : 'pagos'})</span>
+            <strong>{fmt(totalAbonado)}</strong>
+          </div>
+          {totalNuevo > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', color:'#1E40AF' }}>
+              <span>Nuevo abono</span>
+              <strong>+ {fmt(totalNuevo)}</strong>
+            </div>
+          )}
+          <div style={{
+            display:'flex', justifyContent:'space-between',
+            paddingTop:6, marginTop:2, borderTop:'1px solid var(--border)',
+            fontWeight:700,
+            color: saldoActual === 0 ? '#065F46' : '#B45309',
+          }}>
+            <span>{saldoActual === 0 ? '✓ Saldado' : 'Saldo pendiente'}</span>
+            <span>{fmt(saldoActual)}</span>
+          </div>
+        </div>
+
+        {/* Lista abonos existentes (read-only) */}
+        {abonosExistentes.length > 0 && (
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
+              Abonos ya recibidos
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              {abonosExistentes.map((l, i) => (
+                <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'4px 10px', background:'var(--surface-muted)', borderRadius:'var(--radius-sm)' }}>
+                  <span>{l.method || 'Sin especificar'}</span>
+                  <span style={{ fontWeight:700 }}>{fmt(l.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Editor abonos nuevos — sólo si hay saldo o el usuario abre uno */}
+        {(saldoActual > 0 || newLines.some(l => l.method || l.amount)) && (
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
+              Pago del saldo
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {newLines.map((l, i) => (
+                <div key={i} style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                  <select value={l.method} onChange={e => setLineMethod(i, e.target.value)}
+                    style={{ ...S.inp, flex:'2 1 140px', fontSize:12 }}>
+                    <option value="">— Forma de pago —</option>
+                    {PAYMENT_TYPES.filter(p => p !== 'Mixto').map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <input type="number" value={l.amount}
+                    onChange={e => setLineAmount(i, e.target.value)}
+                    placeholder="Monto $"
+                    style={{ ...S.inp, flex:'1 1 110px', fontSize:12 }} />
+                  <button type="button" onClick={() => fillRemaining(i)} title="Completar saldo"
+                    style={{ padding:'5px 10px', fontSize:11, fontWeight:700, color:'var(--brand)', background:'var(--brand-soft)', border:'1px solid var(--brand-muted)', borderRadius:'var(--radius-sm)', cursor:'pointer', fontFamily:'inherit' }}>
+                    = saldo
+                  </button>
+                  {newLines.length > 1 && (
+                    <button onClick={() => removeLine(i)}
+                      style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:18, padding:'0 4px', lineHeight:1 }}>✕</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={addLine}
+                style={{ ...S.btn2, fontSize:11, padding:'5px 12px', alignSelf:'flex-start' }}>
+                + Agregar línea de pago
+              </button>
+            </div>
+          </div>
+        )}
+
+        {err && <ErrorMsg msg={err} />}
+
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:6 }}>
+          <button onClick={onClose} disabled={converting} style={S.btn2}>Cancelar</button>
+          <button onClick={doConvert} disabled={converting || saldoActual > 0}
+            style={{
+              ...S.btn,
+              background: saldoActual === 0 ? '#059669' : 'var(--surface-muted)',
+              color: saldoActual === 0 ? 'var(--text-on-dark)' : 'var(--text-disabled)',
+              cursor: saldoActual === 0 && !converting ? 'pointer' : 'not-allowed',
+            }}>
+            {converting ? 'Convirtiendo…'
+              : saldoActual === 0 ? '✓ Convertir a venta'
+              : `Falta ${fmt(saldoActual)}`}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function LinkInvoiceModal({ sale, onClose, onLinked }) {
   const toast = useToast();
   // Por defecto NO prefiltramos por RUT — si el RUT en la factura difiere
