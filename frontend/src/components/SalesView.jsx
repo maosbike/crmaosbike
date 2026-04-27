@@ -2988,6 +2988,11 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
   const [selSale,  setSelSale]  = useState(null);
   const [showNew,  setShowNew]  = useState(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  // Facturas SII sin venta registrada — banner de alerta cross-section.
+  // Sólo lo cargamos para admins (los datos de contabilidad son de su scope).
+  const [orphanInvs,    setOrphanInvs]    = useState([]);
+  const [orphansOpen,   setOrphansOpen]   = useState(false);
+  const [orphanModal,   setOrphanModal]   = useState(null); // factura activa para crear venta
   // Prefill del cliente cuando venimos desde un lead — abre el modal de inmediato
   const [pendingClient, setPendingClient] = useState(null);
 
@@ -3045,6 +3050,25 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
       setSellers([{ id: user.id, first_name: user.fn, last_name: user.ln }]);
     }
   }, [isAdmin, user.id]);
+
+  // Cargar facturas SII sin venta registrada — sólo admin ve este banner.
+  // "Sin venta" = inventory_id NULL Y sale_note_id NULL en la tabla invoices.
+  // Excluye notas de crédito y anuladas — esas no necesitan venta.
+  const loadOrphans = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const r = await api.getAccounting({ link_status: 'sin_vincular', limit: 100 });
+      const list = (r.data || []).filter(inv =>
+        inv.source === 'emitida' &&
+        inv.doc_type !== 'nota_credito' &&
+        !inv.anulada_por_id &&
+        !inv.inventory_id &&
+        !inv.sale_note_id
+      );
+      setOrphanInvs(list);
+    } catch (e) { /* no romper la vista si esto falla */ }
+  }, [isAdmin]);
+  useEffect(() => { loadOrphans(); }, [loadOrphans]);
 
   const hasFilters = q || fromDate || toDate || fBranch || fSeller || fType;
   const clearFilters = () => { setQ(''); setDebouncedQ(''); setFromDate(''); setToDate(''); setFBranch(''); setFSeller(''); setFType(''); };
@@ -3125,6 +3149,81 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           </>
         )}
       />
+
+      {/* ── Alerta cross-section: facturas SII sin venta registrada ── */}
+      {isAdmin && orphanInvs.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <button onClick={() => setOrphansOpen(o => !o)}
+            style={{
+              width: '100%', textAlign: 'left',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: '10px 14px', borderRadius: 'var(--radius-md)',
+              background: 'rgba(245,158,11,0.08)', border: '1px solid #FCD34D',
+              color: '#92400E', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer',
+            }}>
+            <span>
+              ⚠ Hay <strong>{orphanInvs.length}</strong> {orphanInvs.length === 1 ? 'factura' : 'facturas'} en contabilidad sin venta registrada
+            </span>
+            <span style={{ fontSize: 11, color: '#92400E' }}>
+              {orphansOpen ? 'Cerrar ▲' : 'Ver y resolver ▼'}
+            </span>
+          </button>
+          {orphansOpen && (
+            <div style={{
+              marginTop: 8, padding: 12,
+              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+              display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto',
+            }}>
+              {orphanInvs.map(inv => (
+                <div key={inv.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  padding: '8px 12px', background: 'var(--surface-muted)',
+                  borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                  fontSize: 12,
+                }}>
+                  <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
+                      Factura #{inv.folio || '—'}
+                      <span style={{ marginLeft: 8, color: 'var(--text-subtle)', fontWeight: 500 }}>
+                        {inv.fecha_emision ? fD(inv.fecha_emision) : ''}
+                      </span>
+                    </div>
+                    <div style={{ color: 'var(--text-subtle)' }}>
+                      {inv.cliente_nombre || '—'} {inv.rut_cliente ? `· ${inv.rut_cliente}` : ''}
+                    </div>
+                    <div style={{ color: 'var(--text-disabled)', fontSize: 11 }}>
+                      {[inv.brand, inv.model, inv.commercial_year].filter(Boolean).join(' · ')}
+                      {inv.chassis ? ` · Chasis ${inv.chassis}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                    {fmt(inv.total || 0)}
+                  </div>
+                  {inv.pdf_url && (
+                    <a href={inv.pdf_url} target="_blank" rel="noreferrer"
+                      style={{
+                        fontSize: 11, fontWeight: 600,
+                        padding: '5px 10px', borderRadius: 'var(--radius-sm)',
+                        background: 'var(--surface)', border: '1px solid var(--border)',
+                        color: 'var(--text-subtle)', textDecoration: 'none',
+                      }}>Ver PDF</a>
+                  )}
+                  <button onClick={() => setOrphanModal(inv)}
+                    style={{
+                      fontSize: 11, fontWeight: 700,
+                      padding: '6px 12px', borderRadius: 'var(--radius-sm)',
+                      background: 'var(--brand)', border: 'none', color: 'var(--text-on-brand)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                    Crear venta
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Mensajes de estado ── */}
       {deleteMsg && (
@@ -3853,7 +3952,99 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           isSuperAdmin={isSuperAdmin}
         />
       )}
+      {orphanModal && (
+        <CreateSaleFromInvoiceModal
+          invoice={orphanModal}
+          sellers={sellers}
+          branches={realBranches}
+          onClose={() => setOrphanModal(null)}
+          onCreated={() => { setOrphanModal(null); load(); loadOrphans(); }}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── CreateSaleFromInvoiceModal ──────────────────────────────────────────────
+// Modal mínimo: muestra los datos de la factura SII en read-only y pide al
+// admin elegir vendedor + sucursal + fecha. Llama a createSaleFromInvoice
+// que crea una nota en sales_notes y vincula la factura con inventory_id /
+// sale_note_id, copiando todos los datos del cliente desde la factura.
+function CreateSaleFromInvoiceModal({ invoice, sellers, branches, onClose, onCreated }) {
+  const toast = useToast();
+  const [soldBy,  setSoldBy]  = useState('');
+  const [branchId,setBranchId]= useState('');
+  const [soldAt,  setSoldAt]  = useState(invoice.fecha_emision ? String(invoice.fecha_emision).slice(0,10) : '');
+  const [chargeType, setChargeType] = useState('inscripcion');
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState('');
+
+  async function submit() {
+    if (!soldBy)   { setErr('Vendedor obligatorio'); return; }
+    if (!branchId) { setErr('Sucursal obligatoria'); return; }
+    setSaving(true); setErr('');
+    try {
+      await api.createSaleFromInvoice(invoice.id, {
+        sold_by: soldBy,
+        branch_id: branchId,
+        sold_at: soldAt || null,
+        charge_type: chargeType,
+        sale_price: invoice.total || null,
+      });
+      toast.success(`Venta creada desde factura #${invoice.folio}`);
+      onCreated();
+    } catch (e) { setErr(e.message || 'Error al crear venta'); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <Modal onClose={onClose} title={`Crear venta desde factura #${invoice.folio || ''}`}>
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        <div style={{
+          background:'var(--surface-muted)', border:'1px solid var(--border)',
+          borderRadius:'var(--radius-md)', padding:'10px 14px', fontSize:12,
+        }}>
+          <div style={{ fontWeight:700, color:'var(--text)', marginBottom:4 }}>
+            {invoice.cliente_nombre || '—'} {invoice.rut_cliente ? `· ${invoice.rut_cliente}` : ''}
+          </div>
+          <div style={{ color:'var(--text-subtle)', marginBottom:2 }}>
+            {[invoice.brand, invoice.model, invoice.commercial_year].filter(Boolean).join(' · ')}
+            {invoice.chassis ? ` · Chasis ${invoice.chassis}` : ''}
+          </div>
+          <div style={{ color:'var(--text-subtle)' }}>
+            Total: <strong>{fmt(invoice.total || 0)}</strong>
+            {invoice.fecha_emision && <> · Emitida {fD(invoice.fecha_emision)}</>}
+          </div>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          <Field label="Vendedor *" value={soldBy} onChange={setSoldBy}
+            opts={[{ v:'', l:'— Seleccionar —' }, ...sellers.map(s => ({
+              v: s.id,
+              l: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+            }))]} />
+          <Field label="Sucursal *" value={branchId} onChange={setBranchId}
+            opts={[{ v:'', l:'— Seleccionar —' }, ...(branches || []).map(b => ({ v: b.id, l: b.name }))]} />
+          <Field label="Fecha venta" value={soldAt} onChange={setSoldAt} type="date" />
+          <Field label="Documentación" value={chargeType} onChange={setChargeType}
+            opts={[
+              { v:'inscripcion',   l:'Inscripción vehicular' },
+              { v:'completa',      l:'Documentación completa' },
+              { v:'transferencia', l:'Transferencia vehicular' },
+              { v:'sin_detalle',   l:'Sin detalle' },
+            ]} />
+        </div>
+
+        {err && <ErrorMsg msg={err} />}
+
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+          <button onClick={onClose} disabled={saving} style={S.btn2}>Cancelar</button>
+          <button onClick={submit} disabled={saving} style={S.btn}>
+            {saving ? 'Creando…' : 'Crear venta'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
