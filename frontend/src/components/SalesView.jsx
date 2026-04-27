@@ -2130,6 +2130,25 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     if (!form.sold_by) { setErr('Vendedor obligatorio'); return; }
     if (!selUnit && !form.branch_id) { setErr('Sucursal obligatoria'); return; }
     if (!selUnit && !form.color) { setErr('Color obligatorio'); return; }
+
+    // Validación de datos del cliente — obligatorios para no terminar con
+    // ventas/reservas huérfanas. Email queda como recomendado pero no
+    // bloqueante (algunos clientes mayores no lo dan).
+    const isEmpresaCli = form.client_type === 'empresa';
+    if (isEmpresaCli) {
+      if (!form.empresa_name?.trim())  { setErr('Nombre de la empresa obligatorio'); return; }
+      if (!form.empresa_rut?.trim())   { setErr('RUT de la empresa obligatorio'); return; }
+      if (!form.client_name?.trim())   { setErr('Nombre del representante obligatorio'); return; }
+      if (!form.empresa_phone?.trim()) { setErr('Teléfono de la empresa obligatorio'); return; }
+    } else {
+      if (!form.client_name?.trim())    { setErr('Nombre del cliente obligatorio'); return; }
+      if (!form.client_rut?.trim())     { setErr('RUT del cliente obligatorio'); return; }
+      if (!form.client_phone?.trim())   { setErr('Teléfono del cliente obligatorio'); return; }
+      if (!form.client_email?.trim())   { setErr('Email del cliente obligatorio'); return; }
+      if (!form.client_address?.trim()) { setErr('Dirección del cliente obligatoria'); return; }
+      if (!form.client_commune?.trim()) { setErr('Comuna del cliente obligatoria'); return; }
+    }
+
     setSaving(true); setErr('');
     try {
       // Línea autofin para anexar a las notas — sólo si el medio es Crédito Autofin
@@ -2433,18 +2452,18 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                 <Field label="Nombre empresa *"  value={form.empresa_name}  onChange={set('empresa_name')} />
                 <Field label="RUT empresa *"      value={form.empresa_rut}   onChange={set('empresa_rut')}  ph="76.XXX.XXX-X" />
                 <Field label="Giro"               value={form.empresa_giro}  onChange={set('empresa_giro')} />
-                <Field label="Representante"      value={form.client_name}   onChange={set('client_name')} />
-                <Field label="Teléfono empresa"   value={form.empresa_phone} onChange={set('empresa_phone')} ph="+56 2 XXXX XXXX" />
+                <Field label="Representante *"    value={form.client_name}   onChange={set('client_name')} />
+                <Field label="Teléfono empresa *" value={form.empresa_phone} onChange={set('empresa_phone')} ph="+56 2 XXXX XXXX" />
                 <Field label="Email empresa"      value={form.empresa_email} onChange={set('empresa_email')} />
               </>
             ) : (
               <>
                 <Field label="Nombre completo *" value={form.client_name}    onChange={set('client_name')} />
-                <Field label="RUT"               value={form.client_rut}     onChange={set('client_rut')}  ph="12.345.678-9" />
-                <Field label="Teléfono"          value={form.client_phone}   onChange={set('client_phone')} ph="+56 9 XXXX XXXX" />
-                <Field label="Email"             value={form.client_email}   onChange={set('client_email')} />
-                <Field label="Dirección"         value={form.client_address} onChange={set('client_address')} />
-                <Field label="Comuna"            value={form.client_commune} onChange={set('client_commune')} />
+                <Field label="RUT *"             value={form.client_rut}     onChange={set('client_rut')}  ph="12.345.678-9" />
+                <Field label="Teléfono *"        value={form.client_phone}   onChange={set('client_phone')} ph="+56 9 XXXX XXXX" />
+                <Field label="Email *"           value={form.client_email}   onChange={set('client_email')} />
+                <Field label="Dirección *"       value={form.client_address} onChange={set('client_address')} />
+                <Field label="Comuna *"          value={form.client_commune} onChange={set('client_commune')} />
               </>
             )}
 

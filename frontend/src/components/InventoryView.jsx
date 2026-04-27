@@ -43,6 +43,77 @@ const ST_CFG = Object.fromEntries(
   Object.entries(ST_PALETTE).map(([k, v]) => [k, { ...v, label: INV_ST[k]?.l || k }])
 );
 
+// Transiciones válidas desde el dropdown de inventario.
+// Reservada y Vendida sólo se pueden alcanzar desde el flujo de Ventas
+// (que captura nombre, RUT y datos del cliente). Desde Inventario sólo se
+// permite mover entre Disponible/Preinscrita y cancelar una reserva.
+const ALLOWED_FROM = {
+  disponible:  ['disponible', 'preinscrita'],
+  preinscrita: ['disponible', 'preinscrita'],
+  reservada:   ['disponible', 'reservada'],
+  vendida:     ['vendida'],
+};
+
+// Chip unificado de estado — pill colored, mismo aspecto en mobile y desktop.
+// Acepta callbacks distintos según la transición: cambiar estado libre vs
+// abrir flujo de venta/reserva (que va por SalesView con datos del cliente).
+function StatusChip({ status, soldAt, onChange, compact = false }) {
+  const cfg = ST_CFG[status] || ST_CFG.disponible;
+  const allowed = ALLOWED_FROM[status] || [status];
+  const isTerminal = status === 'vendida' || allowed.length === 1;
+  const isReadOnly = isTerminal;
+
+  const baseStyle = {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: compact ? '5px 11px' : '7px 14px',
+    background: cfg.bg, color: cfg.color,
+    border: `1.5px solid ${cfg.border}`,
+    borderRadius: '999px',
+    fontSize: compact ? 10 : 11, fontWeight: 800,
+    letterSpacing: '0.04em', textTransform: 'uppercase',
+    fontFamily: 'inherit',
+    boxShadow: `0 1px 2px ${cfg.color}1A`,
+  };
+
+  if (isReadOnly) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+        <div style={baseStyle}>
+          <span style={{ fontSize: compact ? 11 : 12 }}>{cfg.icon}</span>
+          <span>{cfg.label}</span>
+        </div>
+        {status === 'vendida' && soldAt && (
+          <span style={{ fontSize: 9, color: '#94A3B8', fontWeight: 700 }}>{fD(soldAt)}</span>
+        )}
+      </div>
+    );
+  }
+
+  // Editable (disponible/preinscrita) — select estilizado como pill
+  return (
+    <div style={{ ...baseStyle, position: 'relative', padding: 0, cursor: 'pointer' }}>
+      <span style={{ position: 'absolute', left: compact ? 10 : 12, top: '50%', transform: 'translateY(-50%)', fontSize: compact ? 11 : 12, color: cfg.color, pointerEvents: 'none' }}>{cfg.icon}</span>
+      <select value={status}
+        onClick={e => e.stopPropagation()}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: '100%', background: 'transparent', border: 'none',
+          fontSize: compact ? 10 : 11, fontWeight: 800, color: cfg.color,
+          cursor: 'pointer',
+          padding: compact ? '5px 26px 5px 28px' : '7px 30px 7px 32px',
+          outline: 'none', fontFamily: 'inherit',
+          appearance: 'none', WebkitAppearance: 'none',
+          letterSpacing: '0.04em', textTransform: 'uppercase',
+        }}>
+        {allowed.map(k => (
+          <option key={k} value={k}>{ST_CFG[k].label}</option>
+        ))}
+      </select>
+      <span style={{ position: 'absolute', right: compact ? 10 : 12, top: '50%', transform: 'translateY(-50%)', fontSize: 8, color: cfg.color, pointerEvents: 'none' }}>▼</span>
+    </div>
+  );
+}
+
 // Entradas locales no cubiertas por COLOR_CSS_MAP de ui.jsx
 const EXTRA_COLORS = {
   'negro mate':'var(--text-strong)', 'negro metalico':'var(--text-body)', 'negro brillante':'var(--text)',
@@ -854,14 +925,9 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                           {!isSold && isAdmin && (
                             <button onClick={()=>openEdit(x)} style={{ ...miniBtn, background:'var(--surface-muted)', color:'var(--text-subtle)', border:'1px solid var(--border)' }}>Editar</button>
                           )}
-                          {!isSold && (
-                            <select value={x.status} onChange={e=>handleStatus(x.id,e.target.value)}
-                              style={{ ...miniBtn, appearance:'auto', background:stCfg.bg, color:stCfg.color, border:`1px solid ${stCfg.border}`, cursor:'pointer', fontFamily:'inherit' }}>
-                              {Object.entries(INV_ST).filter(([k])=>k!=='vendida').map(([k,v])=>(
-                                <option key={k} value={k}>{v.l}</option>
-                              ))}
-                            </select>
-                          )}
+                          <StatusChip status={x.status} soldAt={x.sold_at}
+                            onChange={s => handleStatus(x.id, s)} compact />
+
                           {isAdmin && (
                             <button onClick={()=>toggleHist(x.id)}
                               style={{ ...miniBtn, background: isHistOpen ? '#EEF2FF' : 'var(--surface-muted)', color: isHistOpen ? '#4F46E5' : 'var(--text-subtle)', border:`1px solid ${isHistOpen?'#A5B4FC':'var(--border)'}` }}>
@@ -1040,46 +1106,11 @@ export function InventoryView({ inv, setInv, user, realBranches, nav }) {
                     borderLeft:'1px solid #F1F5F9',
                     background:'#FAFBFC',
                   }}>
-                    {/* Estado — control completo, más visible */}
-                    {isSold ? (
-                      <div style={{ display:'flex', flexDirection:'column', alignItems:'stretch', gap:4 }}>
-                        <span style={{
-                          fontSize:11, fontWeight:800, padding:'6px 10px', borderRadius:'var(--radius-md)', textAlign:'center',
-                          background:ST_CFG.vendida.bg, color:ST_CFG.vendida.color, border:`1px solid ${ST_CFG.vendida.border}`,
-                          letterSpacing:'0.02em',
-                        }}>
-                          {ST_CFG.vendida.icon} Vendida
-                        </span>
-                        {x.sold_at && <div style={{ fontSize:10, color:'#94A3B8', textAlign:'center' }}>{fD(x.sold_at)}</div>}
-                      </div>
-                    ) : (
-                      <div style={{
-                        position:'relative',
-                        background:stCfg.bg,
-                        border:`1.5px solid ${stCfg.color}`,
-                        borderRadius:'var(--radius-md)',
-                        boxShadow:`0 1px 3px ${stCfg.color}22`,
-                      }}>
-                        <select value={x.status}
-                          onClick={e=>e.stopPropagation()}
-                          onChange={e=>handleStatus(x.id,e.target.value)}
-                          style={{
-                            width:'100%',
-                            background:'transparent', border:'none',
-                            fontSize:11, fontWeight:800, color:stCfg.color,
-                            cursor:'pointer', padding:'7px 26px 7px 28px',
-                            outline:'none', fontFamily:'inherit',
-                            appearance:'none', WebkitAppearance:'none',
-                            letterSpacing:'0.02em',
-                          }}>
-                          {Object.entries(INV_ST).filter(([k])=>k!=='vendida').map(([k,v])=>(
-                            <option key={k} value={k}>{v.l}</option>
-                          ))}
-                        </select>
-                        <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:11, color:stCfg.color, pointerEvents:'none' }}>{stCfg.icon}</span>
-                        <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:8, color:stCfg.color, pointerEvents:'none' }}>▼</span>
-                      </div>
-                    )}
+                    {/* Estado — chip unificado para los 4 estados */}
+                    <div style={{ display:'flex', justifyContent:'center' }}>
+                      <StatusChip status={x.status} soldAt={x.sold_at}
+                        onChange={s => handleStatus(x.id, s)} />
+                    </div>
 
                     {/* Historial — solo admins */}
                     {isAdmin && (
