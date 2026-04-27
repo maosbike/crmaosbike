@@ -36,7 +36,7 @@ const branchCfg = (code, brs) => {
 const ST_PALETTE = {
   disponible:  { color:'#15803D', bg:'#F0FDF4', border:'#86EFAC', icon:'●' },
   reservada:   { color:'#1E293B', bg:'#F1F5F9', border:'#94A3B8', icon:'◐' },
-  vendida:     { color:'#6D28D9', bg:'#F5F3FF', border:'#C4B5FD', icon:'V' },
+  vendida:     { color:'#6D28D9', bg:'#F5F3FF', border:'#C4B5FD', icon:'✓' },
   preinscrita: { color:'#0E7490', bg:'#ECFEFF', border:'#67E8F9', icon:'◌' },
 };
 const ST_CFG = Object.fromEntries(
