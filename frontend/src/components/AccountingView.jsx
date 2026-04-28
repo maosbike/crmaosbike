@@ -1168,16 +1168,16 @@ export function AccountingView() {
         title="Contabilidad"
         subtitle={ymLabel(ym)}
         actions={
-          <div style={{ display:'flex', gap:8 }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             <button onClick={relink} disabled={syncing}
               title="Re-correr el cruce automático de facturas pendientes con inventario y notas (sin re-bajar Drive)"
-              style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
               {syncing ? '...' : 'Re-vincular'}
             </button>
             <button onClick={syncDrive} disabled={syncing}
-              style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
               <Ic.refresh size={14} color="var(--text-on-brand)" />
-              {syncing ? 'Sincronizando...' : 'Sincronizar Drive'}
+              {syncing ? 'Sincronizando...' : (isMobile ? 'Sync Drive' : 'Sincronizar Drive')}
             </button>
           </div>
         }
@@ -1232,7 +1232,7 @@ export function AccountingView() {
       )}
 
       {/* Toggle Emitidas / Recibidas */}
-      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+      <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
         {[
           { v:'emitida',  l:'Emitidas',  hint:'Facturas que emitimos al cliente' },
           { v:'recibida', l:'Recibidas', hint:'Facturas que nos emiten proveedores' },
@@ -1241,7 +1241,9 @@ export function AccountingView() {
             onClick={() => { setSource(opt.v); setPage(1); setRecCategory(''); setLinkStatus(''); }}
             title={opt.hint}
             style={{
-              padding:'8px 18px', borderRadius:'var(--radius-md)',
+              flex: isMobile ? '1 1 0' : '0 0 auto',
+              padding: isMobile ? '8px 14px' : '8px 18px',
+              borderRadius:'var(--radius-md)',
               fontSize:13, fontWeight:700, fontFamily:'inherit', cursor:'pointer',
               border:`1.5px solid ${source===opt.v ? 'var(--brand)' : 'var(--border)'}`,
               background: source===opt.v ? '#FFF7ED' : 'var(--surface)',
@@ -1252,8 +1254,12 @@ export function AccountingView() {
         ))}
       </div>
 
-      {/* Tabs (cambian según el origen) */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border)' }}>
+      {/* Tabs (cambian según el origen) — scroll horizontal en mobile cuando hay
+          muchas categorías para no romper el layout. */}
+      <div style={{
+        display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border)',
+        overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+      }}>
         {(source === 'recibida' ? [
           { key: '',          label: 'Todas' },
           { key: 'motos',     label: 'Motos' },
@@ -1284,6 +1290,8 @@ export function AccountingView() {
               fontSize: 13,
               padding: '8px 14px',
               cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
               marginBottom: -1,
               fontFamily: 'inherit',
             }}
