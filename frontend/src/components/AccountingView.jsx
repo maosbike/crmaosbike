@@ -1353,8 +1353,17 @@ export function AccountingView() {
       {!loading && !error && data.length === 0 && (
         <Empty
           icon={Ic.invoice}
-          title={`Sin ${tab === 'notas' ? 'notas de crédito' : tab === 'otras' ? 'otras facturas' : 'ventas de motos'} en ${ymLabel(ym)}`}
-          hint={syncing ? 'Sincronizando...' : 'Probá con otro mes o sincroniza desde Drive.'}
+          title={(() => {
+            if (source === 'recibida') {
+              const cat = recCategory ? `(${recCategory})` : '';
+              return `Sin facturas recibidas ${cat} en ${ymLabel(ym)}`;
+            }
+            const lbl = tab === 'notas' ? 'notas de crédito'
+                      : tab === 'otras' ? 'otras facturas'
+                      : 'ventas de motos';
+            return `Sin ${lbl} en ${ymLabel(ym)}`;
+          })()}
+          hint={syncing ? 'Sincronizando...' : 'Prueba con otro mes o sincroniza desde Drive.'}
         />
       )}
 
