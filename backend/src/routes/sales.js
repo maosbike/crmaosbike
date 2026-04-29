@@ -98,15 +98,7 @@ const COMBINED_FROM = `(
     inv.cliente_comuna    AS inv_cliente_comuna,
     inv.cliente_giro      AS inv_cliente_giro,
     inv.folio             AS inv_folio,
-    inv.pdf_url           AS inv_pdf_url,
-    -- Factura RECIBIDA (proveedor → Maosbike) por chasis match —
-    -- es la factura de COMPRA de la moto. Permite ver desde la venta
-    -- el origen del costo y descargar la factura del proveedor.
-    rec.pdf_url           AS recib_pdf_url,
-    rec.folio             AS recib_folio,
-    rec.emisor_nombre     AS recib_proveedor,
-    rec.fecha_emision     AS recib_fecha,
-    rec.total             AS recib_total
+    inv.pdf_url           AS inv_pdf_url
   FROM inventory i
   LEFT JOIN users       sv ON i.sold_by   = sv.id
   LEFT JOIN branches    b  ON i.branch_id = b.id
@@ -139,21 +131,6 @@ const COMBINED_FROM = `(
      ORDER BY fecha_emision DESC NULLS LAST, created_at DESC
      LIMIT 1
   ) inv ON TRUE
-  -- Factura recibida (proveedor) vinculada a esta unidad — match por chasis
-  -- canónico (sin guiones/puntos/espacios) para tolerar variaciones de
-  -- formato entre el inventario y la factura del distribuidor.
-  LEFT JOIN LATERAL (
-    SELECT pdf_url, folio, emisor_nombre, fecha_emision, total
-      FROM invoices
-     WHERE source = 'recibida'
-       AND category = 'motos'
-       AND chassis IS NOT NULL
-       AND i.chassis IS NOT NULL
-       AND UPPER(REGEXP_REPLACE(chassis,   '[\s\-\._/]', '', 'g'))
-         = UPPER(REGEXP_REPLACE(i.chassis, '[\s\-\._/]', '', 'g'))
-     ORDER BY fecha_emision DESC NULLS LAST, created_at DESC
-     LIMIT 1
-  ) rec ON TRUE
   WHERE i.status IN ('vendida', 'reservada')
 
   UNION ALL
@@ -193,12 +170,7 @@ const COMBINED_FROM = `(
     inv.cliente_comuna    AS inv_cliente_comuna,
     inv.cliente_giro      AS inv_cliente_giro,
     inv.folio             AS inv_folio,
-    inv.pdf_url           AS inv_pdf_url,
-    rec.pdf_url           AS recib_pdf_url,
-    rec.folio             AS recib_folio,
-    rec.emisor_nombre     AS recib_proveedor,
-    rec.fecha_emision     AS recib_fecha,
-    rec.total             AS recib_total
+    inv.pdf_url           AS inv_pdf_url
   FROM sales_notes n
   LEFT JOIN users       sv ON n.sold_by   = sv.id
   LEFT JOIN branches    b  ON n.branch_id = b.id
@@ -224,18 +196,6 @@ const COMBINED_FROM = `(
      ORDER BY fecha_emision DESC NULLS LAST, created_at DESC
      LIMIT 1
   ) inv ON TRUE
-  LEFT JOIN LATERAL (
-    SELECT pdf_url, folio, emisor_nombre, fecha_emision, total
-      FROM invoices
-     WHERE source = 'recibida'
-       AND category = 'motos'
-       AND chassis IS NOT NULL
-       AND n.chassis IS NOT NULL
-       AND UPPER(REGEXP_REPLACE(chassis,   '[\s\-\._/]', '', 'g'))
-         = UPPER(REGEXP_REPLACE(n.chassis, '[\s\-\._/]', '', 'g'))
-     ORDER BY fecha_emision DESC NULLS LAST, created_at DESC
-     LIMIT 1
-  ) rec ON TRUE
 ) c`;
 
 // ─── GET /api/sales ───────────────────────────────────────────────────────────
