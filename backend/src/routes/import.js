@@ -154,17 +154,52 @@ function normalizeStr(s) {
     .trim();
 }
 
+// "Compactación" agresiva: sin espacios, guiones, puntos, slashes, underscores.
+// "Royal Enfield Himalayan 450" → "royalenfieldhimalayan450"
+// "HIMALAYAN-450 ABS"           → "himalayan450abs"
+// Permite comparar ignorando cualquier separador.
+function compactStr(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s\-\._\/]+/g, '')
+    .trim();
+}
+
+// Lista de marcas conocidas — usada para detectar y quitar el prefijo de marca
+// del input cuando el catálogo guarda solo el modelo. Ej: "Royal Enfield Himalayan 450"
+// → con marca quitada queda "Himalayan 450" que sí matchea contra m.model.
+const KNOWN_BRANDS = [
+  'yamaha','honda','suzuki','kawasaki','bajaj','tvs','ktm',
+  'royal enfield','royalenfield','benelli','harley','harley davidson','harleydavidson',
+  'keeway','cfmoto','cf moto','lifan','loncin','voge','um','takasaki',
+  'peugeot','zongshen','sym','symmoto','bera','hmdc','sumo','opai','emco',
+  'lingyue','qjmotor','qj motor','cyclone',
+];
+function stripBrand(s) {
+  const norm = normalizeStr(s);
+  for (const b of KNOWN_BRANDS) {
+    if (norm.startsWith(b + ' ')) return norm.slice(b.length + 1).trim();
+    if (norm === b) return '';
+  }
+  return norm;
+}
+
 // Quita prefijos de marca (yzf, xtz, mt) y sufijos de color/variante
 // para obtener el "núcleo" del modelo: "YZF-R15A" → "r15", "FZ-250A AZUL" → "fz250"
 function coreModel(s) {
-  const COLORS = ['azul','rojo','negro','blanca','blanco','verde','gris','plata','roja','negra','amarillo','naranja'];
-  const VARIANTS = ['abs','sp','connected','lw','zr'];
+  const COLORS = ['azul','rojo','negro','blanca','blanco','verde','gris','plata','roja','negra','amarillo','naranja','marron','beige','dorado','plateado','perla','mate'];
+  // Variantes/sufijos técnicos comunes que no cambian el modelo base.
+  // ABS/EFI/FI/GS son técnicos. Pro/Plus/Sport/SP/LW/Classic/Connected son trim.
+  // Std/Ltd/Limited/Deluxe son ediciones que tampoco identifican modelo distinto.
+  const VARIANTS = ['abs','efi','fi','gs','sp','sport','pro','plus','new','connected','lw','zr','classic','std','ltd','limited','dlx','deluxe','custom','edition'];
   return normalizeStr(s)
     .split(' ')
     .filter(t => !COLORS.includes(t) && !VARIANTS.includes(t))
+    .filter(t => !/^20\d{2}$/.test(t))     // años sueltos: "2024","2025","2026"
     .join(' ')
-    .replace(/\b(yzf|xtz|xt)\b/g, '') // quitar prefijos de marca Yamaha
-    .replace(/a$/, '')                  // quitar sufijo "a" final (R15A → R15)
+    .replace(/\b(yzf|xtz|xt)\b/g, '')      // prefijos Yamaha
+    .replace(/a$/, '')                      // sufijo "a" final (R15A → R15)
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -216,18 +251,45 @@ function resolveModel(modeloRaw, models) {
   const raw = normalizeStr(modeloRaw);
   if (!raw) return null;
   const rawCore = coreModel(modeloRaw);
+  // Versión "compacta" (sin separadores) y sin marca al frente — atajos
+  // para casos típicos de Promobility/Yamaimport.
+  const rawCompact     = compactStr(modeloRaw);
+  const rawNoBrand     = stripBrand(modeloRaw);
+  const rawNoBrandComp = compactStr(rawNoBrand);
 
   // 1. Exacta brand+model
   for (const m of models) {
     if (normalizeStr(`${m.brand} ${m.model}`) === raw) return m;
   }
+  // 1b. Exacta brand+model compactado (tolera espacios/guiones/puntos)
+  for (const m of models) {
+    if (compactStr(`${m.brand} ${m.model}`) === rawCompact && rawCompact.length >= 4) return m;
+  }
   // 2. Exacta commercial_name
   for (const m of models) {
     if (m.commercial_name && normalizeStr(m.commercial_name) === raw) return m;
   }
+  // 2b. Exacta commercial_name compactado
+  for (const m of models) {
+    if (m.commercial_name && compactStr(m.commercial_name) === rawCompact && rawCompact.length >= 4) return m;
+  }
   // 3. Exacta solo model
   for (const m of models) {
     if (normalizeStr(m.model) === raw) return m;
+  }
+  // 3b. Exacta solo model compactado
+  for (const m of models) {
+    if (compactStr(m.model) === rawCompact && rawCompact.length >= 4) return m;
+  }
+  // 3c. Si el input trae marca al frente, comparar el resto contra m.model.
+  //     "Royal Enfield Himalayan 450" → "himalayan 450" matchea m.model="HIMALAYAN 450"
+  if (rawNoBrand && rawNoBrand !== raw) {
+    for (const m of models) {
+      if (normalizeStr(m.model) === rawNoBrand) return m;
+    }
+    for (const m of models) {
+      if (compactStr(m.model) === rawNoBrandComp && rawNoBrandComp.length >= 4) return m;
+    }
   }
   // 4. Input contiene brand+model completo
   for (const m of models) {
@@ -279,6 +341,52 @@ function resolveModel(modeloRaw, models) {
     if (hits.length) {
       hits.sort((a, b) => a.len - b.len);
       return hits[0].m;
+    }
+  }
+  // 11. Token-set sobre el CORE del input — versión más laxa que ignora
+  //     variantes (ABS/EFI/FI), colores y años. Si el input es
+  //     "Himalayan 450 ABS Negro 2026", rawCore queda como "himalayan 450"
+  //     que matchea contra cualquier catálogo cuyo brand+model contenga
+  //     ambos tokens. Mismo guard contra ambigüedad: requiere token numérico
+  //     y al menos un token alfa de 4+ caracteres.
+  const coreTokens = (rawCore || '').split(/\s+/).map(t => t.trim()).filter(t => t.length >= 2);
+  const coreHasNum  = coreTokens.some(t => /\d/.test(t));
+  const coreHasAlfa = coreTokens.some(t => /^[a-z]{4,}$/.test(t));
+  if (coreTokens.length >= 2 && coreHasNum && coreHasAlfa) {
+    const hits = [];
+    for (const m of models) {
+      const catCompact = compactStr(`${m.brand} ${m.model} ${m.commercial_name || ''}`);
+      if (coreTokens.every(t => catCompact.includes(t))) {
+        hits.push({ m, len: catCompact.length });
+      }
+    }
+    if (hits.length) {
+      hits.sort((a, b) => a.len - b.len);
+      return hits[0].m;
+    }
+  }
+  // 12. Último recurso: si después de stripBrand queda un token alfa de 5+
+  //     chars + un numérico, buscarlos en el catálogo. Captura
+  //     "Himalayan 450" → m donde brand=Royal Enfield model=HIMALAYAN 450
+  //     incluso si la capa 11 falló por algún token extra raro.
+  if (rawNoBrand && rawNoBrand !== raw) {
+    const nbTokens = rawNoBrand.split(/\s+/).filter(t => t.length >= 2);
+    const nbAlfa = nbTokens.find(t => /^[a-z]{5,}$/.test(t));
+    const nbNum  = nbTokens.find(t => /\d/.test(t));
+    if (nbAlfa && nbNum) {
+      const hits = [];
+      for (const m of models) {
+        const cat = compactStr(`${m.brand} ${m.model} ${m.commercial_name || ''}`);
+        if (cat.includes(nbAlfa) && cat.includes(nbNum)) {
+          hits.push({ m, len: cat.length });
+        }
+      }
+      if (hits.length === 1) return hits[0].m;
+      // Si hay varios, tomar el más corto (suele ser el más específico).
+      if (hits.length > 1) {
+        hits.sort((a, b) => a.len - b.len);
+        return hits[0].m;
+      }
     }
   }
   return null;
