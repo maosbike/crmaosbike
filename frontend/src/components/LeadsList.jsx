@@ -116,9 +116,25 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         itemLabel="ficha"
         filtered={hasFilters}
         actions={
-          <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
-            <Ic.plus size={14}/>Nueva ficha
-          </button>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {hasRole(user, 'super_admin') && (
+              <button onClick={async()=>{
+                try {
+                  const r = await api.relinkLeadModels();
+                  alert(`Re-vinculación: ${r.scanned} revisados, ${r.fixed} arreglados, ${r.still_unresolved} sin resolver` +
+                    (r.sample_unresolved?.length ? `\n\nSin resolver (muestra):\n${r.sample_unresolved.join('\n')}` : ''));
+                  // refrescar la vista
+                  if (typeof window !== 'undefined') window.location.reload();
+                } catch(e) { alert('Error: '+(e.message||'falló')); }
+              }} style={{...S.btn2,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,padding:'8px 14px',whiteSpace:'nowrap'}}
+                title="Re-corre el matcher mejorado sobre leads importados sin modelo asignado">
+                Re-vincular modelos
+              </button>
+            )}
+            <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
+              <Ic.plus size={14}/>Nueva ficha
+            </button>
+          </div>
         }
       />
       {reassignErr && <ErrorMsg msg={reassignErr} />}
