@@ -269,6 +269,7 @@ export const api = {
   importConfirm: (data)   => request('POST', '/import/confirm', data),
   getImportLogs: ()       => request('GET',  '/import/logs'),
   getImportTemplate: ()   => `${BASE}/import/template`,
+  relinkLeadModels: ()    => request('POST', '/import/relink-models'),
 
   // Model aliases
   getAliases:    ()     => request('GET',    '/catalog/aliases'),

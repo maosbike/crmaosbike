@@ -882,4 +882,69 @@ router.get('/logs', asyncHandler(async (req, res) => {
     res.json(rows);
 }));
 
+// ─── POST /api/import/relink-models ──────────────────────────────────────────
+// Re-corre el matcher mejorado sobre todos los leads (tickets) cuyo
+// model_id está en NULL pero la nota del timeline guarda el raw original
+// del modelo ('Moto sin resolver: "X"'). Útil tras mejorar el matcher
+// — los leads viejos importados con la versión anterior se reparan en
+// bulk sin pedirle al admin que asigne uno por uno.
+router.post('/relink-models', asyncHandler(async (req, res) => {
+  // Cargar catálogo de modelos una sola vez.
+  const { rows: models } = await db.query(
+    `SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true`
+  );
+
+  // Buscar tickets sin model_id que tengan timeline con el raw.
+  // Usamos LATERAL para tomar la primera nota de tipo 'system' por ticket
+  // (la que crea el import). La regex `Moto sin resolver: "X"` la pusimos
+  // en import.js cuando el matcher falla.
+  const { rows: candidates } = await db.query(
+    `SELECT t.id, tl.note
+       FROM tickets t
+       LEFT JOIN LATERAL (
+         SELECT note FROM timeline
+          WHERE ticket_id = t.id
+            AND type = 'system'
+            AND note ILIKE '%Moto sin resolver%'
+          ORDER BY created_at ASC
+          LIMIT 1
+       ) tl ON TRUE
+      WHERE t.model_id IS NULL
+        AND tl.note IS NOT NULL`
+  );
+
+  let scanned = 0, fixed = 0, stillUnresolved = 0;
+  const samples = [];
+  for (const c of candidates) {
+    scanned++;
+    const m = c.note.match(/Moto sin resolver:\s*"([^"]+)"/i);
+    if (!m) continue;
+    const raw = m[1];
+    const resolved = await resolveModelWithAliases(raw, models);
+    if (resolved) {
+      await db.query(
+        `UPDATE tickets SET model_id = $1, updated_at = NOW() WHERE id = $2`,
+        [resolved.id, c.id]
+      );
+      // Anotar en timeline el fix para trazabilidad.
+      await db.query(
+        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+         VALUES ($1, $2, 'system', 'Modelo asignado por re-vinculación', $3)`,
+        [c.id, req.user.id, `Raw original: "${raw}" → ${resolved.brand} ${resolved.model}`]
+      );
+      fixed++;
+    } else {
+      stillUnresolved++;
+      if (samples.length < 10) samples.push(raw);
+    }
+  }
+
+  res.json({
+    scanned,
+    fixed,
+    still_unresolved: stillUnresolved,
+    sample_unresolved: samples,  // primeros 10 raw que aún no matchean
+  });
+}));
+
 module.exports = router;
