@@ -569,17 +569,38 @@ function extractRecibida(text, fileName = '') {
   }
 
   // ── Nombre proveedor ──
-  // Heurística: la primera línea no vacía que tenga 3+ palabras y no sea ruido.
-  // Suele ser razón social del emisor, arriba a la izquierda.
+  // Estrategia: priorizar líneas que tienen sufijo de razón social
+  // chilena (S.A., LTDA, LIMITADA, SPA, EIRL) — eso filtra titulares
+  // genéricos como "Documento Electrónico Recibido". Si no hay sufijo,
+  // fallback a la primera línea no-ruido como antes.
   let emisor_nombre = null;
-  for (const l of lines.slice(0, 15)) {
+  const HEADER_NOISE = /^(R\.?U\.?T|FACTURA|BOLETA|NOTA|N[°º]|FOLIO|FECHA|EMISI[OÓ]N|GIRO|TEL[EÉ]F|DIRECCI[OÓ]N|DOCUMENTO|ELECTR[OÓ]NICO|RECIBIDO|EMITIDO|DETALLE|DESCRIPCI[OÓ]N|PRODUCTO|TIMBRE|VERIFIQUE|S[\.\s]*I[\.\s]*I)/i;
+  const RAZON_SOCIAL_RE = /\b(S\.?A\.?|LTDA\.?|LIMITADA|SPA|S\.\s*P\.\s*A|EIRL|E\.\s*I\.\s*R\.\s*L)\b/i;
+  // 1. Buscar línea con razón social (mejor señal)
+  for (const l of lines.slice(0, 25)) {
     const v = l.trim();
     if (v.length < 4 || v.length > 200) continue;
-    if (/^(R\.?U\.?T|FACTURA|BOLETA|NOTA|N[°º]|FOLIO|FECHA|EMISI[OÓ]N|GIRO|TEL[EÉ]F|DIRECCI[OÓ]N)/i.test(v)) continue;
+    if (HEADER_NOISE.test(v)) continue;
     if (/^\d/.test(v)) continue;
     if (/MAOS\s*(?:RACING|BIKE)|MAOSRACING|MAOSBIKE/i.test(v)) continue;
-    emisor_nombre = v;
-    break;
+    if (RAZON_SOCIAL_RE.test(v)) {
+      // Limpiar: quitar partes después de "R.U.T:" si vienen pegadas
+      const cleaned = v.split(/\s{2,}|\s+R\.?U\.?T/i)[0].trim();
+      emisor_nombre = cleaned;
+      break;
+    }
+  }
+  // 2. Fallback: primera línea no-ruido
+  if (!emisor_nombre) {
+    for (const l of lines.slice(0, 15)) {
+      const v = l.trim();
+      if (v.length < 4 || v.length > 200) continue;
+      if (HEADER_NOISE.test(v)) continue;
+      if (/^\d/.test(v)) continue;
+      if (/MAOS\s*(?:RACING|BIKE)|MAOSRACING|MAOSBIKE/i.test(v)) continue;
+      emisor_nombre = v;
+      break;
+    }
   }
 
   // ── Fecha emisión ──
@@ -634,34 +655,81 @@ function extractRecibida(text, fileName = '') {
 
   // ── Montos ──
   const neto    = parseAmt(t.match(/(?:MONTO\s*)?NETO[^\d]*(\$?\s*[\d\.,]+)/i)?.[1]);
-  const iva     = parseAmt(t.match(/I\.?V\.?A\.?[^\d]*(\$?\s*[\d\.,]+)/i)?.[1]);
+  // IVA: en facturas chilenas suele aparecer como "I.V.A. 19% $ 833.557".
+  // Si capturamos el primer número agarramos "19" del porcentaje. Saltamos
+  // el "19%" si está, y tomamos el monto real (después del % o del $).
+  const iva     = parseAmt(t.match(/I\.?V\.?A\.?\s*(?:\d+\s*%)?\s*\$?\s*([\d\.,]+)/i)?.[1]);
   const exento  = parseAmt(t.match(/(?:MONTO\s+)?EXENTO[^\d]*(\$?\s*[\d\.,]+)/i)?.[1]);
   const total   = parseAmt(t.match(/(?:MONTO\s+)?TOTAL[^\d]*(\$?\s*[\d\.,]+)/i)?.[1])
                || (neto + iva + exento);
 
-  // ── Identificación moto: chasis / VIN / N° motor / marca ──
-  // Marcas conocidas en el mercado chileno de motos.
+  // ── Identificación de moto por anchors del DTE ─────────────────────────
+  // Las facturas Yamaimport / Imoto / etc tienen un bloque de detalle con
+  // labels fijos: "MARCA :", "COD.MODELO :", "N DE CHASIS :", "N MOTOR :",
+  // "ANO COMERCIAL :", "COLOR :". Buscamos por anchor en lugar de regex
+  // global — más preciso y robusto.
+  const FIELD_ANCHORS = [
+    { key: 'marca',     re: /(?:^|\b)MARCA\s*[:\.\-]?\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9 \-]{1,40})/im },
+    { key: 'cod_modelo',re: /(?:^|\b)COD\.?\s*MODELO\s*[:\.\-]?\s*([A-Z0-9][A-Z0-9\-]{2,30})/im },
+    { key: 'modelo',    re: /(?:^|\b)MODELO\s*[:\.\-]?\s*([A-Z0-9][A-Z0-9\- ]{1,40})/im },
+    { key: 'chassis',   re: /(?:^|\b)N[°º]?\s*(?:DE\s+)?CHA(?:SIS|SSIS|S?I)\s*[:\.\-]?\s*([A-Z0-9]{8,30})/im },
+    { key: 'chassis2',  re: /(?:^|\b)VIN\s*[:\.\-]?\s*([A-Z0-9]{8,30})/im },
+    { key: 'motor',     re: /(?:^|\b)N[°º]?\s*(?:DE\s+)?MOTOR\s*[:\.\-]?\s*([A-Z0-9\-]{6,30})/im },
+    { key: 'year',      re: /(?:^|\b)A(?:N|Ñ)?O\s+COMERCIAL\s*[:\.\-]?\s*(20\d{2})/im },
+    { key: 'color',     re: /(?:^|\b)COLOR\s*[:\.\-]?\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ \/\-]{1,30})/im },
+  ];
+  const fields = {};
+  // Para los anchors necesitamos el texto con saltos de línea preservados
+  // (no el colapsado `t`), porque los anchors usan boundaries de línea
+  // implícitas — sin \n entre "COLOR : VERDE" y "MARCA : YAMAHA"
+  // el char class agarra "VERDE MARCA" como un solo valor.
+  const tLined = lines.join('\n');
+  for (const f of FIELD_ANCHORS) {
+    const m = tLined.match(f.re);
+    if (m && !fields[f.key]) fields[f.key] = m[1].trim();
+  }
+  // chassis2 (VIN) es alias de chassis
+  if (!fields.chassis && fields.chassis2) fields.chassis = fields.chassis2;
+
+  // Marcas conocidas — usadas como fallback si no apareció el anchor MARCA
+  // y para validar que lo capturado es razonable.
   const MOTO_BRANDS = [
     'YAMAHA','HONDA','SUZUKI','KAWASAKI','BAJAJ','TVS','KTM',
     'ROYAL ENFIELD','BENELLI','HARLEY','HARLEY-DAVIDSON','HARLEY DAVIDSON',
     'KEEWAY','CFMOTO','LIFAN','LONCIN','VOGE','UM','TAKASAKI',
-    'PEUGEOT','ZONGSHEN','SYM','SYMMOTO','GO','BERA','HMDC',
-    'SUMO','OPAI','EMCO','LINGYUE','QJMOTOR','QJ MOTOR',
+    'PEUGEOT','ZONGSHEN','SYM','SYMMOTO','BERA','HMDC',
+    'SUMO','OPAI','EMCO','LINGYUE','QJMOTOR','QJ MOTOR','CYCLONE',
   ];
-  const brandFound = MOTO_BRANDS.find(b => new RegExp(`\\b${b.replace(/\s/g,'\\s+')}\\b`,'i').test(t));
-  const chassisMatch = t.match(/(?:CHASIS|CHASSIS|VIN|N[°º]\s*CHASIS)[^A-Z0-9]{0,8}([A-Z0-9]{8,})/i);
-  const motorMatch   = t.match(/(?:N[°º]\s*MOTOR|MOTOR\s*N[°º]?)[^A-Z0-9]{0,8}([A-Z0-9]{6,})/i);
-  const chassis  = chassisMatch?.[1] || null;
-  const motor_num= motorMatch?.[1]   || null;
-  let model = null;
-  if (brandFound) {
-    // Modelo = palabra(s) inmediatamente después de la marca
+  // Brand: anchor primero, fallback a búsqueda en texto.
+  let brandFound = null;
+  if (fields.marca) {
+    // Validar contra lista conocida (case-insensitive con tolerancia)
+    const norm = fields.marca.toUpperCase().trim();
+    brandFound = MOTO_BRANDS.find(b => norm.includes(b)) || norm;
+  }
+  if (!brandFound) {
+    brandFound = MOTO_BRANDS.find(b => new RegExp(`\\b${b.replace(/\s/g,'\\s+')}\\b`,'i').test(t));
+  }
+
+  // Modelo: prioridad COD.MODELO (más confiable, ej: "YZF-R3A") sobre MODELO
+  // descriptivo. Si el COD.MODELO existe, ese es el código de catálogo Yamaha.
+  const cod_modelo = fields.cod_modelo || null;
+  let model = fields.modelo || cod_modelo || null;
+  if (!model && brandFound) {
+    // Fallback: palabra(s) inmediatamente después de la marca en el texto.
     const modelRe = new RegExp(`\\b${brandFound.replace(/\s/g,'\\s+')}\\s+([A-Z0-9][A-Z0-9\\-\\s]{1,30})`, 'i');
     const mm = t.match(modelRe);
     if (mm) model = mm[1].trim().split(/\s{2,}|[,;]/)[0].slice(0, 60);
   }
 
+  const chassis  = fields.chassis  || null;
+  const motor_num= fields.motor    || null;
+  const year     = fields.year ? parseInt(fields.year) : null;
+  const color    = fields.color    || null;
+
   // ── Auto-categoría ──
+  // Una factura recibida es de "motos" si tiene chasis (anchor preciso) o
+  // tiene marca conocida + modelo. Resto, heurística por keywords.
   const lower = t.toLowerCase();
   let category = 'otros';
   if (chassis || (brandFound && model)) {
@@ -759,8 +827,8 @@ function extractRecibida(text, fileName = '') {
     total,
     brand:            clip(brandFound, 100),
     model:            clip(model, 200),
-    color:            null,
-    commercial_year:  null,
+    color:            clip(color, 100),
+    commercial_year:  year,
     motor_num:        clip(motor_num, 100),
     chassis:          clip(chassis, 100),
     descripcion:      clip(descripcion, 1000),
@@ -1990,21 +2058,23 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
                emisor_nombre=COALESCE($4, emisor_nombre),
                fecha_emision=$5,
                monto_neto=$6, iva=$7, monto_exento=$8, total=$9,
-               brand=$10, model=$11, motor_num=$12, chassis=$13,
-               descripcion=COALESCE($14, descripcion),
-               pdf_url=$15, drive_file_id=$16,
-               inventory_id=COALESCE(inventory_id,$17),
-               sale_note_id=COALESCE(sale_note_id,$18),
-               link_status=$19,
-               model_id=COALESCE($20, model_id),
+               brand=$10, model=$11, color=$12, commercial_year=$13,
+               motor_num=$14, chassis=$15,
+               descripcion=COALESCE($16, descripcion),
+               pdf_url=$17, drive_file_id=$18,
+               inventory_id=COALESCE(inventory_id,$19),
+               sale_note_id=COALESCE(sale_note_id,$20),
+               link_status=$21,
+               model_id=COALESCE($22, model_id),
                updated_at=NOW()
-             WHERE id=$21`,
+             WHERE id=$23`,
             [
               parsed.doc_type, parsed.category,
               parsed.rut_emisor, parsed.emisor_nombre,
               parsed.fecha_emision,
               parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
-              parsed.brand, parsed.model, parsed.motor_num, parsed.chassis,
+              parsed.brand, parsed.model, parsed.color, parsed.commercial_year,
+              parsed.motor_num, parsed.chassis,
               parsed.descripcion,
               pdf_url, file.id,
               links.inventory_id, links.sale_note_id, links.link_status,
@@ -2020,7 +2090,8 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
                folio, rut_emisor, emisor_nombre,
                fecha_emision,
                monto_neto, iva, monto_exento, total,
-               brand, model, motor_num, chassis, descripcion,
+               brand, model, color, commercial_year,
+               motor_num, chassis, descripcion,
                pdf_url, drive_file_id,
                inventory_id, sale_note_id, link_status,
                model_id, created_by
@@ -2029,17 +2100,19 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
                $3,$4,$5,
                $6,
                $7,$8,$9,$10,
-               $11,$12,$13,$14,$15,
-               $16,$17,
-               $18,$19,$20,
-               $21,$22
+               $11,$12,$13,$14,
+               $15,$16,$17,
+               $18,$19,
+               $20,$21,$22,
+               $23,$24
              )`,
             [
               parsed.doc_type, parsed.category,
               parsed.folio, parsed.rut_emisor, parsed.emisor_nombre,
               parsed.fecha_emision,
               parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
-              parsed.brand, parsed.model, parsed.motor_num, parsed.chassis, parsed.descripcion,
+              parsed.brand, parsed.model, parsed.color, parsed.commercial_year,
+              parsed.motor_num, parsed.chassis, parsed.descripcion,
               pdf_url, file.id,
               links.inventory_id, links.sale_note_id, links.link_status,
               modelId, req.user.id,
