@@ -141,7 +141,17 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
 
       {/* ── KPI "Necesita atención" ── */}
       {(()=>{
-        const attCount=effectiveLeads.filter(l=>l.needs_attention&&(!hasRole(user, ROLES.VEND)||l.seller_id===user.id)).length;
+        // El conteo respeta el filtro de vendedor activo (selF) y el de
+        // sucursal (brF), así no muestra "26 necesitan atención" cuando
+        // estás filtrando por xaviera y los de ella son 0 — antes el
+        // click llevaba a una pantalla vacía.
+        const attCount=effectiveLeads.filter(l=>{
+          if (!l.needs_attention) return false;
+          if (selF && String(l.seller_id) !== String(selF)) return false;
+          if (brF && l.branch_id !== brF && l.branch !== brF) return false;
+          if (hasRole(user, ROLES.VEND) && l.seller_id !== user.id) return false;
+          return true;
+        }).length;
         if(attCount===0&&!attF)return null;
         return(
           <div style={{marginBottom:12}}>
