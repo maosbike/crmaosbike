@@ -543,9 +543,21 @@ function extractRecibida(text, fileName = '') {
   }
 
   // ── RUTs en el texto ──
-  // Captura todos los RUTs y filtra los Maosbike. El primer RUT no-Maos = proveedor.
-  const rutMatches = [...t.matchAll(/(\d{1,2}\.?\d{3}\.?\d{3}\s*-\s*[\dkK])/g)]
-    .map(m => m[1].replace(/\s/g,''));
+  // Capturamos todas las variantes de RUT chileno:
+  //   1. con puntos y guión:  76.123.456-7
+  //   2. con guión sin puntos: 76123456-7
+  //   3. sin guión, junto:     761234567 (entre 7 y 9 dígitos + DV opcional)
+  // El primer RUT no-Maos = proveedor. Maos = receptor.
+  const rutPatterns = [
+    /(\d{1,2}\.\d{3}\.\d{3}\s*-\s*[\dkK])/g,    // con puntos
+    /(\d{7,8}\s*-\s*[\dkK])/g,                   // sin puntos con guión
+  ];
+  const rutMatches = [];
+  for (const pat of rutPatterns) {
+    for (const m of t.matchAll(pat)) {
+      rutMatches.push(m[1].replace(/\s/g,''));
+    }
+  }
   const ruts = [...new Set(rutMatches)];
   let rut_emisor = null;     // proveedor que nos factura
   let rut_receptor = null;   // nosotros (Maosbike)
@@ -630,6 +642,33 @@ function extractRecibida(text, fileName = '') {
     category = 'municipal';
   }
 
+  // ── Descripción / detalle de la factura ──
+  // Capturamos las primeras líneas relevantes después del label "Descripción"
+  // o "Detalle". Si no hay label, usamos las líneas que parezcan tener
+  // contenido (no totales, no labels), saltando todo el header.
+  let descripcion = null;
+  const detailIdx = lines.findIndex(l => /^(detalle|descripci[oó]n|producto|item|art[ií]culo)\b/i.test(l.trim()));
+  if (detailIdx >= 0) {
+    const detail = lines.slice(detailIdx + 1, detailIdx + 8)
+      .filter(l => l && !/^(SUBTOTAL|TOTAL|NETO|I\.?V\.?A\.?|EXENTO|DESCUENTO|MONTO|FORMA\s+DE\s+PAGO|FECHA|VENCIMIENTO|TIMBRE|RES\.?\s|S\.?I\.?I\.?)/i.test(l))
+      .filter(l => l.length > 5 && l.length < 200)
+      .filter(l => !/^\d+(\.\d+)?\s*$/.test(l))
+      .slice(0, 3)
+      .join(' · ');
+    if (detail) descripcion = detail;
+  }
+  // Fallback: si no encontramos label, tomar líneas medias del documento
+  // que tengan letras (no solo números) y no sean ruido conocido.
+  if (!descripcion) {
+    const middle = lines.slice(Math.floor(lines.length / 3), Math.floor(lines.length * 2 / 3));
+    const candidates = middle
+      .filter(l => /[A-Za-zÁÉÍÓÚáéíóúñÑ]{4,}/.test(l))
+      .filter(l => !/^(SUBTOTAL|TOTAL|NETO|I\.?V\.?A\.?|EXENTO|DESCUENTO|MONTO|FORMA\s+DE\s+PAGO|FECHA|VENCIMIENTO|TIMBRE|RES\.?\s|S\.?I\.?I\.?|RUT|GIRO|DIRECCI[OÓ]N|COMUNA|CIUDAD|TEL[EÉ]F|EMAIL|WWW|HTTP)/i.test(l))
+      .filter(l => l.length > 8 && l.length < 200)
+      .slice(0, 3);
+    if (candidates.length) descripcion = candidates.join(' · ').slice(0, 500);
+  }
+
   const clip = (s, n) => s == null ? null : String(s).slice(0, n);
   return {
     source:           'recibida',
@@ -654,7 +693,7 @@ function extractRecibida(text, fileName = '') {
     commercial_year:  null,
     motor_num:        clip(motor_num, 100),
     chassis:          clip(chassis, 100),
-    descripcion:      null,
+    descripcion:      clip(descripcion, 1000),
     ref_folio:        null,
     ref_rut_emisor:   null,
     ref_fecha:        null,
@@ -1867,19 +1906,21 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
                fecha_emision=$5,
                monto_neto=$6, iva=$7, monto_exento=$8, total=$9,
                brand=$10, model=$11, motor_num=$12, chassis=$13,
-               pdf_url=$14, drive_file_id=$15,
-               inventory_id=COALESCE(inventory_id,$16),
-               sale_note_id=COALESCE(sale_note_id,$17),
-               link_status=$18,
-               model_id=COALESCE($19, model_id),
+               descripcion=COALESCE($14, descripcion),
+               pdf_url=$15, drive_file_id=$16,
+               inventory_id=COALESCE(inventory_id,$17),
+               sale_note_id=COALESCE(sale_note_id,$18),
+               link_status=$19,
+               model_id=COALESCE($20, model_id),
                updated_at=NOW()
-             WHERE id=$20`,
+             WHERE id=$21`,
             [
               parsed.doc_type, parsed.category,
               parsed.rut_emisor, parsed.emisor_nombre,
               parsed.fecha_emision,
               parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
               parsed.brand, parsed.model, parsed.motor_num, parsed.chassis,
+              parsed.descripcion,
               pdf_url, file.id,
               links.inventory_id, links.sale_note_id, links.link_status,
               modelId,
@@ -1894,7 +1935,7 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
                folio, rut_emisor, emisor_nombre,
                fecha_emision,
                monto_neto, iva, monto_exento, total,
-               brand, model, motor_num, chassis,
+               brand, model, motor_num, chassis, descripcion,
                pdf_url, drive_file_id,
                inventory_id, sale_note_id, link_status,
                model_id, created_by
@@ -1903,17 +1944,17 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
                $3,$4,$5,
                $6,
                $7,$8,$9,$10,
-               $11,$12,$13,$14,
-               $15,$16,
-               $17,$18,$19,
-               $20,$21
+               $11,$12,$13,$14,$15,
+               $16,$17,
+               $18,$19,$20,
+               $21,$22
              )`,
             [
               parsed.doc_type, parsed.category,
               parsed.folio, parsed.rut_emisor, parsed.emisor_nombre,
               parsed.fecha_emision,
               parsed.monto_neto, parsed.iva, parsed.monto_exento, parsed.total,
-              parsed.brand, parsed.model, parsed.motor_num, parsed.chassis,
+              parsed.brand, parsed.model, parsed.motor_num, parsed.chassis, parsed.descripcion,
               pdf_url, file.id,
               links.inventory_id, links.sale_note_id, links.link_status,
               modelId, req.user.id,

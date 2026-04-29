@@ -275,10 +275,27 @@ function InvoiceCard({ inv, onOpen }) {
   const isMobile = useIsMobile();
   const st       = invoiceStatus(inv);
   const isNC     = inv.doc_type === 'nota_credito';
+  const isRecib  = inv.source === 'recibida';
+  const isMoto   = !isRecib || inv.category === 'motos';
   const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
   const folioLbl = isNC ? `NC ${inv.folio || '—'}` : (inv.folio || '—');
-  const img      = motoImg(inv);
+  const img      = isMoto ? motoImg(inv) : null;
   const pdfUrl   = pdfViewerUrl(inv);
+
+  // Para recibidas el "nombre" es el proveedor; para emitidas es el cliente.
+  const partyName = isRecib ? inv.emisor_nombre : inv.cliente_nombre;
+  const partyRut  = isRecib ? inv.rut_emisor    : inv.rut_cliente;
+  const partyEmpty = isRecib ? 'Sin proveedor' : 'Sin cliente';
+
+  // Badge de categoría — sólo en recibidas, da contexto rápido del gasto.
+  const CAT_CFG = {
+    motos:     { l:'Motos',     bg:'#EEF2FF', c:'#4F46E5', bd:'#C7D2FE' },
+    partes:    { l:'Partes',    bg:'#ECFEFF', c:'#0E7490', bd:'#67E8F9' },
+    servicios: { l:'Servicios', bg:'#F5F3FF', c:'#6D28D9', bd:'#C4B5FD' },
+    municipal: { l:'Municipal', bg:'#FFF7ED', c:'#C2410C', bd:'#FDBA74' },
+    otros:     { l:'Otros',     bg:'var(--surface-muted)', c:'var(--text-subtle)', bd:'var(--border)' },
+  };
+  const catCfg = isRecib ? (CAT_CFG[inv.category] || CAT_CFG.otros) : null;
 
   // ── Versión mobile: layout vertical compacto ───────────────────────────
   // El layout desktop (foto 220px + contenido + barra derecha 200px) no
@@ -310,7 +327,9 @@ function InvoiceCard({ inv, onOpen }) {
           }}>
             {img
               ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-              : <Ic.bike size={32} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
+              : isMoto
+                ? <Ic.bike size={32} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
+                : <Ic.file size={32} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
             }
           </div>
 
@@ -319,7 +338,7 @@ function InvoiceCard({ inv, onOpen }) {
             flex:1, minWidth:0, padding:'10px 12px',
             display:'flex', flexDirection:'column', gap:4,
           }}>
-            {/* Folio + fecha + estado pill */}
+            {/* Folio + fecha + categoría + estado pill */}
             <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
               <span style={{
                 fontSize:12, fontWeight:800,
@@ -330,6 +349,17 @@ function InvoiceCard({ inv, onOpen }) {
               }}>
                 #{folioLbl}
               </span>
+              {catCfg && (
+                <span style={{
+                  fontSize:9, fontWeight:700, textTransform:'uppercase',
+                  letterSpacing:'0.04em',
+                  color: catCfg.c, background: catCfg.bg,
+                  border:`1px solid ${catCfg.bd}`,
+                  padding:'1px 6px', borderRadius:'var(--radius-sm)',
+                }}>
+                  {catCfg.l}
+                </span>
+              )}
               <span style={{ fontSize:10, color:'var(--text-disabled)', whiteSpace:'nowrap' }}>
                 {fd(inv.fecha_emision)}
               </span>
@@ -338,16 +368,16 @@ function InvoiceCard({ inv, onOpen }) {
               </span>
             </div>
 
-            {/* Cliente */}
+            {/* Cliente / Proveedor */}
             <div style={{
               fontSize:13, fontWeight:700, color:'var(--text)',
               whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             }}>
-              {(inv.source === 'recibida' ? inv.emisor_nombre : inv.cliente_nombre) || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>{inv.source === 'recibida' ? 'Sin proveedor' : 'Sin cliente'}</span>}
+              {partyName || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>{partyEmpty}</span>}
             </div>
 
-            {/* Vehículo */}
-            {modelo && (
+            {/* Vehículo (sólo cuando es moto) */}
+            {modelo && isMoto && (
               <div style={{
                 fontSize:11, fontWeight:600, color:'var(--text-body)',
                 whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
@@ -355,6 +385,17 @@ function InvoiceCard({ inv, onOpen }) {
                 {modelo}
                 {inv.commercial_year && <span style={{ color:'var(--text-disabled)', fontWeight:500 }}> · {inv.commercial_year}</span>}
                 {inv.color && <span style={{ color:'var(--text-disabled)', fontWeight:500 }}> · {inv.color}</span>}
+              </div>
+            )}
+
+            {/* Descripción (recibidas no-moto): qué nos facturaron */}
+            {isRecib && !isMoto && inv.descripcion && (
+              <div style={{
+                fontSize:11, color:'var(--text-body)', lineHeight:1.3,
+                overflow:'hidden', textOverflow:'ellipsis',
+                display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+              }}>
+                {inv.descripcion}
               </div>
             )}
 
@@ -387,14 +428,14 @@ function InvoiceCard({ inv, onOpen }) {
             </div>
 
             {/* Chasis / RUT al pie en línea sutil */}
-            {(inv.chassis || inv.rut_cliente) && (
+            {((isMoto && inv.chassis) || partyRut) && (
               <div style={{
                 display:'flex', gap:8, fontSize:10, color:'var(--text-disabled)',
                 whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
                 marginTop:2,
               }}>
-                {inv.chassis && <span style={{ fontWeight:600, color:'var(--text-subtle)' }}>{inv.chassis}</span>}
-                {inv.rut_cliente && <span>RUT {rutFmt(inv.rut_cliente)}</span>}
+                {isMoto && inv.chassis && <span style={{ fontWeight:600, color:'var(--text-subtle)' }}>{inv.chassis}</span>}
+                {partyRut && <span>RUT {rutFmt(partyRut)}</span>}
               </div>
             )}
           </div>
@@ -431,7 +472,9 @@ function InvoiceCard({ inv, onOpen }) {
       }}>
         {img
           ? <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
-          : <Ic.bike size={56} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
+          : isMoto
+            ? <Ic.bike size={56} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
+            : <Ic.file size={56} color={STATUS_ICON[st.k] || 'var(--text-disabled)'}/>
         }
         {st.k === 'anulada' && (
           <span style={{
@@ -462,7 +505,7 @@ function InvoiceCard({ inv, onOpen }) {
         display:'flex', flexDirection:'column', justifyContent:'center',
         gap:6,
       }}>
-        {/* Línea 1: folio + fecha + ref NC */}
+        {/* Línea 1: folio + categoría + fecha + ref NC */}
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <div style={{
             fontSize:15, fontWeight:800,
@@ -474,6 +517,17 @@ function InvoiceCard({ inv, onOpen }) {
           }}>
             #{folioLbl}
           </div>
+          {catCfg && (
+            <span style={{
+              fontSize:10, fontWeight:700, textTransform:'uppercase',
+              letterSpacing:'0.04em',
+              color: catCfg.c, background: catCfg.bg,
+              border:`1px solid ${catCfg.bd}`,
+              padding:'2px 8px', borderRadius:'var(--radius-sm)',
+            }}>
+              {catCfg.l}
+            </span>
+          )}
           <span style={{ fontSize:11, fontWeight:600, color:'var(--text-disabled)' }}>
             {fd(inv.fecha_emision)}
           </span>
@@ -484,17 +538,17 @@ function InvoiceCard({ inv, onOpen }) {
           )}
         </div>
 
-        {/* Línea 2: cliente — es el dato primario del card */}
+        {/* Línea 2: cliente / proveedor — dato primario */}
         <div style={{
           fontSize:15, fontWeight:700, color:'var(--text)',
           letterSpacing:'-0.2px',
           whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
         }}>
-          {inv.cliente_nombre || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>Sin cliente</span>}
+          {partyName || <span style={{ color:'var(--text-disabled)', fontStyle:'italic', fontWeight:500 }}>{partyEmpty}</span>}
         </div>
 
-        {/* Línea 3: vehículo como texto limpio con bullets */}
-        {modelo && (
+        {/* Línea 3: vehículo (sólo motos) */}
+        {modelo && isMoto && (
           <div style={{
             fontSize:12, fontWeight:600, color:'var(--text-body)',
             whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
@@ -505,19 +559,30 @@ function InvoiceCard({ inv, onOpen }) {
           </div>
         )}
 
-        {/* Línea 4: chasis + RUT como meta secundaria */}
-        {(inv.chassis || inv.rut_cliente) && (
+        {/* Descripción (recibidas no-moto): qué nos facturaron */}
+        {isRecib && !isMoto && inv.descripcion && (
+          <div style={{
+            fontSize:12, color:'var(--text-body)', lineHeight:1.4,
+            overflow:'hidden', textOverflow:'ellipsis',
+            display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+          }}>
+            {inv.descripcion}
+          </div>
+        )}
+
+        {/* Línea 4: chasis (motos) + RUT proveedor/cliente */}
+        {((isMoto && inv.chassis) || partyRut) && (
           <div style={{
             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
             fontSize:11, fontWeight:500, color:'var(--text-disabled)',
           }}>
-            {inv.chassis && (
+            {isMoto && inv.chassis && (
               <span style={{ letterSpacing:'0.03em', fontWeight:600, color:'var(--text-subtle)' }}>
                 {inv.chassis}
               </span>
             )}
-            {inv.rut_cliente && (
-              <span>RUT {rutFmt(inv.rut_cliente)}</span>
+            {partyRut && (
+              <span>RUT {rutFmt(partyRut)}</span>
             )}
           </div>
         )}
