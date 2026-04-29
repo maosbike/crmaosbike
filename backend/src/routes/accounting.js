@@ -875,8 +875,11 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
     }
 
     if (link_status) { conds.push(`i.link_status = $${idx++}`); params.push(link_status); }
-    if (desde) { conds.push(`i.fecha_emision >= $${idx++}`); params.push(desde); }
-    if (hasta) { conds.push(`i.fecha_emision <= $${idx++}`); params.push(hasta); }
+    // Filtro de fecha incluye NULL para no esconder facturas donde el parser
+    // no pudo extraer fecha_emision (típico en formatos heterogéneos de
+    // proveedores). Quedan visibles para que el admin las pueda revisar.
+    if (desde) { conds.push(`(i.fecha_emision IS NULL OR i.fecha_emision >= $${idx++})`); params.push(desde); }
+    if (hasta) { conds.push(`(i.fecha_emision IS NULL OR i.fecha_emision <= $${idx++})`); params.push(hasta); }
     if (q) {
       conds.push(`(
         i.folio ILIKE $${idx} OR
