@@ -360,8 +360,8 @@ function InvoiceCard({ inv, onOpen }) {
                   {catCfg.l}
                 </span>
               )}
-              <span style={{ fontSize:10, color:'var(--text-disabled)', whiteSpace:'nowrap' }}>
-                {fd(inv.fecha_emision)}
+              <span style={{ fontSize:10, color: inv.fecha_emision ? 'var(--text-disabled)' : '#DC2626', whiteSpace:'nowrap', fontStyle: inv.fecha_emision ? 'normal' : 'italic' }}>
+                {inv.fecha_emision ? fd(inv.fecha_emision) : 'Sin fecha'}
               </span>
               <span style={{ marginLeft:'auto' }}>
                 <Bdg l={st.l} c={st.c} bg={st.bg} size="sm"/>
@@ -388,14 +388,16 @@ function InvoiceCard({ inv, onOpen }) {
               </div>
             )}
 
-            {/* Descripción (recibidas no-moto): qué nos facturaron */}
-            {isRecib && !isMoto && inv.descripcion && (
+            {/* Descripción: qué nos facturaron (recibidas no-moto) */}
+            {isRecib && !isMoto && (
               <div style={{
-                fontSize:11, color:'var(--text-body)', lineHeight:1.3,
+                fontSize:11, color: inv.descripcion ? 'var(--text-body)' : 'var(--text-disabled)',
+                fontStyle: inv.descripcion ? 'normal' : 'italic',
+                lineHeight:1.3,
                 overflow:'hidden', textOverflow:'ellipsis',
                 display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
               }}>
-                {inv.descripcion}
+                {inv.descripcion || 'Sin descripción extraída — abrí el PDF'}
               </div>
             )}
 
@@ -528,8 +530,12 @@ function InvoiceCard({ inv, onOpen }) {
               {catCfg.l}
             </span>
           )}
-          <span style={{ fontSize:11, fontWeight:600, color:'var(--text-disabled)' }}>
-            {fd(inv.fecha_emision)}
+          <span style={{
+            fontSize:11, fontWeight:600,
+            color: inv.fecha_emision ? 'var(--text-disabled)' : '#DC2626',
+            fontStyle: inv.fecha_emision ? 'normal' : 'italic',
+          }}>
+            {inv.fecha_emision ? fd(inv.fecha_emision) : 'Sin fecha'}
           </span>
           {isNC && inv.ref_folio && (
             <span style={{ fontSize:10, fontWeight:600, color:'#DC2626' }}>
@@ -559,14 +565,16 @@ function InvoiceCard({ inv, onOpen }) {
           </div>
         )}
 
-        {/* Descripción (recibidas no-moto): qué nos facturaron */}
-        {isRecib && !isMoto && inv.descripcion && (
+        {/* Descripción: qué nos facturaron (recibidas no-moto) */}
+        {isRecib && !isMoto && (
           <div style={{
-            fontSize:12, color:'var(--text-body)', lineHeight:1.4,
+            fontSize:12, lineHeight:1.4,
+            color: inv.descripcion ? 'var(--text-body)' : 'var(--text-disabled)',
+            fontStyle: inv.descripcion ? 'normal' : 'italic',
             overflow:'hidden', textOverflow:'ellipsis',
             display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
           }}>
-            {inv.descripcion}
+            {inv.descripcion || 'Sin descripción extraída — abrí el PDF'}
           </div>
         )}
 
