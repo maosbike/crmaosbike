@@ -698,7 +698,14 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
             // hay una factura electrónica vinculada (sale.inv_pdf_url),
             // mostramos esa. Así el SII queda accesible desde la card sin
             // depender de propagación previa.
-            const fallback = (field === 'doc_factura_cli' && !sale[field]) ? sale.inv_pdf_url : null;
+            //
+            // Para "Factura dist.": si no hay PDF subido pero existe una
+            // factura recibida (proveedor) vinculada por chasis a esta unidad
+            // (sale.recib_pdf_url), la mostramos. Cierra el circuito
+            // factura-compra → unidad → factura-venta sin acción manual.
+            let fallback = null;
+            if (field === 'doc_factura_cli' && !sale[field]) fallback = sale.inv_pdf_url;
+            if (field === 'doc_factura_dist' && !sale[field]) fallback = sale.recib_pdf_url;
             const docUrl = sale[field] || fallback;
             const hasDoc = !!docUrl;
             return (
@@ -3430,9 +3437,10 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           {!loading && sales.map(s => {
             const isRes      = s.status === 'reservada';
             const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
-            const facturaCli = s.doc_factura_cli || s.inv_pdf_url || null;
-            const docsOk     = !!(facturaCli && s.doc_homologacion && s.doc_inscripcion);
-            const docCount   = [s.doc_factura_dist, facturaCli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
+            const facturaCli  = s.doc_factura_cli  || s.inv_pdf_url   || null;
+            const facturaDist = s.doc_factura_dist || s.recib_pdf_url || null;
+            const docsOk      = !!(facturaCli && s.doc_homologacion && s.doc_inscripcion);
+            const docCount    = [facturaDist, facturaCli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
             const saldo      = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
             const accentColor = isRes ? '#CA8A04' : '#10B981';
             return (
@@ -3614,9 +3622,10 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
           {!loading && sales.map(s => {
             const isRes      = s.status === 'reservada';
             const sellerName = s.seller_fn ? `${s.seller_fn} ${s.seller_ln || ''}`.trim() : '—';
-            const facturaCli = s.doc_factura_cli || s.inv_pdf_url || null;
-            const docsOk     = !!(facturaCli && s.doc_homologacion && s.doc_inscripcion);
-            const docCount   = [s.doc_factura_dist, facturaCli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
+            const facturaCli  = s.doc_factura_cli  || s.inv_pdf_url   || null;
+            const facturaDist = s.doc_factura_dist || s.recib_pdf_url || null;
+            const docsOk      = !!(facturaCli && s.doc_homologacion && s.doc_inscripcion);
+            const docCount    = [facturaDist, facturaCli, s.doc_homologacion, s.doc_inscripcion].filter(Boolean).length;
             const saldo      = s.sale_price > 0 ? Math.max(0, s.sale_price - (s.invoice_amount || 0)) : null;
             const accentBg   = isRes ? '#FEFCE8' : '#ECFDF5';
             const accentFg   = isRes ? '#713F12' : '#065F46';

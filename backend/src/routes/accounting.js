@@ -8,6 +8,7 @@ const db       = require('../config/db');
 const logger   = require('../config/logger');
 const cloudinary = require('../config/cloudinary');
 const pdfParse   = require('pdf-parse');
+const { extractPdfWithLayout } = require('../utils/pdfLayout');
 const { auth, roleCheck }  = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const {
@@ -680,14 +681,30 @@ function extractRecibida(text, fileName = '') {
   //   3. Heurística sobre líneas medias del PDF (filtrando ruido conocido)
   // Para cada capa filtramos basura (totales, RUTs, direcciones, headers).
   let descripcion = null;
+  // Labels conocidos en facturas chilenas — usados para detectar líneas que
+  // pdf-parse pegó como header-de-columna ("CodigoDescripcionCantidadPrecio")
+  // o cadenas tipo "COMUNAHUECHURABACIUDAD:SANTIAGO".
+  const KNOWN_LABEL_RE = /(?:RUT|R\.U\.T|GIRO|DIRECCI[OÓ]N|DOMICILIO|COMUNA|CIUDAD|REGI[OÓ]N|PA[ÍI]S|TEL[EÉ]F|FONO|FAX|EMAIL|MAIL|CONTACTO|ATENCI[OÓ]N|FECHA|FOLIO|TIMBRE|N[°º]|FORMA|DESPACHO|VENCIMIENTO|EMISOR|RECEPTOR|RAZ[OÓ]N|SE[ÑN]OR(?:ES)?|CONDICI[OÓ]N|VENDEDOR|C[OÓ]DIGO|DESCRIPCI[OÓ]N|CANTIDAD|PRECIO|UNIDAD|MEDIDA|MONTO|NETO|TOTAL|IVA|EXENTO|DESCUENTO|VALOR|SUBTOTAL|S\.?I\.?I\.?|GUIA|ORDEN|REF)/gi;
   const NOISE_RE = /^(SUBTOTAL|TOTAL|NETO|I\.?V\.?A\.?|EXENTO|DESCUENTO|MONTO|FORMA\s+DE\s+PAGO|FECHA|VENCIMIENTO|TIMBRE|RES\.?\s|S\.?I\.?I\.?|RUT|R\.U\.T|GIRO|DIRECCI[OÓ]N|COMUNA|CIUDAD|TEL[EÉ]F|FONO|FAX|EMAIL|MAIL|WWW|HTTP|FOLIO|N[°º]|EMISOR|RECEPTOR|SE[ÑN]OR(?:ES)?|RAZ[OÓ]N|SUMA|VALOR|PRECIO|CANTIDAD|CONCEPTO|UNIDAD|MEDIDA|HOJA|P[ÁA]GINA|FACTURA|BOLETA|NOTA)\b/i;
   const isUseful = (l) => {
     if (!l) return false;
     const v = l.trim();
     if (v.length < 5 || v.length > 250) return false;
+    // Header de columnas concatenado: "CodigoDescripcionCantidadPrecio".
+    // Detectamos ≥3 transiciones lower→Upper sin espacios entre medio.
+    if (/(?:[a-z][A-Z]){2,}/.test(v) && !/\s/.test(v)) return false;
+    // Cadena de labels concatenados (≥2 labels en la misma línea =
+    // pdf-parse pegó dos columnas). Captura
+    // "COMUNAHUECHURABACIUDAD:SANTIAGO" o "RUT:X DIRECCION:Y".
+    const labelHits = (v.match(KNOWN_LABEL_RE) || []).length;
+    if (labelHits >= 2) return false;
+    // Label único seguido de valor cortísimo, ej "CONTACTO:1"
+    if (labelHits === 1 && /^[A-Z]{3,}\s*:\s*\S{1,5}$/.test(v)) return false;
+    // Línea ALL-CAPS muy larga sin espacios = columnas pegadas
+    if (/^[A-Z]{15,}$/.test(v.replace(/[\s:.,;]+/g,''))) return false;
     if (NOISE_RE.test(v)) return false;
-    if (!/[A-Za-zÁÉÍÓÚáéíóúñÑ]{4,}/.test(v)) return false;  // sin texto suficiente
-    if (/^[\d\.\-\/\s\$,]+$/.test(v)) return false;          // solo números/símbolos
+    if (!/[A-Za-zÁÉÍÓÚáéíóúñÑ]{4,}/.test(v)) return false;
+    if (/^[\d\.\-\/\s\$,]+$/.test(v)) return false;
     return true;
   };
 
@@ -1906,7 +1923,17 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
     for (const file of files) {
       try {
         const buf  = await downloadPDF(file.id);
-        const text = (await pdfParse(buf)).text;
+        // Extracción con layout: pdfjs-dist preserva coordenadas, agrupa por
+        // línea respetando columnas. Resuelve "COMUNAHUECHURABACIUDAD:SANTIAGO"
+        // que pasaba con pdf-parse al colapsar columnas a una sola línea.
+        // Si pdfjs falla por algún motivo, caemos al pdf-parse clásico.
+        let text;
+        try {
+          text = (await extractPdfWithLayout(buf)).text;
+        } catch (layoutErr) {
+          logger.warn({ err: layoutErr.message, file: file.name }, '[Accounting/sync-recibidas] pdfjs falló, fallback a pdf-parse');
+          text = (await pdfParse(buf)).text;
+        }
         const parsed = extractRecibida(text, file.name);
 
         if (!parsed.folio && !parsed.rut_emisor) {
