@@ -582,22 +582,53 @@ function extractRecibida(text, fileName = '') {
   }
 
   // ── Fecha emisión ──
+  // Estrategia en cascada:
+  //   1. Buscar después de label "FECHA EMISIÓN" / "EMISIÓN" / "FECHA"
+  //   2. Si no, cualquier fecha "ISO" en el documento (2026-04-29)
+  //   3. Si no, cualquier fecha DD/MM/YYYY o DD-MM-YYYY
+  //   4. Si no, "DD de Mes de YYYY" (formato chileno común)
+  //   5. Si no, intentar extraer del nombre del archivo (factura_2026-04-29_xxx.pdf)
   let fecha_emision = null;
-  const fm = t.match(/(?:FECHA[^\d]*EMISI[OÓ]N|EMISI[OÓ]N|FECHA)[^\d]*(\d{1,2}[\s\/\-\.de]+\d{1,2}[\s\/\-\.de]+\d{2,4}|\d{1,2}\s+de\s+\w+\s+de\s+\d{4})/i);
-  if (fm) {
-    const raw = fm[1];
-    const meses = { enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12 };
+  const meses = { enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12 };
+  const parseDate = (raw) => {
+    if (!raw) return null;
     const mEs = raw.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i);
     if (mEs && meses[mEs[2].toLowerCase()]) {
-      fecha_emision = `${mEs[3]}-${String(meses[mEs[2].toLowerCase()]).padStart(2,'0')}-${String(mEs[1]).padStart(2,'0')}`;
-    } else {
-      const parts = raw.split(/[\s\/\-\.]+/).filter(Boolean);
-      if (parts.length === 3) {
-        let [a, b, c] = parts;
-        if (a.length === 4)      fecha_emision = `${a}-${String(b).padStart(2,'0')}-${String(c).padStart(2,'0')}`;
-        else                     fecha_emision = `${c.length === 2 ? '20'+c : c}-${String(b).padStart(2,'0')}-${String(a).padStart(2,'0')}`;
-      }
+      return `${mEs[3]}-${String(meses[mEs[2].toLowerCase()]).padStart(2,'0')}-${String(mEs[1]).padStart(2,'0')}`;
     }
+    // ISO YYYY-MM-DD
+    const mIso = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+    if (mIso) return `${mIso[1]}-${String(mIso[2]).padStart(2,'0')}-${String(mIso[3]).padStart(2,'0')}`;
+    // DD/MM/YYYY o DD-MM-YYYY o DD.MM.YYYY
+    const mDmy = raw.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+    if (mDmy) {
+      const yr = mDmy[3].length === 2 ? '20' + mDmy[3] : mDmy[3];
+      return `${yr}-${String(mDmy[2]).padStart(2,'0')}-${String(mDmy[1]).padStart(2,'0')}`;
+    }
+    return null;
+  };
+  // 1. con label
+  const fm = t.match(/(?:FECHA[^\d]*EMISI[OÓ]N|EMISI[OÓ]N|FECHA)[^\d]*(\d{1,2}[\s\/\-\.]+\d{1,2}[\s\/\-\.]+\d{2,4}|\d{1,2}\s+de\s+\w+\s+de\s+\d{4})/i);
+  if (fm) fecha_emision = parseDate(fm[1]);
+  // 2. ISO suelta
+  if (!fecha_emision) {
+    const mIso = t.match(/(\d{4}-\d{2}-\d{2})/);
+    if (mIso) fecha_emision = parseDate(mIso[1]);
+  }
+  // 3. DD/MM/YYYY suelta
+  if (!fecha_emision) {
+    const mDmy = t.match(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/);
+    if (mDmy) fecha_emision = parseDate(mDmy[1]);
+  }
+  // 4. "DD de Mes de YYYY" suelta
+  if (!fecha_emision) {
+    const mEs = t.match(/(\d{1,2}\s+de\s+\w+\s+de\s+\d{4})/i);
+    if (mEs) fecha_emision = parseDate(mEs[1]);
+  }
+  // 5. del nombre del archivo
+  if (!fecha_emision) {
+    const fnDate = fileName.match(/(\d{4}[-_]\d{2}[-_]\d{2})/);
+    if (fnDate) fecha_emision = fnDate[1].replace(/_/g, '-');
   }
 
   // ── Montos ──
@@ -643,31 +674,53 @@ function extractRecibida(text, fileName = '') {
   }
 
   // ── Descripción / detalle de la factura ──
-  // Capturamos las primeras líneas relevantes después del label "Descripción"
-  // o "Detalle". Si no hay label, usamos las líneas que parezcan tener
-  // contenido (no totales, no labels), saltando todo el header.
+  // Capturamos lo que nos facturaron en concreto. Estrategia en capas:
+  //   1. Después de label "Detalle / Descripción / Producto / Item / Concepto"
+  //   2. Líneas tipo "1 ARRIENDO MES DE ABRIL" — número + texto descriptivo
+  //   3. Heurística sobre líneas medias del PDF (filtrando ruido conocido)
+  // Para cada capa filtramos basura (totales, RUTs, direcciones, headers).
   let descripcion = null;
-  const detailIdx = lines.findIndex(l => /^(detalle|descripci[oó]n|producto|item|art[ií]culo)\b/i.test(l.trim()));
+  const NOISE_RE = /^(SUBTOTAL|TOTAL|NETO|I\.?V\.?A\.?|EXENTO|DESCUENTO|MONTO|FORMA\s+DE\s+PAGO|FECHA|VENCIMIENTO|TIMBRE|RES\.?\s|S\.?I\.?I\.?|RUT|R\.U\.T|GIRO|DIRECCI[OÓ]N|COMUNA|CIUDAD|TEL[EÉ]F|FONO|FAX|EMAIL|MAIL|WWW|HTTP|FOLIO|N[°º]|EMISOR|RECEPTOR|SE[ÑN]OR(?:ES)?|RAZ[OÓ]N|SUMA|VALOR|PRECIO|CANTIDAD|CONCEPTO|UNIDAD|MEDIDA|HOJA|P[ÁA]GINA|FACTURA|BOLETA|NOTA)\b/i;
+  const isUseful = (l) => {
+    if (!l) return false;
+    const v = l.trim();
+    if (v.length < 5 || v.length > 250) return false;
+    if (NOISE_RE.test(v)) return false;
+    if (!/[A-Za-zÁÉÍÓÚáéíóúñÑ]{4,}/.test(v)) return false;  // sin texto suficiente
+    if (/^[\d\.\-\/\s\$,]+$/.test(v)) return false;          // solo números/símbolos
+    return true;
+  };
+
+  // Capa 1: con label
+  const detailIdx = lines.findIndex(l => /^(detalle|descripci[oó]n|producto|item|art[ií]culo|concepto)\b/i.test(l.trim()));
   if (detailIdx >= 0) {
-    const detail = lines.slice(detailIdx + 1, detailIdx + 8)
-      .filter(l => l && !/^(SUBTOTAL|TOTAL|NETO|I\.?V\.?A\.?|EXENTO|DESCUENTO|MONTO|FORMA\s+DE\s+PAGO|FECHA|VENCIMIENTO|TIMBRE|RES\.?\s|S\.?I\.?I\.?)/i.test(l))
-      .filter(l => l.length > 5 && l.length < 200)
-      .filter(l => !/^\d+(\.\d+)?\s*$/.test(l))
+    const detail = lines.slice(detailIdx + 1, detailIdx + 10)
+      .filter(isUseful)
       .slice(0, 3)
       .join(' · ');
     if (detail) descripcion = detail;
   }
-  // Fallback: si no encontramos label, tomar líneas medias del documento
-  // que tengan letras (no solo números) y no sean ruido conocido.
+  // Capa 2: líneas que empiezan con cantidad y descripción ("1 ARRIENDO ABRIL")
   if (!descripcion) {
-    const middle = lines.slice(Math.floor(lines.length / 3), Math.floor(lines.length * 2 / 3));
-    const candidates = middle
-      .filter(l => /[A-Za-zÁÉÍÓÚáéíóúñÑ]{4,}/.test(l))
-      .filter(l => !/^(SUBTOTAL|TOTAL|NETO|I\.?V\.?A\.?|EXENTO|DESCUENTO|MONTO|FORMA\s+DE\s+PAGO|FECHA|VENCIMIENTO|TIMBRE|RES\.?\s|S\.?I\.?I\.?|RUT|GIRO|DIRECCI[OÓ]N|COMUNA|CIUDAD|TEL[EÉ]F|EMAIL|WWW|HTTP)/i.test(l))
-      .filter(l => l.length > 8 && l.length < 200)
-      .slice(0, 3);
-    if (candidates.length) descripcion = candidates.join(' · ').slice(0, 500);
+    const itemLines = lines
+      .filter(l => /^\d+(?:[\.,]\d+)?\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]/.test(l.trim()))
+      .filter(isUseful)
+      .map(l => l.replace(/^\d+(?:[\.,]\d+)?\s+/, '').trim())
+      .slice(0, 3)
+      .join(' · ');
+    if (itemLines) descripcion = itemLines;
   }
+  // Capa 3: heurística sobre el medio del documento
+  if (!descripcion) {
+    const middle = lines.slice(Math.floor(lines.length / 4), Math.floor(lines.length * 3 / 4));
+    const candidates = middle
+      .filter(isUseful)
+      .filter(l => !/MAOS|maos/i.test(l))            // no es Maosbike
+      .filter(l => !ruts.some(r => l.includes(r)))   // no contiene un RUT
+      .slice(0, 3);
+    if (candidates.length) descripcion = candidates.join(' · ');
+  }
+  if (descripcion) descripcion = descripcion.slice(0, 500);
 
   const clip = (s, n) => s == null ? null : String(s).slice(0, n);
   return {
@@ -1887,14 +1940,19 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
           modelId = await resolveModelId(parsed.brand, parsed.model);
         }
 
-        // Match por (source='recibida', folio, doc_type, rut_emisor) — un mismo
-        // proveedor no repite folio dentro del mismo doc_type.
+        // Match: primero por drive_file_id (único por archivo de Drive,
+        // garantiza no duplicar al re-procesar el mismo PDF aunque el parser
+        // haya fallado folio/RUT antes). Si no, fallback al combo
+        // (folio, doc_type, rut_emisor) que cubre re-uploads del mismo
+        // documento desde otra carpeta o re-emisiones del proveedor.
         const { rows: existing } = await db.query(
           `SELECT id FROM invoices
-           WHERE source='recibida' AND folio=$1 AND doc_type=$2
-             AND ($3::text IS NULL OR rut_emisor=$3)
+           WHERE source='recibida'
+             AND (drive_file_id = $1
+                  OR ($2::text IS NOT NULL AND folio=$2 AND doc_type=$3
+                      AND ($4::text IS NULL OR rut_emisor=$4)))
            ORDER BY updated_at DESC LIMIT 1`,
-          [parsed.folio, parsed.doc_type, parsed.rut_emisor]
+          [file.id, parsed.folio, parsed.doc_type, parsed.rut_emisor]
         );
 
         if (existing[0]) {
