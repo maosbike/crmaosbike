@@ -329,6 +329,8 @@ export const api = {
   syncAccountingFromDrive: () => request('POST', '/accounting/sync-drive'),
   syncAccountingRecibidasFromDrive: () => request('POST', '/accounting/sync-drive-recibidas'),
   testClaudeParser: (data) => request('POST', '/accounting/test-claude-parser', data || {}),
+  testClaudeEmitida: (data) => request('POST', '/accounting/test-claude-emitida', data || {}),
+  testClaudeSupplierPayment: (data) => request('POST', '/supplier-payments/test-claude', data || {}),
   relinkAccounting: () => request('POST', '/accounting/relink'),
 
   // Días libres (time-off)
