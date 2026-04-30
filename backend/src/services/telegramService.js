@@ -5,9 +5,14 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://crmaosbike.cl';
 
 // ─── Helpers de texto ─────────────────────────────────────────────────────────
 
+// Escape para parse_mode HTML — Telegram exige al menos &, <, > escapados.
+// Es seguro contra inyección de markup independiente del contenido del usuario.
 function esc(str) {
-  if (!str) return '—';
-  return String(str).replace(/[_*`[]/g, '\\$&');
+  if (str === null || str === undefined || str === '') return '—';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function formatDateTime(date) {
@@ -82,7 +87,12 @@ function apiCall(method, payload, socketTimeoutMs = 40000) {
 }
 
 function sendMessage(chatId, text, inlineKeyboard) {
-  const payload = { chat_id: chatId, text, parse_mode: 'Markdown' };
+  // Convertir cualquier *bold* / _italic_ heredado a HTML antes de enviar.
+  // Cualquier dato dinámico ya pasó por esc() (HTML-safe), por lo que no hay riesgo.
+  const html = String(text)
+    .replace(/\*([^\n*]+?)\*/g, '<b>$1</b>')
+    .replace(/(^|[\s(])_([^\n_]+?)_(?=$|[\s.,!?)])/g, '$1<i>$2</i>');
+  const payload = { chat_id: chatId, text: html, parse_mode: 'HTML', disable_web_page_preview: true };
   if (inlineKeyboard) payload.reply_markup = { inline_keyboard: inlineKeyboard };
   return apiCall('sendMessage', payload);
 }

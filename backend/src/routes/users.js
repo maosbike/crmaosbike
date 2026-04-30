@@ -5,19 +5,38 @@ const db = require('../config/db');
 const { auth, roleCheck } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+const BCRYPT_ROUNDS = 12;
+const MIN_PASSWORD_LENGTH = 12;
+const MAX_PASSWORD_LENGTH = 256;
+
+// Política mínima: 12 chars, mezcla de mayúscula+minúscula+dígito o símbolo.
+function validatePassword(pwd) {
+  if (typeof pwd !== 'string') return 'Contraseña inválida';
+  if (pwd.length < MIN_PASSWORD_LENGTH) return `La contraseña debe tener mínimo ${MIN_PASSWORD_LENGTH} caracteres`;
+  if (pwd.length > MAX_PASSWORD_LENGTH) return 'La contraseña es demasiado larga';
+  const hasUpper = /[A-Z]/.test(pwd);
+  const hasLower = /[a-z]/.test(pwd);
+  const hasDigit = /[0-9]/.test(pwd);
+  const hasSymbol = /[^A-Za-z0-9]/.test(pwd);
+  const score = [hasUpper, hasLower, hasDigit, hasSymbol].filter(Boolean).length;
+  if (score < 3) return 'La contraseña debe combinar mayúsculas, minúsculas, números y/o símbolos';
+  return null;
+}
+
 router.use(auth);
 
 router.put('/change-password', asyncHandler(async (req, res) => {
-    const { current_password, new_password, confirm_password } = req.body;
+    const { current_password, new_password, confirm_password } = req.body || {};
     if (!current_password || !new_password) return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
     if (confirm_password !== undefined && new_password !== confirm_password) return res.status(400).json({ error: 'Las contraseñas nuevas no coinciden' });
-    if (new_password.length < 8) return res.status(400).json({ error: 'La nueva contraseña debe tener mínimo 8 caracteres' });
+    const policyErr = validatePassword(new_password);
+    if (policyErr) return res.status(400).json({ error: policyErr });
     if (current_password === new_password) return res.status(400).json({ error: 'La nueva contraseña debe ser diferente a la actual' });
     const { rows } = await db.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
     const valid = await bcrypt.compare(current_password, rows[0].password_hash);
     if (!valid) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
-    const newHash = await bcrypt.hash(new_password, 10);
+    const newHash = await bcrypt.hash(new_password, BCRYPT_ROUNDS);
     await db.query(
       'UPDATE users SET password_hash = $1, force_password_change = false, session_version = session_version + 1, updated_at = NOW() WHERE id = $2',
       [newHash, req.user.id]
@@ -42,7 +61,8 @@ router.post('/', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const VALID_ROLES = ['super_admin', 'admin_comercial', 'vendedor', 'backoffice'];
     if (!VALID_ROLES.includes(role))
       return res.status(400).json({ error: 'Rol inválido' });
-    if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener mínimo 8 caracteres' });
+    const policyErr = validatePassword(password);
+    if (policyErr) return res.status(400).json({ error: policyErr });
     if (email) {
       const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
       if (existing.rows.length > 0) return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
@@ -51,7 +71,7 @@ router.post('/', roleCheck('super_admin'), asyncHandler(async (req, res) => {
       const existing = await db.query('SELECT id FROM users WHERE username = $1', [username.trim()]);
       if (existing.rows.length > 0) return res.status(400).json({ error: 'Ya existe un usuario con ese username' });
     }
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const { rows } = await db.query(
       `INSERT INTO users (username, email, password_hash, first_name, last_name, phone, role, branch_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -173,13 +193,31 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
   }
 });
 
+// Genera password temporal cumpliendo política (mayús + minús + dígito + símbolo).
+function generateTempPassword() {
+  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%&*+-=?';
+  const all = upper + lower + digits + symbols;
+  const pick = (set) => set[crypto.randomInt(0, set.length)];
+  // Garantizamos al menos uno de cada categoría + 12 random; total 16 chars.
+  const required = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+  const filler = Array.from({ length: 12 }, () => pick(all));
+  const arr = [...required, ...filler];
+  // Shuffle (Fisher-Yates con randomInt CSPRNG).
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join('');
+}
+
 router.put('/:id/reset-password', roleCheck('super_admin'), asyncHandler(async (req, res) => {
     const check = await db.query('SELECT id, first_name, last_name FROM users WHERE id = $1', [req.params.id]);
     if (!check.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    const bytes = crypto.randomBytes(10);
-    const tempPassword = Array.from(bytes).map(b => chars[b % chars.length]).join('');
-    const hash = await bcrypt.hash(tempPassword, 10);
+    const tempPassword = generateTempPassword();
+    const hash = await bcrypt.hash(tempPassword, BCRYPT_ROUNDS);
     await db.query(
       `UPDATE users
           SET password_hash         = $1,
@@ -192,7 +230,13 @@ router.put('/:id/reset-password', roleCheck('super_admin'), asyncHandler(async (
       [hash, req.params.id]
     );
     const u = check.rows[0];
-    res.json({ message: `Contraseña de ${u.first_name} ${u.last_name} reseteada`, temp_password: tempPassword });
+    // Cache-Control no-store: la contraseña no debe persistir en caches/proxies del browser.
+    res.set('Cache-Control', 'no-store');
+    res.set('Pragma', 'no-cache');
+    res.json({
+      message: `Contraseña de ${u.first_name} ${u.last_name} reseteada. Cópiala ahora — no se mostrará de nuevo.`,
+      temp_password: tempPassword,
+    });
 }));
 
 module.exports = router;

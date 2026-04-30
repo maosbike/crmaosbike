@@ -40,6 +40,11 @@ router.get('/events', asyncHandler(async (req, res) => {
       remParams.push(user_id);
       remQuery += ` AND r.assigned_to = $${remParams.length}`;
     }
+    // admin_comercial: solo ve recordatorios de su sucursal (vía ticket).
+    if (req.user.role === 'admin_comercial' && req.user.branch_id) {
+      remParams.push(req.user.branch_id);
+      remQuery += ` AND (t.branch_id = $${remParams.length} OR r.ticket_id IS NULL)`;
+    }
 
     const { rows: reminders } = await db.query(remQuery, remParams);
 
@@ -114,8 +119,12 @@ router.get('/events', asyncHandler(async (req, res) => {
       slaParams.push(user_id);
       slaQuery += ` AND t.assigned_to = $${slaParams.length}`;
     }
-
-    if (branch_id) {
+    // admin_comercial: scope a su sucursal — el query param branch_id solo se respeta
+    // si coincide con la suya.
+    if (req.user.role === 'admin_comercial' && req.user.branch_id) {
+      slaParams.push(req.user.branch_id);
+      slaQuery += ` AND t.branch_id = $${slaParams.length}`;
+    } else if (branch_id) {
       slaParams.push(branch_id);
       slaQuery += ` AND t.branch_id = $${slaParams.length}`;
     }

@@ -11,27 +11,27 @@ const MAX_GALLERY = 8;
 
 const uploadImg = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },   // 20 MB por foto (celulares modernos suben >5MB)
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const mt = (file.mimetype || '').toLowerCase();
-    const ok = mt.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.originalname || '');
-    if (ok) cb(null, true);
+    // AND estricto: ambos checks deben pasar.
+    const okMime = mt.startsWith('image/');
+    const okExt  = /\.(jpe?g|png|webp|heic|heif)$/i.test(file.originalname || '');
+    if (okMime && okExt) cb(null, true);
     else cb(new Error('Solo se permiten imágenes (jpg, png, webp, heic)'));
   },
 });
 
-// Alias de compatibilidad para el endpoint /image existente
 const upload = uploadImg;
 
 const uploadPdf = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },  // 25 MB para PDF
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const mt = (file.mimetype || '').toLowerCase();
-    const ok = mt === 'application/pdf'
-            || mt === 'application/octet-stream'       // algunos celulares suben así
-            || /\.pdf$/i.test(file.originalname || '');
-    if (ok) cb(null, true);
+    const okMime = mt === 'application/pdf' || mt === 'application/octet-stream';
+    const okExt  = /\.pdf$/i.test(file.originalname || '');
+    if (okMime && okExt) cb(null, true);
     else cb(new Error('Solo se permiten archivos PDF'));
   },
 });

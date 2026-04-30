@@ -29,13 +29,26 @@ Sistema de gestión comercial para concesionaria de motos.
 En Railway → tu servicio → **Variables**, agrega:
 
 ```
-JWT_SECRET=tu_clave_secreta_aqui_cambiar
+# Generá secrets fuertes (≥32 chars) con: openssl rand -hex 64
+JWT_SECRET=<64+ chars random — NUNCA uses placeholders>
+JWT_REFRESH_SECRET=<distinto del anterior, también ≥32 chars>
+
 NODE_ENV=production
+
 CLOUDINARY_CLOUD_NAME=(de tu cuenta Cloudinary)
 CLOUDINARY_API_KEY=(de tu cuenta Cloudinary)
 CLOUDINARY_API_SECRET=(de tu cuenta Cloudinary)
+
 FRONTEND_URL=https://crmaosbike.cl
+
+# Telegram (si usás el bot)
+TELEGRAM_BOT_TOKEN=<tu token>
+TELEGRAM_WEBHOOK_SECRET=<obligatorio en producción si configurás el bot>
 ```
+
+> El backend valida estos valores al arrancar y rechaza secrets cortos o
+> conocidos (`changeme`, `secret`, etc). Si algún valor falta o es débil,
+> el proceso muere antes de aceptar tráfico.
 
 ### 5. Ejecutar migraciones
 
@@ -53,15 +66,22 @@ Después del primer deploy, cambiar de vuelta a: `cd backend && npm start`
 
 ### Usuarios iniciales
 
-Todos con contraseña: `maosbike2024`
+El seed (`backend/migrations/002_seed.js`) genera una contraseña aleatoria
+distinta para cada usuario y la imprime **una sola vez** en los logs del primer
+deploy. Cada usuario inicia con `force_password_change=true` y debe rotar su
+contraseña en su primer login.
 
-| Email | Rol |
-|-------|-----|
-| admin@crmaosbike.cl | Super Admin |
-| jefe@crmaosbike.cl | Admin Comercial |
-| fran@crmaosbike.cl | Backoffice |
-| diego@crmaosbike.cl | Vendedor |
-| javiera@crmaosbike.cl | Vendedor |
-| roberto@crmaosbike.cl | Vendedor |
-| catalina@crmaosbike.cl | Vendedor |
-| andres@crmaosbike.cl | Vendedor |
+- Las contraseñas no se documentan ni se commitean.
+- El seed jamás reutiliza un valor "default": cada ejecución regenera secrets.
+- Si necesitás un valor común para entornos de prueba, exportá `INITIAL_PASSWORD`
+  antes de correr el seed (no usar en producción).
+
+### Notas de seguridad
+
+- HTTPS se fuerza por server-side; HSTS preload activo (2 años, incluye subdominios).
+- JWT corto (15 min) + refresh httpOnly+SameSite=strict.
+- Rate-limit global y de login; lockout exponencial por usuario.
+- Cualquier `logout` invalida los tokens del usuario (bump `session_version`).
+- Carga de archivos: tipo MIME + extensión + magic-bytes (XLSX/PDF) validados.
+- SSRF: fetch externo usa allowlist + bloqueo de IPs privadas.
+- CSP estricta, `frame-ancestors 'none'`, `object-src 'none'`.

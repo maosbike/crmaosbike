@@ -16,13 +16,13 @@ const { extractFromPDF, normalizeModel } = require('../services/pdfExtractor');
 router.use(auth);
 router.use(roleCheck('super_admin', 'admin_comercial'));
 
+const { strictTypeFilter, MIME_PDF, sanitizeFilename } = require('../utils/uploadGuards');
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const ok = file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname);
-    cb(ok ? null : new Error('Solo se aceptan archivos PDF'), ok);
-  },
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+  // AND estricto: extensión Y mimetype válidos. Antes era OR → bypass trivial
+  // renombrando un binario a .pdf con cualquier mimetype.
+  fileFilter: strictTypeFilter({ extRegex: /\.pdf$/i, mimes: MIME_PDF, label: 'PDF' }),
 });
 
 function validateRow(row) {
@@ -60,8 +60,13 @@ async function resolveModel(brand, model) {
 router.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Se requiere un archivo PDF' });
   try {
+    const safeName = sanitizeFilename(safeName, 'precios.pdf');
+    // Validación de magic bytes — defensa adicional contra archivos renombrados.
+    if (!req.file.buffer || req.file.buffer.slice(0, 4).toString() !== '%PDF') {
+      return res.status(400).json({ error: 'El archivo no parece un PDF válido' });
+    }
     // Extraer datos del PDF usando el parser existente
-    const extracted = await extractFromPDF(req.file.buffer, req.file.originalname);
+    const extracted = await extractFromPDF(req.file.buffer, safeName);
 
     if (!extracted.rows || extracted.rows.length === 0) {
       return res.status(422).json({
@@ -93,7 +98,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         `INSERT INTO price_staging_batches (filename, uploaded_by, total_rows, status)
          VALUES ($1,$2,$3,'pending') RETURNING id`,
         [
-          `${req.file.originalname} [${extracted.source_type}${extracted.period ? ' · ' + extracted.period : ''}]`,
+          `${safeName} [${extracted.source_type}${extracted.period ? ' · ' + extracted.period : ''}]`,
           req.user.id,
           parsed.length,
         ]
@@ -118,7 +123,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       }
       await client.query('COMMIT');
       const valid = rows.filter(r => !r.validation_errors || r.validation_errors.length === 0).length;
-      res.json({ batch_id, filename: req.file.originalname, total: rows.length, valid, with_errors: rows.length - valid, rows });
+      res.json({ batch_id, filename: safeName, total: rows.length, valid, with_errors: rows.length - valid, rows });
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;

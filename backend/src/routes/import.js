@@ -16,14 +16,15 @@ const {
 } = require('../utils/normalize');
 
 // ─── Multer config ────────────────────────────────────────────
+const { strictTypeFilter, MIME_SPREADSHEET, sanitizeFilename } = require('../utils/uploadGuards');
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
-  fileFilter: (_req, file, cb) => {
-    const ok = /\.(csv|xlsx|xls)$/i.test(file.originalname);
-    if (ok) cb(null, true);
-    else cb(new Error('Solo se permiten archivos CSV o Excel (.csv, .xlsx)'));
-  },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: strictTypeFilter({
+    extRegex: /\.(csv|xlsx|xls)$/i,
+    mimes: MIME_SPREADSHEET,
+    label: 'CSV/Excel',
+  }),
 });
 
 router.use(auth);
@@ -538,7 +539,9 @@ function validateRow(row, headerMap, rowIndex) {
 
 // ─── Helpers ──────────────────────────────────────────────────
 function parseBuffer(buffer) {
-  const wb = xlsx.read(buffer, { type: 'buffer', raw: false });
+  // safeRead valida magic bytes antes de invocar el parser (mitiga DoS por payloads no-xlsx).
+  const safeXlsx = require('../utils/safeXlsx');
+  const wb = safeXlsx.safeRead(buffer, { raw: false });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const raw = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
   if (!raw || raw.length < 2) throw new Error('El archivo está vacío o solo tiene encabezados');
@@ -681,7 +684,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
       dup_db:   rows.filter(r => r.status === 'dup_db').length,
     };
 
-    res.json({ rows, summary, filename: req.file.originalname });
+    res.json({ rows, summary, filename: sanitizeFilename(req.file.originalname, 'leads.csv') });
   } catch (e) {
     console.error('[Import] Preview error:', e);
     res.status(400).json({ error: e.message || 'Error al procesar el archivo' });

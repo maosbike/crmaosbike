@@ -11,11 +11,29 @@ router.use(auth);
 // ═══════════════════════════════════════════════════
 router.get('/commercial', asyncHandler(async (req, res) => {
     const isVendedor = req.user.role === 'vendedor';
+    const isAdminComercial = req.user.role === 'admin_comercial' && req.user.branch_id;
     const userId = req.user.id;
 
-    // Filtro base según rol
-    const userFilter = isVendedor ? 'AND t.assigned_to = $1' : '';
-    const params = isVendedor ? [userId] : [];
+    // Filtro base según rol.
+    // - vendedor → sólo lo asignado a él (param $1)
+    // - admin_comercial → sólo su sucursal (param $1)
+    // - super_admin / backoffice → sin filtro
+    let userFilter = '';
+    let params = [];
+    let userFilterReminders = '';
+    let userFilterReassign = '';
+    if (isVendedor) {
+      userFilter = 'AND t.assigned_to = $1';
+      userFilterReminders = 'AND r.assigned_to = $1';
+      userFilterReassign = 'AND (rl.from_user_id = $1 OR rl.to_user_id = $1)';
+      params = [userId];
+    } else if (isAdminComercial) {
+      userFilter = 'AND t.branch_id = $1';
+      // Reminders y reassign no tienen branch directo: scope vía ticket asociado.
+      userFilterReminders = 'AND (r.ticket_id IS NULL OR EXISTS (SELECT 1 FROM tickets tt WHERE tt.id = r.ticket_id AND tt.branch_id = $1))';
+      userFilterReassign  = 'AND EXISTS (SELECT 1 FROM tickets tt WHERE tt.id = rl.ticket_id AND tt.branch_id = $1)';
+      params = [req.user.branch_id];
+    }
 
     // 1. Leads sin tocar (sin first_action_at, activos)
     const { rows: [sinTocar] } = await db.query(
@@ -42,7 +60,7 @@ router.get('/commercial', asyncHandler(async (req, res) => {
     // 4. Reasignados hoy
     const { rows: [reasignadosHoy] } = await db.query(
       `SELECT COUNT(*) as count FROM reassignment_log rl
-       ${isVendedor ? 'WHERE (rl.from_user_id = $1 OR rl.to_user_id = $1)' : 'WHERE 1=1'}
+       WHERE 1=1 ${userFilterReassign}
        AND DATE(rl.created_at) = CURRENT_DATE`,
       params
     );
@@ -52,7 +70,7 @@ router.get('/commercial', asyncHandler(async (req, res) => {
       `SELECT COUNT(*) as count FROM reminders r
        WHERE r.due_date = CURRENT_DATE
        AND r.status = 'pending'
-       ${isVendedor ? 'AND r.assigned_to = $1' : ''}`,
+       ${userFilterReminders}`,
       params
     );
 
@@ -60,7 +78,7 @@ router.get('/commercial', asyncHandler(async (req, res) => {
     const { rows: [remVencidos] } = await db.query(
       `SELECT COUNT(*) as count FROM reminders r
        WHERE r.status = 'overdue'
-       ${isVendedor ? 'AND r.assigned_to = $1' : ''}`,
+       ${userFilterReminders}`,
       params
     );
 
@@ -87,7 +105,7 @@ router.get('/commercial', asyncHandler(async (req, res) => {
        FROM reminders r
        LEFT JOIN tickets t ON r.ticket_id = t.id
        WHERE r.due_date = CURRENT_DATE AND r.status = 'pending'
-       ${isVendedor ? 'AND r.assigned_to = $1' : ''}
+       ${userFilterReminders}
        ORDER BY r.due_time ASC NULLS LAST
        LIMIT 10`,
       params

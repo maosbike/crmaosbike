@@ -390,7 +390,12 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
                         {photoUrl
                           ?<img src={photoUrl} alt={activeColor}
                               style={{width:90,height:66,objectFit:"cover",borderRadius:'var(--radius-lg)',border:"1.5px solid var(--border)",display:"block",cursor:"pointer"}}
-                              onClick={()=>window.open(photoUrl,'_blank')}/>
+                              onClick={()=>{
+                                // Bloquear javascript:/data: URIs y solo abrir http(s) absolutas o paths relativos.
+                                const u = String(photoUrl || '');
+                                const safe = /^https?:\/\//i.test(u) || u.startsWith('/');
+                                if (safe) window.open(u, '_blank', 'noopener,noreferrer');
+                              }}/>
                           :<div style={{width:90,height:66,borderRadius:'var(--radius-lg)',background:css||"var(--surface-sunken)",border:`1.5px dashed ${css?"rgba(0,0,0,0.15)":"var(--border-strong)"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,opacity:0.6}}>
                               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={css&&!light?"var(--text-on-dark)":"var(--text-disabled)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                             </div>
@@ -455,7 +460,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
           {!editing&&(
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
               {m.spec_url&&(
-                <a href={m.spec_url} target="_blank" rel="noreferrer" download
+                <a href={m.spec_url} target="_blank" rel="noopener noreferrer" download
                   style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"var(--brand)",textDecoration:"none",border:"1px solid #FDBA74",borderRadius:'var(--radius-md)',padding:"6px 12px"}}>
                   Descargar ficha técnica
                 </a>
@@ -477,7 +482,7 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {gallery.map((url,i)=>(
-                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                     <img src={url} loading="lazy" alt={`Foto ${i+1}`}
                       style={{width:80,height:60,objectFit:"cover",borderRadius:'var(--radius-md)',border:"1px solid var(--border)",cursor:"pointer",transition:"opacity 0.15s"}}
                       onMouseEnter={e=>e.currentTarget.style.opacity=0.8}

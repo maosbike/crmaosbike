@@ -37,14 +37,15 @@ const COST_FIELDS = ['cost_price'];   // invoice_amount = abono del cliente, vis
 
 const DOC_FIELDS = ['doc_factura_dist', 'doc_factura_cli', 'doc_homologacion', 'doc_inscripcion'];
 
+const { strictTypeFilter, MIME_PDF, MIME_IMAGES } = require('../utils/uploadGuards');
 const uploadDoc = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const ok = /\.(jpg|jpeg|png|webp|pdf)$/i.test(file.originalname);
-    if (ok) cb(null, true);
-    else cb(new Error('Solo se permiten imágenes (jpg/png/webp) o PDF'));
-  },
+  limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+  fileFilter: strictTypeFilter({
+    extRegex: /\.(jpe?g|png|webp|pdf)$/i,
+    mimes: [...MIME_PDF, ...MIME_IMAGES],
+    label: 'imagen o PDF',
+  }),
 });
 
 // ─── Helper: elimina campos sensibles para vendedores ─────────────────────────
@@ -406,11 +407,30 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
     const sold_by = req.user.role === 'vendedor' ? req.user.id : (req.body.sold_by || null);
     // Vendedor no puede pasar cost_price
     const cost_price = req.user.role === 'vendedor' ? null : (req.body.cost_price || null);
+    // Vendedor: branch_id se fuerza al de su perfil. No puede registrar ventas en otra sucursal.
+    const final_branch_id = req.user.role === 'vendedor'
+      ? (req.user.branch_id || null)
+      : (branch_id || null);
 
     if (!brand || !model)
       return res.status(400).json({ error: 'Marca y modelo son obligatorios' });
     if (!sold_by)
       return res.status(400).json({ error: 'Vendedor obligatorio' });
+
+    // Si se vincula un ticket, validar ownership/branch para vendedor.
+    if (ticket_id) {
+      const { rows: tk } = await db.query(
+        `SELECT id, seller_id, assigned_to, branch_id FROM tickets WHERE id = $1`,
+        [ticket_id]
+      );
+      const t = tk[0];
+      if (!t) return res.status(400).json({ error: 'Ticket no encontrado' });
+      if (req.user.role === 'vendedor' &&
+          t.seller_id !== req.user.id &&
+          t.assigned_to !== req.user.id) {
+        return res.status(403).json({ error: 'No podés vincular una venta a un ticket que no te pertenece' });
+      }
+    }
 
     const finalStatus = reqStatus === 'reservada' ? 'reservada' : 'vendida';
     const finalSoldAt = sold_at ? new Date(sold_at).toISOString() : new Date().toISOString();
@@ -452,7 +472,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
        ) RETURNING *`,
       [
         finalStatus,
-        branch_id  || null,
+        final_branch_id,
         year       ? parseInt(year)  : null,
         brand.trim().toUpperCase(),
         model.trim().toUpperCase(),
@@ -545,8 +565,11 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
         [req.params.id, req.user.id]
       );
       if (!own[0]) return res.status(403).json({ error: 'Sin permiso para editar esta venta' });
-      // Bloquear solo campos internos — invoice_amount (abono) sí es editable por vendedor
-      ['cost_price', 'distributor_paid', 'doc_factura_dist'].forEach(f => delete req.body[f]);
+      // Vendedor: jamás puede transferir la venta a otra sucursal o vendedor
+      // (impediría auditoría y permitiría blanqueo de ventas ajenas).
+      // invoice_amount (abono) sí es editable por vendedor.
+      ['cost_price', 'distributor_paid', 'doc_factura_dist',
+       'branch_id', 'sold_by', 'created_by'].forEach(f => delete req.body[f]);
     }
 
     const UPDATABLE_BASE = [

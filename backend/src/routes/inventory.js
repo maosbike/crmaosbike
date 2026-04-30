@@ -12,24 +12,26 @@ const ALLOWED_IMG = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const ALLOWED_XLS = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      'application/vnd.ms-excel', 'text/csv'];
 
-// Upload de fotos (chasis / motor)
+// Upload de fotos (chasis / motor) — exige extensión Y mimetype.
 const uploadPhoto = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_IMG.includes(file.mimetype)) cb(null, true);
+    const okMime = ALLOWED_IMG.includes(file.mimetype);
+    const okExt  = /\.(jpe?g|png|webp)$/i.test(file.originalname || '');
+    if (okMime && okExt) cb(null, true);
     else cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
   },
 });
 
-// Upload de archivo xlsx para importación de inventario
+// Upload de archivo xlsx para importación de inventario — exige ambas validaciones.
 const uploadFile = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const okMime = ALLOWED_XLS.includes(file.mimetype);
-    const okExt  = /\.(xlsx|xls|csv)$/i.test(file.originalname);
-    if (okMime || okExt) cb(null, true);
+    const okExt  = /\.(xlsx|xls|csv)$/i.test(file.originalname || '');
+    if (okMime && okExt) cb(null, true);
     else cb(new Error('Solo se permiten archivos Excel o CSV (.xlsx, .xls, .csv)'));
   },
 });
@@ -300,6 +302,10 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     if (cur[0].status === 'vendida' && !['super_admin','admin_comercial'].includes(req.user.role)) {
       return res.status(400).json({ error: 'Una unidad vendida no puede modificarse.' });
     }
+    // Vendedor: solo puede operar sobre unidades de su propia sucursal.
+    if (req.user.role === 'vendedor' && cur[0].branch_id && cur[0].branch_id !== req.user.branch_id) {
+      return res.status(403).json({ error: 'No podés operar sobre unidades de otra sucursal.' });
+    }
 
     // Chasis: verificar unicidad si se quiere cambiar
     if (chassis !== undefined && chassis !== '') {
@@ -504,6 +510,18 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     if (!unitRows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
     const unit = unitRows[0];
     if (unit.status === 'vendida') return res.status(409).json({ error: 'La unidad ya está registrada como vendida' });
+    // Vendedor: solo puede vender unidades de su sucursal.
+    if (req.user.role === 'vendedor' && unit.branch_id && unit.branch_id !== req.user.branch_id) {
+      return res.status(403).json({ error: 'No podés vender unidades de otra sucursal.' });
+    }
+    // Si se vincula un ticket, vendedor debe ser dueño del ticket.
+    if (ticket_id && req.user.role === 'vendedor') {
+      const { rows: tk } = await db.query(
+        `SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)`,
+        [ticket_id, req.user.id]
+      );
+      if (!tk[0]) return res.status(403).json({ error: 'No podés vincular esta venta a un ticket que no te pertenece.' });
+    }
 
     const finalSoldAt = sold_at || new Date().toISOString();
     const prevStatus  = unit.status;
@@ -599,7 +617,8 @@ router.post('/import/preview', roleCheck('super_admin', 'admin_comercial'), uplo
     if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
 
     const XLSX = require('xlsx');
-    const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const safeXlsx = require('../utils/safeXlsx');
+    const wb = safeXlsx.safeRead(req.file.buffer);
 
     const preferred = wb.SheetNames.filter(n => !/^(Listas|Copia)/i.test(n));
     const sheetName = preferred[0] || wb.SheetNames[0];
@@ -786,12 +805,29 @@ router.post('/import/confirm', roleCheck('super_admin', 'admin_comercial'), asyn
 // Upload photo (chassis or motor) — mismo scope que la edición de unidades (PUT /:id)
 router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadPhoto.single('photo'), asyncHandler(async (req, res) => {
     const { field } = req.body; // 'chassis_photo', 'motor_photo', or 'unit_photo'
-    if (!['chassis_photo', 'motor_photo', 'unit_photo'].includes(field))
+    // Whitelist explícita — protege contra inyección de columna en el UPDATE.
+    const ALLOWED_FIELDS = new Set(['chassis_photo', 'motor_photo', 'unit_photo']);
+    if (!ALLOWED_FIELDS.has(field))
       return res.status(400).json({ error: 'Campo inválido' });
 
     if (!req.file) return res.status(400).json({ error: 'Foto requerida' });
 
-    // Upload to Cloudinary
+    // Verificar unidad y ownership de sucursal para vendedor.
+    const { rows: unitRows } = await db.query(
+      'SELECT id, branch_id FROM inventory WHERE id = $1',
+      [req.params.id]
+    );
+    if (!unitRows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
+    if (req.user.role === 'vendedor' &&
+        unitRows[0].branch_id && unitRows[0].branch_id !== req.user.branch_id) {
+      return res.status(403).json({ error: 'No podés modificar fotos de unidades de otra sucursal.' });
+    }
+
+    // Validación de mimetype real (defense-in-depth contra extensión spoofeada).
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(req.file.mimetype || '')) {
+      return res.status(400).json({ error: 'Tipo de imagen no permitido' });
+    }
+
     const b64 = req.file.buffer.toString('base64');
     const dataUri = `data:${req.file.mimetype};base64,${b64}`;
 
@@ -800,7 +836,6 @@ router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffic
       resource_type: 'image',
     });
 
-    // Save URL in database
     await db.query(
       `UPDATE inventory SET ${field} = $1 WHERE id = $2`,
       [result.secure_url, req.params.id]
