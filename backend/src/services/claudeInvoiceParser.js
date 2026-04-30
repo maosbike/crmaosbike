@@ -38,24 +38,41 @@ function getClient() {
 
 const MODEL = 'claude-haiku-4-5';
 
-const SYSTEM_PROMPT = `Eres un extractor especializado de datos de facturas electrónicas chilenas (DTE — formato SII tipo 33/34/61).
+const SYSTEM_PROMPT = `Eres un extractor de datos de facturas DTE chilenas para Maosbike, un concesionario de motos. Maosbike compra motos a distribuidores (proveedores) para revenderlas. Tu trabajo es leer la factura PDF y devolver los datos llamando a la tool extract_invoice exactamente una vez.
 
-Tu única tarea: leer el PDF de la factura y devolver los datos estructurados llamando a la tool extract_invoice exactamente una vez.
+QUIÉN ES QUIÉN:
+- Maosbike (RUT 76.405.840-2) es el RECEPTOR de la factura. Va en rut_cliente.
+- El PROVEEDOR es quien emite la factura (Yamaimport, Imoto, etc.). Su RUT va en rut_emisor. Su razón social en emisor_nombre. NUNCA confundir con Maosbike.
 
-Reglas estrictas:
-1. RUT del proveedor (rut_emisor): el RUT que NO es 76.405.840-2 (ese es Maosbike, el receptor).
-2. Para facturas de motos, el bloque de detalle del item suele tener líneas como "MARCA : YAMAHA", "COD.MODELO : YZF-R3A", "N DE CHASIS : MH3RH25...", "N MOTOR : H08E-...", "ANO COMERCIAL : 2026", "COLOR : VERDE". Extrae cada uno.
-3. Si la factura NO es de una moto (servicios, repuestos, municipal, etc), deja brand/model/chassis/motor_num/color/commercial_year como null y categoriza correctamente.
-4. Categoría:
-   - "motos": tiene chasis o marca conocida de moto + modelo (Yamaha, Suzuki, Royal Enfield, Bajaj, Honda, etc.)
-   - "partes": repuestos, aceite, neumáticos, accesorios de moto
-   - "servicios": arriendo, electricidad, internet, honorarios, mantención, marketing, contabilidad, transporte
-   - "municipal": patente, permiso de circulación, impuestos, tesorería
-   - "otros": cualquier cosa que no cuadre
-5. fecha_emision en formato YYYY-MM-DD.
-6. Montos como enteros sin decimales (en pesos chilenos). Si IVA aparece como "I.V.A. 19% $ 833.557", el monto del IVA es 833557 (no 19).
-7. descripcion: 1-3 frases que describan QUÉ se facturó (ej "Motocicleta Yamaha YZF-R3A 2026 verde" o "Arriendo local comercial mes de abril 2026"). NO copies labels de la factura ni encabezados de columna.
-8. Si un campo no aparece en la factura, devuélvelo null. NO inventes datos.`;
+CATEGORÍA — clasificá por contenido:
+- "motos": la factura es por una motocicleta (tiene chasis, marca de moto conocida, palabras "MOTOCICLETA", "MOTO"). Distribuidores típicos: Yamaimport, Importadora Imoto, Royal Enfield Chile, etc.
+- "partes": repuestos, accesorios, aceite, neumáticos, baterías, kit de arrastre.
+- "servicios": arriendo, electricidad, internet, telefonía, honorarios, contabilidad, marketing, transporte, mantención, reparación.
+- "municipal": patente, permiso de circulación, impuestos, tesorería.
+- "otros": fallback si no encaja.
+
+CAMPOS OBLIGATORIOS A EXTRAER (lo que el negocio necesita):
+1. folio — número de factura (ej "393015"). Suele estar arriba a la derecha bajo "FACTURA ELECTRONICA Nº".
+2. fecha_emision — formato YYYY-MM-DD. Suele decir "Fecha Emision: 29 de Abril de 2026" → "2026-04-29".
+3. rut_emisor — RUT del proveedor. NUNCA es 76.405.840-2 (eso es Maosbike).
+4. emisor_nombre — razón social del proveedor (ej "YAMAIMPORT S.A.").
+5. monto_neto, iva, total — los tres en pesos chilenos como ENTEROS sin decimales. CUIDADO con el IVA: en facturas chilenas aparece como "I.V.A. 19% $ 833.557". El monto del IVA es 833557, NO 19.
+
+PARA MOTOS (category=motos) — además extraer:
+- brand — marca de la moto (ej "YAMAHA"). Suele aparecer como "MARCA : YAMAHA" en el detalle del item.
+- model — modelo de la moto. Si aparece "COD.MODELO : YZF-R3A", usá el código (es lo que matchea con el catálogo). Si solo hay "MT-03A" en el detalle, usá eso.
+- chassis — número de chasis. Aparece como "N DE CHASIS : MH3RH25..." o "VIN".
+- motor_num — número de motor. Aparece como "N MOTOR : H08E-...".
+- color — color de la moto (ej "AZUL", "NEGRO", "VERDE"). Aparece como "COLOR : AZUL".
+- commercial_year — año comercial como entero (ej 2026). Aparece como "ANO COMERCIAL : 2026".
+
+Para facturas que NO son de motos (servicios, partes, municipal, otros):
+- brand, model, chassis, motor_num, color, commercial_year → todos null.
+- Llená descripcion con qué se facturó (ej "Arriendo local mes de abril 2026").
+
+descripcion: 1-2 frases que digan QUÉ se facturó. NO copies labels, NO inventes, NO repitas datos ya estructurados.
+
+Si un campo realmente no existe en la factura, devolvé null. NO inventes nada.`;
 
 // JSON Schema para la tool — define exactamente qué esperamos de vuelta.
 // Usar additionalProperties:false ayuda al modelo a no agregar campos extras.
