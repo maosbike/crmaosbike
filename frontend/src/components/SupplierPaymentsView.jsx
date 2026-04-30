@@ -1081,6 +1081,18 @@ export function SupplierPaymentsView({ user }) {
         subtitle={pending > 0 ? `${pending} sin monto pagado registrado` : null}
         actions={canCreate && (
           <>
+            <Btn variant='secondary' onClick={async () => {
+              setSyncing(true); setSyncRes(null);
+              try {
+                const r = await api.testClaudeSupplierPayment();
+                setSyncRes({ test_claude: true, ...r });
+              } catch (e) {
+                setSyncRes({ test_claude: true, ok: false, error: e.message });
+              } finally { setSyncing(false); }
+            }} disabled={syncing}
+              title="Procesa 1 factura del Drive con Claude y muestra el resultado bruto.">
+              {syncing ? '...' : 'Test Claude'}
+            </Btn>
             <Btn variant='secondary' onClick={sync} disabled={syncing}>
               <Ic.refresh size={14} color={syncing?'var(--text-disabled)':'var(--text-body)'}/>{syncing?'Sincronizando...':'Sincronizar con Drive'}
             </Btn>
@@ -1093,9 +1105,22 @@ export function SupplierPaymentsView({ user }) {
 
       {/* Sync banner */}
       {syncRes&&(
-        <div style={{marginBottom:12,padding:'10px 14px',borderRadius:'var(--radius-md)',fontSize:12,fontFamily:'inherit',background:syncRes.ok?'#F0FDF4':'#FEF2F2',border:`1px solid ${syncRes.ok?'#BBF7D0':'#FECACA'}`,color:syncRes.ok?'#166534':'#991B1B',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-          {syncRes.ok?`Sincronización exitosa: ${syncRes.created} nuevos, ${syncRes.updated} actualizados`:syncRes.error}
-          <Btn variant='ghost' onClick={()=>setSyncRes(null)} style={{marginLeft:'auto',padding:4,lineHeight:1}}><Ic.x size={14}/></Btn>
+        <div style={{marginBottom:12,padding:'10px 14px',borderRadius:'var(--radius-md)',fontSize:12,fontFamily:'inherit',background:syncRes.ok?'#F0FDF4':'#FEF2F2',border:`1px solid ${syncRes.ok?'#BBF7D0':'#FECACA'}`,color:syncRes.ok?'#166534':'#991B1B',display:'flex',flexDirection:'column',gap:6}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            {syncRes.test_claude
+              ? (syncRes.ok
+                  ? `Test Claude ✓ — ${syncRes.file_name} (${syncRes.pdf_size_kb}KB)`
+                  : `Test Claude ✗ falló (${syncRes.stage}): ${syncRes.error}`)
+              : (syncRes.ok
+                  ? `Sincronización exitosa: ${syncRes.created} nuevos, ${syncRes.updated} actualizados${syncRes.by_parser ? ` · Claude ${syncRes.by_parser.claude||0} · regex ${syncRes.by_parser.regex||0}` : ''}`
+                  : syncRes.error)}
+            <Btn variant='ghost' onClick={()=>setSyncRes(null)} style={{marginLeft:'auto',padding:4,lineHeight:1}}><Ic.x size={14}/></Btn>
+          </div>
+          {syncRes.test_claude && (
+            <pre style={{margin:0,padding:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',fontSize:11,maxHeight:300,overflow:'auto',whiteSpace:'pre-wrap',color:'var(--text-body)'}}>
+              {JSON.stringify(syncRes.parsed || { error: syncRes.error, error_type: syncRes.error_type, stack: syncRes.stack }, null, 2)}
+            </pre>
+          )}
         </div>
       )}
 

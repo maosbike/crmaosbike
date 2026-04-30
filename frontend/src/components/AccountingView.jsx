@@ -1242,21 +1242,22 @@ export function AccountingView() {
         subtitle={ymLabel(ym)}
         actions={
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            {source === 'recibida' && (
-              <button onClick={async () => {
-                setSyncing(true); setSyncResult(null);
-                try {
-                  const r = await api.testClaudeParser();
-                  setSyncResult({ test_claude: true, ...r });
-                } catch (e) {
-                  setSyncResult({ test_claude: true, ok: false, error: e.message });
-                } finally { setSyncing(false); }
-              }} disabled={syncing}
-                title="Procesa 1 PDF con Claude y muestra el resultado bruto. Útil para verificar la API key."
-                style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
-                {syncing ? '...' : 'Test Claude'}
-              </button>
-            )}
+            <button onClick={async () => {
+              setSyncing(true); setSyncResult(null);
+              try {
+                // Llama al endpoint del origen activo (emitida o recibida).
+                const r = source === 'recibida'
+                  ? await api.testClaudeParser()
+                  : await api.testClaudeEmitida();
+                setSyncResult({ test_claude: true, ...r });
+              } catch (e) {
+                setSyncResult({ test_claude: true, ok: false, error: e.message });
+              } finally { setSyncing(false); }
+            }} disabled={syncing}
+              title={`Procesa 1 PDF de ${source === 'recibida' ? 'recibidas' : 'emitidas'} con Claude y muestra el resultado bruto.`}
+              style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
+              {syncing ? '...' : 'Test Claude'}
+            </button>
             <button onClick={relink} disabled={syncing}
               title="Re-correr el cruce automático de facturas pendientes con inventario y notas (sin re-bajar Drive)"
               style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
