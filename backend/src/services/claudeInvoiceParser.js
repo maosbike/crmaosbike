@@ -17,15 +17,21 @@
  *   · siguientes (cache read):   ~$0.0008
  *   · 50 facturas → ~$0.05 total
  */
-const Anthropic = require('@anthropic-ai/sdk');
+const AnthropicLib = require('@anthropic-ai/sdk');
+// CommonJS interop — la SDK exporta `default` en algunas versiones, en otras
+// el módulo ES es el constructor mismo. Soportamos ambos casos.
+const Anthropic = AnthropicLib.default || AnthropicLib;
 
 let _client = null;
 function getClient() {
   if (!_client) {
     if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error('ANTHROPIC_API_KEY no configurada');
+      throw new Error('ANTHROPIC_API_KEY no configurada en el entorno');
     }
-    _client = new Anthropic.default();
+    if (typeof Anthropic !== 'function') {
+      throw new Error('SDK @anthropic-ai/sdk no se importó correctamente — Anthropic no es constructor');
+    }
+    _client = new Anthropic();
   }
   return _client;
 }

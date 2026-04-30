@@ -328,6 +328,7 @@ export const api = {
   deleteAccounting: (id) => request('DELETE', `/accounting/${id}`),
   syncAccountingFromDrive: () => request('POST', '/accounting/sync-drive'),
   syncAccountingRecibidasFromDrive: () => request('POST', '/accounting/sync-drive-recibidas'),
+  testClaudeParser: (data) => request('POST', '/accounting/test-claude-parser', data || {}),
   relinkAccounting: () => request('POST', '/accounting/relink'),
 
   // Días libres (time-off)
