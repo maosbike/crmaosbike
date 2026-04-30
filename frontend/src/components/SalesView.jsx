@@ -3208,7 +3208,7 @@ export function SalesView({ user, realBranches, prefillClient = null, prefillNot
                     {fmt(inv.total || 0)}
                   </div>
                   {inv.pdf_url && (
-                    <a href={inv.pdf_url} target="_blank" rel="noreferrer"
+                    <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
                       style={{
                         fontSize: 11, fontWeight: 600,
                         padding: '5px 10px', borderRadius: 'var(--radius-sm)',

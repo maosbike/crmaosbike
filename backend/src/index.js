@@ -8,14 +8,45 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 
 // ── Validación de variables de entorno requeridas ──────────────────────────
-// JWT secrets son obligatorios — sin ellos el sistema de auth no funciona
-if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-  console.error('FATAL: JWT_SECRET y JWT_REFRESH_SECRET son requeridos');
+// JWT secrets son obligatorios — sin ellos el sistema de auth no funciona.
+// Validamos también longitud y rechazamos valores conocidos / placeholders.
+const FORBIDDEN_SECRETS = new Set([
+  'tu_clave_secreta_aqui_cambiar',
+  'changeme',
+  'secret',
+  'jwt_secret',
+  'please_change_me',
+  'default',
+]);
+function assertSecret(name) {
+  const v = process.env[name];
+  if (!v) {
+    console.error(`FATAL: ${name} es requerido`);
+    process.exit(1);
+  }
+  if (v.length < 32) {
+    console.error(`FATAL: ${name} debe tener al menos 32 caracteres (recomendado 64). Generá uno con: openssl rand -hex 64`);
+    process.exit(1);
+  }
+  if (FORBIDDEN_SECRETS.has(v.toLowerCase())) {
+    console.error(`FATAL: ${name} usa un valor placeholder conocido. Cambialo antes de arrancar.`);
+    process.exit(1);
+  }
+}
+assertSecret('JWT_SECRET');
+assertSecret('JWT_REFRESH_SECRET');
+if (process.env.JWT_SECRET === process.env.JWT_REFRESH_SECRET) {
+  console.error('FATAL: JWT_SECRET y JWT_REFRESH_SECRET deben ser diferentes');
+  process.exit(1);
+}
+if (process.env.NODE_ENV === 'production' && !process.env.TELEGRAM_WEBHOOK_SECRET && process.env.TELEGRAM_BOT_TOKEN) {
+  console.error('FATAL: TELEGRAM_WEBHOOK_SECRET es requerido en producción cuando TELEGRAM_BOT_TOKEN está configurado');
   process.exit(1);
 }
 
 const app = express();
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
 // ── Security headers ───────────────────────────────────────────────────────
 app.use(helmet({
@@ -27,10 +58,30 @@ app.use(helmet({
       imgSrc: ["'self'", "https://res.cloudinary.com", "data:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      // upgradeInsecureRequests no se setea en dev; en prod helmet lo agrega vía hsts.
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  hsts: {
+    maxAge: 63072000,        // 2 años
+    includeSubDomains: true,
+    preload: true,
+  },
 }));
+
+// Force HTTPS en producción (Railway termina TLS y setea x-forwarded-proto).
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.secure || req.headers['x-forwarded-proto'] === 'https') return next();
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  });
+}
 const PORT = process.env.PORT || 4000;
 
 // ── Rate limiting global ───────────────────────────────────────────────────
@@ -48,12 +99,52 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // Middleware
-// Frontend y backend comparten el mismo origen en Railway — CORS solo aplica a cross-origin.
-// Si FRONTEND_URL está seteada se usa como origen permitido, si no se permite same-origin.
-const corsOrigin = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? false : '*');
-app.use(cors({ origin: corsOrigin, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
+// CORS estricto con allowlist explícita. En same-origin (Railway) no se necesita.
+// FRONTEND_URL puede ser un valor o lista CSV; se valida contra cada request.
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, cb) {
+    // Same-origin (curl/server-to-server) no envía Origin → permitir.
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    // Dev con NODE_ENV=development y FRONTEND_URL vacío → permitir cualquier origen.
+    if (process.env.NODE_ENV !== 'production' && allowedOrigins.length === 0) return cb(null, true);
+    return cb(new Error(`Origin no permitido: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 600,
+}));
+
+// Body parser: 2MB es suficiente para JSON normal del CRM. Los uploads van por
+// multer (que tiene sus propios límites por ruta).
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: false, limit: '2mb' }));
 app.use(cookieParser());
+
+// Defensa anti prototype pollution: bloquea __proto__, constructor, prototype
+// como llaves en req.body / req.query / req.params antes de cualquier handler.
+app.use((req, res, next) => {
+  const BAD_KEYS = ['__proto__', 'constructor', 'prototype'];
+  function check(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    for (const k of Object.keys(obj)) {
+      if (BAD_KEYS.includes(k)) return true;
+      const v = obj[k];
+      if (v && typeof v === 'object' && check(v)) return true;
+    }
+    return false;
+  }
+  if (check(req.body) || check(req.query) || check(req.params)) {
+    return res.status(400).json({ error: 'Payload inválido' });
+  }
+  next();
+});
 
 // API Routes (existentes)
 app.use('/api/auth', require('./routes/auth'));

@@ -170,11 +170,25 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), asyncHandler
 
     const ticket = tickets[0];
 
+    // admin_comercial sólo puede reasignar tickets dentro de su sucursal,
+    // y sólo a usuarios de su sucursal.
+    if (req.user.role === 'admin_comercial') {
+      if (req.user.branch_id && ticket.branch_id !== req.user.branch_id) {
+        return res.status(403).json({ error: 'No podés reasignar tickets de otra sucursal' });
+      }
+    }
+
     // Obtener nombres
     const { rows: fromUser } = await db.query('SELECT first_name, last_name FROM users WHERE id = $1', [ticket.assigned_to]);
-    const { rows: toUser } = await db.query('SELECT first_name, last_name, telegram_chat_id FROM users WHERE id = $1', [to_user_id]);
+    const { rows: toUser } = await db.query('SELECT first_name, last_name, telegram_chat_id, branch_id FROM users WHERE id = $1 AND active = true', [to_user_id]);
 
     if (!toUser[0]) return res.status(404).json({ error: 'Vendedor destino no encontrado' });
+
+    if (req.user.role === 'admin_comercial' &&
+        req.user.branch_id &&
+        toUser[0].branch_id !== req.user.branch_id) {
+      return res.status(403).json({ error: 'Solo podés reasignar a usuarios de tu sucursal' });
+    }
 
     const newDeadline = calcSlaDeadline().toISOString();
 

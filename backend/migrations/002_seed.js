@@ -1,4 +1,22 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+// Genera password aleatorio de 16 chars con mayús+minús+dígito+símbolo.
+function generateInitialPassword() {
+  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%&*+-=?';
+  const all = upper + lower + digits + symbols;
+  const pick = (s) => s[crypto.randomInt(0, s.length)];
+  const arr = [pick(upper), pick(lower), pick(digits), pick(symbols),
+               ...Array.from({ length: 12 }, () => pick(all))];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join('');
+}
 
 module.exports = async function seed(db) {
 
@@ -26,7 +44,12 @@ module.exports = async function seed(db) {
   console.log('✓ Tabla users vaciada');
 
   // ─── USUARIOS ──────────────────────────────────────────────────────────────
-  const hash = await bcrypt.hash('maosbike2026', 10);
+  // Cada usuario recibe una contraseña inicial aleatoria distinta y se marca
+  // con force_password_change=true. La password se imprime UNA SOLA VEZ al
+  // ejecutar el seed (logs del primer deploy) — se debe rotar inmediatamente.
+  // Esto evita una contraseña compartida adivinable en repositorios públicos.
+  // Sobreescribir vía env INITIAL_PASSWORD si se necesita un valor común para tests.
+  const sharedInitial = process.env.INITIAL_PASSWORD || null;
 
   const MPN = 'b0000001-0001-0001-0001-000000000001'; // Mall Plaza Norte
   const MPS = 'b0000001-0001-0001-0001-000000000002'; // Mall Plaza Sur
@@ -44,14 +67,23 @@ module.exports = async function seed(db) {
     ['fran',        'fran@crmaosbike.cl',        'Fran',        '-',      'backoffice',      null, []],
   ];
 
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('  CONTRASEÑAS INICIALES — copialas y rotalas YA');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   for (const [username, email, fn, ln, role, branch, extras] of users) {
+    const initial = sharedInitial || generateInitialPassword();
+    const hash = await bcrypt.hash(initial, 12);
     await db.query(
-      `INSERT INTO users (username, email, password_hash, first_name, last_name, role, branch_id, active, extra_branches)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8::uuid[])`,
+      `INSERT INTO users (username, email, password_hash, first_name, last_name, role, branch_id, active, extra_branches, force_password_change)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8::uuid[], true)`,
       [username, email, hash, fn, ln, role, branch, extras]
     );
-    console.log(`  ✓ ${username} (${role}${branch ? ` · ${branch === MPN ? 'MPN' : 'MPS'}${extras.length ? '+extra' : ''}` : ''})`);
+    console.log(`  ${email.padEnd(32)} → ${initial}   (${role})`);
   }
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('  Todos los usuarios tienen force_password_change=true');
+  console.log('  Ningún login será efectivo hasta que cada uno rote su clave.');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // El catálogo de motos ya no se puebla desde la seed.
   // Se importa desde las listas de precios PDF reales (módulo pricelist).

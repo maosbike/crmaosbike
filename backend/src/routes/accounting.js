@@ -1197,9 +1197,15 @@ router.get('/:id/debug', roleCheck('super_admin'), asyncHandler(async (req, res)
     }
 
     // 2) Fallback: pdf_url (Cloudinary o Drive webViewLink).
+    // safeFetchBuffer rechaza redirects, IPs privadas/loopback, hosts fuera de
+    // allowlist y respuestas >25MB → bloquea SSRF y descargas masivas.
     if (!buf && inv.pdf_url) {
-      const r = await fetch(inv.pdf_url);
-      if (r.ok) buf = Buffer.from(await r.arrayBuffer());
+      const { safeFetchBuffer } = require('../utils/safeFetch');
+      try {
+        buf = await safeFetchBuffer(inv.pdf_url, { timeoutMs: 15000 });
+      } catch (e) {
+        logger.warn({ err: e.message, url: inv.pdf_url }, '[Accounting/debug] pdf_url no permitido');
+      }
     }
 
     if (!buf) return res.status(404).json({ error: 'No se pudo descargar el PDF' });

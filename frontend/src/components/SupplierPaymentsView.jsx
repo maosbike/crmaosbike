@@ -481,7 +481,7 @@ function DetailView({ p, dv, overdue, onSaved }) {
       {(p.invoice_url || p.receipt_url) && (
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {p.invoice_url && (
-            <a href={p.invoice_url} target="_blank" rel="noreferrer"
+            <a href={p.invoice_url} target="_blank" rel="noopener noreferrer"
               style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px',
                        background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:'var(--radius-md)',
                        textDecoration:'none', fontSize:12, fontWeight:600, color:'#C2410C', fontFamily:'inherit' }}>
@@ -489,7 +489,7 @@ function DetailView({ p, dv, overdue, onSaved }) {
             </a>
           )}
           {p.receipt_url && (
-            <a href={p.receipt_url} target="_blank" rel="noreferrer"
+            <a href={p.receipt_url} target="_blank" rel="noopener noreferrer"
               style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px',
                        background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:'var(--radius-md)',
                        textDecoration:'none', fontSize:12, fontWeight:600, color:'#1D4ED8', fontFamily:'inherit' }}>

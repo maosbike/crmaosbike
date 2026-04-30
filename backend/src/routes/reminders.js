@@ -26,6 +26,10 @@ router.get('/', asyncHandler(async (req, res) => {
     } else if (my === 'true') {
       params.push(req.user.id);
       whereParts.push(`r.assigned_to = $${params.length}`);
+    } else if (req.user.role === 'admin_comercial' && req.user.branch_id) {
+      // admin_comercial scope a su sucursal vía el ticket asociado.
+      params.push(req.user.branch_id);
+      whereParts.push(`(t.branch_id = $${params.length} OR r.ticket_id IS NULL)`);
     }
     if (ticket_id) {
       params.push(ticket_id);

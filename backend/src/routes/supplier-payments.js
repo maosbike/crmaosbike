@@ -72,13 +72,11 @@ async function resolveModelId(brand, model) {
   return null;
 }
 
+const { strictTypeFilter, MIME_PDF } = require('../utils/uploadGuards');
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/\.(pdf|PDF)$/.test(file.originalname)) cb(null, true);
-    else cb(new Error('Solo se aceptan archivos PDF'));
-  },
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
+  fileFilter: strictTypeFilter({ extRegex: /\.pdf$/i, mimes: MIME_PDF, label: 'PDF' }),
 });
 
 // toISODate y parseAmt (= parseChileanInt) viven en utils/normalize.js
@@ -446,7 +444,7 @@ router.post('/', roleCheck('super_admin','admin_comercial','backoffice'),
 // Acepta ?page&limit (default 500, max 1000) para compatibilidad con la vista
 // actual, que carga todo el listado y aplica filtros/orden en cliente.
 // Devuelve {data, total, page, limit}. Mantiene filtros (q/status/from/to).
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', roleCheck('super_admin','admin_comercial','backoffice'), asyncHandler(async (req, res) => {
     const { q, status, from, to } = req.query;
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
     const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 500));
@@ -484,7 +482,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // ─── GET /:id ─────────────────────────────────────────────────────────────────
-router.get('/:id', asyncHandler(async (req, res) => {
+router.get('/:id', roleCheck('super_admin','admin_comercial','backoffice'), asyncHandler(async (req, res) => {
     const { rows } = await db.query(
       `SELECT sp.*,
         mm.image_url AS catalog_image,

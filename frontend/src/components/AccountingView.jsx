@@ -414,7 +414,7 @@ function InvoiceCard({ inv, onOpen }) {
                 <a
                   href={pdfUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   style={{
                     fontSize:10, fontWeight:700, color:'var(--brand)', textDecoration:'none',
@@ -623,7 +623,7 @@ function InvoiceCard({ inv, onOpen }) {
           <a
             href={pdfUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             style={{
               fontSize:10, fontWeight:700, color:'var(--brand)', textDecoration:'none',
@@ -867,7 +867,7 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
               </div>
 
               {pdfUrl && (
-                <a href={pdfUrl} target="_blank" rel="noreferrer"
+                <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
                   style={{
                     fontSize:13, fontWeight:700, color:'var(--text-on-brand)', background:'var(--brand)',
                     textDecoration:'none',

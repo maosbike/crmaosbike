@@ -16,7 +16,20 @@ const { resolveAssignmentBranch } = require('../config/branchRouting');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 
-const uploadEvidence = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// Evidencias: solo imágenes, PDF o capturas. fileFilter por extensión Y mimetype.
+const ALLOWED_EVIDENCE_MIME = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf',
+]);
+const uploadEvidence = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const okExt = /\.(jpe?g|png|webp|gif|pdf)$/i.test(file.originalname || '');
+    const okMime = ALLOWED_EVIDENCE_MIME.has(file.mimetype || '');
+    if (!okExt || !okMime) return cb(new Error('Tipo de archivo no permitido (solo JPG/PNG/WEBP/GIF/PDF)'));
+    cb(null, true);
+  },
+});
 
 // Alias para compatibilidad con referencias existentes — usa la constante compartida.
 const EVIDENCE_REQUIRED_STATES = EVIDENCE_REQUIRED;
@@ -59,6 +72,10 @@ router.get('/', asyncHandler(async (req, res) => {
   let where = ['1=1'], params = [], idx = 1;
 
   if (req.user.role === 'vendedor') { where.push(`(t.seller_id = $${idx} OR t.assigned_to = $${idx})`); params.push(req.user.id); idx++; }
+  // admin_comercial: scope a su sucursal. super_admin/backoffice ven todo.
+  if (req.user.role === 'admin_comercial' && req.user.branch_id) {
+    where.push(`t.branch_id = $${idx++}`); params.push(req.user.branch_id);
+  }
   if (status) { where.push(`t.status = $${idx++}`); params.push(status); }
   if (branch_id) { where.push(`t.branch_id = $${idx++}`); params.push(branch_id); }
   if (needs_attention === '1' || needs_attention === 'true') { where.push(`t.needs_attention = TRUE`); }
@@ -83,12 +100,16 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // Get single ticket with timeline
 router.get('/:id', asyncHandler(async (req, res) => {
-  // Vendedores solo pueden ver sus propios tickets
+  // Vendedores solo pueden ver sus propios tickets.
+  // admin_comercial sólo tickets de su sucursal.
   const params = [req.params.id];
   let ownershipClause = '';
   if (req.user.role === 'vendedor') {
     ownershipClause = 'AND (t.seller_id = $2 OR t.assigned_to = $2)';
     params.push(req.user.id);
+  } else if (req.user.role === 'admin_comercial' && req.user.branch_id) {
+    ownershipClause = 'AND t.branch_id = $2';
+    params.push(req.user.branch_id);
   }
 
   const { rows } = await db.query(

@@ -23,9 +23,15 @@ router.get('/', asyncHandler(async (req, res) => {
       conditions.push(`t.assigned_to = $${idx++}`);
       params.push(req.user.id);
     }
+    // admin_comercial: scope a su sucursal. Si pasa branch_id distinto, se ignora.
+    if (req.user.role === 'admin_comercial' && req.user.branch_id) {
+      conditions.push(`t.branch_id = $${idx++}`);
+      params.push(req.user.branch_id);
+    } else if (branch_id) {
+      conditions.push(`t.branch_id = $${idx++}`); params.push(branch_id);
+    }
     if (from) { conditions.push(`t.created_at >= $${idx++}`); params.push(from); }
     if (to) { conditions.push(`t.created_at < ($${idx++})::date + 1`); params.push(to); }
-    if (branch_id) { conditions.push(`t.branch_id = $${idx++}`); params.push(branch_id); }
     if (seller_id) { conditions.push(`t.assigned_to = $${idx++}`); params.push(seller_id); }
     if (brand) { conditions.push(`m.brand = $${idx++}`); params.push(brand); }
     if (model) { conditions.push(`m.model = $${idx++}`); params.push(model); }
