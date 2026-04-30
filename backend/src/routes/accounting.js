@@ -9,6 +9,7 @@ const logger   = require('../config/logger');
 const cloudinary = require('../config/cloudinary');
 const pdfParse   = require('pdf-parse');
 const { extractPdfWithLayout } = require('../utils/pdfLayout');
+const { parseInvoiceWithClaude } = require('../services/claudeInvoiceParser');
 const { auth, roleCheck }  = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const {
@@ -1991,21 +1992,29 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
     for (const file of files) {
       try {
         const buf  = await downloadPDF(file.id);
-        // Extracción con layout: pdfjs-dist preserva coordenadas, agrupa por
-        // línea respetando columnas. Resuelve "COMUNAHUECHURABACIUDAD:SANTIAGO"
-        // que pasaba con pdf-parse al colapsar columnas a una sola línea.
-        // Si pdfjs falla por algún motivo, caemos al pdf-parse clásico.
-        let text;
+        // Estrategia: Claude Haiku 4.5 primero (lee el PDF como humano y
+        // devuelve JSON estructurado vía tool use, ~$0.001/factura con
+        // prompt caching). Si ANTHROPIC_API_KEY no está o la llamada
+        // falla por cualquier motivo, caemos al parser regex con pdfjs.
+        let parsed = null;
+        let parseSource = 'claude';
         try {
-          text = (await extractPdfWithLayout(buf)).text;
-        } catch (layoutErr) {
-          logger.warn({ err: layoutErr.message, file: file.name }, '[Accounting/sync-recibidas] pdfjs falló, fallback a pdf-parse');
-          text = (await pdfParse(buf)).text;
+          parsed = await parseInvoiceWithClaude(buf, file.name);
+        } catch (claudeErr) {
+          logger.warn({ err: claudeErr.message, file: file.name },
+            '[Accounting/sync-recibidas] Claude falló, fallback a parser regex');
+          parseSource = 'regex';
+          let text;
+          try {
+            text = (await extractPdfWithLayout(buf)).text;
+          } catch (layoutErr) {
+            text = (await pdfParse(buf)).text;
+          }
+          parsed = extractRecibida(text, file.name);
         }
-        const parsed = extractRecibida(text, file.name);
 
         if (!parsed.folio && !parsed.rut_emisor) {
-          results.errors.push(`${file.name}: no se pudo extraer folio ni RUT proveedor`);
+          results.errors.push(`${file.name}: no se pudo extraer folio ni RUT proveedor (${parseSource})`);
           continue;
         }
 

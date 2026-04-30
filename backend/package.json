@@ -9,6 +9,7 @@
     "test": "node src/utils/__tests__/slaUtils.test.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
