@@ -10,6 +10,7 @@ const cloudinary = require('../config/cloudinary');
 const pdfParse   = require('pdf-parse');
 const { extractPdfWithLayout } = require('../utils/pdfLayout');
 const { parseInvoiceWithClaude } = require('../services/claudeInvoiceParser');
+const { parseEmitidaWithClaude } = require('../services/claudeEmitidaParser');
 const { auth, roleCheck }  = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const {
@@ -1739,14 +1740,33 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
     `);
     results.deduped = dedupe.rowCount || 0;
 
+    // Contadores de qué parser corrió cada PDF — para visibilidad
+    if (!results.by_parser) results.by_parser = { claude: 0, regex: 0 };
+    if (!results.claude_errors) results.claude_errors = [];
+
     for (const file of files) {
       try {
         const buf  = await downloadPDF(file.id);
-        const text = (await pdfParse(buf)).text;
-        const parsed = extractEmitida(text, file.name);
+        // Claude primero — extracción robusta vía tool use con caching.
+        // Si falla por cualquier motivo, fallback al parser regex existente.
+        let parsed = null;
+        let parseSource = 'claude';
+        try {
+          parsed = await parseEmitidaWithClaude(buf, file.name);
+        } catch (claudeErr) {
+          logger.warn({ err: claudeErr.message, file: file.name },
+            '[Accounting/sync-drive] Claude falló, fallback a regex');
+          parseSource = 'regex';
+          if (results.claude_errors.length < 5) {
+            results.claude_errors.push(`${file.name}: ${claudeErr.message}`);
+          }
+          const text = (await pdfParse(buf)).text;
+          parsed = extractEmitida(text, file.name);
+        }
+        results.by_parser[parseSource] = (results.by_parser[parseSource] || 0) + 1;
 
         if (!parsed.folio) {
-          results.errors.push(`${file.name}: no se pudo extraer folio`);
+          results.errors.push(`${file.name}: no se pudo extraer folio (${parseSource})`);
           continue;
         }
 
@@ -1937,6 +1957,56 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
 // de Drive. Mismo flujo que sync-drive (emitidas) pero con el parser
 // extractRecibida y auto-categoría motos/partes/servicios/municipal/otros.
 // Intenta vincular al inventario por chasis si la categoría es 'motos'.
+// ─── POST /api/accounting/test-claude-emitida ────────────────────────────────
+// Procesa UNA factura emitida del Drive con Claude y devuelve el JSON bruto.
+// Mismo patrón que test-claude-parser pero apunta al folder de emitidas.
+router.post('/test-claude-emitida', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ ok: false, stage: 'config', error: 'ANTHROPIC_API_KEY no configurada' });
+  }
+  const FOLDER_ID = process.env.ACCOUNTING_EMITIDAS_FOLDER_ID;
+  if (!FOLDER_ID) {
+    return res.status(503).json({ ok: false, stage: 'config', error: 'ACCOUNTING_EMITIDAS_FOLDER_ID no configurada' });
+  }
+  const credsJson = process.env.GCLOUD_CREDS;
+  if (!credsJson) return res.status(503).json({ ok: false, stage: 'config', error: 'GCLOUD_CREDS no configurada' });
+  const creds = JSON.parse(credsJson);
+  const { google } = require('googleapis');
+  const driveAuth = new google.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
+  const drive = google.drive({ version: 'v3', auth: driveAuth });
+
+  let fileId = req.body?.drive_file_id;
+  let fileName = req.body?.file_name || '';
+  if (!fileId) {
+    const list = await drive.files.list({
+      q: `'${FOLDER_ID}' in parents and mimeType='application/pdf' and trashed=false`,
+      fields: 'files(id, name)', pageSize: 1,
+    });
+    const f = list.data.files?.[0];
+    if (!f) return res.status(404).json({ ok: false, stage: 'drive', error: 'No hay PDFs en la carpeta emitidas' });
+    fileId = f.id; fileName = f.name;
+  }
+
+  let buf;
+  try {
+    const r = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'arraybuffer' });
+    buf = Buffer.from(r.data);
+  } catch (e) {
+    return res.status(500).json({ ok: false, stage: 'download', error: e.message });
+  }
+
+  try {
+    const parsed = await parseEmitidaWithClaude(buf, fileName);
+    res.json({ ok: true, stage: 'parsed', file_name: fileName, drive_file_id: fileId, pdf_size_kb: Math.round(buf.length/1024), parsed });
+  } catch (e) {
+    res.status(500).json({
+      ok: false, stage: 'claude',
+      error: e.message, error_type: e.constructor?.name, error_status: e.status,
+      stack: (e.stack || '').split('\n').slice(0, 5).join('\n'),
+    });
+  }
+}));
+
 // ─── POST /api/accounting/test-claude-parser ─────────────────────────────────
 // Procesa UNA factura específica del Drive de recibidas con Claude y devuelve
 // el resultado bruto. NO traga errores — si Claude falla, devuelve el error.
