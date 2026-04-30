@@ -580,10 +580,11 @@ router.post('/test-claude', roleCheck('super_admin', 'admin_comercial', 'backoff
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ ok: false, stage: 'config', error: 'ANTHROPIC_API_KEY no configurada' });
   }
-  const FOLDER_FACTURAS = process.env.SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID;
-  if (!FOLDER_FACTURAS) {
-    return res.status(503).json({ ok: false, stage: 'config', error: 'SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID no configurada' });
-  }
+  // Usar el mismo folder ID hardcoded que ya usa /sync-drive (ver más abajo).
+  // Si querés override, podés setear SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID
+  // como env var; si no, cae al ID conocido.
+  const FOLDER_FACTURAS = process.env.SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID
+    || '17IVqwsdoFTCpURC_eagy0qC2I_6DtpRr';
   const credsJson = process.env.GCLOUD_CREDS;
   if (!credsJson) return res.status(503).json({ ok: false, stage: 'config', error: 'GCLOUD_CREDS no configurada' });
   const creds = JSON.parse(credsJson);
