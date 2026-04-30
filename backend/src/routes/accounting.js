@@ -1937,6 +1937,86 @@ router.post('/sync-drive', roleCheck(...ADMIN_ROLES), async (req, res) => {
 // de Drive. Mismo flujo que sync-drive (emitidas) pero con el parser
 // extractRecibida y auto-categoría motos/partes/servicios/municipal/otros.
 // Intenta vincular al inventario por chasis si la categoría es 'motos'.
+// ─── POST /api/accounting/test-claude-parser ─────────────────────────────────
+// Procesa UNA factura específica del Drive de recibidas con Claude y devuelve
+// el resultado bruto. NO traga errores — si Claude falla, devuelve el error.
+// Body: { drive_file_id: "..." } o { folio: "..." } (busca en invoices ya
+// indexadas) o vacío (toma el primer PDF del Drive).
+router.post('/test-claude-parser', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({
+      ok: false,
+      stage: 'config',
+      error: 'ANTHROPIC_API_KEY no configurada en Railway',
+    });
+  }
+
+  const FOLDER_ID = process.env.ACCOUNTING_RECIBIDAS_FOLDER_ID;
+  if (!FOLDER_ID) {
+    return res.status(503).json({
+      ok: false,
+      stage: 'config',
+      error: 'ACCOUNTING_RECIBIDAS_FOLDER_ID no configurada',
+    });
+  }
+
+  const credsJson = process.env.GCLOUD_CREDS;
+  if (!credsJson) {
+    return res.status(503).json({ ok: false, stage: 'config', error: 'GCLOUD_CREDS no configurada' });
+  }
+  const creds = JSON.parse(credsJson);
+  const { google } = require('googleapis');
+  const driveAuth = new google.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
+  const drive = google.drive({ version: 'v3', auth: driveAuth });
+
+  // Encontrar el archivo
+  let fileId = req.body?.drive_file_id;
+  let fileName = req.body?.file_name || '';
+  if (!fileId) {
+    // Tomar el primero del folder
+    const list = await drive.files.list({
+      q: `'${FOLDER_ID}' in parents and mimeType='application/pdf' and trashed=false`,
+      fields: 'files(id, name)',
+      pageSize: 1,
+    });
+    const f = list.data.files?.[0];
+    if (!f) return res.status(404).json({ ok: false, stage: 'drive', error: 'No hay PDFs en la carpeta' });
+    fileId = f.id;
+    fileName = f.name;
+  }
+
+  // Bajar PDF
+  let buf;
+  try {
+    const r = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'arraybuffer' });
+    buf = Buffer.from(r.data);
+  } catch (e) {
+    return res.status(500).json({ ok: false, stage: 'download', error: e.message });
+  }
+
+  // Llamar Claude — sin try/catch, dejamos que el error suba con stack
+  try {
+    const parsed = await parseInvoiceWithClaude(buf, fileName);
+    res.json({
+      ok: true,
+      stage: 'parsed',
+      file_name: fileName,
+      drive_file_id: fileId,
+      pdf_size_kb: Math.round(buf.length / 1024),
+      parsed,
+    });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      stage: 'claude',
+      error: e.message,
+      error_type: e.constructor?.name,
+      error_status: e.status,  // si es APIError de Anthropic
+      stack: (e.stack || '').split('\n').slice(0, 5).join('\n'),
+    });
+  }
+}));
+
 router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res) => {
   const FOLDER_ID = process.env.ACCOUNTING_RECIBIDAS_FOLDER_ID;
   if (!FOLDER_ID) {
@@ -1987,7 +2067,12 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
 
   try {
     const files = await listPDFs(FOLDER_ID);
-    const results = { created: 0, updated: 0, skipped: 0, errors: [], by_category: { motos:0, partes:0, servicios:0, municipal:0, otros:0 } };
+    const results = {
+      created: 0, updated: 0, skipped: 0, errors: [],
+      by_category: { motos:0, partes:0, servicios:0, municipal:0, otros:0 },
+      by_parser:  { claude: 0, regex: 0 },
+      claude_errors: [],
+    };
 
     for (const file of files) {
       try {
@@ -2004,6 +2089,11 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
           logger.warn({ err: claudeErr.message, file: file.name },
             '[Accounting/sync-recibidas] Claude falló, fallback a parser regex');
           parseSource = 'regex';
+          // Guardamos los primeros 5 errores de Claude en la respuesta para
+          // que el admin vea en el banner por qué cayó al fallback.
+          if (results.claude_errors.length < 5) {
+            results.claude_errors.push(`${file.name}: ${claudeErr.message}`);
+          }
           let text;
           try {
             text = (await extractPdfWithLayout(buf)).text;
@@ -2012,6 +2102,7 @@ router.post('/sync-drive-recibidas', roleCheck(...ADMIN_ROLES), async (req, res)
           }
           parsed = extractRecibida(text, file.name);
         }
+        results.by_parser[parseSource] = (results.by_parser[parseSource] || 0) + 1;
 
         if (!parsed.folio && !parsed.rut_emisor) {
           results.errors.push(`${file.name}: no se pudo extraer folio ni RUT proveedor (${parseSource})`);

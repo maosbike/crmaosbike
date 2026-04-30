@@ -1242,6 +1242,21 @@ export function AccountingView() {
         subtitle={ymLabel(ym)}
         actions={
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            {source === 'recibida' && (
+              <button onClick={async () => {
+                setSyncing(true); setSyncResult(null);
+                try {
+                  const r = await api.testClaudeParser();
+                  setSyncResult({ test_claude: true, ...r });
+                } catch (e) {
+                  setSyncResult({ test_claude: true, ok: false, error: e.message });
+                } finally { setSyncing(false); }
+              }} disabled={syncing}
+                title="Procesa 1 PDF con Claude y muestra el resultado bruto. Útil para verificar la API key."
+                style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
+                {syncing ? '...' : 'Test Claude'}
+              </button>
+            )}
             <button onClick={relink} disabled={syncing}
               title="Re-correr el cruce automático de facturas pendientes con inventario y notas (sin re-bajar Drive)"
               style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
@@ -1272,7 +1287,25 @@ export function AccountingView() {
           border: `1px solid ${syncResult.error ? '#FCA5A5' : '#86EFAC'}`,
           borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16, fontSize: 13,
         }}>
-          {syncResult.error
+          {syncResult.test_claude
+            ? (
+              <div>
+                <div style={{ fontWeight: 700, color: syncResult.ok ? '#15803D' : '#DC2626', marginBottom: 6 }}>
+                  Test Claude — {syncResult.ok ? '✓ funciona' : `✗ falló (${syncResult.stage})`}
+                </div>
+                {syncResult.ok && (
+                  <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>
+                    Procesado <strong>{syncResult.file_name}</strong> ({syncResult.pdf_size_kb}KB) →
+                  </div>
+                )}
+                <pre style={{
+                  marginTop: 8, padding: 10, background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)', fontSize: 11, maxHeight: 400, overflow: 'auto',
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                }}>{JSON.stringify(syncResult.parsed || { error: syncResult.error, error_type: syncResult.error_type, error_status: syncResult.error_status, stack: syncResult.stack }, null, 2)}</pre>
+              </div>
+            )
+            : syncResult.error
             ? <span style={{ color: '#DC2626' }}>{syncResult.error}</span>
             : syncResult.relinked
             ? (
@@ -1286,6 +1319,32 @@ export function AccountingView() {
                   {syncResult.archivos_leidos} archivos — {syncResult.created} creados, {syncResult.updated} actualizados
                   {syncResult.errors?.length > 0 && <>, <strong>{syncResult.errors.length} con errores</strong></>}
                 </div>
+                {/* Desglose por parser — visible cuando vienen los contadores
+                    del endpoint sync-drive-recibidas. Si Claude está cayendo
+                    al fallback regex todo el tiempo, esto lo muestra al toque. */}
+                {syncResult.by_parser && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-subtle)' }}>
+                    Parser usado: <strong>Claude {syncResult.by_parser.claude || 0}</strong> ·
+                    <strong style={{ marginLeft: 4 }}>regex {syncResult.by_parser.regex || 0}</strong>
+                    {(syncResult.by_parser.regex || 0) > 0 && (syncResult.by_parser.claude || 0) === 0 && (
+                      <span style={{ color: '#DC2626', marginLeft: 8, fontWeight: 600 }}>
+                        ⚠ Claude no se ejecutó — revisá ANTHROPIC_API_KEY
+                      </span>
+                    )}
+                  </div>
+                )}
+                {syncResult.claude_errors?.length > 0 && (
+                  <details style={{ marginTop: 6 }}>
+                    <summary style={{ cursor: 'pointer', fontSize: 12, color: '#92400E' }}>
+                      Errores de Claude ({syncResult.claude_errors.length} primeros)
+                    </summary>
+                    <ul style={{ margin: '8px 0 0 0', padding: '0 0 0 18px', fontSize: 12, color: '#92400E', maxHeight: 200, overflow: 'auto' }}>
+                      {syncResult.claude_errors.map((err, i) => (
+                        <li key={i} style={{ marginBottom: 2 }}>{err}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 {syncResult.errors?.length > 0 && (
                   <details style={{ marginTop: 8 }}>
                     <summary style={{ cursor: 'pointer', fontSize: 12, color: '#DC2626' }}>
