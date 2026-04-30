@@ -11,6 +11,10 @@ const multer  = require('multer');
 const cloudinary = require('../config/cloudinary');
 const pdfParse   = require('pdf-parse');
 const {
+  parseSupplierInvoiceWithClaude,
+  parseReceiptWithClaude,
+} = require('../services/claudeSupplierPaymentParser');
+const {
   toISODate,
   parseChileanInt,
   normalizeModel,
@@ -317,13 +321,28 @@ router.post('/extract', roleCheck('super_admin','admin_comercial','backoffice'),
   asyncHandler(async (req, res) => {
       let invoiceData = null, receiptData = null;
 
+      // Claude primero, fallback al regex parser si falla.
       if (req.files?.invoice?.[0]) {
-        const txt = (await pdfParse(req.files.invoice[0].buffer)).text;
-        invoiceData = extractInvoice(txt);
+        const buf = req.files.invoice[0].buffer;
+        const fname = req.files.invoice[0].originalname;
+        try {
+          invoiceData = await parseSupplierInvoiceWithClaude(buf, fname);
+        } catch (e) {
+          logger.warn({ err: e.message, file: fname }, '[SupPay/extract] Claude invoice falló, fallback regex');
+          const txt = (await pdfParse(buf)).text;
+          invoiceData = extractInvoice(txt);
+        }
       }
       if (req.files?.receipt?.[0]) {
-        const txt = (await pdfParse(req.files.receipt[0].buffer)).text;
-        receiptData = extractReceipt(txt);
+        const buf = req.files.receipt[0].buffer;
+        const fname = req.files.receipt[0].originalname;
+        try {
+          receiptData = await parseReceiptWithClaude(buf, fname);
+        } catch (e) {
+          logger.warn({ err: e.message, file: fname }, '[SupPay/extract] Claude receipt falló, fallback regex');
+          const txt = (await pdfParse(buf)).text;
+          receiptData = extractReceipt(txt);
+        }
       }
 
       // Si el comprobante paga múltiples facturas (detail_lines) y tenemos el
@@ -552,6 +571,52 @@ router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) =>
 }));
 
 // ─── POST /sync-drive ─────────────────────────────────────────────────────────
+// ─── POST /test-claude — diagnóstico de Claude para 1 factura+1 comprobante ───
+// Permite validar que la API key + integración funcionan procesando 1 PDF
+// de cada folder. Si Claude falla, devuelve el error completo (no traga).
+router.post('/test-claude', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ ok: false, stage: 'config', error: 'ANTHROPIC_API_KEY no configurada' });
+  }
+  const FOLDER_FACTURAS = process.env.SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID;
+  if (!FOLDER_FACTURAS) {
+    return res.status(503).json({ ok: false, stage: 'config', error: 'SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID no configurada' });
+  }
+  const credsJson = process.env.GCLOUD_CREDS;
+  if (!credsJson) return res.status(503).json({ ok: false, stage: 'config', error: 'GCLOUD_CREDS no configurada' });
+  const creds = JSON.parse(credsJson);
+  const { google } = require('googleapis');
+  const driveAuth = new google.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/drive.readonly'] });
+  const drive = google.drive({ version: 'v3', auth: driveAuth });
+
+  // Tomar primer PDF de facturas
+  const list = await drive.files.list({
+    q: `'${FOLDER_FACTURAS}' in parents and mimeType='application/pdf' and trashed=false`,
+    fields: 'files(id, name)', pageSize: 1,
+  });
+  const f = list.data.files?.[0];
+  if (!f) return res.status(404).json({ ok: false, stage: 'drive', error: 'No hay PDFs de facturas' });
+
+  let buf;
+  try {
+    const r = await drive.files.get({ fileId: f.id, alt: 'media' }, { responseType: 'arraybuffer' });
+    buf = Buffer.from(r.data);
+  } catch (e) {
+    return res.status(500).json({ ok: false, stage: 'download', error: e.message });
+  }
+
+  try {
+    const parsed = await parseSupplierInvoiceWithClaude(buf, f.name);
+    res.json({ ok: true, stage: 'parsed', file_name: f.name, drive_file_id: f.id, pdf_size_kb: Math.round(buf.length/1024), parsed });
+  } catch (e) {
+    res.status(500).json({
+      ok: false, stage: 'claude',
+      error: e.message, error_type: e.constructor?.name, error_status: e.status,
+      stack: (e.stack || '').split('\n').slice(0, 5).join('\n'),
+    });
+  }
+}));
+
 router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffice'), async (req, res) => {
   const FOLDER_FACTURAS     = '17IVqwsdoFTCpURC_eagy0qC2I_6DtpRr';
   const FOLDER_COMPROBANTES = '1T6jxfQZrrqfVnsMb5p5-gubl0OGGPeKb';
@@ -602,16 +667,30 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
       listPDFs(FOLDER_COMPROBANTES),
     ]);
 
-    const results = { created: 0, updated: 0, skipped: 0, errors: [] };
+    const results = {
+      created: 0, updated: 0, skipped: 0, errors: [],
+      by_parser: { claude: 0, regex: 0 },
+      claude_errors: [],
+    };
 
     for (const factFile of facturas) {
       try {
         const buf  = await downloadPDF(factFile.id);
-        const text = (await pdfParse(buf)).text;
-        const inv  = extractInvoice(text);
+        // Claude primero, fallback regex.
+        let inv = null;
+        let parseSource = 'claude';
+        try {
+          inv = await parseSupplierInvoiceWithClaude(buf, factFile.name);
+        } catch (e) {
+          parseSource = 'regex';
+          if (results.claude_errors.length < 5) results.claude_errors.push(`${factFile.name}: ${e.message}`);
+          const text = (await pdfParse(buf)).text;
+          inv = extractInvoice(text);
+        }
+        results.by_parser[parseSource]++;
 
         if (!inv.invoice_number) {
-          results.errors.push(`${factFile.name}: no se pudo extraer número de factura`);
+          results.errors.push(`${factFile.name}: no se pudo extraer número de factura (${parseSource})`);
           continue;
         }
 
@@ -625,8 +704,12 @@ router.post('/sync-drive', roleCheck('super_admin', 'admin_comercial', 'backoffi
         if (matchRec) {
           try {
             const recBuf = await downloadPDF(matchRec.id);
-            const recTxt = (await pdfParse(recBuf)).text;
-            recData = extractReceipt(recTxt);
+            try {
+              recData = await parseReceiptWithClaude(recBuf, matchRec.name);
+            } catch (_) {
+              const recTxt = (await pdfParse(recBuf)).text;
+              recData = extractReceipt(recTxt);
+            }
             recUrl  = matchRec.webViewLink;
           } catch (_) { /* comprobante falla silenciosamente */ }
         }
