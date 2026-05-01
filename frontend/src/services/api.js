@@ -290,6 +290,8 @@ export const api = {
     return request('POST', `/sales/${id}/doc`, fd);
   },
   deleteSale: (id, isNote) => request('DELETE', `/sales/${id}${isNote ? '?note=1' : ''}`),
+  linkTicketToSale:   (id, ticketId, isNote) => request('POST',   `/sales/${id}/link-ticket${isNote ? '?note=1' : ''}`, { ticket_id: ticketId }),
+  unlinkTicketFromSale: (id, isNote)         => request('DELETE', `/sales/${id}/link-ticket${isNote ? '?note=1' : ''}`),
 
   // Pagos a proveedor
   extractSupplierPayment: (invoiceFile, receiptFile) => {
