@@ -509,15 +509,31 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     const prevStatus  = unit.status;
 
     // Actualizar unidad — incluye campos extendidos de 024 + desglose 055 + abono_lines 061
+    // COALESCE en campos sensibles: si el caller no envía valor (caso típico
+    // de conversión reserva→venta), se preserva lo existente. Esto evita
+    // perder cost_price (vendedor no lo ve), sale_notes (Autofin pie + datos
+    // de contacto), ticket_id (lead vinculado) y payment_method ('Crédito
+    // Autofin' que se sobreescribiría con 'Mixto' al recalcular).
     const { rows: updated } = await db.query(
       `UPDATE inventory SET
-         status='vendida', sold_at=$1, sold_by=$2, ticket_id=$3,
-         payment_method=$4, sale_type=$5, sale_notes=$6,
-         sale_price=$7, cost_price=$8, invoice_amount=$9,
-         client_name=$10, client_rut=$11,
-         accessories=$12, charge_type=$13, charge_amt=$14, discount_amt=$15,
-         abono_lines=$16,
-         updated_at=NOW()
+         status         = 'vendida',
+         sold_at        = $1,
+         sold_by        = $2,
+         ticket_id      = COALESCE($3, ticket_id),
+         payment_method = COALESCE($4, payment_method),
+         sale_type      = COALESCE($5, sale_type),
+         sale_notes     = COALESCE($6, sale_notes),
+         sale_price     = COALESCE($7::int, sale_price),
+         cost_price     = COALESCE($8::int, cost_price),
+         invoice_amount = COALESCE($9::int, invoice_amount),
+         client_name    = COALESCE($10, client_name),
+         client_rut     = COALESCE($11, client_rut),
+         accessories    = COALESCE($12::jsonb, accessories),
+         charge_type    = COALESCE($13, charge_type),
+         charge_amt     = COALESCE($14::int, charge_amt),
+         discount_amt   = COALESCE($15::int, discount_amt),
+         abono_lines    = COALESCE($16::jsonb, abono_lines),
+         updated_at     = NOW()
        WHERE id=$17 RETURNING *`,
       [finalSoldAt, sold_by, ticket_id||null, payment_method||null,
        sale_type||null, sale_notes||null,

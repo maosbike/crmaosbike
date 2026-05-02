@@ -1104,7 +1104,20 @@ function ConvertToSaleModal({ sale, onClose, onConverted }) {
   const accTotal = accList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
   const chargeAmt = Number(sale.charge_amt) || 0;
   const discountAmt = Number(sale.discount_amt) || 0;
-  const totalOperacion = Math.max(0, motoAmt + accTotal + chargeAmt - discountAmt);
+  const totalBruto = Math.max(0, motoAmt + accTotal + chargeAmt - discountAmt);
+
+  // Autofin: el cliente paga el pie + accesorios + documentación; Autofin
+  // financia el resto de la moto (motoAmt − pieAmt). El "Total a pagar por
+  // el cliente" baja por ese monto y el saldo puede llegar a cero sin que
+  // tenga que poner toda la plata.
+  const isAutofin = sale.payment_method === 'Crédito Autofin';
+  const autofinData = isAutofin ? parseAutofinFromNotes(sale.sale_notes) : null;
+  const pieAmt = Number(autofinData?.pieAmt) || 0;
+  const autofinFinanciado = isAutofin && pieAmt > 0
+    ? Math.max(0, motoAmt - pieAmt)
+    : 0;
+
+  const totalOperacion = Math.max(0, totalBruto - autofinFinanciado);
 
   // Abonos existentes (no editables — historia)
   const abonosExistentes = Array.isArray(sale.abono_lines)
@@ -1159,21 +1172,36 @@ function ConvertToSaleModal({ sale, onClose, onConverted }) {
           status:         'vendida',
           sold_at:        new Date().toISOString(),
           abono_lines:    allAbonos,
-          // invoice_amount y payment_method los recalcula el backend desde abono_lines
+          // Preservar payment_method explícitamente — si no, el backend lo
+          // recalcula desde abono_lines y se pierde 'Crédito Autofin' (la
+          // reserva pasaría a 'Mixto' o al primer método de la lista).
+          payment_method: sale.payment_method || null,
         });
       } else {
+        // Pasamos TODOS los campos existentes de la reserva, no sólo los que
+        // cambian. Si no se mandan, el backend los pone en NULL y se pierden:
+        // - sale_notes (que contiene Autofin pie/medio + tel/email/dir cliente)
+        // - ticket_id (lead vinculado)
+        // - payment_method (clave para Autofin)
+        // - cost_price (costo distribuidor — sólo admin lo ve)
+        // Para Autofin: NO sobrescribimos payment_method con 'Mixto' aunque haya
+        // varias líneas de abono — el medio sigue siendo 'Crédito Autofin'.
         await api.sellInventory(sale.id, {
-          sold_by:     sale.seller_id || sale.sold_by,
-          sale_price:  sale.sale_price,
-          client_name: sale.client_name,
-          client_rut:  sale.client_rut,
-          sale_type:   sale.sale_type || sale.charge_type || 'inscripcion',
-          charge_type: sale.charge_type || sale.sale_type || 'inscripcion',
-          charge_amt:  sale.charge_amt,
-          discount_amt:sale.discount_amt,
-          accessories: sale.accessories,
-          abono_lines: allAbonos,
-          sold_at:     new Date().toISOString(),
+          sold_by:        sale.seller_id || sale.sold_by,
+          sale_price:     sale.sale_price,
+          cost_price:     sale.cost_price,
+          client_name:    sale.client_name,
+          client_rut:     sale.client_rut,
+          sale_type:      sale.sale_type || sale.charge_type || 'inscripcion',
+          charge_type:    sale.charge_type || sale.sale_type || 'inscripcion',
+          charge_amt:     sale.charge_amt,
+          discount_amt:   sale.discount_amt,
+          accessories:    sale.accessories,
+          abono_lines:    allAbonos,
+          sold_at:        new Date().toISOString(),
+          ticket_id:      sale.ticket_id || null,
+          sale_notes:     sale.sale_notes || null,
+          payment_method: sale.payment_method || null,
         });
       }
       toast.success('Reserva convertida en venta');
@@ -1197,8 +1225,20 @@ function ConvertToSaleModal({ sale, onClose, onConverted }) {
         <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px', display:'flex', flexDirection:'column', gap:5, fontSize:13 }}>
           <div style={{ display:'flex', justifyContent:'space-between' }}>
             <span style={{ color:'var(--text-subtle)' }}>Total de la operación</span>
-            <strong>{fmt(totalOperacion)}</strong>
+            <strong>{fmt(totalBruto)}</strong>
           </div>
+          {autofinFinanciado > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', color:'#7C2D12' }}>
+              <span>− Financia Autofin</span>
+              <strong>− {fmt(autofinFinanciado)}</strong>
+            </div>
+          )}
+          {autofinFinanciado > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', paddingTop:4, borderTop:'1px dashed var(--border)' }}>
+              <span style={{ color:'var(--text-subtle)' }}>Total a pagar por el cliente</span>
+              <strong>{fmt(totalOperacion)}</strong>
+            </div>
+          )}
           <div style={{ display:'flex', justifyContent:'space-between', color:'#065F46' }}>
             <span>Ya abonado ({abonosExistentes.length} {abonosExistentes.length === 1 ? 'pago' : 'pagos'})</span>
             <strong>{fmt(totalAbonado)}</strong>
