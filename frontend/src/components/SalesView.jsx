@@ -1024,12 +1024,20 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
                   }}
                   disabled={!form.brand} />
                 <Field label="Año" value={form.year} onChange={set('year')} type="number" />
-                <Field label="Color"
-                  value={form.color}
-                  opts={[{ v: '', l: editSelMod ? (editColors.length ? '— Seleccionar color —' : 'Sin colores en catálogo') : '— Primero seleccione un modelo —' },
-                         ...editColors.map(c => ({ v: c, l: c }))]}
-                  onChange={set('color')}
-                  disabled={!editSelMod} />
+                {/* Color: input libre si el modelo no tiene colores en catálogo */}
+                {editSelMod && editColors.length === 0 ? (
+                  <Field label="Color"
+                    value={form.color}
+                    onChange={set('color')}
+                    ph="Ej: Azul, Negro, Rojo…" />
+                ) : (
+                  <Field label="Color"
+                    value={form.color}
+                    opts={[{ v: '', l: editSelMod ? '— Seleccionar color —' : '— Primero seleccione un modelo —' },
+                           ...editColors.map(c => ({ v: c, l: c }))]}
+                    onChange={set('color')}
+                    disabled={!editSelMod} />
+                )}
                 <Field label="Chasis" value={form.chassis} onChange={set('chassis')} />
               </div>
             </>
@@ -2697,12 +2705,24 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
                   onChange={pickModel}
                   disabled={!form.brand} />
                 <Field label="Año" value={form.year} onChange={set('year')} type="number" />
-                <Field label="Color *"
-                  value={form.color}
-                  opts={[{ v: '', l: selMod ? (colors.length ? '— Seleccionar color —' : 'Sin colores en catálogo') : '— Primero seleccione un modelo —' },
-                         ...colors.map(c => ({ v: c, l: c }))]}
-                  onChange={set('color')}
-                  disabled={!selMod} />
+                {/* Color: si el modelo tiene colores cargados en catálogo,
+                    dropdown con esas opciones. Si el modelo está en catálogo
+                    pero sin colores, input de texto libre — antes la dropdown
+                    quedaba vacía y la validación 'Color obligatorio' bloqueaba
+                    la creación de la venta sin salida. */}
+                {selMod && colors.length === 0 ? (
+                  <Field label="Color *"
+                    value={form.color}
+                    onChange={set('color')}
+                    ph="Ej: Azul, Negro, Rojo…" />
+                ) : (
+                  <Field label="Color *"
+                    value={form.color}
+                    opts={[{ v: '', l: selMod ? '— Seleccionar color —' : '— Primero seleccione un modelo —' },
+                           ...colors.map(c => ({ v: c, l: c }))]}
+                    onChange={set('color')}
+                    disabled={!selMod} />
+                )}
                 <Field label="N° Chasis (opcional)" value={form.chassis} onChange={set('chassis')} ph="9CDKDE0…" />
                 <Field label="N° Motor (opcional)"  value={form.motor_num} onChange={set('motor_num')} />
               </>
