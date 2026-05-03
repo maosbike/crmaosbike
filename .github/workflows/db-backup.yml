@@ -1,0 +1,86 @@
+name: DB Backup (Postgres → GitHub Artifacts)
+
+# Backup diario del Postgres de producción.
+# Corre todos los días a las 06:00 UTC (= 03:00 Chile invierno / 02:00 verano).
+# El dump queda como artifact del workflow run, retención 30 días.
+#
+# Para restaurar: ver backend/scripts/RESTORE.md
+#
+# Setup requerido (una vez):
+#   GitHub → Settings → Secrets and variables → Actions → New repository secret
+#     - DATABASE_URL  →  cadena postgres://user:pass@host:port/dbname?sslmode=require
+#                        (la copias desde Railway → servicio Postgres → Variables)
+
+on:
+  schedule:
+    # cron en UTC. 06:00 UTC ≈ 03:00 hora Chile (varía 1h entre invierno/verano).
+    - cron: '0 6 * * *'
+  # Permite dispararlo manualmente desde Actions → Run workflow.
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Postgres 16 client — el repo de PostgreSQL trae el cliente más nuevo
+      # que la imagen base de Ubuntu, importante porque la versión del cliente
+      # debe ser >= la del servidor (Railway suele estar en 16.x).
+      - name: Install postgres client (v16)
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          sudo sh -c 'echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16
+          pg_dump --version
+
+      - name: Verify DATABASE_URL secret is set
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Falta el secret DATABASE_URL. Agrégalo en Settings → Secrets → Actions."
+            exit 1
+          fi
+
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p backups
+          STAMP=$(date -u +%Y%m%d_%H%M%S)
+          OUT="backups/crmaosbike_${STAMP}.dump"
+          # --format=custom: formato comprimido (.dump) que pg_restore lee con
+          # --jobs paralelo. Más chico y más rápido de restaurar que SQL plano.
+          # --no-owner / --no-acl: facilita restaurar a cualquier DB destino
+          # sin pelearse con permisos de roles que no existen ahí.
+          pg_dump \
+            --format=custom \
+            --no-owner \
+            --no-acl \
+            --verbose \
+            --file="$OUT" \
+            "$DATABASE_URL"
+          ls -lah backups/
+          echo "DUMP_FILE=$OUT" >> "$GITHUB_ENV"
+          echo "DUMP_STAMP=$STAMP" >> "$GITHUB_ENV"
+
+      - name: Show dump size
+        run: |
+          SIZE=$(du -h "$DUMP_FILE" | cut -f1)
+          echo "::notice title=Backup OK::Dump generado ${DUMP_FILE} (${SIZE})"
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crmaosbike-db-${{ env.DUMP_STAMP }}
+          path: backups/
+          # 30 días — balance entre seguridad y cuota de storage del plan free
+          # (500MB total). Con dumps chicos esto da ~30 backups simultáneos.
+          retention-days: 30
+          compression-level: 9
+          if-no-files-found: error
