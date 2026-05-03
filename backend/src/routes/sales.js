@@ -794,4 +794,80 @@ router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice'
     res.json({ url: result.secure_url });
 }));
 
+// ─── POST /api/sales/:id/link-ticket ──────────────────────────────────────────
+// Asocia un lead (ticket) existente a una venta o reserva.
+// ?note=1 → sales_notes; sin flag → inventory
+// body: { ticket_id }
+// Si el ticket está abierto y la venta está 'vendida', cierra el ticket como 'ganado'.
+router.post('/:id/link-ticket', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
+  const { ticket_id } = req.body;
+  const isNoteOnly = req.query.note === '1';
+  if (!ticket_id) return res.status(400).json({ error: 'ticket_id requerido' });
+
+  const table = isNoteOnly ? 'sales_notes' : 'inventory';
+
+  const { rows: tk } = await db.query(
+    `SELECT id, status FROM tickets WHERE id = $1`,
+    [ticket_id]
+  );
+  if (!tk[0]) return res.status(404).json({ error: 'Lead no encontrado' });
+
+  const { rows: sale } = await db.query(
+    `SELECT id, status, ticket_id FROM ${table} WHERE id = $1`,
+    [req.params.id]
+  );
+  if (!sale[0]) return res.status(404).json({ error: 'Venta no encontrada' });
+
+  try {
+    await db.query('BEGIN');
+
+    await db.query(
+      `UPDATE ${table} SET ticket_id = $1, updated_at = NOW() WHERE id = $2`,
+      [ticket_id, req.params.id]
+    );
+
+    // Si la venta ya estaba 'vendida' y el ticket no está cerrado, cerrarlo.
+    const saleStatus = isNoteOnly ? sale[0].status : sale[0].status;
+    if (saleStatus === 'vendida' && tk[0].status !== 'ganado') {
+      await db.query(
+        `UPDATE tickets SET status = 'ganado', updated_at = NOW() WHERE id = $1`,
+        [ticket_id]
+      );
+      await db.query(
+        `INSERT INTO timeline (ticket_id, user_id, type, title)
+         VALUES ($1, $2, 'system', 'Lead asociado a venta existente')`,
+        [ticket_id, req.user.id]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO timeline (ticket_id, user_id, type, title)
+         VALUES ($1, $2, 'system', 'Lead asociado a ${isNoteOnly ? 'nota' : 'unidad'} de ventas')`,
+        [ticket_id, req.user.id]
+      );
+    }
+
+    await db.query('COMMIT');
+    res.json({ ok: true, ticket_id, sale_id: req.params.id, is_note_only: isNoteOnly });
+  } catch (e) {
+    await db.query('ROLLBACK').catch(() => {});
+    logger.error({ err: e }, '[Sales] POST /:id/link-ticket');
+    res.status(500).json({ error: 'Error al vincular lead' });
+  }
+}));
+
+// ─── DELETE /api/sales/:id/link-ticket ────────────────────────────────────────
+// Desasocia el lead de la venta (no cambia el estado del ticket).
+router.delete('/:id/link-ticket', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
+  const isNoteOnly = req.query.note === '1';
+  const table = isNoteOnly ? 'sales_notes' : 'inventory';
+
+  const { rows } = await db.query(
+    `UPDATE ${table} SET ticket_id = NULL, updated_at = NOW()
+     WHERE id = $1 RETURNING id, ticket_id`,
+    [req.params.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Venta no encontrada' });
+  res.json({ ok: true, sale_id: req.params.id, is_note_only: isNoteOnly });
+}));
+
 module.exports = router;

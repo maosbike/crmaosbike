@@ -124,6 +124,8 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
   const [editing,           setEditing]           = useState(false);
   const [showEditModal,     setShowEditModal]     = useState(false);
   const [showLinkInvoice,   setShowLinkInvoice]   = useState(false);
+  const [showLinkLead,      setShowLinkLead]      = useState(false);
+  const [unlinkingLead,     setUnlinkingLead]     = useState(false);
   const [form,              setForm]              = useState({});
   const [saving,            setSaving]            = useState(false);
   const [converting,        setConverting]        = useState(false);
@@ -803,6 +805,34 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
               Vincular factura
             </button>
           )}
+          {/* Vincular / desvincular lead (ticket). El cliente pudo cotizar
+              por un modelo distinto al que terminó comprando, así que el
+              match se hace por cliente, no por moto. */}
+          {isAdmin && !sale.ticket_id && (
+            <button onClick={() => setShowLinkLead(true)} style={{ ...S.btn2, flex: 1 }}>
+              Vincular lead
+            </button>
+          )}
+          {isAdmin && sale.ticket_id && (
+            <button
+              onClick={async () => {
+                if (unlinkingLead) return;
+                if (!window.confirm('¿Quitar la asociación con el lead? El estado del ticket no cambiará.')) return;
+                setUnlinkingLead(true);
+                try {
+                  await api.unlinkTicketFromSale(sale.id, sale.is_note_only);
+                  onSaved();
+                } catch (e) {
+                  setErr(e.message || 'Error al desvincular');
+                } finally {
+                  setUnlinkingLead(false);
+                }
+              }}
+              disabled={unlinkingLead}
+              style={{ ...S.btn2, flex: 1 }}>
+              {unlinkingLead ? 'Quitando…' : 'Quitar lead'}
+            </button>
+          )}
           {/* Convertir a venta (solo reservas saldadas o cualquiera) */}
           {isRes && canEdit && (
             <button onClick={() => setShowConfirmConvert(true)} disabled={converting}
@@ -1040,6 +1070,13 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
           onLinked={() => { onSaved(); setShowLinkInvoice(false); }}
         />
       )}
+      {showLinkLead && (
+        <LinkLeadModal
+          sale={sale}
+          onClose={() => setShowLinkLead(false)}
+          onLinked={() => { onSaved(); setShowLinkLead(false); }}
+        />
+      )}
     </Modal>
   );
 }
@@ -1067,7 +1104,20 @@ function ConvertToSaleModal({ sale, onClose, onConverted }) {
   const accTotal = accList.reduce((s, a) => s + (Number(a.amount) || 0), 0);
   const chargeAmt = Number(sale.charge_amt) || 0;
   const discountAmt = Number(sale.discount_amt) || 0;
-  const totalOperacion = Math.max(0, motoAmt + accTotal + chargeAmt - discountAmt);
+  const totalBruto = Math.max(0, motoAmt + accTotal + chargeAmt - discountAmt);
+
+  // Autofin: el cliente paga el pie + accesorios + documentación; Autofin
+  // financia el resto de la moto (motoAmt − pieAmt). El "Total a pagar por
+  // el cliente" baja por ese monto y el saldo puede llegar a cero sin que
+  // tenga que poner toda la plata.
+  const isAutofin = sale.payment_method === 'Crédito Autofin';
+  const autofinData = isAutofin ? parseAutofinFromNotes(sale.sale_notes) : null;
+  const pieAmt = Number(autofinData?.pieAmt) || 0;
+  const autofinFinanciado = isAutofin && pieAmt > 0
+    ? Math.max(0, motoAmt - pieAmt)
+    : 0;
+
+  const totalOperacion = Math.max(0, totalBruto - autofinFinanciado);
 
   // Abonos existentes (no editables — historia)
   const abonosExistentes = Array.isArray(sale.abono_lines)
@@ -1122,21 +1172,36 @@ function ConvertToSaleModal({ sale, onClose, onConverted }) {
           status:         'vendida',
           sold_at:        new Date().toISOString(),
           abono_lines:    allAbonos,
-          // invoice_amount y payment_method los recalcula el backend desde abono_lines
+          // Preservar payment_method explícitamente — si no, el backend lo
+          // recalcula desde abono_lines y se pierde 'Crédito Autofin' (la
+          // reserva pasaría a 'Mixto' o al primer método de la lista).
+          payment_method: sale.payment_method || null,
         });
       } else {
+        // Pasamos TODOS los campos existentes de la reserva, no sólo los que
+        // cambian. Si no se mandan, el backend los pone en NULL y se pierden:
+        // - sale_notes (que contiene Autofin pie/medio + tel/email/dir cliente)
+        // - ticket_id (lead vinculado)
+        // - payment_method (clave para Autofin)
+        // - cost_price (costo distribuidor — sólo admin lo ve)
+        // Para Autofin: NO sobrescribimos payment_method con 'Mixto' aunque haya
+        // varias líneas de abono — el medio sigue siendo 'Crédito Autofin'.
         await api.sellInventory(sale.id, {
-          sold_by:     sale.seller_id || sale.sold_by,
-          sale_price:  sale.sale_price,
-          client_name: sale.client_name,
-          client_rut:  sale.client_rut,
-          sale_type:   sale.sale_type || sale.charge_type || 'inscripcion',
-          charge_type: sale.charge_type || sale.sale_type || 'inscripcion',
-          charge_amt:  sale.charge_amt,
-          discount_amt:sale.discount_amt,
-          accessories: sale.accessories,
-          abono_lines: allAbonos,
-          sold_at:     new Date().toISOString(),
+          sold_by:        sale.seller_id || sale.sold_by,
+          sale_price:     sale.sale_price,
+          cost_price:     sale.cost_price,
+          client_name:    sale.client_name,
+          client_rut:     sale.client_rut,
+          sale_type:      sale.sale_type || sale.charge_type || 'inscripcion',
+          charge_type:    sale.charge_type || sale.sale_type || 'inscripcion',
+          charge_amt:     sale.charge_amt,
+          discount_amt:   sale.discount_amt,
+          accessories:    sale.accessories,
+          abono_lines:    allAbonos,
+          sold_at:        new Date().toISOString(),
+          ticket_id:      sale.ticket_id || null,
+          sale_notes:     sale.sale_notes || null,
+          payment_method: sale.payment_method || null,
         });
       }
       toast.success('Reserva convertida en venta');
@@ -1160,8 +1225,20 @@ function ConvertToSaleModal({ sale, onClose, onConverted }) {
         <div style={{ background:'var(--surface-muted)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px', display:'flex', flexDirection:'column', gap:5, fontSize:13 }}>
           <div style={{ display:'flex', justifyContent:'space-between' }}>
             <span style={{ color:'var(--text-subtle)' }}>Total de la operación</span>
-            <strong>{fmt(totalOperacion)}</strong>
+            <strong>{fmt(totalBruto)}</strong>
           </div>
+          {autofinFinanciado > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', color:'#7C2D12' }}>
+              <span>− Financia Autofin</span>
+              <strong>− {fmt(autofinFinanciado)}</strong>
+            </div>
+          )}
+          {autofinFinanciado > 0 && (
+            <div style={{ display:'flex', justifyContent:'space-between', paddingTop:4, borderTop:'1px dashed var(--border)' }}>
+              <span style={{ color:'var(--text-subtle)' }}>Total a pagar por el cliente</span>
+              <strong>{fmt(totalOperacion)}</strong>
+            </div>
+          )}
           <div style={{ display:'flex', justifyContent:'space-between', color:'#065F46' }}>
             <span>Ya abonado ({abonosExistentes.length} {abonosExistentes.length === 1 ? 'pago' : 'pagos'})</span>
             <strong>{fmt(totalAbonado)}</strong>
@@ -1467,6 +1544,137 @@ function LinkInvoiceModal({ sale, onClose, onLinked }) {
               </button>
             </div>
           </Modal>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Modal: vincular venta con un lead (ticket) ──────────────────────────────
+// El cliente puede haber cotizado por una moto y terminado comprando otra. Por
+// eso la búsqueda es por cliente (nombre, RUT, teléfono, número de ticket),
+// no por modelo. El admin elige el lead correcto y queda asociado a la venta
+// o reserva.
+function LinkLeadModal({ sale, onClose, onLinked }) {
+  const toast = useToast();
+  // Prefill con RUT (más específico) o nombre del cliente — el endpoint de
+  // tickets ya hace ILIKE sobre rut/first_name/last_name/phone/ticket_num.
+  const initialQ = sale.client_rut || sale.client_name || '';
+  const [q, setQ]           = useState(initialQ);
+  const [list, setList]     = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]       = useState('');
+  const [linking, setLinking] = useState(null);
+
+  useEffect(() => {
+    let cancel = false;
+    setLoading(true); setErr('');
+    const t = setTimeout(() => {
+      const params = q.trim() ? { search: q.trim(), limit: 30 } : { limit: 30 };
+      api.getTickets(params)
+        .then(r => {
+          if (cancel) return;
+          const data = Array.isArray(r) ? r : (r?.data || r?.tickets || []);
+          setList(data);
+        })
+        .catch(e => { if (!cancel) setErr(e.message); })
+        .finally(() => { if (!cancel) setLoading(false); });
+    }, 250);
+    return () => { cancel = true; clearTimeout(t); };
+  }, [q]);
+
+  async function link(tk) {
+    setLinking(tk.id); setErr('');
+    try {
+      await api.linkTicketToSale(sale.id, tk.id, sale.is_note_only);
+      toast.success(`Lead #${tk.ticket_num || tk.id} asociado`);
+      onLinked();
+    } catch (e) {
+      setErr(e.message || 'Error al vincular lead');
+    } finally {
+      setLinking(null);
+    }
+  }
+
+  const statusPill = (st) => {
+    const cfg = st === 'ganado'      ? { l:'Ganado',     c:'#15803D', bg:'rgba(21,128,61,0.10)' }
+              : st === 'perdido'     ? { l:'Perdido',    c:'#B91C1C', bg:'rgba(185,28,28,0.10)' }
+              : st === 'en_gestion'  ? { l:'En gestión', c:'#1D4ED8', bg:'rgba(29,78,216,0.10)' }
+              :                        { l: st || '—',   c:'var(--text-subtle)', bg:'rgba(107,114,128,0.10)' };
+    return (
+      <span style={{
+        fontSize:9, fontWeight:700, color:cfg.c, background:cfg.bg,
+        padding:'2px 7px', borderRadius:'var(--radius-xl)',
+        textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap',
+      }}>{cfg.l}</span>
+    );
+  };
+
+  return (
+    <Modal onClose={onClose} title="Vincular lead a esta venta" wide>
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        <div style={{ fontSize:12, color:'var(--text-subtle)', lineHeight:1.45 }}>
+          Busca el lead por <strong>nombre</strong>, <strong>RUT</strong>,
+          <strong> teléfono</strong> o <strong>número de ticket</strong>. La
+          moto que aparece en el lead puede ser distinta a la que terminó
+          comprando — el match es por cliente.
+        </div>
+
+        <input
+          autoFocus
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Nombre, RUT, teléfono, ticket #…"
+          style={{ ...S.inp, width:'100%', height:36, fontSize:13 }}
+        />
+
+        {err && <ErrorMsg msg={err} />}
+        {loading && <div style={{ fontSize:12, color:'var(--text-disabled)' }}>Buscando…</div>}
+        {!loading && list.length === 0 && (
+          <div style={{ fontSize:12, color:'var(--text-disabled)', padding:'18px 0', textAlign:'center' }}>
+            No hay leads que coincidan con la búsqueda.
+          </div>
+        )}
+        {!loading && list.length > 0 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:'45vh', overflowY:'auto' }}>
+            {list.map(tk => {
+              const fullName = `${tk.first_name || ''} ${tk.last_name || ''}`.trim() || '—';
+              const moto = [tk.moto_brand, tk.moto_model].filter(Boolean).join(' ') || '—';
+              return (
+                <button key={tk.id}
+                  onClick={() => link(tk)}
+                  disabled={!!linking}
+                  style={{
+                    display:'grid', gridTemplateColumns:'auto 1fr auto', gap:10, alignItems:'center',
+                    padding:'10px 12px', borderRadius:'var(--radius-md)',
+                    border:'1px solid var(--border)', background:'var(--surface)',
+                    cursor: linking ? 'wait' : 'pointer', textAlign:'left', fontFamily:'inherit',
+                    opacity: linking && linking !== tk.id ? 0.5 : 1,
+                  }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--brand)', background:'rgba(242,129,0,0.10)', padding:'3px 8px', borderRadius:'var(--radius-sm)' }}>
+                    #{tk.ticket_num || tk.id}
+                  </span>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                      <span style={{ fontSize:13, fontWeight:700, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        {fullName}
+                      </span>
+                      {statusPill(tk.status)}
+                    </div>
+                    <div style={{ fontSize:11, color:'var(--text-subtle)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {tk.rut || '—'}{tk.phone ? ` · ${tk.phone}` : ''}{moto !== '—' ? ` · cotizó ${moto}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ textAlign:'right', flexShrink:0 }}>
+                    <div style={{ fontSize:10, color:'var(--text-disabled)' }}>{fD(tk.created_at)}</div>
+                    {linking === tk.id && (
+                      <div style={{ fontSize:10, color:'var(--brand)', fontWeight:700, marginTop:2 }}>Vinculando…</div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </Modal>
