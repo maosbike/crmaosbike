@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const db = require('../config/db');
+const logger = require('../config/logger');
 const { auth, roleCheck } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const multer = require('multer');
@@ -557,15 +558,51 @@ router.get('/template', (req, res) => {
 // ─── POST /api/import/preview ─────────────────────────────────
 router.post('/preview', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
+    if (!req.file) {
+      logger.warn({ user: req.user?.email, ua: req.get('user-agent') }, '[import.preview] sin archivo');
+      return res.status(400).json({ error: 'Archivo requerido' });
+    }
 
-    const raw = parseBuffer(req.file.buffer);
+    let raw;
+    try {
+      raw = parseBuffer(req.file.buffer);
+    } catch (parseErr) {
+      logger.warn({
+        user: req.user?.email,
+        fileName: req.file.originalname,
+        size: req.file.size,
+        err: parseErr.message,
+      }, '[import.preview] xlsx ilegible');
+      return res.status(400).json({
+        error: 'No pude leer el archivo. Debe ser xlsx/xls/csv válido.',
+        detail: parseErr.message,
+        fileName: req.file.originalname,
+      });
+    }
+
+    if (!raw || raw.length === 0 || !Array.isArray(raw[0])) {
+      logger.warn({ user: req.user?.email, fileName: req.file.originalname }, '[import.preview] archivo vacío');
+      return res.status(400).json({ error: 'El archivo está vacío.' });
+    }
+
     const rawHeaders = raw[0].map(h => (h || '').toString());
     const headerMap  = buildHeaderMap(rawHeaders);
 
     if (headerMap.nombre === undefined) {
+      // Diagnóstico: el scraper de Yamaha cae acá si Yamaha cambia los headers
+      // del export. Logueamos los headers recibidos para que se vean en Railway
+      // y devolvemos también los headers en la respuesta para que el caller
+      // (scraper o usuario) sepa qué está mandando.
+      logger.warn({
+        user: req.user?.email,
+        fileName: req.file.originalname,
+        headers: rawHeaders,
+        rowCount: raw.length - 1,
+      }, '[import.preview] no se encontró columna "nombre"');
       return res.status(400).json({
         error: 'El archivo debe tener una columna "nombre". Descarga la plantilla para ver el formato esperado.',
+        headers_received: rawHeaders,
+        accepted_aliases: COL_ALIASES.nombre,
       });
     }
 
@@ -577,7 +614,18 @@ router.post('/preview', upload.single('file'), async (req, res) => {
       rows.push(validateRow(row, headerMap, i + 1));
     }
 
-    if (rows.length === 0) return res.status(400).json({ error: 'No se encontraron filas de datos' });
+    if (rows.length === 0) {
+      logger.warn({
+        user: req.user?.email,
+        fileName: req.file.originalname,
+        headers: rawHeaders,
+        rawRows: raw.length,
+      }, '[import.preview] sin filas de datos');
+      return res.status(400).json({
+        error: 'No se encontraron filas de datos',
+        headers_received: rawHeaders,
+      });
+    }
 
     // ── Duplicados internos al archivo ─────────────────────────
     // Sets de keys ya vistos: la primera aparición pasa, las siguientes son dup_file.
