@@ -174,7 +174,7 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), asyncHandler
     // y sólo a usuarios de su sucursal.
     if (req.user.role === 'admin_comercial') {
       if (req.user.branch_id && ticket.branch_id !== req.user.branch_id) {
-        return res.status(403).json({ error: 'No podés reasignar tickets de otra sucursal' });
+        return res.status(403).json({ error: 'No puedes reasignar tickets de otra sucursal' });
       }
     }
 
@@ -187,7 +187,7 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), asyncHandler
     if (req.user.role === 'admin_comercial' &&
         req.user.branch_id &&
         toUser[0].branch_id !== req.user.branch_id) {
-      return res.status(403).json({ error: 'Solo podés reasignar a usuarios de tu sucursal' });
+      return res.status(403).json({ error: 'Solo puedes reasignar a usuarios de tu sucursal' });
     }
 
     const newDeadline = calcSlaDeadline().toISOString();

@@ -60,7 +60,7 @@ CAMPOS OBLIGATORIOS A EXTRAER (lo que el negocio necesita):
 
 PARA MOTOS (category=motos) — además extraer:
 - brand — marca de la moto (ej "YAMAHA"). Suele aparecer como "MARCA : YAMAHA" en el detalle del item.
-- model — modelo de la moto. Si aparece "COD.MODELO : YZF-R3A", usá el código (es lo que matchea con el catálogo). Si solo hay "MT-03A" en el detalle, usá eso.
+- model — modelo de la moto. Si aparece "COD.MODELO : YZF-R3A", usa el código (es lo que matchea con el catálogo). Si solo hay "MT-03A" en el detalle, usa eso.
 - chassis — número de chasis. Aparece como "N DE CHASIS : MH3RH25..." o "VIN".
 - motor_num — número de motor. Aparece como "N MOTOR : H08E-...".
 - color — color de la moto (ej "AZUL", "NEGRO", "VERDE"). Aparece como "COLOR : AZUL".

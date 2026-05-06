@@ -277,7 +277,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
 
     // Bloquear: vendida solo se puede registrar via POST /:id/sell
     if (status === 'vendida') {
-      return res.status(400).json({ error: 'Para marcar una unidad como vendida usá el flujo de venta (Registrar venta).' });
+      return res.status(400).json({ error: 'Para marcar una unidad como vendida usa el flujo de venta (Registrar venta).' });
     }
 
     // Ownership vendedor: solo puede hacer reservas a su nombre; no puede tocar campos de stock/admin
@@ -304,7 +304,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     }
     // Vendedor: solo puede operar sobre unidades de su propia sucursal.
     if (req.user.role === 'vendedor' && cur[0].branch_id && cur[0].branch_id !== req.user.branch_id) {
-      return res.status(403).json({ error: 'No podés operar sobre unidades de otra sucursal.' });
+      return res.status(403).json({ error: 'No puedes operar sobre unidades de otra sucursal.' });
     }
 
     // Chasis: verificar unicidad si se quiere cambiar
@@ -512,7 +512,7 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     if (unit.status === 'vendida') return res.status(409).json({ error: 'La unidad ya está registrada como vendida' });
     // Vendedor: solo puede vender unidades de su sucursal.
     if (req.user.role === 'vendedor' && unit.branch_id && unit.branch_id !== req.user.branch_id) {
-      return res.status(403).json({ error: 'No podés vender unidades de otra sucursal.' });
+      return res.status(403).json({ error: 'No puedes vender unidades de otra sucursal.' });
     }
     // Si se vincula un ticket, vendedor debe ser dueño del ticket.
     if (ticket_id && req.user.role === 'vendedor') {
@@ -520,7 +520,7 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
         `SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)`,
         [ticket_id, req.user.id]
       );
-      if (!tk[0]) return res.status(403).json({ error: 'No podés vincular esta venta a un ticket que no te pertenece.' });
+      if (!tk[0]) return res.status(403).json({ error: 'No puedes vincular esta venta a un ticket que no te pertenece.' });
     }
 
     const finalSoldAt = sold_at || new Date().toISOString();
@@ -836,7 +836,7 @@ router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffic
     if (!unitRows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
     if (req.user.role === 'vendedor' &&
         unitRows[0].branch_id && unitRows[0].branch_id !== req.user.branch_id) {
-      return res.status(403).json({ error: 'No podés modificar fotos de unidades de otra sucursal.' });
+      return res.status(403).json({ error: 'No puedes modificar fotos de unidades de otra sucursal.' });
     }
 
     // Validación de mimetype real (defense-in-depth contra extensión spoofeada).
@@ -871,7 +871,7 @@ router.delete('/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(
     // (porque Ventas lee del JOIN a inventory). Para "sacarla del inventario
     // porque ya se entregó" usar el flag delivered=true en su lugar.
     if (['vendida', 'reservada'].includes(cur[0].status)) {
-      return res.status(409).json({ error: 'No se puede eliminar una unidad vendida o reservada — borrarla también la saca de Ventas. Si ya se entregó, usá "Confirmar entrega" para sacarla del inventario sin perder la venta.' });
+      return res.status(409).json({ error: 'No se puede eliminar una unidad vendida o reservada — borrarla también la saca de Ventas. Si ya se entregó, usa "Confirmar entrega" para sacarla del inventario sin perder la venta.' });
     }
     const { rows } = await db.query(
       'DELETE FROM inventory WHERE id=$1 RETURNING id, brand, model, chassis',

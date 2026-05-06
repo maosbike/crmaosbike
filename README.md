@@ -41,9 +41,9 @@ CLOUDINARY_API_SECRET=(de tu cuenta Cloudinary)
 
 FRONTEND_URL=https://crmaosbike.cl
 
-# Telegram (si usás el bot)
+# Telegram (si usas el bot)
 TELEGRAM_BOT_TOKEN=<tu token>
-TELEGRAM_WEBHOOK_SECRET=<obligatorio en producción si configurás el bot>
+TELEGRAM_WEBHOOK_SECRET=<obligatorio en producción si configuras el bot>
 ```
 
 > El backend valida estos valores al arrancar y rechaza secrets cortos o
@@ -73,7 +73,7 @@ contraseña en su primer login.
 
 - Las contraseñas no se documentan ni se commitean.
 - El seed jamás reutiliza un valor "default": cada ejecución regenera secrets.
-- Si necesitás un valor común para entornos de prueba, exportá `INITIAL_PASSWORD`
+- Si necesitas un valor común para entornos de prueba, exporta `INITIAL_PASSWORD`
   antes de correr el seed (no usar en producción).
 
 ### Notas de seguridad

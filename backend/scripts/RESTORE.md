@@ -9,7 +9,7 @@ Retención: **30 días**.
 
 1. Ir a https://github.com/maosbike/crmaosbike/actions/workflows/db-backup.yml
 2. Click en el run del día que quieres recuperar.
-3. Scrolleá abajo a **Artifacts** y descargá el zip (`crmaosbike-db-YYYYMMDD_HHMMSS`).
+3. Scrollea abajo a **Artifacts** y descarga el zip (`crmaosbike-db-YYYYMMDD_HHMMSS`).
 4. Descomprimirlo. Adentro hay un archivo `.dump` (formato custom de Postgres).
 
 ## 2. Decidir adónde restaurar
@@ -45,7 +45,7 @@ Retención: **30 días**.
 Si solo quieres recuperar, por ejemplo, una venta que se borró:
 
 1. Restaurá el dump a una DB local (Opción A arriba).
-2. Conectate con `psql` y exportá la fila que necesitas:
+2. Conéctate con `psql` y exporta la fila que necesitas:
    ```bash
    pg_dump --data-only --table=inventory \
      --where="id=12345" \
@@ -59,7 +59,7 @@ Si solo quieres recuperar, por ejemplo, una venta que se borró:
 
 - El dump está en formato `custom` (`-Fc`), no es texto plano. Para abrirlo con tu editor primero conviértelo: `pg_restore --file=dump.sql --no-owner --no-acl tu_archivo.dump`.
 - El cliente `pg_restore` tiene que ser de versión **igual o mayor** a la del servidor Postgres. Railway corre 16.x, así que instalá `postgresql-client-16` o superior.
-- `--jobs=4` paraleliza la restauración (más rápido). Bajalo a 1 si tenés problemas de memoria.
+- `--jobs=4` paraleliza la restauración (más rápido). Bájalo a 1 si tienes problemas de memoria.
 - Los backups NO incluyen archivos subidos a Cloudinary (fotos de motos, documentos). Esos viven en Cloudinary aparte y tienen su propia retención.
 
 ## Disparar un backup manual
@@ -67,4 +67,4 @@ Si solo quieres recuperar, por ejemplo, una venta que se borró:
 Para un backup ad-hoc (antes de una migración riesgosa, por ejemplo):
 
 1. GitHub → Actions → "DB Backup (Postgres → GitHub Artifacts)" → **Run workflow** → branch `main` → Run.
-2. Espera ~1-2 min, descargá el artifact.
+2. Espera ~1-2 min, descarga el artifact.

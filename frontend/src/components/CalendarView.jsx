@@ -398,7 +398,7 @@ export function CalendarView({user,nav}){
       {/* Confirmar eliminación */}
       {delConfirm&&(
         <Modal onClose={()=>setDelConfirm(false)} title="Eliminar evento">
-          <p style={{marginBottom:20,color:'var(--text-body)',fontSize:13}}>¿Seguro que querés eliminar este evento? La acción no se puede deshacer.</p>
+          <p style={{marginBottom:20,color:'var(--text-body)',fontSize:13}}>¿Seguro que quieres eliminar este evento? La acción no se puede deshacer.</p>
           <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button onClick={()=>setDelConfirm(false)} style={S.btn2}>Cancelar</button>
             <button onClick={handleDelete} style={{...S.btn,background:'#EF4444'}}>Eliminar</button>

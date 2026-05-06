@@ -123,7 +123,7 @@ const COMBINED_FROM = `(
   ) mm_txt ON mm.id IS NULL
   -- Última factura emitida vinculada a esta unidad. Trae dirección,
   -- comuna y giro del cliente para que el form de edición pueda
-  -- auto-completar sin pedir retipear.
+  -- auto-completar sin pedir reescribir.
   LEFT JOIN LATERAL (
     SELECT cliente_direccion, cliente_comuna, cliente_giro, folio, pdf_url
       FROM invoices
@@ -378,7 +378,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // ─── POST /api/sales ──────────────────────────────────────────────────────────
 // Siempre inserta en sales_notes — nunca crea filas en inventory.
-// Para vincular una unidad real usá POST /inventory/:id/sell.
+// Para vincular una unidad real usa POST /inventory/:id/sell.
 router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), async (req, res) => {
   try {
     const {
@@ -428,7 +428,7 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
       if (req.user.role === 'vendedor' &&
           t.seller_id !== req.user.id &&
           t.assigned_to !== req.user.id) {
-        return res.status(403).json({ error: 'No podés vincular una venta a un ticket que no te pertenece' });
+        return res.status(403).json({ error: 'No puedes vincular una venta a un ticket que no te pertenece' });
       }
     }
 

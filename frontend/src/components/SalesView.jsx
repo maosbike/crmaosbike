@@ -26,7 +26,7 @@ function chargeAmtFor(chargeType, motoPrice) {
 }
 
 // Foto del modelo: si la venta tiene color y el catálogo tiene una foto
-// específica para ese color (color_photos), usá esa. Si no, fallback a
+// específica para ese color (color_photos), usa esa. Si no, fallback a
 // image_url del modelo. Sin esto, todas las motos del mismo modelo
 // muestran la misma foto sin importar el color real de la unidad.
 function saleImage(s) {
@@ -1442,10 +1442,10 @@ function LinkInvoiceModal({ sale, onClose, onLinked }) {
     <Modal onClose={onClose} title="Vincular factura existente" wide>
       <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
         <div style={{ fontSize:12, color:'var(--text-subtle)', lineHeight:1.45 }}>
-          Buscá la factura por folio, RUT, nombre del cliente o chasis. Por
+          Busca la factura por folio, RUT, nombre del cliente o chasis. Por
           defecto se muestran las que están <strong>Sin vincular</strong> y
-          <strong> Revisar</strong>; si necesitás re-vincular una factura ya
-          asociada a otra venta, cambiá a <em>Todas</em>.
+          <strong> Revisar</strong>; si necesitas re-vincular una factura ya
+          asociada a otra venta, cambia a <em>Todas</em>.
         </div>
 
         {/* Pills de scope */}
@@ -1542,7 +1542,7 @@ function LinkInvoiceModal({ sale, onClose, onLinked }) {
           <Modal onClose={() => setShowConfirm(null)} title="¿Re-vincular factura?">
             <div style={{ fontSize:13, lineHeight:1.5, marginBottom:14 }}>
               La factura <strong>#{showConfirm.folio || showConfirm.id}</strong> ya
-              está vinculada a otra venta. Si confirmás, se reasignará a esta
+              está vinculada a otra venta. Si confirmas, se reasignará a esta
               venta y la otra quedará sin factura adjunta.
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
@@ -2173,7 +2173,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     // Edición: hidratar TODO desde el sale existente.
     // Si la unidad ya tiene factura electrónica vinculada (inv_cliente_*),
     // usamos esos datos como fallback para dirección/comuna — así la
-    // vendedora no tiene que retipear lo que ya está en la factura SII.
+    // vendedora no tiene que reescribir lo que ya está en la factura SII.
     if (editSale) {
       const invAddr   = editSale.inv_cliente_direccion || '';
       const invComuna = editSale.inv_cliente_comuna    || '';
@@ -2385,7 +2385,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
       if (payMode === 'Mixto') {
         const validLines = (payLines || []).filter(l => l.method && Number(l.amount) > 0);
         if (validLines.length < 1) {
-          setErr('En pago mixto agregá al menos una línea con método y monto'); return;
+          setErr('En pago mixto agrega al menos una línea con método y monto'); return;
         }
       }
       if (!['inscripcion','completa','transferencia','sin_detalle'].includes(chargeType)) {
@@ -2403,7 +2403,7 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     // (doc_factura_cli o accounting_invoice_id), saltamos la validación
     // estricta: la factura electrónica ya tiene nombre, RUT, dirección,
     // comuna y giro del cliente, así que no tiene sentido forzar a la
-    // vendedora a retipearlos para editar.
+    // vendedora a reescribirlos para editar.
     const yaTieneFactura = !!(editSale && (editSale.doc_factura_cli || editSale.accounting_invoice_id));
     const isEmpresaCli = form.client_type === 'empresa';
     if (!yaTieneFactura) {

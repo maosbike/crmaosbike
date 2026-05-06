@@ -30,11 +30,11 @@ REGLAS:
 - invoice_number — folio de la factura (ej "393014").
 - invoice_date — YYYY-MM-DD.
 - total_amount, neto, iva — enteros sin decimales en pesos chilenos. IVA es el monto, NO el 19%.
-- Para motos: motor_num, chassis, color, commercial_year, model, brand. Buscá los anchors "MARCA :", "COD.MODELO :", "N DE CHASIS :", "N MOTOR :", "ANO COMERCIAL :", "COLOR :".
-- model: preferí el COD.MODELO si existe (ej "YZF-R3A") sobre el descriptivo.
-- internal_code: el código interno del distribuidor que identifica el producto (suele ser la primera columna del detalle, ej "INT1-0300YZFR3A26A"). Si no existe, usá el mismo del model.
+- Para motos: motor_num, chassis, color, commercial_year, model, brand. Busca los anchors "MARCA :", "COD.MODELO :", "N DE CHASIS :", "N MOTOR :", "ANO COMERCIAL :", "COLOR :".
+- model: prefiere el COD.MODELO si existe (ej "YZF-R3A") sobre el descriptivo.
+- internal_code: el código interno del distribuidor que identifica el producto (suele ser la primera columna del detalle, ej "INT1-0300YZFR3A26A"). Si no existe, usa el mismo del model.
 - description: 1 frase sobre QUÉ se facturó (motocicleta + marca + modelo + año, o servicio/repuesto).
-- Si no es una moto (es repuesto, accesorio, servicio), dejá motor_num/chassis/color/commercial_year/model/brand en null.
+- Si no es una moto (es repuesto, accesorio, servicio), deja motor_num/chassis/color/commercial_year/model/brand en null.
 
 NO inventes. Si un dato no está, devolvé null.`;
 
@@ -118,7 +118,7 @@ REGLAS:
 - payer_name — quién hizo el pago (debería ser Maosbike o similar).
 - invoice_ref — número de factura referenciada en el comprobante (ej "N. Factura: 389.242" → "389242").
 - payment_method — "Transferencia", "Cheque", "Efectivo", o null.
-- detail_lines — si el comprobante paga MÚLTIPLES facturas en una sola transacción (típico Yamaha/Banco de Chile), array con una entrada por factura: { invoice_number, due_date, amount }. Si paga una sola factura, dejá array vacío.
+- detail_lines — si el comprobante paga MÚLTIPLES facturas en una sola transacción (típico Yamaha/Banco de Chile), array con una entrada por factura: { invoice_number, due_date, amount }. Si paga una sola factura, deja array vacío.
 
 NO inventes. null si no aparece.`;
 

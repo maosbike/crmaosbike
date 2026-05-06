@@ -2,7 +2,7 @@
 
 > Setup mínimo con Playwright para detectar diferencias visuales entre cambios.
 > Los tests se corren **localmente** con tu stack funcionando. Los resultados
-> (screenshots baseline, diffs cuando algo cambia) los podés compartir con
+> (screenshots baseline, diffs cuando algo cambia) los puedes compartir con
 > Claude para que vea el impacto visual de un refactor.
 
 ## Qué resuelve
@@ -22,8 +22,8 @@ Desde la carpeta `frontend/`:
 npm run visual:install
 ```
 
-Configurá credenciales en `frontend/.env.local` (archivo no versionado) o
-exportá en tu shell antes de correr:
+Configura credenciales en `frontend/.env.local` (archivo no versionado) o
+exporta en tu shell antes de correr:
 
 ```bash
 export E2E_BASE_URL=http://localhost:5173
@@ -40,7 +40,7 @@ export E2E_USER_PASSWORD=maosbike2024
 ### 1. Levantar stack local (3 terminales)
 
 ```bash
-# Terminal 1 — DB (si usás pg local) o asegurate que DATABASE_URL apunte a algo vivo.
+# Terminal 1 — DB (si usas pg local) o asegúrate que DATABASE_URL apunte a algo vivo.
 
 # Terminal 2 — backend
 cd backend && npm run dev
@@ -59,7 +59,7 @@ npm run visual:update
 Esto corre todos los tests y **guarda** los screenshots actuales como la
 referencia. Los PNG se versionan en `tests/visual/**/__snapshots__/`.
 
-Commiteá los snapshots como parte del diseño acordado:
+Commitea los snapshots como parte del diseño acordado:
 
 ```bash
 git add frontend/tests/visual/
@@ -83,13 +83,13 @@ npm run visual:report
 ```
 
 Abre un HTML con cada test, pixel-diff resaltado, baseline vs actual
-lado a lado. Esto es lo que podés compartir con Claude (el HTML o los
+lado a lado. Esto es lo que puedes compartir con Claude (el HTML o los
 PNG de `test-results/`) para que decida si el cambio es una regresión
 real o si el nuevo estado es el deseado.
 
 ### 5. Aprobar un cambio visual intencional
 
-Si mirás el diff y confirmás que el nuevo estado es correcto:
+Si miras el diff y confirmas que el nuevo estado es correcto:
 
 ```bash
 npm run visual:update
@@ -121,11 +121,11 @@ Se corre en 2 proyectos:
 - `desktop-chromium` (viewport 1440×900)
 - `mobile-chromium` (Pixel 7)
 
-Si querés agregar tablet, edita `playwright.config.js` → `projects`.
+Si quieres agregar tablet, edita `playwright.config.js` → `projects`.
 
 ## Buenas prácticas
 
-### Estabilizá antes de capturar
+### Estabiliza antes de capturar
 
 `helpers.js` exporta `stabilize(page)` que:
 - Espera a `document.fonts.ready`.
@@ -133,18 +133,18 @@ Si querés agregar tablet, edita `playwright.config.js` → `projects`.
 - Deshabilita animaciones/transiciones CSS.
 - Oculta `caret-color` (el cursor de inputs es aleatorio).
 
-Llamalo antes de `expect(page).toHaveScreenshot(...)`.
+Llámalo antes de `expect(page).toHaveScreenshot(...)`.
 
-### Escondé contenido volátil
+### Esconde contenido volátil
 
 Si hay un timestamp "hace 3 minutos" o un número que cambia por corrida,
-agregá `data-visual-hide` al elemento y `helpers.js` ya lo oculta
+agrega `data-visual-hide` al elemento y `helpers.js` ya lo oculta
 automáticamente.
 
 ### Navegación entre pages
 
 Los tests de `auth.spec.js` navegan con `getByRole('button', { name: /.../i })`.
-Si tu nav cambia (ej: migrás `BottomNav` o renombrás un label), vas a tener
+Si tu nav cambia (ej: migras `BottomNav` o renombras un label), vas a tener
 que actualizar los selectors.
 
 ### Determinismo
@@ -152,7 +152,7 @@ que actualizar los selectors.
 Si un test es flaky (falla a veces), el problema suele ser:
 1. Falta `stabilize(page)` antes del screenshot.
 2. Hay data real-time (notificaciones, chat) que llega asíncrona.
-3. El viewport cambia sutil entre corridas (verificá que `viewport` esté fijo).
+3. El viewport cambia sutil entre corridas (verifica que `viewport` esté fijo).
 
 Como último recurso, subir `maxDiffPixelRatio` en `playwright.config.js`
 (actualmente 0.01 = 1%).
@@ -180,18 +180,18 @@ test('ticket modal con formulario abierto', async ({ page }) => {
 
 ## Qué compartir con Claude si hay regresión
 
-Cuando un test falla y querés que Claude diagnostique:
+Cuando un test falla y quieres que Claude diagnostique:
 
-1. Abrí el `playwright-report/` y encontrá el test que falló.
-2. Descargá o pegá las 3 imágenes que muestra: **expected**, **actual**, **diff**.
-3. Compartí el path del archivo de screenshot + las 3 PNG.
+1. Abre el `playwright-report/` y encuentra el test que falló.
+2. Descarga o pega las 3 imágenes que muestra: **expected**, **actual**, **diff**.
+3. Comparte el path del archivo de screenshot + las 3 PNG.
 
 Claude puede leer las imágenes y decirte si el cambio es pretendido (ajustar
 baseline) o una regresión (revertir).
 
 ## Limitaciones conocidas
 
-- **No se ejecuta en CI automáticamente.** Es un setup local. Si querés
+- **No se ejecuta en CI automáticamente.** Es un setup local. Si quieres
   automatizarlo en Railway o GitHub Actions hay que montar backend + DB en
   el runner, lo que no está incluido en este setup.
 - **No testea flujos largos** (multi-página con estado preservado). Un

@@ -397,7 +397,7 @@ function InvoiceCard({ inv, onOpen }) {
                 overflow:'hidden', textOverflow:'ellipsis',
                 display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
               }}>
-                {inv.descripcion || 'Sin descripción extraída — abrí el PDF'}
+                {inv.descripcion || 'Sin descripción extraída — abre el PDF'}
               </div>
             )}
 
@@ -574,7 +574,7 @@ function InvoiceCard({ inv, onOpen }) {
             overflow:'hidden', textOverflow:'ellipsis',
             display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
           }}>
-            {inv.descripcion || 'Sin descripción extraída — abrí el PDF'}
+            {inv.descripcion || 'Sin descripción extraída — abre el PDF'}
           </div>
         )}
 

@@ -579,7 +579,7 @@ router.post('/test-claude', roleCheck('super_admin', 'admin_comercial', 'backoff
     return res.status(503).json({ ok: false, stage: 'config', error: 'ANTHROPIC_API_KEY no configurada' });
   }
   // Usar el mismo folder ID hardcoded que ya usa /sync-drive (ver más abajo).
-  // Si querés override, podés setear SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID
+  // Si quieres override, puedes setear SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID
   // como env var; si no, cae al ID conocido.
   const FOLDER_FACTURAS = process.env.SUPPLIER_PAYMENTS_FACTURAS_FOLDER_ID
     || '17IVqwsdoFTCpURC_eagy0qC2I_6DtpRr';

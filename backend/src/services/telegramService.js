@@ -271,7 +271,7 @@ async function handleUpdate(update) {
     // Cualquier otro mensaje → guiar al usuario
     await sendMessage(
       chatId,
-      `Vendedores: usá /start para vincularte y recibir avisos de leads.\nAdmins y backoffice: usá /admin para recibir avisos de ventas y reservas. 🏍️`
+      `Vendedores: usa /start para vincularte y recibir avisos de leads.\nAdmins y backoffice: usa /admin para recibir avisos de ventas y reservas. 🏍️`
     );
     return;
   }

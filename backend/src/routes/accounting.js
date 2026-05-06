@@ -395,7 +395,7 @@ function extractEmitida(text, fileName = '') {
         }
       }
 
-      // (2) Fallback al colapsado: en "COMUNA: SAN X Y Z…" tomá el primer X
+      // (2) Fallback al colapsado: en "COMUNA: SAN X Y Z…" toma el primer X
       //     que no sea un label conocido.
       if (!fixed) {
         const mCol = t.match(new RegExp(`COMUNA\\s*[:\\.]?\\s*${prefix}\\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ]{2,30})`, 'i'));
