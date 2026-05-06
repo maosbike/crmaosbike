@@ -510,10 +510,12 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     if (!unitRows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
     const unit = unitRows[0];
     if (unit.status === 'vendida') return res.status(409).json({ error: 'La unidad ya está registrada como vendida' });
-    // Vendedor: solo puede vender unidades de su sucursal.
-    if (req.user.role === 'vendedor' && unit.branch_id && unit.branch_id !== req.user.branch_id) {
-      return res.status(403).json({ error: 'No puedes vender unidades de otra sucursal.' });
-    }
+    // Cualquier vendedor puede vender una unidad sin importar la sucursal
+    // donde esté almacenada. Las motos se mueven entre tiendas y a veces el
+    // cliente que cierra está en una sucursal distinta a la del stock.
+    // Trazabilidad: sold_by guarda el vendedor real, la unidad conserva su
+    // branch_id original (la moto sale del inventario de esa tienda), y la
+    // venta queda visible para super_admin/admin_comercial.
     // Si se vincula un ticket, vendedor debe ser dueño del ticket.
     if (ticket_id && req.user.role === 'vendedor') {
       const { rows: tk } = await db.query(
