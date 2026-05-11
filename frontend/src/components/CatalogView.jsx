@@ -1059,6 +1059,112 @@ function BrandCategoriesPanel({brand,cats,onClose,onSaved}){
   );
 }
 
+/* ── BulkAssignCategoryModal: asignar categoría en bloque a modelos sin clasificar ── */
+function BulkAssignCategoryModal({brand,uncategorized,allCategories,defaultCategory,onClose,onAssigned}){
+  const [category,setCategory]=useState(defaultCategory||"");
+  const [selectedIds,setSelectedIds]=useState(()=>new Set(uncategorized.map(m=>m.id)));
+  const [saving,setSaving]=useState(false);
+  const [errMsg,setErrMsg]=useState('');
+  const [progress,setProgress]=useState(null);
+
+  const toggleOne=(id)=>{
+    setSelectedIds(prev=>{
+      const next=new Set(prev);
+      if(next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allSelected=selectedIds.size===uncategorized.length&&uncategorized.length>0;
+  const toggleAll=()=>{
+    setSelectedIds(allSelected?new Set():new Set(uncategorized.map(m=>m.id)));
+  };
+
+  const handleSubmit=async(e)=>{
+    e.preventDefault();
+    if(!category.trim()){setErrMsg("Elige una categoría");return;}
+    if(selectedIds.size===0){setErrMsg("Selecciona al menos un modelo");return;}
+    setSaving(true); setErrMsg('');
+    const ids=[...selectedIds];
+    const updated=[];
+    const errors=[];
+    setProgress({done:0,total:ids.length});
+    // En lotes de 5 paralelos para no saturar (40 modelos × ~80ms ≈ 1s real).
+    const BATCH=5;
+    for(let i=0;i<ids.length;i+=BATCH){
+      const chunk=ids.slice(i,i+BATCH);
+      const results=await Promise.allSettled(chunk.map(id=>api.updateModel(id,{category:category.trim()})));
+      results.forEach((r,j)=>{
+        if(r.status==='fulfilled') updated.push(r.value);
+        else errors.push({id:chunk[j],error:r.reason?.message||'error'});
+      });
+      setProgress({done:Math.min(i+BATCH,ids.length),total:ids.length});
+    }
+    setSaving(false);
+    if(errors.length){
+      setErrMsg(`Se actualizaron ${updated.length} de ${ids.length}. ${errors.length} fallaron.`);
+    }
+    onAssigned(updated);
+    if(!errors.length) onClose();
+  };
+
+  return(
+    <div onClick={e=>{if(e.target===e.currentTarget&&!saving)onClose();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"var(--surface)",borderRadius:'var(--radius-xl)',width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto",border:"1px solid var(--border)"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:15}}>Asignar categoría — {brand}</div>
+            <div style={{fontSize:11,color:"var(--text-subtle)",marginTop:2}}>{uncategorized.length} modelo{uncategorized.length!==1?'s':''} sin clasificar</div>
+          </div>
+          <button onClick={onClose} disabled={saving} style={{background:"none",border:"none",color:"var(--text-subtle)",cursor:saving?"not-allowed":"pointer",fontSize:20,lineHeight:1}}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={{padding:20}}>
+          <div style={{marginBottom:14}}>
+            <label style={S.lbl}>Categoría a asignar</label>
+            <CategoryCombo value={category} onChange={setCategory} allCategories={allCategories||[]} style={{...S.inp,width:"100%",boxSizing:"border-box"}} listId="bulk-assign-cat"/>
+            <div style={{fontSize:11,color:"var(--text-disabled)",marginTop:4}}>Escribe una nueva o elige una existente.</div>
+          </div>
+
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <label style={{...S.lbl,marginBottom:0}}>Modelos ({selectedIds.size} de {uncategorized.length} seleccionados)</label>
+            <button type="button" onClick={toggleAll} style={{background:"none",border:"none",color:"var(--brand)",cursor:"pointer",fontSize:12,fontWeight:700,padding:"4px 8px",fontFamily:"inherit"}}>
+              {allSelected?"Deseleccionar todos":"Seleccionar todos"}
+            </button>
+          </div>
+          <div style={{border:"1px solid var(--border)",borderRadius:'var(--radius-md)',maxHeight:300,overflowY:"auto",background:"var(--surface-sunken)"}}>
+            {uncategorized.map(m=>{
+              const checked=selectedIds.has(m.id);
+              return(
+                <label key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:"1px solid var(--border)",cursor:"pointer",background:checked?"rgba(242,129,0,0.06)":"transparent"}}>
+                  <input type="checkbox" checked={checked} onChange={()=>toggleOne(m.id)} disabled={saving}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"var(--text)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                      {m.commercial_name||m.model}
+                    </div>
+                    {m.commercial_name&&m.commercial_name!==m.model&&(
+                      <div style={{fontSize:11,color:"var(--text-disabled)"}}>{m.model}</div>
+                    )}
+                  </div>
+                  {m.year&&<span style={{fontSize:11,color:"var(--text-disabled)"}}>{m.year}</span>}
+                </label>
+              );
+            })}
+          </div>
+
+          {errMsg&&<div style={{color:"#DC2626",fontSize:12,marginTop:10,fontWeight:600}}>{errMsg}</div>}
+          {progress&&<div style={{fontSize:12,color:"var(--text-subtle)",marginTop:10}}>Asignando… {progress.done}/{progress.total}</div>}
+
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+            <Btn variant="secondary" type="button" onClick={onClose} disabled={saving}>Cancelar</Btn>
+            <Btn variant="primary" type="submit" disabled={saving||!category.trim()||selectedIds.size===0}>
+              {saving?`Asignando ${progress?.done||0}/${progress?.total||0}…`:`Asignar a ${selectedIds.size} modelo${selectedIds.size!==1?'s':''}`}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function CatalogView({user}){
   const[models,setModels]=useState([]);
   const[brandsMeta,setBrandsMeta]=useState([]);              // [{name, logo_url, model_count}]
@@ -1068,6 +1174,7 @@ export function CatalogView({user}){
   const[showAdd,setShowAdd]=useState(false);
   const[showManageCats,setShowManageCats]=useState(false);
   const[showBrandCats,setShowBrandCats]=useState(false);
+  const[showBulkAssign,setShowBulkAssign]=useState(false);
   const[successMsg,setSuccessMsg]=useState('');
   // Navegación: null = vista marcas, string = marca activa
   const[activeBrand,setActiveBrand]=useState(null);
@@ -1222,6 +1329,12 @@ export function CatalogView({user}){
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <span style={{fontSize:12,color:"var(--text-disabled)"}}>{(activeCat==="__sin_categoria"?uncategorized:shownModels).length} modelo{(activeCat==="__sin_categoria"?uncategorized:shownModels).length!==1?"s":""}</span>
           {canEdit&&<button onClick={()=>setShowBrandCats(v=>!v)} style={{...S.btn2,fontSize:12,padding:"6px 14px"}}>Categorías</button>}
+          {canEdit&&uncategorized.length>0&&(
+            <button onClick={()=>setShowBulkAssign(true)} style={{...S.btn2,fontSize:12,padding:"6px 14px",borderColor:'var(--brand)',color:'var(--brand)',fontWeight:700}}
+              title="Asignar categoría a los modelos que no tienen una">
+              Asignar categoría ({uncategorized.length})
+            </button>
+          )}
           {canEdit&&<button onClick={()=>setShowAdd(true)} style={{...S.btn,fontSize:12,padding:"7px 16px"}}>+ Agregar moto</button>}
         </div>
       </div>
@@ -1271,6 +1384,25 @@ export function CatalogView({user}){
       })()}
 
       {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={brandCatsForChildren.length?brandCatsForChildren:allCategories} defaultBrand={activeBrand}/>}
+      {showBulkAssign&&(
+        <BulkAssignCategoryModal
+          brand={activeBrand}
+          uncategorized={uncategorized}
+          allCategories={brandCatsForChildren.length?brandCatsForChildren:allCategories}
+          defaultCategory={activeCat&&activeCat!=="__sin_categoria"?activeCat:""}
+          onClose={()=>setShowBulkAssign(false)}
+          onAssigned={(updatedList)=>{
+            // updatedList = array de modelos actualizados (vienen del PATCH).
+            // Reemplazamos uno por uno en el state local, sin re-fetch.
+            if(updatedList&&updatedList.length){
+              setModels(ms=>ms.map(m=>{
+                const u=updatedList.find(x=>x.id===m.id);
+                return u||m;
+              }));
+            }
+          }}
+        />
+      )}
       {selected&&<ModelDetailModal model={selected} canEdit={canEdit} canDelete={canDelete} onClose={()=>setSelected(null)} onSaved={onSaved} onDeleted={onDeleted} allCategories={brandCatsForChildren.length?brandCatsForChildren:allCategories}/>}
     </div>
   );
