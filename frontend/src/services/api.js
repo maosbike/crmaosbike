@@ -276,7 +276,6 @@ export const api = {
   importConfirm: (data)   => request('POST', '/import/confirm', data),
   getImportLogs: ()       => request('GET',  '/import/logs'),
   getImportTemplate: ()   => `${BASE}/import/template`,
-  relinkLeadModels: ()    => request('POST', '/import/relink-models'),
 
   // Model aliases
   getAliases:    ()     => request('GET',    '/catalog/aliases'),
@@ -330,10 +329,6 @@ export const api = {
   deleteAccounting: (id) => request('DELETE', `/accounting/${id}`),
   syncAccountingFromDrive: () => request('POST', '/accounting/sync-drive'),
   syncAccountingRecibidasFromDrive: () => request('POST', '/accounting/sync-drive-recibidas'),
-  testClaudeParser: (data) => request('POST', '/accounting/test-claude-parser', data || {}),
-  testClaudeEmitida: (data) => request('POST', '/accounting/test-claude-emitida', data || {}),
-  testClaudeSupplierPayment: (data) => request('POST', '/supplier-payments/test-claude', data || {}),
-  relinkAccounting: () => request('POST', '/accounting/relink'),
 
   // Días libres (time-off)
   getTimeOff:      (params) => request('GET',    `/time-off?${new URLSearchParams(params || {})}`),
