@@ -1165,6 +1165,7 @@ export function AccountingView() {
   const [tab, setTab]           = useState('facturas');
   const [q, setQ]               = useState('');
   const [linkStatus, setLinkStatus] = useState('');
+  const [sortBy, setSortBy]     = useState('recent');
   const [page, setPage]         = useState(1);
   // Origen del documento: emitidas (Maosbike → cliente) vs recibidas
   // (proveedor → Maosbike). Cada origen tiene su propio Drive de sync.
@@ -1200,6 +1201,7 @@ export function AccountingView() {
       if (source === 'recibida' && recCategory) params.category = recCategory;
       if (q)          params.q = q;
       if (linkStatus) params.link_status = linkStatus;
+      if (sortBy && sortBy !== 'recent') params.sort = sortBy;
       const r = await api.getAccounting(params);
       setData(r.data || []);
       setTotal(r.total || 0);
@@ -1208,7 +1210,7 @@ export function AccountingView() {
     } finally {
       setLoading(false);
     }
-  }, [tab, q, linkStatus, desde, hasta, page, source, recCategory]);
+  }, [tab, q, linkStatus, sortBy, desde, hasta, page, source, recCategory]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadStats(); }, [loadStats]);
@@ -1237,7 +1239,7 @@ export function AccountingView() {
   }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
       <ViewHeader
         title="Contabilidad"
         subtitle={ymLabel(ym)}
@@ -1402,6 +1404,17 @@ export function AccountingView() {
           onChange={e => { setQ(e.target.value); setPage(1); }}
           style={{ ...S.inp, flex: 1, minWidth: 180, height: 36, fontSize: 13 }}
         />
+        <select
+          value={sortBy}
+          onChange={e => { setSortBy(e.target.value); setPage(1); }}
+          title="Ordenar resultados"
+          style={{ ...S.inp, height: 36, fontSize: 13, padding: '0 10px', cursor: 'pointer', minWidth: 170 }}>
+          <option value="recent">Más recientes</option>
+          <option value="oldest">Más antiguas</option>
+          <option value="price_desc">Monto: mayor a menor</option>
+          <option value="price_asc">Monto: menor a mayor</option>
+          <option value="cliente">{source === 'emitida' ? 'Cliente A → Z' : 'Proveedor A → Z'}</option>
+        </select>
         {/* Pills de estado de vinculación — colores idénticos al chip de la
             tarjeta para reconocimiento visual instantáneo */}
         {(() => {
