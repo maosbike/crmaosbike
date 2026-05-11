@@ -1026,6 +1026,7 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
       desde,
       hasta,
       q,       // búsqueda por folio / rut / nombre
+      sort,    // 'recent' (default) | 'oldest' | 'price_desc' | 'price_asc' | 'cliente'
       page = 1,
       limit = 50,
     } = req.query;
@@ -1131,7 +1132,13 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
           LIMIT 1
        ) mm_txt ON mm_own.id IS NULL AND mm_inv.id IS NULL AND mm_sn.id IS NULL
        ${where}
-       ORDER BY i.fecha_emision DESC NULLS LAST, i.created_at DESC
+       ORDER BY ${
+         sort === 'oldest'     ? 'i.fecha_emision ASC NULLS LAST, i.created_at ASC'
+         : sort === 'price_desc' ? 'i.total DESC NULLS LAST, i.fecha_emision DESC NULLS LAST'
+         : sort === 'price_asc'  ? 'i.total ASC NULLS LAST, i.fecha_emision DESC NULLS LAST'
+         : sort === 'cliente'    ? 'COALESCE(i.cliente_nombre, i.emisor_nombre) ASC NULLS LAST, i.fecha_emision DESC NULLS LAST'
+         : 'i.fecha_emision DESC NULLS LAST, i.created_at DESC'
+       }
        LIMIT $${idx} OFFSET $${idx+1}`,
       [...params, parseInt(limit), off]
     );
