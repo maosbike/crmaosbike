@@ -60,7 +60,7 @@ async function resolveModel(brand, model) {
 router.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Se requiere un archivo PDF' });
   try {
-    const safeName = sanitizeFilename(safeName, 'precios.pdf');
+    const safeName = sanitizeFilename(req.file.originalname, 'precios.pdf');
     // Validación de magic bytes — defensa adicional contra archivos renombrados.
     if (!req.file.buffer || req.file.buffer.slice(0, 4).toString() !== '%PDF') {
       return res.status(400).json({ error: 'El archivo no parece un PDF válido' });
