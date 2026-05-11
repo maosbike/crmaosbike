@@ -28,6 +28,28 @@ function fd(s) {
   const [y,m,d] = String(s).slice(0,10).split('-');
   return (!y||!m||!d) ? '-' : `${d}-${m}-${y}`;
 }
+// Helpers de mes (YYYY-MM) — patrón espejado de AccountingView para que el
+// usuario vea totales por mes con prev/next, y "Todo" para desactivar.
+const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function ymLabel(ym) {
+  if (!ym) return '—';
+  const [y,m] = String(ym).split('-');
+  return `${MESES_FULL[parseInt(m)-1] || ''} ${y}`;
+}
+function currentYM() { return new Date().toISOString().slice(0,7); }
+function shiftYM(ym, delta) {
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function ymRange(ym) {
+  const [y,m] = ym.split('-').map(Number);
+  const first = `${y}-${String(m).padStart(2,'0')}-01`;
+  const last  = new Date(y, m, 0); // último día del mes
+  const lastStr = `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`;
+  return { from: first, to: lastStr };
+}
+
 function due(p) {
   if (p.due_date) return p.due_date;
   if (!p.invoice_date) return null;
@@ -972,6 +994,12 @@ export function SupplierPaymentsView({ user }) {
   const [brF,setBrF]=useState('');
   const [sortBy,setSortBy]=useState('payment_date');
   const [sortDir,setSortDir]=useState('desc');
+  // Selector de mes: el usuario navega prev/next mes y ve todos los totales
+  // filtrados a ese mes. ymMode='all' desactiva el filtro de mes (ver todo).
+  // El filtro se aplica sobre payment_date (cuándo pagamos), no sobre
+  // invoice_date — el usuario pidió "total pagado por mes".
+  const [ym,setYm]=useState(currentYM());
+  const [ymMode,setYmMode]=useState('month'); // 'month' | 'all'
 
   // Mobile: expandir/contraer filtros
   const [filtersOpen,setFiltersOpen]=useState(false);
@@ -1024,6 +1052,15 @@ export function SupplierPaymentsView({ user }) {
       if (!pd) return false;
       if (payFromF && pd < payFromF) return false;
       if (payToF   && pd > payToF)   return false;
+    }
+    // Filtro de mes: se aplica sobre payment_date. Si no hay pago registrado,
+    // cae al invoice_date — así una factura sin pagar todavía aparece en el
+    // mes en que se emitió (vista útil para "qué debo pagar este mes").
+    if (ymMode === 'month' && ym) {
+      const { from, to } = ymRange(ym);
+      const ref = (p.payment_date || p.invoice_date || '').slice(0,10);
+      if (!ref) return false;
+      if (ref < from || ref > to) return false;
     }
     return true;
   });
@@ -1100,6 +1137,74 @@ export function SupplierPaymentsView({ user }) {
           <Btn variant='ghost' onClick={()=>setSyncRes(null)} style={{marginLeft:'auto',padding:4,lineHeight:1}}><Ic.x size={14}/></Btn>
         </div>
       )}
+
+      {/* ── Selector de mes ── */}
+      <div style={{
+        display:'flex', alignItems:'center', gap:10, marginBottom:14, flexWrap:'wrap',
+        background:'var(--surface)', border:'1px solid var(--border)',
+        borderRadius:'var(--radius-lg)', padding:'10px 14px',
+      }}>
+        <div style={{fontSize:10, fontWeight:700, color:'var(--text-disabled)', textTransform:'uppercase', letterSpacing:'0.07em', marginRight:4}}>
+          Período
+        </div>
+        <div style={{display:'flex', alignItems:'center', gap:4}}>
+          <button
+            onClick={()=>{setYm(shiftYM(ym,-1)); setYmMode('month');}}
+            disabled={ymMode!=='month'}
+            style={{
+              ...fc, width:32, height:32, padding:0,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              opacity: ymMode!=='month' ? 0.4 : 1,
+            }}
+            title="Mes anterior">
+            <span style={{fontSize:16, fontWeight:700, lineHeight:1}}>‹</span>
+          </button>
+          <div style={{
+            minWidth:120, textAlign:'center', fontSize:13, fontWeight:700,
+            color: ymMode==='month' ? 'var(--text)' : 'var(--text-disabled)',
+            padding:'0 8px',
+          }}>
+            {ymMode==='month' ? ymLabel(ym) : 'Todo'}
+          </div>
+          <button
+            onClick={()=>{setYm(shiftYM(ym,+1)); setYmMode('month');}}
+            disabled={ymMode!=='month'}
+            style={{
+              ...fc, width:32, height:32, padding:0,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              opacity: ymMode!=='month' ? 0.4 : 1,
+            }}
+            title="Mes siguiente">
+            <span style={{fontSize:16, fontWeight:700, lineHeight:1}}>›</span>
+          </button>
+        </div>
+        <button
+          onClick={()=>{setYm(currentYM()); setYmMode('month');}}
+          style={{
+            ...fc, height:32, fontSize:11, fontWeight:700,
+            background: ymMode==='month' && ym===currentYM() ? 'var(--brand)' : 'var(--surface)',
+            color: ymMode==='month' && ym===currentYM() ? 'var(--text-on-brand)' : 'var(--text-body)',
+            border: `1px solid ${ymMode==='month' && ym===currentYM() ? 'var(--brand)' : 'var(--border)'}`,
+          }}>
+          Este mes
+        </button>
+        <button
+          onClick={()=>setYmMode('all')}
+          style={{
+            ...fc, height:32, fontSize:11, fontWeight:700,
+            background: ymMode==='all' ? 'var(--text)' : 'var(--surface)',
+            color: ymMode==='all' ? 'var(--text-on-dark)' : 'var(--text-body)',
+            border: `1px solid ${ymMode==='all' ? 'var(--text)' : 'var(--border)'}`,
+          }}>
+          Todo
+        </button>
+        {ymMode==='month' && (
+          <div style={{marginLeft:'auto', fontSize:11, color:'var(--text-subtle)'}}>
+            Pagado en {ymLabel(ym)}: <strong style={{color:'#15803D'}}>{$short(sum.paid)}</strong>
+            {' · '}Facturado: <strong style={{color:'var(--text)'}}>{$short(sum.total)}</strong>
+          </div>
+        )}
+      </div>
 
       {/* ── KPI strip ── */}
       <div style={{
