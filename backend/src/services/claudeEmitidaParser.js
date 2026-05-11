@@ -46,8 +46,13 @@ TIPOS DE DOCUMENTO:
   · "ajuste" — corrige monto ("Corrige Monto")
 
 CATEGORÍA:
-- "motos" — la factura es por una motocicleta (tiene chasis, marca de moto, palabra MOTOCICLETA en el detalle)
-- "otras" — accesorios, servicios, refacturaciones que no son una unidad
+- "motos" — la factura es por una motocicleta completa (tiene chasis, marca de moto, palabra MOTOCICLETA en el detalle).
+- "servicios" — taller, mantención, reparación, mano de obra, diagnóstico, ajuste, scanner, lubricación. Sinónimos: "SERVICIO", "MANTENCION", "REPARACION", "MANO DE OBRA", "REVISION".
+- "accesorios" — cascos, guantes, chaquetas, antiparras, alforjas, parrillas, baúles, candados, indumentaria. Items que el cliente usa pero no son parte mecánica.
+- "repuestos" — piezas mecánicas o partes (filtros, aceite, pastillas de freno, cadenas, neumáticos, baterías, kits de arrastre, focos, espejos). Diferencia clave con accesorios: el repuesto va dentro de la moto.
+- "otras" — refacturaciones, descuentos especiales, anulaciones que no caen en lo anterior, o no se puede determinar.
+
+Si la factura mezcla varios tipos en el mismo documento, elige la categoría del item de mayor monto.
 
 CAMPOS OBLIGATORIOS:
 1. folio — número de factura/NC (ej "7621"). Suele estar arriba a la derecha bajo "FACTURA ELECTRONICA Nº" o "NOTA DE CREDITO Nº".
@@ -79,7 +84,7 @@ PARA NOTAS DE CRÉDITO:
 
 descripcion: 1-2 frases sobre QUÉ se vendió. Para motos algo como "Motocicleta Yamaha FZ-S 2026 negra". NO copies labels ni headers.
 
-Si un campo no aparece, devolvé null. NO inventes.`;
+Si un campo no aparece, devuelve null. NO inventes.`;
 
 const TOOL_DEF = {
   name: 'extract_emitida',
@@ -91,7 +96,7 @@ const TOOL_DEF = {
       folio:             { type: ['string','null'] },
       fecha_emision:     { type: ['string','null'], description: 'YYYY-MM-DD' },
       doc_type:          { type: 'string', enum: ['factura','nota_credito','nota_debito','boleta'] },
-      category:          { type: 'string', enum: ['motos','otras'] },
+      category:          { type: 'string', enum: ['motos','servicios','accesorios','repuestos','otras'] },
       rut_emisor:        { type: ['string','null'], description: 'RUT Maosbike: 76.405.840-2' },
       emisor_nombre:     { type: ['string','null'] },
       rut_cliente:       { type: ['string','null'] },

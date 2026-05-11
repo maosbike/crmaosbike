@@ -1039,15 +1039,35 @@ router.get('/', roleCheck(...ADMIN_ROLES), asyncHandler(async (req, res) => {
     // el vínculo.
     const hasMotoExpr = `(i.brand IS NOT NULL OR i.chassis IS NOT NULL OR i.inventory_id IS NOT NULL OR i.sale_note_id IS NOT NULL)`;
 
+    // Vistas para emitidas (source='emitida'):
+    //   facturas    → ventas de motos (factura no anulada con moto asociada)
+    //   servicios   → factura de taller/mantención/reparación (category='servicios')
+    //   accesorios  → cascos/indumentaria/repuestos (category IN accesorios/repuestos)
+    //   notas       → notas de crédito (doc_type='nota_credito')
+    //   anuladas    → facturas que tienen una NC de anulación encima
+    //   otras       → factura sin moto y sin categoría clara (refacturaciones, etc.)
     if (tab === 'facturas') {
       conds.push(`i.doc_type = 'factura'`);
       conds.push(`i.anulada_por_id IS NULL`);
       conds.push(hasMotoExpr);
+    } else if (tab === 'servicios') {
+      conds.push(`i.doc_type = 'factura'`);
+      conds.push(`i.anulada_por_id IS NULL`);
+      conds.push(`i.category = 'servicios'`);
+    } else if (tab === 'accesorios') {
+      conds.push(`i.doc_type = 'factura'`);
+      conds.push(`i.anulada_por_id IS NULL`);
+      conds.push(`i.category IN ('accesorios','repuestos')`);
     } else if (tab === 'notas') {
       conds.push(`i.doc_type = 'nota_credito'`);
+    } else if (tab === 'anuladas') {
+      conds.push(`i.doc_type = 'factura'`);
+      conds.push(`i.anulada_por_id IS NOT NULL`);
     } else if (tab === 'otras') {
       conds.push(`i.doc_type = 'factura'`);
-      conds.push(`(i.anulada_por_id IS NOT NULL OR NOT ${hasMotoExpr})`);
+      conds.push(`i.anulada_por_id IS NULL`);
+      conds.push(`NOT ${hasMotoExpr}`);
+      conds.push(`(i.category IS NULL OR i.category NOT IN ('servicios','accesorios','repuestos','motos'))`);
     } else {
       if (category) { conds.push(`i.category = $${idx++}`); params.push(category); }
       if (doc_type) { conds.push(`i.doc_type = $${idx++}`); params.push(doc_type); }

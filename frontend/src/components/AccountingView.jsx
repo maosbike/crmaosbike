@@ -276,7 +276,10 @@ function InvoiceCard({ inv, onOpen }) {
   const st       = invoiceStatus(inv);
   const isNC     = inv.doc_type === 'nota_credito';
   const isRecib  = inv.source === 'recibida';
-  const isMoto   = !isRecib || inv.category === 'motos';
+  const isAnulada = !!inv.anulada_por_id;
+  // isMoto controla si se muestra la foto del modelo. Confiamos en category
+  // cuando viene; si está NULL (data vieja sin clasificar), caemos a brand/chassis.
+  const isMoto   = inv.category === 'motos' || (!inv.category && (inv.brand || inv.chassis));
   const modelo   = [inv.brand, inv.model].filter(Boolean).join(' ');
   const folioLbl = isNC ? `NC ${inv.folio || '—'}` : (inv.folio || '—');
   const img      = isMoto ? motoImg(inv) : null;
@@ -287,15 +290,28 @@ function InvoiceCard({ inv, onOpen }) {
   const partyRut  = isRecib ? inv.rut_emisor    : inv.rut_cliente;
   const partyEmpty = isRecib ? 'Sin proveedor' : 'Sin cliente';
 
-  // Badge de categoría — sólo en recibidas, da contexto rápido del gasto.
+  // Badge de categoría — visible en ambos lados (recibidas y emitidas).
+  // Da contexto rápido del tipo de documento sin tener que abrir el PDF.
   const CAT_CFG = {
-    motos:     { l:'Motos',     bg:'#EEF2FF', c:'#4F46E5', bd:'#C7D2FE' },
-    partes:    { l:'Partes',    bg:'#ECFEFF', c:'#0E7490', bd:'#67E8F9' },
-    servicios: { l:'Servicios', bg:'#F5F3FF', c:'#6D28D9', bd:'#C4B5FD' },
-    municipal: { l:'Municipal', bg:'#FFF7ED', c:'#C2410C', bd:'#FDBA74' },
-    otros:     { l:'Otros',     bg:'var(--surface-muted)', c:'var(--text-subtle)', bd:'var(--border)' },
+    motos:      { l:'Motos',      bg:'#EEF2FF', c:'#4F46E5', bd:'#C7D2FE' },
+    partes:     { l:'Partes',     bg:'#ECFEFF', c:'#0E7490', bd:'#67E8F9' },
+    servicios:  { l:'Servicios',  bg:'#F5F3FF', c:'#6D28D9', bd:'#C4B5FD' },
+    accesorios: { l:'Accesorios', bg:'#FEF3C7', c:'#92400E', bd:'#FCD34D' },
+    repuestos:  { l:'Repuestos',  bg:'#ECFEFF', c:'#0E7490', bd:'#67E8F9' },
+    municipal:  { l:'Municipal',  bg:'#FFF7ED', c:'#C2410C', bd:'#FDBA74' },
+    otras:      { l:'Otras',      bg:'var(--surface-muted)', c:'var(--text-subtle)', bd:'var(--border)' },
+    otros:      { l:'Otros',      bg:'var(--surface-muted)', c:'var(--text-subtle)', bd:'var(--border)' },
   };
-  const catCfg = isRecib ? (CAT_CFG[inv.category] || CAT_CFG.otros) : null;
+  // Para emitidas mostramos badge sólo cuando NO es 'motos' (las ventas de
+  // moto ya se distinguen visualmente por la foto). Si es NC mostramos NC.
+  // Para recibidas mostramos siempre (igual que antes).
+  const catCfg = isNC
+    ? { l:'Nota crédito', bg:'#FEE2E2', c:'#991B1B', bd:'#FECACA' }
+    : isAnulada
+      ? { l:'Anulada', bg:'#F3F4F6', c:'#4B5563', bd:'#D1D5DB' }
+      : isRecib
+        ? (CAT_CFG[inv.category] || CAT_CFG.otros)
+        : (inv.category && inv.category !== 'motos' ? CAT_CFG[inv.category] : null);
 
   // ── Versión mobile: layout vertical compacto ───────────────────────────
   // El layout desktop (foto 220px + contenido + barra derecha 200px) no
@@ -959,7 +975,7 @@ function InvoiceDetail({ inv, onClose, onSaved }) {
                 <div style={{ padding:'12px 14px', display:'flex', flexDirection:'column', gap:10 }}>
                   <div style={{ fontSize:11, color:'var(--text-subtle)', lineHeight:1.45 }}>
                     Genera una nota de venta a partir de esta factura. Útil para registrar ventas
-                    anteriores al CRM. El cliente, la moto y el monto salen de la factura; elegí
+                    anteriores al CRM. El cliente, la moto y el monto salen de la factura; elige
                     el vendedor y la sucursal.
                   </div>
                   {inv.chassis && (
@@ -1401,9 +1417,12 @@ export function AccountingView() {
           { key: 'municipal', label: 'Municipal' },
           { key: 'otros',     label: 'Otros' },
         ] : [
-          { key: 'facturas', label: 'Ventas de motos' },
-          { key: 'notas',    label: 'Notas de crédito' },
-          { key: 'otras',    label: 'Otras / anuladas' },
+          { key: 'facturas',   label: 'Ventas de motos' },
+          { key: 'servicios',  label: 'Servicios' },
+          { key: 'accesorios', label: 'Accesorios / Repuestos' },
+          { key: 'notas',      label: 'Notas de crédito' },
+          { key: 'anuladas',   label: 'Anuladas' },
+          { key: 'otras',      label: 'Otras' },
         ]).map(t => {
           const activeKey = source === 'recibida' ? recCategory : tab;
           return (
