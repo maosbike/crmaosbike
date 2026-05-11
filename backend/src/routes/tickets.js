@@ -131,8 +131,15 @@ router.get('/:id', asyncHandler(async (req, res) => {
      WHERE tl.ticket_id = $1 ORDER BY tl.created_at DESC`, [req.params.id]
   );
 
+  // Vendedores no deben ver las reasignaciones (exponen quién tenía el lead
+  // antes y motivos sensibles tipo "SLA vencido"). Los admins sí ven todo.
+  const isVendedor = req.user.role === 'vendedor';
+  const visibleTimeline = isVendedor
+    ? tl.rows.filter(r => !(r.type === 'system' && /^Reasignad[oa]/i.test(r.title || '')))
+    : tl.rows;
+
   // Último contacto real (contact_registered o contact_evidence)
-  const lastContactRow = tl.rows.find(t => t.type === 'contact_registered' || t.type === 'contact_evidence') || null;
+  const lastContactRow = visibleTimeline.find(t => t.type === 'contact_registered' || t.type === 'contact_evidence') || null;
 
   // Resumen de reasignaciones: cuántas y cuándo fue la última
   const reassign = await db.query(
@@ -143,12 +150,14 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
   res.json({
     ...rows[0],
-    timeline: tl.rows,
+    timeline: visibleTimeline,
     last_contact_entry: lastContactRow,
-    reassignment_summary: {
-      count: parseInt(reassign.rows[0]?.n || 0),
-      last_at: reassign.rows[0]?.last_at || null,
-    },
+    reassignment_summary: isVendedor
+      ? { count: 0, last_at: null }
+      : {
+          count: parseInt(reassign.rows[0]?.n || 0),
+          last_at: reassign.rows[0]?.last_at || null,
+        },
   });
 }));
 
