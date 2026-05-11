@@ -640,8 +640,8 @@ function ModelDetailModal({model:m0,canEdit,canDelete,onClose,onSaved,onDeleted,
   );
 }
 
-function AddModelModal({onClose,onAdded,allCategories,defaultBrand}){
-  const[form,setForm]=useState({brand:defaultBrand||"",model:"",commercial_name:"",category:"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,bono_tipo:"",bono_condicion:"",bono_requisitos:"",description:"",spec_url:""});
+function AddModelModal({onClose,onAdded,allCategories,defaultBrand,defaultCategory}){
+  const[form,setForm]=useState({brand:defaultBrand||"",model:"",commercial_name:"",category:defaultCategory||"",cc:"",year:new Date().getFullYear(),price:0,bonus:0,bono_tipo:"",bono_condicion:"",bono_requisitos:"",description:"",spec_url:""});
   const[colors,setColors]=useState([]);
   const[colorInput,setColorInput]=useState("");
   const[saving,setSaving]=useState(false);
@@ -1383,7 +1383,7 @@ export function CatalogView({user}){
         );
       })()}
 
-      {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={brandCatsForChildren.length?brandCatsForChildren:allCategories} defaultBrand={activeBrand}/>}
+      {showAdd&&<AddModelModal onClose={()=>setShowAdd(false)} onAdded={onAdded} allCategories={brandCatsForChildren.length?brandCatsForChildren:allCategories} defaultBrand={activeBrand} defaultCategory={activeCat&&activeCat!=="__sin_categoria"?activeCat:""}/>}
       {showBulkAssign&&(
         <BulkAssignCategoryModal
           brand={activeBrand}
