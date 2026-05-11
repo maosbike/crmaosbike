@@ -156,9 +156,22 @@ router.patch('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_com
 
 router.delete('/brands/:name/categories/:id', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
     const name = decodeURIComponent(req.params.name);
-    const { rows } = await db.query('DELETE FROM brand_categories WHERE id=$1 AND brand=$2 RETURNING name', [req.params.id, name]);
-    if (!rows[0]) return res.status(404).json({ error: 'Categoría no encontrada' });
-    res.json({ ok: true });
+    // Antes de borrar la categoría, limpiar el campo category en los modelos
+    // de la marca que la tuvieran asignada. Sin esto, las pills derivadas
+    // mantenían la categoría visible aunque ya no estuviera registrada en
+    // brand_categories.
+    const { rows: cur } = await db.query(
+      'SELECT name FROM brand_categories WHERE id=$1 AND brand=$2',
+      [req.params.id, name]
+    );
+    if (!cur[0]) return res.status(404).json({ error: 'Categoría no encontrada' });
+    const catName = cur[0].name;
+    const { rowCount: cleared } = await db.query(
+      'UPDATE moto_models SET category=NULL, updated_at=NOW() WHERE brand=$1 AND category=$2',
+      [name, catName]
+    );
+    await db.query('DELETE FROM brand_categories WHERE id=$1 AND brand=$2', [req.params.id, name]);
+    res.json({ ok: true, models_uncategorized: cleared });
 }));
 
 router.post('/models', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
