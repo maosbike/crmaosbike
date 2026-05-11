@@ -12,6 +12,8 @@ const db     = require('../config/db');
 const { auth, roleCheck }          = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { extractFromPDF, normalizeModel } = require('../services/pdfExtractor');
+const { parsePriceListWithClaude } = require('../services/claudePriceListParser');
+const logger = require('../config/logger');
 
 router.use(auth);
 router.use(roleCheck('super_admin', 'admin_comercial'));
@@ -65,14 +67,61 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     if (!req.file.buffer || req.file.buffer.slice(0, 4).toString() !== '%PDF') {
       return res.status(400).json({ error: 'El archivo no parece un PDF válido' });
     }
-    // Extraer datos del PDF usando el parser existente
-    const extracted = await extractFromPDF(req.file.buffer, safeName);
+    // Extracción con Claude primero (lee cualquier layout); si falla o
+    // devuelve 0 filas, cae al parser regex específico por distribuidor.
+    let extracted = null;
+    let claudeError = null;
+    try {
+      const claudeStart = Date.now();
+      extracted = await parsePriceListWithClaude(req.file.buffer, safeName);
+      const elapsed = Date.now() - claudeStart;
+      if (!extracted.rows || extracted.rows.length === 0) {
+        logger.warn({ file: safeName, elapsed_ms: elapsed }, '[priceimport] Claude devolvió 0 filas; fallback a regex');
+        extracted = null;
+      } else {
+        logger.info({
+          file: safeName,
+          rows: extracted.rows.length,
+          period: extracted.period,
+          elapsed_ms: elapsed,
+          usage: extracted._usage,
+        }, '[priceimport] Claude OK');
+      }
+    } catch (e) {
+      claudeError = e.message || String(e);
+      logger.warn({ file: safeName, err: claudeError }, '[priceimport] Claude falló; fallback a regex');
+    }
+
+    if (!extracted) {
+      extracted = await extractFromPDF(req.file.buffer, safeName);
+    }
+
+    // Safety net: si Claude devolvió filas pero no inferió brand en ninguna
+    // (PDF de marca única donde la marca solo aparece en el título), tratamos
+    // de deducir desde el filename. Sin esto, validateRow rechaza todas las
+    // filas con "Marca requerida".
+    if (extracted.source_type === 'claude' && extracted.rows && extracted.rows.length) {
+      const missing = extracted.rows.every(r => !r.brand);
+      if (missing) {
+        const KNOWN = ['Honda','Yamaha','Suzuki','Kawasaki','Bajaj','TVS','KTM',
+                       'Royal Enfield','Benelli','Keeway','CFMoto','Voge',
+                       'Harley-Davidson','Harley','Zontes','Lifan','Loncin',
+                       'UM','SYM','Promobility','Imoto','MMB','Yamaimport'];
+        const lowerName = (safeName || '').toLowerCase();
+        const detected = KNOWN.find(b => lowerName.includes(b.toLowerCase()));
+        if (detected) {
+          logger.info({ file: safeName, inferred_brand: detected }, '[priceimport] brand inferido del filename');
+          extracted.rows = extracted.rows.map(r => ({ ...r, brand: r.brand || detected }));
+        }
+      }
+    }
 
     if (!extracted.rows || extracted.rows.length === 0) {
       return res.status(422).json({
-        error: `PDF reconocido como "${extracted.source_type}" pero no se extrajeron filas. Verificá que el PDF contenga la tabla de precios y no esté protegido o escaneado.`,
+        error: `PDF reconocido como "${extracted.source_type}" pero no se extrajeron filas. Verifica que el PDF contenga la tabla de precios y no esté protegido o escaneado.`,
         source_type: extracted.source_type,
         period: extracted.period,
+        claude_error: claudeError || undefined,
       });
     }
 
