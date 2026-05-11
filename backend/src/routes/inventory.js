@@ -302,10 +302,10 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
     if (cur[0].status === 'vendida' && !['super_admin','admin_comercial'].includes(req.user.role)) {
       return res.status(400).json({ error: 'Una unidad vendida no puede modificarse.' });
     }
-    // Vendedor: solo puede operar sobre unidades de su propia sucursal.
-    if (req.user.role === 'vendedor' && cur[0].branch_id && cur[0].branch_id !== req.user.branch_id) {
-      return res.status(403).json({ error: 'No puedes operar sobre unidades de otra sucursal.' });
-    }
+    // Vendedor puede reservar/editar datos de venta de una unidad sin importar
+    // la sucursal donde esté almacenada. Las motos se mueven entre tiendas y
+    // el cliente puede cerrar con una vendedora de otra sucursal. Coherente
+    // con la misma política de POST /:id/sell.
 
     // Chasis: verificar unicidad si se quiere cambiar
     if (chassis !== undefined && chassis !== '') {
@@ -836,10 +836,9 @@ router.post('/:id/photo', roleCheck('super_admin', 'admin_comercial', 'backoffic
       [req.params.id]
     );
     if (!unitRows[0]) return res.status(404).json({ error: 'Unidad no encontrada' });
-    if (req.user.role === 'vendedor' &&
-        unitRows[0].branch_id && unitRows[0].branch_id !== req.user.branch_id) {
-      return res.status(403).json({ error: 'No puedes modificar fotos de unidades de otra sucursal.' });
-    }
+    // El vendedor puede subir fotos a cualquier unidad: la moto pudo haberse
+    // movido entre sucursales o la venta haberse cerrado en una sucursal
+    // distinta a la del stock físico. Coherente con POST /:id/sell y PUT /:id.
 
     // Validación de mimetype real (defense-in-depth contra extensión spoofeada).
     if (!/^image\/(jpeg|png|webp|gif)$/.test(req.file.mimetype || '')) {
