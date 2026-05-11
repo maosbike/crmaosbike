@@ -1231,21 +1231,6 @@ export function AccountingView() {
     }
   }
 
-  async function relink() {
-    setSyncing(true);
-    setSyncResult(null);
-    try {
-      const r = await api.relinkAccounting();
-      setSyncResult({ relinked: true, ...r });
-      load();
-      loadStats();
-    } catch (e) {
-      setSyncResult({ error: e.message });
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   function handleUpdated(updated) {
     setData(prev => prev.map(d => d.id === updated.id ? { ...d, ...updated } : d));
     setSelected(prev => prev ? { ...prev, ...updated } : prev);
@@ -1258,27 +1243,6 @@ export function AccountingView() {
         subtitle={ymLabel(ym)}
         actions={
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            <button onClick={async () => {
-              setSyncing(true); setSyncResult(null);
-              try {
-                // Llama al endpoint del origen activo (emitida o recibida).
-                const r = source === 'recibida'
-                  ? await api.testClaudeParser()
-                  : await api.testClaudeEmitida();
-                setSyncResult({ test_claude: true, ...r });
-              } catch (e) {
-                setSyncResult({ test_claude: true, ok: false, error: e.message });
-              } finally { setSyncing(false); }
-            }} disabled={syncing}
-              title={`Procesa 1 PDF de ${source === 'recibida' ? 'recibidas' : 'emitidas'} con Claude y muestra el resultado bruto.`}
-              style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
-              {syncing ? '...' : 'Test Claude'}
-            </button>
-            <button onClick={relink} disabled={syncing}
-              title="Re-correr el cruce automático de facturas pendientes con inventario y notas (sin re-bajar Drive)"
-              style={{ ...S.btn2, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
-              {syncing ? '...' : 'Re-vincular'}
-            </button>
             <button onClick={syncDrive} disabled={syncing}
               style={{ ...S.btn, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace:'nowrap' }}>
               <Ic.refresh size={14} color="var(--text-on-brand)" />
@@ -1304,32 +1268,8 @@ export function AccountingView() {
           border: `1px solid ${syncResult.error ? '#FCA5A5' : '#86EFAC'}`,
           borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16, fontSize: 13,
         }}>
-          {syncResult.test_claude
-            ? (
-              <div>
-                <div style={{ fontWeight: 700, color: syncResult.ok ? '#15803D' : '#DC2626', marginBottom: 6 }}>
-                  Test Claude — {syncResult.ok ? '✓ funciona' : `✗ falló (${syncResult.stage})`}
-                </div>
-                {syncResult.ok && (
-                  <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>
-                    Procesado <strong>{syncResult.file_name}</strong> ({syncResult.pdf_size_kb}KB) →
-                  </div>
-                )}
-                <pre style={{
-                  marginTop: 8, padding: 10, background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)', fontSize: 11, maxHeight: 400, overflow: 'auto',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                }}>{JSON.stringify(syncResult.parsed || { error: syncResult.error, error_type: syncResult.error_type, error_status: syncResult.error_status, stack: syncResult.stack }, null, 2)}</pre>
-              </div>
-            )
-            : syncResult.error
+          {syncResult.error
             ? <span style={{ color: '#DC2626' }}>{syncResult.error}</span>
-            : syncResult.relinked
-            ? (
-              <div style={{ color: '#15803D' }}>
-                Re-vinculadas — {syncResult.scanned} facturas revisadas, {syncResult.linked} con vínculo, {syncResult.updated} actualizadas, {syncResult.status_fixed || 0} cambiaron de estado, {syncResult.docs_propagated || 0} PDFs propagados a la venta.
-              </div>
-            )
             : (
               <>
                 <div style={{ color: '#15803D' }}>
