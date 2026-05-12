@@ -255,18 +255,30 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
     const client = await db.connect();
     const stats  = { published: 0, created: 0, errors: [] };
     try {
+      // Red de seguridad: si row.model viene con la marca duplicada al
+      // inicio ("Yamaha MT-09"), la sacamos antes de insertar. La card
+      // del catálogo renderiza "${brand} ${commercial_name||model}" así
+      // que duplicar la marca acá quedaría "Yamaha Yamaha MT-09".
+      const stripBrandPrefix = (name, brand) => {
+        if (!name || !brand) return name;
+        const escaped = String(brand).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp('^' + escaped.replace(/\s+/g, '[\\s-]+') + '[\\s-]+', 'i');
+        return String(name).replace(re, '').trim();
+      };
       await client.query('BEGIN');
       for (const row of rows) {
         await client.query('SAVEPOINT row_save');
         try {
+          const cleanModel = stripBrandPrefix(row.model, row.brand);
+          const cleanCommercial = row.commercial_name ? stripBrandPrefix(row.commercial_name, row.brand) : null;
           let model_id = row.model_id;
           if (!model_id) {
             const ins = await client.query(
               `INSERT INTO moto_models
                  (brand, model, normalized_model, commercial_name, category, cc, year, price, bonus, active)
                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true) RETURNING id`,
-              [row.brand, row.model, normalizeModel(row.model),
-               row.commercial_name || row.model, row.category, row.cc, row.year || new Date().getFullYear(),
+              [row.brand, cleanModel, normalizeModel(cleanModel),
+               cleanCommercial || cleanModel, row.category, row.cc, row.year || new Date().getFullYear(),
                row.price_list || 0, row.bonus || 0]
             );
             model_id = ins.rows[0].id;
@@ -278,7 +290,7 @@ router.post('/batches/:id/publish', roleCheck('super_admin'), async (req, res) =
                  category=COALESCE(NULLIF($4,''), category),
                  cc=COALESCE($5, cc), year=COALESCE($6, year), updated_at=NOW()
                WHERE id=$7`,
-              [row.price_list, row.bonus || 0, row.commercial_name, row.category, row.cc, row.year, model_id]
+              [row.price_list, row.bonus || 0, cleanCommercial, row.category, row.cc, row.year, model_id]
             );
             stats.published++;
           }

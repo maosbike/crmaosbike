@@ -5,7 +5,7 @@ const db = require('../config/db');
 const seed = require('../../migrations/002_seed');
 
 // Migrations that should run only ONCE (destructive or data-mutating)
-const ONCE_ONLY = ['010','012','013','018','032','033','034','035'];
+const ONCE_ONLY = ['010','012','013','018','032','033','034','035','062'];
 
 async function hasRun(name) {
   await db.query(`
@@ -110,6 +110,7 @@ async function migrate() {
     await runMigration('059', 'invoices.model_id FK al cat\u00e1logo',                m('059_invoices_model_id.sql'));
     await runMigration('060', 'invoices.ref_tipo (anulacion/correccion/ajuste)', m('060_invoices_ref_tipo.sql'));
     await runMigration('061', 'abono_lines (multi-medio en reservas)',          m('061_abono_lines.sql'));
+    await runMigration('062', 'strip brand prefix de modelos duplicados',       m('062_strip_brand_prefix.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');
