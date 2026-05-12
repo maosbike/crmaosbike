@@ -45,8 +45,8 @@ La gran mayoría de los PDFs son tablas con una fila por modelo. Las columnas t�
 
 CAMPOS POR FILA (todos como integers en CLP cuando aplique):
 1. brand — marca de la moto. Si el PDF es de un solo distribuidor (ej "LISTA DE PRECIOS HONDA"), todas las filas comparten esa marca. Si el PDF mezcla marcas (ej Yamaimport con Yamaha y otra), poner la marca real de cada fila.
-2. model — código del modelo tal cual aparece (ej "CB 300F"). Mantén guiones y espacios.
-3. commercial_name — nombre comercial completo si existe (ej "Honda CB 300F ABS"). Si no aparece, usa null.
+2. model — código del modelo SIN la marca delante. Si el PDF dice "Yamaha MT-09", devuelve solo "MT-09". Si dice "Honda CB 300F ABS", devuelve "CB 300F ABS". REGLA CRÍTICA: nunca incluyas la marca como prefijo de model. El campo brand ya lleva la marca aparte; duplicarla rompe el catálogo.
+3. commercial_name — nombre comercial SIN la marca delante. Si el PDF muestra "Yamaha MT-09 Standard", devuelve "MT-09 Standard". Si no aparece nombre comercial distinto al code del modelo, usa null.
 4. category — categoría del distribuidor (Commuter / Big Bike / Mid Size / etc). Si no aparece, null.
 5. cc — cilindrada como entero (ej 300). Null si no aparece.
 6. year — año comercial como entero. Null si no aparece. (Si el PDF dice "PERIODO: Mayo 2026" usa 2026 como año por defecto).
@@ -146,20 +146,37 @@ async function parsePriceListWithClaude(pdfBuffer, fileName = '') {
   const data = toolUse.input || {};
   const rawRows = Array.isArray(data.rows) ? data.rows : [];
 
+  // Red de seguridad: si Claude devuelve el modelo con la marca prefijada
+  // (ej brand="Yamaha", model="Yamaha MT-09"), removemos el prefijo. Sin
+  // esto la card del catálogo muestra "Yamaha Yamaha MT-09" y el matcher
+  // de inventario no encuentra los modelos correctos.
+  const stripBrand = (name, brand) => {
+    if (!name || !brand) return name;
+    const bn = String(brand).trim();
+    if (!bn) return name;
+    // Probar prefijo exacto + variantes con guión (Royal-Enfield, etc).
+    const escaped = bn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('^' + escaped.replace(/\s+/g, '[\\s-]+') + '[\\s-]+', 'i');
+    return String(name).replace(re, '').trim();
+  };
+
   // Limpia y normaliza: descarta filas sin model o sin precio, asegura tipos.
   const rows = rawRows
     .filter(r => r && r.model && r.price_list && Number(r.price_list) > 0)
-    .map(r => ({
-      brand:           r.brand || null,
-      model:           String(r.model).trim(),
-      commercial_name: r.commercial_name || null,
-      category:        r.category || null,
-      cc:              r.cc != null ? parseInt(r.cc, 10) || null : null,
-      year:            r.year != null ? parseInt(r.year, 10) || null : null,
-      price_list:      parseInt(r.price_list, 10) || null,
-      bono_todo_medio: r.bono_todo_medio != null ? parseInt(r.bono_todo_medio, 10) || 0 : 0,
-      description:     r.description || null,
-    }));
+    .map(r => {
+      const brand = r.brand || null;
+      return {
+        brand,
+        model:           stripBrand(String(r.model).trim(), brand),
+        commercial_name: r.commercial_name ? stripBrand(r.commercial_name, brand) : null,
+        category:        r.category || null,
+        cc:              r.cc != null ? parseInt(r.cc, 10) || null : null,
+        year:            r.year != null ? parseInt(r.year, 10) || null : null,
+        price_list:      parseInt(r.price_list, 10) || null,
+        bono_todo_medio: r.bono_todo_medio != null ? parseInt(r.bono_todo_medio, 10) || 0 : 0,
+        description:     r.description || null,
+      };
+    });
 
   return {
     period:      data.period || null,
