@@ -164,37 +164,48 @@ class SiiClient {
    * del flujo lo detecta.
    */
   async openHistorialDte() {
-    // URL directa del menú del Sistema de Facturación Gratuito del SII.
-    // Verificada en producción: lista los links de "Historial de DTE",
-    // "Emisión", "Consultas", etc.
-    const MENU_SISTEMA_GRATUITO = 'https://www4.sii.cl/contribuyenteInternetUI/?dest=ee_facturacion';
-    this.logger.info('[sii] navegando directo al menú del sistema gratuito');
+    // URL pública estable del menú "Sistema de Facturación Gratuito del SII".
+    // Esta URL no requiere sesión (es contenido público) pero los links que
+    // abre sí. Es estable desde hace años.
+    const MENU_SISTEMA_GRATUITO = 'https://www.sii.cl/servicios_online/1039-1183.html';
+    this.logger.info(`[sii] navegando al menú: ${MENU_SISTEMA_GRATUITO}`);
     await this.page.goto(MENU_SISTEMA_GRATUITO, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
-    // Dump del menú para diagnosticar si los selectores siguientes fallan.
     const bodyText = await this.page.evaluate(() => (document.body?.innerText || '')).catch(() => '');
-    this.logger.info(`[sii] menú cargado — body head: ${bodyText.slice(0, 300).replace(/\s+/g, ' ')}`);
+    this.logger.info(`[sii] menú cargado — body head: ${bodyText.slice(0, 400).replace(/\s+/g, ' ')}`);
 
     // Buscamos el link "Historial de DTE..." con múltiples variantes de texto.
     const histCandidates = [
-      this.page.getByRole('link', { name: /historial\s+de\s+DTE/i }),
-      this.page.getByRole('link', { name: /historial.*emitido/i }),
+      this.page.getByRole('link', { name: /historial.*de\s+DTE/i }),
+      this.page.getByRole('link', { name: /historial.*documento/i }),
+      this.page.getByRole('link', { name: /respuesta.*documentos\s+recibidos/i }),
       this.page.locator('a:has-text("Historial de DTE")'),
-      this.page.locator('a[href*="dte_resu_doc"], a[href*="historial"]'),
+      this.page.locator('a[href*="historial"], a[href*="resu_doc"]'),
     ];
     let clicked = false;
+    let chosenText = '';
     for (const cand of histCandidates) {
       const loc = cand.first();
       if (await loc.isVisible().catch(() => false)) {
+        chosenText = await loc.innerText().catch(() => '(sin texto)');
         await loc.click();
         clicked = true;
         break;
       }
     }
     if (!clicked) {
-      await this._dumpForDebug('historial_dte_no_encontrado');
-      throw new Error('No se encontró el link "Historial de DTE" en el menú del sistema gratuito.');
+      // Antes de tirar el error, dumpeo los primeros 20 textos de <a> de la
+      // página para saber exactamente qué hay disponible.
+      const links = await this.page.$$eval('a', as =>
+        as.slice(0, 40)
+          .map(a => `${a.innerText.trim().slice(0, 80)} → ${a.getAttribute('href') || ''}`)
+          .filter(s => s.trim() !== '→ ')
+      ).catch(() => []);
+      this.logger.warn(`[sii] LINKS DISPONIBLES en la página (primeros 40):`);
+      links.forEach((l, i) => this.logger.warn(`  [${i}] ${l}`));
+      throw new Error('No se encontró el link "Historial de DTE". Mirá los links logueados arriba para ajustar el selector.');
     }
+    this.logger.info(`[sii] click en: ${chosenText}`);
     await this.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
   }
 
