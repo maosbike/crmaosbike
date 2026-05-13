@@ -52,6 +52,17 @@ class SiiClient {
     try { await this.browser?.close(); } catch (_) {}
   }
 
+  /** Helper: vuelca un fragmento del HTML actual para diagnosticar selectores. */
+  async _dumpForDebug(tag) {
+    try {
+      const url = this.page.url();
+      const title = await this.page.title().catch(() => '');
+      const html = await this.page.content().catch(() => '');
+      const snippet = html.replace(/\s+/g, ' ').slice(0, 1500);
+      this.logger.warn(`[sii][debug:${tag}] url=${url} title=${JSON.stringify(title)} html_head=${snippet}`);
+    } catch (_) {}
+  }
+
   /** Inicia sesión. Idempotente: si ya está logueado, no hace nada. */
   async login() {
     this.logger.info('[sii] navegando a home');
@@ -64,23 +75,72 @@ class SiiClient {
     await ingresar.click();
 
     // Formulario de login del SII.
+    // El SII tiene un <input name="rut" type="hidden"> que no es el visible.
+    // Filtramos por :visible + por type=text para descartarlo.
     await this.page.waitForLoadState('domcontentloaded');
-    const rutInput = this.page.locator('input[name="rutcntr"], input#rutcntr, input[name="rut"]').first();
-    await rutInput.waitFor({ state: 'visible', timeout: 20_000 });
+
+    // Probamos múltiples candidatos en orden de probabilidad. Cada uno tiene
+    // el filtro :visible para descartar inputs ocultos del formulario.
+    const rutCandidates = [
+      'input[name="rutcntr"]:visible',
+      'input#rutcntr:visible',
+      'input[id="bru_rut_o"]:visible',          // versión nueva del SII (zeusr)
+      'input[name="bru_rut_o"]:visible',
+      'input[name="rut"][type="text"]:visible',
+      'input[type="text"]:visible',             // último recurso: primer text visible
+    ];
+    let rutInput = null;
+    for (const sel of rutCandidates) {
+      const loc = this.page.locator(sel).first();
+      if (await loc.isVisible().catch(() => false)) {
+        rutInput = loc;
+        this.logger.info(`[sii] selector RUT que matcheó: ${sel}`);
+        break;
+      }
+    }
+    if (!rutInput) {
+      await this._dumpForDebug('login_rut_no_encontrado');
+      throw new Error('No se encontró ningún input visible para RUT en la página de login');
+    }
     await rutInput.fill(this.rut);
 
-    const passInput = this.page.locator('input[name="clave"], input#clave, input[type="password"]').first();
+    const passCandidates = [
+      'input[name="clave"]:visible',
+      'input#clave:visible',
+      'input[name="bru_clave_o"]:visible',
+      'input[id="bru_clave_o"]:visible',
+      'input[type="password"]:visible',
+    ];
+    let passInput = null;
+    for (const sel of passCandidates) {
+      const loc = this.page.locator(sel).first();
+      if (await loc.isVisible().catch(() => false)) {
+        passInput = loc;
+        break;
+      }
+    }
+    if (!passInput) {
+      await this._dumpForDebug('login_pass_no_encontrado');
+      throw new Error('No se encontró ningún input visible para clave');
+    }
     await passInput.fill(this.password);
 
     // Botón "Ingresar"
     const submit = this.page.getByRole('button', { name: /ingresar/i })
-      .or(this.page.locator('input[type="submit"][value*="Ingresar" i]'));
+      .or(this.page.locator('input[type="submit"][value*="Ingresar" i], button:has-text("Ingresar")'));
     await submit.first().click();
 
     // Esperar redirección post-login. El home logueado tiene "Cerrar Sesión".
-    await this.page.waitForSelector('a:has-text("Cerrar Sesión"), button:has-text("Cerrar Sesión")', {
-      timeout: 30_000,
-    });
+    try {
+      await this.page.waitForSelector('a:has-text("Cerrar Sesión"), button:has-text("Cerrar Sesión")', {
+        timeout: 30_000,
+      });
+    } catch (e) {
+      // Posibles causas: credenciales erradas, captcha, MFA. Dump el HTML
+      // para diagnosticar.
+      await this._dumpForDebug('login_post_submit_sin_cerrar_sesion');
+      throw new Error('Post-login: no apareció "Cerrar Sesión" en 30s. Posible captcha, MFA o creds erradas.');
+    }
     this.logger.info('[sii] login OK');
   }
 
