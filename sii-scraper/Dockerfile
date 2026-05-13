@@ -1,6 +1,8 @@
 # Imagen oficial de Playwright con Chromium ya instalado.
-# Versión pineada para que actualizaciones de Playwright no rompan el build.
-FROM mcr.microsoft.com/playwright:v1.48.0-jammy
+# La versión del image DEBE coincidir con la del paquete npm "playwright"
+# del package.json — si no, npm pone los binaries en una ruta y la imagen
+# trae otros. Actualizar ambos juntos.
+FROM mcr.microsoft.com/playwright:v1.60.0-jammy
 
 WORKDIR /app
 
