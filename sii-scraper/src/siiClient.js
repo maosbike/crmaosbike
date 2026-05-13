@@ -126,22 +126,48 @@ class SiiClient {
     await passInput.fill(this.password);
 
     // Botón "Ingresar"
+    const loginUrlAtSubmit = this.page.url();
     const submit = this.page.getByRole('button', { name: /ingresar/i })
       .or(this.page.locator('input[type="submit"][value*="Ingresar" i], button:has-text("Ingresar")'));
     await submit.first().click();
 
-    // Esperar redirección post-login. El home logueado tiene "Cerrar Sesión".
+    // Esperar a que el SII termine de redirigir post-login. El flujo típico:
+    //   1) POST a la URL del form
+    //   2) redirige a CAutInicio.cgi (página de transición)
+    //   3) eventualmente termina en mii.sii.cl o homer.sii.cl
+    // No esperamos "Cerrar Sesión" porque puede estar en frames internos o
+    // requerir hover de menú; en vez de eso, validamos por:
+    //   - URL distinta de la del form de login (Y)
+    //   - texto de "login fallido" NO presente.
     try {
-      await this.page.waitForSelector('a:has-text("Cerrar Sesión"), button:has-text("Cerrar Sesión")', {
-        timeout: 30_000,
-      });
-    } catch (e) {
-      // Posibles causas: credenciales erradas, captcha, MFA. Dump el HTML
-      // para diagnosticar.
-      await this._dumpForDebug('login_post_submit_sin_cerrar_sesion');
-      throw new Error('Post-login: no apareció "Cerrar Sesión" en 30s. Posible captcha, MFA o creds erradas.');
+      await this.page.waitForLoadState('networkidle', { timeout: 20_000 });
+    } catch (_) { /* networkidle puede no llegar nunca con scripts de tracking */ }
+
+    const postUrl = this.page.url();
+    const bodyText = await this.page.evaluate(() => document.body?.innerText || '').catch(() => '');
+    const loweredBody = bodyText.toLowerCase();
+
+    // Mensajes típicos de error de login en SII
+    const loginErrors = [
+      'clave incorrecta', 'rut o clave', 'rut o contraseña', 'datos ingresados son',
+      'inválido', 'no es correcto', 'verifique', 'intente nuevamente',
+    ];
+    const hasError = loginErrors.some(t => loweredBody.includes(t));
+
+    // URL todavía en el form de login? Sospechoso.
+    const stillOnLogin = postUrl === loginUrlAtSubmit
+      || /CAutInicio\.cgi$/i.test(postUrl) && loweredBody.includes('rut') && loweredBody.includes('clave') && loweredBody.length < 800;
+
+    if (hasError) {
+      await this._dumpForDebug('login_falló_credenciales');
+      throw new Error('Login del SII rechazado: mensaje de error en la página (probable RUT/clave inválido o captcha).');
     }
-    this.logger.info('[sii] login OK');
+    if (stillOnLogin) {
+      await this._dumpForDebug('login_no_avanzó');
+      throw new Error(`Post-login: URL no cambió (${postUrl}). Verificá creds o captcha.`);
+    }
+
+    this.logger.info(`[sii] login OK — url actual: ${postUrl}`);
   }
 
   /** Navega al Historial de DTE — pantalla común para emitidos y recibidos. */
