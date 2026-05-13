@@ -156,28 +156,46 @@ class SiiClient {
     this.logger.info(`[sii] login OK — url: ${postUrl} — body head: ${bodyHead.replace(/\s+/g, ' ')}`);
   }
 
-  /** Navega al Historial de DTE — pantalla común para emitidos y recibidos. */
+  /**
+   * Navega al menú del Sistema de Facturación Gratuito. La sesión del SII
+   * se comparte entre dominios palena/zeusr/homer, así que después del
+   * login podemos saltarnos los clicks de menú e ir directo a la URL del
+   * sistema. Si la sesión expiró, el SII redirige al login y el resto
+   * del flujo lo detecta.
+   */
   async openHistorialDte() {
-    this.logger.info('[sii] navegando a Factura electrónica');
-    // El menú "Servicios online" suele tener un link directo a "Factura
-    // electrónica" en la home. El usuario indicó: click directo (sin
-    // hover en Servicios online).
-    const fact = this.page.getByRole('link', { name: /factura\s+electr(ó|o)nica/i }).first();
-    await fact.waitFor({ state: 'visible', timeout: 20_000 });
-    await fact.click();
-    await this.page.waitForLoadState('domcontentloaded');
+    // URL directa del menú del Sistema de Facturación Gratuito del SII.
+    // Verificada en producción: lista los links de "Historial de DTE",
+    // "Emisión", "Consultas", etc.
+    const MENU_SISTEMA_GRATUITO = 'https://www4.sii.cl/contribuyenteInternetUI/?dest=ee_facturacion';
+    this.logger.info('[sii] navegando directo al menú del sistema gratuito');
+    await this.page.goto(MENU_SISTEMA_GRATUITO, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
-    // "Sistema de facturación gratuito del SII"
-    const sistGrat = this.page.getByRole('link', { name: /sistema\s+de\s+facturaci(ó|o)n\s+gratuito/i }).first();
-    await sistGrat.waitFor({ state: 'visible', timeout: 20_000 });
-    await sistGrat.click();
-    await this.page.waitForLoadState('domcontentloaded');
+    // Dump del menú para diagnosticar si los selectores siguientes fallan.
+    const bodyText = await this.page.evaluate(() => (document.body?.innerText || '')).catch(() => '');
+    this.logger.info(`[sii] menú cargado — body head: ${bodyText.slice(0, 300).replace(/\s+/g, ' ')}`);
 
-    // "Historial de DTE y respuesta a documentos recibidos"
-    const hist = this.page.getByRole('link', { name: /historial\s+de\s+DTE/i }).first();
-    await hist.waitFor({ state: 'visible', timeout: 20_000 });
-    await hist.click();
-    await this.page.waitForLoadState('domcontentloaded');
+    // Buscamos el link "Historial de DTE..." con múltiples variantes de texto.
+    const histCandidates = [
+      this.page.getByRole('link', { name: /historial\s+de\s+DTE/i }),
+      this.page.getByRole('link', { name: /historial.*emitido/i }),
+      this.page.locator('a:has-text("Historial de DTE")'),
+      this.page.locator('a[href*="dte_resu_doc"], a[href*="historial"]'),
+    ];
+    let clicked = false;
+    for (const cand of histCandidates) {
+      const loc = cand.first();
+      if (await loc.isVisible().catch(() => false)) {
+        await loc.click();
+        clicked = true;
+        break;
+      }
+    }
+    if (!clicked) {
+      await this._dumpForDebug('historial_dte_no_encontrado');
+      throw new Error('No se encontró el link "Historial de DTE" en el menú del sistema gratuito.');
+    }
+    await this.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
   }
 
   /**
