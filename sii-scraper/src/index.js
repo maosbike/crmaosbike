@@ -37,17 +37,47 @@ const RUN_ONCE = String(process.env.RUN_ONCE || '').toLowerCase() === '1';
 const FORCE_FULL = String(process.env.FORCE_FULL || '').toLowerCase() === '1';
 
 async function processSide(sii, side) {
-  // side === 'emitida' o 'recibida'
+  // side === 'emitida' (recibida queda fuera de scope en esta primera fase).
   logger.info(`[${side}] abriendo historial DTE`);
   await sii.openHistorialDte();
 
-  // El menú dentro del historial tiene dos botones:
-  //   "Ver Documentos Emitidos"   → emitidas
-  //   "Ver Documentos Recibidos"  → recibidas
+  // Después del click "Historial de DTE..." aterrizamos en una página que
+  // típicamente tiene dos botones/links: "Ver Documentos Emitidos" y
+  // "Ver Documentos Recibidos". Dumpeo el body y los links visibles para
+  // ver con qué nos encontramos antes de clickear.
+  const beforeBody = await sii.page.evaluate(() => (document.body?.innerText || '').slice(0, 500)).catch(() => '');
+  logger.info(`[${side}] pantalla post-click historial — body head: ${beforeBody.replace(/\s+/g, ' ')}`);
+
   const targetName = side === 'emitida' ? /documentos\s+emitidos/i : /documentos\s+recibidos/i;
-  const btn = sii.page.getByRole('link', { name: targetName })
-    .or(sii.page.getByRole('button', { name: targetName }));
-  await btn.first().click();
+  const candidates = [
+    sii.page.getByRole('link', { name: targetName }),
+    sii.page.getByRole('button', { name: targetName }),
+    sii.page.locator(`a:has-text("Documentos Emitidos")`),
+    sii.page.locator(`input[type="submit"][value*="Emitidos" i], button:has-text("Emitidos")`),
+  ];
+  let clicked = false;
+  for (const cand of candidates) {
+    const loc = cand.first();
+    if (await loc.isVisible().catch(() => false)) {
+      const t = await loc.innerText().catch(() => '');
+      logger.info(`[${side}] click en: ${t || '(sin texto)'}`);
+      await loc.click();
+      clicked = true;
+      break;
+    }
+  }
+  if (!clicked) {
+    const links = await sii.page.$$eval('a, button, input[type="submit"]', els =>
+      els.slice(0, 40).map(e => {
+        const txt = (e.innerText || e.value || '').trim().slice(0, 80);
+        const href = e.getAttribute('href') || e.getAttribute('onclick') || '';
+        return `${txt} → ${href}`;
+      }).filter(s => s.trim() !== '→ ')
+    ).catch(() => []);
+    logger.warn(`[${side}] No se encontró "Ver Documentos Emitidos". Links/botones disponibles:`);
+    links.forEach((l, i) => logger.warn(`  [${i}] ${l}`));
+    throw new Error('Botón "Ver Documentos Emitidos" no encontrado en la página');
+  }
   await sii.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
 
   const rows = await sii.listAllRows();
@@ -106,31 +136,25 @@ async function runOnce() {
     logger,
   });
 
-  const summary = { emitida: null, recibida: null };
+  // Scope actual: SOLO emitidas. Recibidas se hará en otro scraper separado.
+  const summary = { emitida: null };
   const t0 = Date.now();
   try {
     await sii.start();
     await sii.login();
 
-    for (const side of ['emitida', 'recibida']) {
-      try {
-        summary[side] = await processSide(sii, side);
-      } catch (e) {
-        logger.error(`[${side}] corrida falló: ${e.message}`);
-        summary[side] = { error: e.message };
-      }
-      // Volver al menú principal antes de cambiar de lado.
-      try {
-        await sii.page.goBack({ timeout: 15_000 });
-        await sii.page.goBack({ timeout: 15_000 });
-      } catch (_) {}
+    try {
+      summary.emitida = await processSide(sii, 'emitida');
+    } catch (e) {
+      logger.error(`[emitida] corrida falló: ${e.message}`);
+      summary.emitida = { error: e.message };
     }
   } finally {
     await sii.stop();
   }
 
   const elapsed = Math.round((Date.now() - t0) / 1000);
-  logger.info(`Corrida completa en ${elapsed}s — emitida: ${JSON.stringify(summary.emitida)} · recibida: ${JSON.stringify(summary.recibida)}`);
+  logger.info(`Corrida completa en ${elapsed}s — emitida: ${JSON.stringify(summary.emitida)}`);
   return summary;
 }
 
