@@ -132,30 +132,44 @@ class SiiClient {
       .or(this.page.locator('input[type="submit"][value*="Ingresar" i], button:has-text("Ingresar")'));
     await submit.first().click();
 
-    // Señal confiable de login OK: el input de RUT visible desaparece. Si
-    // las creds están mal, el SII vuelve a mostrar el mismo form (a veces
-    // con un mensaje de error arriba, otras veces sin nada visible). En
-    // cualquier caso, el input sigue visible.
+    // Paso 1: esperar que el form desaparezca (signal inmediata de submit OK).
     try {
       await this.page.waitForFunction(() => {
         const inp = document.querySelector('input[name="rutcntr"]');
-        if (!inp) return true; // ya no existe
+        if (!inp) return true;
         const r = inp.getBoundingClientRect();
         const cs = getComputedStyle(inp);
         const visible = r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
         return !visible;
       }, null, { timeout: 30_000 });
     } catch (e) {
-      // El form sigue ahí → login rechazado.
       const bodyText = await this.page.evaluate(() => document.body?.innerText || '').catch(() => '');
       await this._dumpForDebug('login_form_persiste');
       this.logger.warn(`[sii] body al fallar (500 chars): ${bodyText.slice(0, 500).replace(/\s+/g, ' ')}`);
       throw new Error('Post-login: el form de login sigue visible — RUT/clave inválido o captcha.');
     }
 
+    // Paso 2: esperar a que el SII complete su cadena de redirects para que
+    // las cookies se seteen en todos los subdominios (.sii.cl, www1, palena,
+    // homer, etc). Sin esto, navegar manualmente a mipeSelEmpresa.cgi rebota
+    // al login por sesión inexistente en el subdominio destino.
+    this.logger.info(`[sii] form enviado, esperando redirect chain. URL inmediata: ${this.page.url()}`);
+    try {
+      await this.page.waitForURL(url => {
+        const s = url.toString();
+        return !/IngresoRutClave|CAutInicio\.cgi/i.test(s);
+      }, { timeout: 30_000, waitUntil: 'domcontentloaded' });
+    } catch (_) {
+      // No salió de la zona de auth/transición. Damos 5s más por meta-refresh.
+      await new Promise(r => setTimeout(r, 5000));
+    }
+    // Pequeño settle para que la página destino termine de cargar.
+    await this.page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {});
+    await this.page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+
     const postUrl = this.page.url();
     const bodyHead = await this.page.evaluate(() => (document.body?.innerText || '').slice(0, 300)).catch(() => '');
-    this.logger.info(`[sii] login OK — url: ${postUrl} — body head: ${bodyHead.replace(/\s+/g, ' ')}`);
+    this.logger.info(`[sii] login OK — url final: ${postUrl} — body head: ${bodyHead.replace(/\s+/g, ' ')}`);
   }
 
   /**
