@@ -133,11 +133,24 @@ async function processSide(sii, side) {
       const passInput = sii.page.locator('input[name="clave"]:visible, input[type="password"]:visible').first();
       await passInput.fill(process.env.SII_PASSWORD);
       const submit = sii.page.locator('input[type="submit"], button:has-text("Ingresar"), button:has-text("INGRESAR")').first();
-      await Promise.all([
-        sii.page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => {}),
-        submit.click(),
-      ]);
-      logger.info(`[${side}] re-login enviado, url ahora: ${sii.page.url()}`);
+      await submit.click();
+      // El SII hace un redirect en cadena: CAutInicio.cgi (transición) →
+      // mipeSelEmpresa.cgi (target). Esperamos a que termine la cadena con
+      // waitForURL que matchea CUALQUIER cosa que NO sea CAutInicio, o
+      // a defecto un timeout absoluto.
+      try {
+        await sii.page.waitForURL(url => !/CAutInicio\.cgi/i.test(url.toString()), {
+          timeout: 30_000,
+          waitUntil: 'domcontentloaded',
+        });
+      } catch (_) {
+        // No cambió la URL — quedamos en transición. Damos un breath extra
+        // por si hay un meta-refresh / setTimeout que no dispara navegación.
+        await new Promise(r => setTimeout(r, 3000));
+      }
+      // Final wait para que el DOM de la página objetivo esté listo.
+      await sii.page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
+      logger.info(`[${side}] re-login completo, url final: ${sii.page.url()} title: ${await sii.page.title().catch(() => '')}`);
     } else {
       logger.warn(`[${side}] página de re-auth sin input rutcntr — selectores cambiaron`);
     }
