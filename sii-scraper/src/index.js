@@ -61,7 +61,16 @@ async function processSide(sii, side) {
     if (await loc.isVisible().catch(() => false)) {
       const t = await loc.innerText().catch(() => '');
       logger.info(`[${side}] click en: ${t || '(sin texto)'}`);
-      await loc.click();
+      // El click puede abrir popup/nueva pestaña — preparamos el listener.
+      const [popup] = await Promise.all([
+        sii.context.waitForEvent('page', { timeout: 5_000 }).catch(() => null),
+        loc.click(),
+      ]);
+      if (popup) {
+        await popup.waitForLoadState('domcontentloaded', { timeout: 30_000 });
+        sii.page = popup; // El resto del flujo usa la nueva pestaña
+        logger.info(`[${side}] click abrió popup — cambio a la nueva pestaña`);
+      }
       clicked = true;
       break;
     }
@@ -79,6 +88,76 @@ async function processSide(sii, side) {
     throw new Error('Botón "Ver Documentos Emitidos" no encontrado en la página');
   }
   await sii.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
+
+  // Después del click, el SII suele llevar a un FORMULARIO de filtros
+  // (rango de fechas, tipo de documento) antes de mostrar la tabla.
+  // Dumpeamos lo que hay para entender la estructura.
+  const formInfo = await sii.page.evaluate(() => {
+    const inputs = Array.from(document.querySelectorAll('input, select')).slice(0, 30).map(el => ({
+      tag: el.tagName.toLowerCase(),
+      type: el.getAttribute('type') || '',
+      name: el.getAttribute('name') || '',
+      id: el.getAttribute('id') || '',
+      value: el.value || '',
+    }));
+    const buttons = Array.from(document.querySelectorAll('button, input[type="submit"], input[type="button"]')).slice(0, 20).map(el => ({
+      type: el.getAttribute('type') || '',
+      value: el.value || '',
+      text: (el.innerText || '').trim().slice(0, 60),
+    }));
+    const tables = document.querySelectorAll('table').length;
+    const iframes = Array.from(document.querySelectorAll('iframe')).map(f => f.getAttribute('src') || '(sin src)');
+    return { url: location.href, title: document.title, bodyHead: (document.body?.innerText || '').slice(0, 600), inputs, buttons, tables, iframes };
+  }).catch(() => null);
+
+  if (formInfo) {
+    logger.info(`[${side}] página post-click — url=${formInfo.url} title=${JSON.stringify(formInfo.title)} tables=${formInfo.tables} iframes=${JSON.stringify(formInfo.iframes)}`);
+    logger.info(`[${side}] body head: ${formInfo.bodyHead.replace(/\s+/g, ' ')}`);
+    logger.info(`[${side}] inputs/selects: ${JSON.stringify(formInfo.inputs)}`);
+    logger.info(`[${side}] botones: ${JSON.stringify(formInfo.buttons)}`);
+  }
+
+  // Si hay 0 tables y hay inputs de fecha → asumimos form de filtros.
+  // Llenamos rango 01-01-{TARGET_YEAR} hasta hoy y submitemos.
+  if (formInfo && formInfo.tables === 0) {
+    const targetYear = parseInt(process.env.TARGET_YEAR || '2026', 10);
+    const desde = `01/01/${targetYear}`;
+    const hasta = new Date().toLocaleDateString('es-CL'); // dd-mm-yyyy o dd/mm/yyyy según locale
+    logger.info(`[${side}] no hay tabla todavía — probando llenar form de fechas (desde=${desde} hasta=${hasta})`);
+
+    // Heurística: el primer input type=text de la página suele ser "desde",
+    // el segundo "hasta". El SII usa formato dd-mm-yyyy o dd/mm/yyyy.
+    const textInputs = formInfo.inputs.filter(i => i.tag === 'input' && (i.type === 'text' || i.type === ''));
+    if (textInputs.length >= 2) {
+      const firstSel = textInputs[0].name ? `input[name="${textInputs[0].name}"]` : `input#${textInputs[0].id}`;
+      const secondSel = textInputs[1].name ? `input[name="${textInputs[1].name}"]` : `input#${textInputs[1].id}`;
+      try {
+        await sii.page.fill(firstSel, desde);
+        await sii.page.fill(secondSel, hasta);
+        logger.info(`[${side}] fechas llenas en ${firstSel} y ${secondSel}`);
+      } catch (e) {
+        logger.warn(`[${side}] no pude llenar fechas: ${e.message}`);
+      }
+    }
+
+    // Buscar botón "Consultar" o equivalente.
+    const submitCandidates = [
+      sii.page.locator('input[type="submit"][value*="Consultar" i]'),
+      sii.page.locator('button:has-text("Consultar")'),
+      sii.page.locator('input[type="submit"][value*="Buscar" i]'),
+      sii.page.locator('input[type="submit"]').first(),
+    ];
+    for (const cand of submitCandidates) {
+      const loc = cand.first();
+      if (await loc.isVisible().catch(() => false)) {
+        const t = await loc.evaluate(el => el.value || el.innerText || '').catch(() => '');
+        logger.info(`[${side}] submitting form con: ${t}`);
+        await loc.click();
+        await sii.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
+        break;
+      }
+    }
+  }
 
   const rows = await sii.listAllRows();
   if (rows.length === 0) {
