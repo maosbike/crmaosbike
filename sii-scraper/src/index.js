@@ -117,46 +117,65 @@ async function processSide(sii, side) {
     logger.info(`[${side}] botones: ${JSON.stringify(formInfo.buttons)}`);
   }
 
-  // Si hay 0 tables y hay inputs de fecha → asumimos form de filtros.
-  // Llenamos rango 01-01-{TARGET_YEAR} hasta hoy y submitemos.
-  if (formInfo && formInfo.tables === 0) {
-    const targetYear = parseInt(process.env.TARGET_YEAR || '2026', 10);
-    const desde = `01/01/${targetYear}`;
-    const hasta = new Date().toLocaleDateString('es-CL'); // dd-mm-yyyy o dd/mm/yyyy según locale
-    logger.info(`[${side}] no hay tabla todavía — probando llenar form de fechas (desde=${desde} hasta=${hasta})`);
-
-    // Heurística: el primer input type=text de la página suele ser "desde",
-    // el segundo "hasta". El SII usa formato dd-mm-yyyy o dd/mm/yyyy.
-    const textInputs = formInfo.inputs.filter(i => i.tag === 'input' && (i.type === 'text' || i.type === ''));
-    if (textInputs.length >= 2) {
-      const firstSel = textInputs[0].name ? `input[name="${textInputs[0].name}"]` : `input#${textInputs[0].id}`;
-      const secondSel = textInputs[1].name ? `input[name="${textInputs[1].name}"]` : `input#${textInputs[1].id}`;
-      try {
-        await sii.page.fill(firstSel, desde);
-        await sii.page.fill(secondSel, hasta);
-        logger.info(`[${side}] fechas llenas en ${firstSel} y ${secondSel}`);
-      } catch (e) {
-        logger.warn(`[${side}] no pude llenar fechas: ${e.message}`);
-      }
+  // Manejo de re-autenticación + selección de empresa.
+  // Después de "Ver Documentos Emitidos" el SII suele:
+  //   1) Pedir login otra vez (página "Autenticación" en zeusr/AUT2000).
+  //   2) Mostrar mipeSelEmpresa.cgi para que elijas para qué RUT operás.
+  //   3) Recién después aparece la tabla.
+  const url1 = sii.page.url();
+  const title1 = await sii.page.title().catch(() => '');
+  const needsReauth = /AUT2000|IngresoRutClave|Autenticaci/i.test(url1 + ' ' + title1);
+  if (needsReauth) {
+    logger.info(`[${side}] re-autenticación requerida en ${url1}`);
+    const rutInput = sii.page.locator('input[name="rutcntr"]:visible').first();
+    if (await rutInput.isVisible().catch(() => false)) {
+      await rutInput.fill(process.env.SII_RUT);
+      const passInput = sii.page.locator('input[name="clave"]:visible, input[type="password"]:visible').first();
+      await passInput.fill(process.env.SII_PASSWORD);
+      const submit = sii.page.locator('input[type="submit"], button:has-text("Ingresar"), button:has-text("INGRESAR")').first();
+      await Promise.all([
+        sii.page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => {}),
+        submit.click(),
+      ]);
+      logger.info(`[${side}] re-login enviado, url ahora: ${sii.page.url()}`);
+    } else {
+      logger.warn(`[${side}] página de re-auth sin input rutcntr — selectores cambiaron`);
     }
+  }
 
-    // Buscar botón "Consultar" o equivalente.
-    const submitCandidates = [
-      sii.page.locator('input[type="submit"][value*="Consultar" i]'),
-      sii.page.locator('button:has-text("Consultar")'),
-      sii.page.locator('input[type="submit"][value*="Buscar" i]'),
-      sii.page.locator('input[type="submit"]').first(),
-    ];
-    for (const cand of submitCandidates) {
-      const loc = cand.first();
+  // Selección de empresa: si el RUT del login puede operar para varias
+  // empresas, el SII muestra mipeSelEmpresa.cgi. Buscamos el RUT objetivo
+  // (SII_EMPRESA_RUT) y lo clickeamos.
+  if (/mipeSelEmpresa|selEmpresa|seleccion.*empresa/i.test(sii.page.url() + ' ' + (await sii.page.title().catch(() => '')))) {
+    const empresaRut = (process.env.SII_EMPRESA_RUT || '').replace(/\./g, '').replace(/-/g, '').trim();
+    logger.info(`[${side}] pantalla seleccionar empresa — buscando RUT ${process.env.SII_EMPRESA_RUT}`);
+    // El RUT puede aparecer formateado (76.405.840-2) o sin formato. Probamos varias variantes.
+    const variants = [
+      process.env.SII_EMPRESA_RUT,
+      empresaRut,
+      empresaRut.replace(/(\d)(\d)$/, '$1-$2'),
+      empresaRut.replace(/(\d{2})(\d{3})(\d{3})(\d)/, '$1.$2.$3-$4'),
+    ].filter(Boolean);
+    let picked = false;
+    for (const v of variants) {
+      const loc = sii.page.locator(`a:has-text("${v}"), button:has-text("${v}"), tr:has-text("${v}")`).first();
       if (await loc.isVisible().catch(() => false)) {
-        const t = await loc.evaluate(el => el.value || el.innerText || '').catch(() => '');
-        logger.info(`[${side}] submitting form con: ${t}`);
+        logger.info(`[${side}] click en empresa: ${v}`);
         await loc.click();
-        await sii.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
+        picked = true;
         break;
       }
     }
+    if (!picked) {
+      // Dump opciones disponibles si no matcheó
+      const empresas = await sii.page.$$eval('a, tr', els =>
+        els.slice(0, 30).map(e => e.innerText.trim().slice(0, 100)).filter(Boolean)
+      ).catch(() => []);
+      logger.warn(`[${side}] no encontré empresa ${process.env.SII_EMPRESA_RUT}. Opciones visibles:`);
+      empresas.forEach((e, i) => logger.warn(`  [${i}] ${e}`));
+      throw new Error(`Empresa ${process.env.SII_EMPRESA_RUT} no encontrada en la pantalla de selección`);
+    }
+    await sii.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
   }
 
   const rows = await sii.listAllRows();
