@@ -134,22 +134,24 @@ async function processSide(sii, side) {
       await passInput.fill(process.env.SII_PASSWORD);
       const submit = sii.page.locator('input[type="submit"], button:has-text("Ingresar"), button:has-text("INGRESAR")').first();
       await submit.click();
-      // El SII hace un redirect en cadena: CAutInicio.cgi (transición) →
-      // mipeSelEmpresa.cgi (target). Esperamos a que termine la cadena con
-      // waitForURL que matchea CUALQUIER cosa que NO sea CAutInicio, o
-      // a defecto un timeout absoluto.
       try {
         await sii.page.waitForURL(url => !/CAutInicio\.cgi/i.test(url.toString()), {
-          timeout: 30_000,
+          timeout: 15_000,
           waitUntil: 'domcontentloaded',
         });
       } catch (_) {
-        // No cambió la URL — quedamos en transición. Damos un breath extra
-        // por si hay un meta-refresh / setTimeout que no dispara navegación.
         await new Promise(r => setTimeout(r, 3000));
       }
-      // Final wait para que el DOM de la página objetivo esté listo.
-      await sii.page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
+      await sii.page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {});
+
+      // Si quedamos en CAutInicio.cgi (la transición no auto-redirigió),
+      // navegamos directo a la URL objetivo. La cookie de sesión ya quedó
+      // seteada en el re-login, así que la navegación directa funciona.
+      if (/CAutInicio\.cgi/i.test(sii.page.url())) {
+        const TARGET = 'https://www1.sii.cl/cgi-bin/Portal001/mipeSelEmpresa.cgi?DESDE_DONDE_URL=OPCION=2&TIPO=4';
+        logger.info(`[${side}] post re-login quedamos en transición — navegando directo a ${TARGET}`);
+        await sii.page.goto(TARGET, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      }
       logger.info(`[${side}] re-login completo, url final: ${sii.page.url()} title: ${await sii.page.title().catch(() => '')}`);
     } else {
       logger.warn(`[${side}] página de re-auth sin input rutcntr — selectores cambiaron`);
