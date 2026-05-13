@@ -63,21 +63,23 @@ class SiiClient {
     } catch (_) {}
   }
 
-  /** Inicia sesión. Idempotente: si ya está logueado, no hace nada. */
+  /**
+   * Inicia sesión navegando DIRECTAMENTE al form de auth con la URL de
+   * destino (mipeSelEmpresa) ya incrustada. Esto evita el click en
+   * "Ingresar a Mi Sii" que a veces redirige a homer.sii.cl en vez del
+   * form, y también nos ahorra la cadena de clicks Historial DTE → Ver
+   * Documentos Emitidos → re-auth, porque después del login el SII nos
+   * lleva directo a la pantalla de selección de empresa.
+   */
   async login() {
-    this.logger.info('[sii] navegando a home');
-    await this.page.goto(SII_HOME, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    // URL destino post-login: empresa select del Sistema Gratuito.
+    // OPCION=2 + TIPO=4 son los códigos internos del SII para "Historial DTE".
+    const destInner = 'OPCION=2&TIPO=4';
+    const dest = 'https://www1.sii.cl/cgi-bin/Portal001/mipeSelEmpresa.cgi?DESDE_DONDE_URL=' + encodeURIComponent(destInner);
+    const LOGIN_URL = 'https://zeusr.sii.cl/AUT2000/InicioAutenticacion/IngresoRutClave.html?' + dest;
 
-    // El SII expone "Ingresar a Mi Sii" desde la home — texto exacto puede
-    // variar. Probamos varias formas.
-    const ingresar = this.page.getByRole('link', { name: /ingresar.*mi\s*sii/i }).first();
-    await ingresar.waitFor({ state: 'visible', timeout: 15_000 });
-    await ingresar.click();
-
-    // Formulario de login del SII.
-    // El SII tiene un <input name="rut" type="hidden"> que no es el visible.
-    // Filtramos por :visible + por type=text para descartarlo.
-    await this.page.waitForLoadState('domcontentloaded');
+    this.logger.info('[sii] navegando directo al form de login con destino mipeSelEmpresa');
+    await this.page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
     // Probamos múltiples candidatos en orden de probabilidad. Cada uno tiene
     // el filtro :visible para descartar inputs ocultos del formulario.
@@ -157,56 +159,21 @@ class SiiClient {
   }
 
   /**
-   * Navega al menú del Sistema de Facturación Gratuito. La sesión del SII
-   * se comparte entre dominios palena/zeusr/homer, así que después del
-   * login podemos saltarnos los clicks de menú e ir directo a la URL del
-   * sistema. Si la sesión expiró, el SII redirige al login y el resto
-   * del flujo lo detecta.
+   * Después del login con destino encoded, el SII redirige solo a
+   * mipeSelEmpresa.cgi (selección de empresa). Si por algún motivo no
+   * estamos ahí (transición lenta, redirect roto), forzamos la navegación.
+   * El flujo de "Sistema Gratuito → Historial → Ver Emitidos" del menú
+   * público www.sii.cl se saltea entero — vamos directo al destino.
    */
   async openHistorialDte() {
-    // URL pública estable del menú "Sistema de Facturación Gratuito del SII".
-    // Esta URL no requiere sesión (es contenido público) pero los links que
-    // abre sí. Es estable desde hace años.
-    const MENU_SISTEMA_GRATUITO = 'https://www.sii.cl/servicios_online/1039-1183.html';
-    this.logger.info(`[sii] navegando al menú: ${MENU_SISTEMA_GRATUITO}`);
-    await this.page.goto(MENU_SISTEMA_GRATUITO, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-
-    const bodyText = await this.page.evaluate(() => (document.body?.innerText || '')).catch(() => '');
-    this.logger.info(`[sii] menú cargado — body head: ${bodyText.slice(0, 400).replace(/\s+/g, ' ')}`);
-
-    // Buscamos el link "Historial de DTE..." con múltiples variantes de texto.
-    const histCandidates = [
-      this.page.getByRole('link', { name: /historial.*de\s+DTE/i }),
-      this.page.getByRole('link', { name: /historial.*documento/i }),
-      this.page.getByRole('link', { name: /respuesta.*documentos\s+recibidos/i }),
-      this.page.locator('a:has-text("Historial de DTE")'),
-      this.page.locator('a[href*="historial"], a[href*="resu_doc"]'),
-    ];
-    let clicked = false;
-    let chosenText = '';
-    for (const cand of histCandidates) {
-      const loc = cand.first();
-      if (await loc.isVisible().catch(() => false)) {
-        chosenText = await loc.innerText().catch(() => '(sin texto)');
-        await loc.click();
-        clicked = true;
-        break;
-      }
+    const url = this.page.url();
+    const TARGET = 'https://www1.sii.cl/cgi-bin/Portal001/mipeSelEmpresa.cgi?DESDE_DONDE_URL=' + encodeURIComponent('OPCION=2&TIPO=4');
+    if (/mipeSelEmpresa|mipeMenu/i.test(url)) {
+      this.logger.info(`[sii] ya estamos en empresa-select: ${url}`);
+    } else {
+      this.logger.info(`[sii] no estamos en empresa-select (url=${url}). Goto explícito: ${TARGET}`);
+      await this.page.goto(TARGET, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     }
-    if (!clicked) {
-      // Antes de tirar el error, dumpeo los primeros 20 textos de <a> de la
-      // página para saber exactamente qué hay disponible.
-      const links = await this.page.$$eval('a', as =>
-        as.slice(0, 40)
-          .map(a => `${a.innerText.trim().slice(0, 80)} → ${a.getAttribute('href') || ''}`)
-          .filter(s => s.trim() !== '→ ')
-      ).catch(() => []);
-      this.logger.warn(`[sii] LINKS DISPONIBLES en la página (primeros 40):`);
-      links.forEach((l, i) => this.logger.warn(`  [${i}] ${l}`));
-      throw new Error('No se encontró el link "Historial de DTE". Mirá los links logueados arriba para ajustar el selector.');
-    }
-    this.logger.info(`[sii] click en: ${chosenText}`);
-    await this.page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
   }
 
   /**
