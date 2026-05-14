@@ -142,6 +142,27 @@ const SLAService = {
   //    Antes el código reiniciaba la rotación y devolvía el ticket a
   //    cualquiera (incluyendo al original) — eso quitaba el efecto castigo.
   async reassignTicket(ticket, reason = 'sla_breach', reassigned_by = null) {
+    // Guard: si el ticket ya está asignado a un super_admin, NO reasignar.
+    // Quiere decir que ya escaló a la última instancia (Joaquín). Reasignarlo
+    // de nuevo sería un loop. Solo notificamos al super_admin.
+    if (ticket.assigned_to) {
+      const { rows: cur } = await db.query(
+        `SELECT role FROM users WHERE id = $1`,
+        [ticket.assigned_to]
+      );
+      if (cur[0]?.role === 'super_admin') {
+        logger.info(`[SLA] Ticket #${ticket.id} ya está en super_admin — no se reasigna, solo se notifica`);
+        await NotificationService.notifyMany([ticket.assigned_to], {
+          type: 'sla_breach',
+          title: `⚠ Ticket #${ticket.ticket_number} sigue sin atención`,
+          message: 'El ticket está escalado a vos como super_admin y vence su SLA. Decidí qué hacer.',
+          link_type: 'ticket',
+          link_id: ticket.id,
+        });
+        return null;
+      }
+    }
+
     // Construir la lista completa de vendedores que ya tuvieron este ticket
     const { rows: logRows } = await db.query(
       `SELECT from_user_id, to_user_id FROM reassignment_log WHERE ticket_id = $1`,
@@ -166,17 +187,31 @@ const SLAService = {
     }
 
     if (!newSeller) {
-      // Todo el plantel pasó por el ticket — sin re-ciclo. Escalar a admin.
-      logger.info(`[SLA] Todos los vendedores ya tuvieron ticket #${ticket.id} — sin más rotación, escalando a admin`);
-      const adminIds = await this.getAdminIds(ticket.branch_id);
-      await NotificationService.notifyMany(adminIds, {
-        type: 'sla_breach',
-        title: `⚠ Sin vendedor para reasignar ticket #${ticket.ticket_number}`,
-        message: 'Todos los vendedores activos ya tuvieron este ticket. Reasignación manual requerida.',
-        link_type: 'ticket',
-        link_id: ticket.id
-      });
-      return null;
+      // Todo el plantel de vendedores pasó por el ticket → escalar al
+      // super_admin (Joaquín). Auto-asignamos el ticket para que él
+      // pueda decidir qué hacer (gestionar él mismo o reasignar manual).
+      // Si hay >1 super_admin tomamos el primero por id (creado primero).
+      logger.info(`[SLA] Todos los vendedores ya tuvieron ticket #${ticket.id} — escalando a super_admin`);
+      const { rows: admins } = await db.query(
+        `SELECT id, first_name, last_name, telegram_chat_id, branch_id
+         FROM users
+         WHERE role = 'super_admin' AND active = true
+         ORDER BY id ASC LIMIT 1`
+      );
+      if (!admins[0]) {
+        // Edge case: no hay super_admin activo. Notificamos como antes.
+        logger.warn(`[SLA] No hay super_admin activo — notificando admins de sucursal del ticket #${ticket.id}`);
+        const adminIds = await this.getAdminIds(ticket.branch_id);
+        await NotificationService.notifyMany(adminIds, {
+          type: 'sla_breach',
+          title: `⚠ Sin vendedor para reasignar ticket #${ticket.ticket_number}`,
+          message: 'Todos los vendedores activos ya tuvieron este ticket y no hay super_admin para escalar.',
+          link_type: 'ticket',
+          link_id: ticket.id
+        });
+        return null;
+      }
+      newSeller = admins[0];
     }
 
     // Obtener datos del vendedor anterior (incluye telegram para notificarle la pérdida)
