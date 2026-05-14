@@ -40,6 +40,26 @@ const FOLLOWUP_LABELS = {
   no_responde:            'No responde',
 };
 
+// Motivos de cierre cuando un lead pasa a estado 'perdido'. Alineado con
+// la categorización que pide Yamaha al admin para reportar leads perdidos.
+const LOST_REASONS = [
+  'compro_otra_marca',
+  'no_aplica_financiamiento',
+  'solo_cotizando',
+  'sin_presupuesto',
+  'no_contesta',
+  'otro',
+];
+
+const LOST_REASON_LABELS = {
+  compro_otra_marca:        'Compró en otra marca',
+  no_aplica_financiamiento: 'No aplica para financiamiento',
+  solo_cotizando:           'Solo estaba cotizando (sin intención real)',
+  sin_presupuesto:          'Sin presupuesto / sin pie',
+  no_contesta:              'No volvió a contestar tras varios intentos',
+  otro:                     'Otro motivo',
+};
+
 module.exports = {
   TICKET_STATUSES,
   ACTIVE_STATUSES,
@@ -48,4 +68,6 @@ module.exports = {
   CONTACT_ADVANCES_FROM,
   FOLLOWUP_STATUSES,
   FOLLOWUP_LABELS,
+  LOST_REASONS,
+  LOST_REASON_LABELS,
 };

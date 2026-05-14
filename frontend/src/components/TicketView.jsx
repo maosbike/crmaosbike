@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
-import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, AccordionSection, TICKET_STATUS, FOLLOWUP_OPTS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile, useToast } from '../ui.jsx';
+import { Ic, S, Bdg, TBdg, PBdg, Stat, Modal, Field, ChoiceChip, AccordionSection, TICKET_STATUS, FOLLOWUP_OPTS, LOST_REASON_OPTS, LOST_REASON_LABELS, PRIORITY, SRC, COMUNAS, RECHAZO_MOTIVOS, SIT_LABORAL, CONTINUIDAD, FIN_STATUS, PAYMENT_TYPES, INV_ST, fmt, fD, fDT, ago, mapTicket, ROLES, hasRole, ROLE_ADMIN_READ, useIsMobile, useToast } from '../ui.jsx';
 import { RemindersTab } from './RemindersTab.jsx';
 
 // Formatea teléfono para display: "912345678" → "+56 9 1234 5678"
@@ -236,16 +236,26 @@ export function TicketView({lead,user,nav,updLead}){
     }
   };
 
-  // Confirmar pérdida con motivo
+  // Confirmar pérdida con motivo. El campo lost_reason guarda el motivo
+  // estructurado (uno de LOST_REASON_OPTS), lost_reason_detail el comentario
+  // libre. El backend exige el motivo si status=perdido.
   const confirmPerdido=async()=>{
     if(!perdidoMotivo){toast.error('Selecciona un motivo antes de continuar.');return;}
+    if(perdidoMotivo==='otro'&&perdidoDetalle.trim().length<10){
+      toast.error('Si elegís "Otro motivo", explicá brevemente (mínimo 10 caracteres).');return;
+    }
     setPerdidoSaving(true);
     const prev=lead.status;
     try{
-      const note=perdidoDetalle.trim()||null;
-      await api.updateTicket(lead.id,{status:'perdido',rechazo_motivo:perdidoMotivo,obs_vendedor:perdidoDetalle.trim()||undefined});
-      updLead(lead.id,{status:'perdido'});
-      const e=await api.addTimeline(lead.id,{type:'system',title:`Lead perdido · ${perdidoMotivo}`,note});
+      const detail=perdidoDetalle.trim()||null;
+      await api.updateTicket(lead.id,{
+        status:'perdido',
+        lost_reason:perdidoMotivo,
+        lost_reason_detail:detail,
+      });
+      updLead(lead.id,{status:'perdido',lost_reason:perdidoMotivo,lost_reason_detail:detail});
+      const lbl=LOST_REASON_LABELS[perdidoMotivo]||perdidoMotivo;
+      const e=await api.addTimeline(lead.id,{type:'system',title:`Lead perdido · ${lbl}`,note:detail});
       addTimelineLocal(e);
       setPerdidoModal(false);
     }catch(err){
@@ -387,6 +397,20 @@ export function TicketView({lead,user,nav,updLead}){
           </div>
         );
       })()}
+
+      {/* ── CARD: Motivo de cierre (solo perdidos con motivo registrado) ── */}
+      {isPerdido&&lead.lost_reason&&(
+        <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'var(--radius-lg)',padding:'10px 16px',marginBottom:12,display:'flex',alignItems:'flex-start',gap:12 }}>
+          <Ic.x size={16} color="#DC2626" style={{ flexShrink:0,marginTop:2 }}/>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ fontSize:10,fontWeight:700,color:'#991B1B',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:2 }}>Motivo de cierre</div>
+            <div style={{ fontSize:13,fontWeight:600,color:'#7F1D1D' }}>{LOST_REASON_LABELS[lead.lost_reason]||lead.lost_reason}</div>
+            {lead.lost_reason_detail&&(
+              <div style={{ fontSize:12,color:'#991B1B',marginTop:3,whiteSpace:'pre-wrap' }}>{lead.lost_reason_detail}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── CARD: Último contacto real (Historial claro) ── */}
       {lead.last_contact_entry&&(
@@ -1124,20 +1148,25 @@ export function TicketView({lead,user,nav,updLead}){
         }
       >
         <div style={{ display:'flex',flexDirection:'column',gap:14,marginTop:20 }}>
-          {/* Motivos */}
+          {/* Motivos estructurados — alineados con la categorización que pide Yamaha */}
           <div>
             <div style={{ fontSize:11,fontWeight:700,color:'var(--text-body)',marginBottom:8 }}>¿Por qué se perdió este lead?</div>
             <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
-              {PERDIDO_MOTIVOS.map(m=>(
-                <ChoiceChip key={m} tone="danger" selected={perdidoMotivo===m} onClick={()=>setPerdidoMotivo(m)}>
-                  {m}
+              {LOST_REASON_OPTS.map(o=>(
+                <ChoiceChip key={o.v} tone="danger" selected={perdidoMotivo===o.v} onClick={()=>setPerdidoMotivo(o.v)}>
+                  {o.l}
                 </ChoiceChip>
               ))}
             </div>
           </div>
-          {/* Detalle libre */}
+          {/* Detalle libre — obligatorio si motivo === 'otro' */}
           <div>
-            <label style={{ ...S.lbl,marginBottom:6 }}>Detalle adicional <span style={{ fontWeight:400,color:'var(--text-disabled)' }}>(opcional)</span></label>
+            <label style={{ ...S.lbl,marginBottom:6 }}>
+              Detalle adicional{' '}
+              <span style={{ fontWeight:400,color: perdidoMotivo==='otro' ? '#DC2626' : 'var(--text-disabled)' }}>
+                {perdidoMotivo==='otro' ? '(obligatorio — explicá brevemente)' : '(opcional)'}
+              </span>
+            </label>
             <textarea value={perdidoDetalle} onChange={e=>setPerdidoDetalle(e.target.value)}
               maxLength={5000}
               rows={3} placeholder="Ej: El cliente compró una Yamaha MT-03 en otro concesionario..."

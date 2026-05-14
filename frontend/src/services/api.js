@@ -100,6 +100,7 @@ export const api = {
   getTicket: (id) => request('GET', `/tickets/${id}`),
   createTicket: (data) => request('POST', '/tickets', data),
   updateTicket: (id, data) => request('PUT', `/tickets/${id}`, data),
+  getLostReasonsReport: (params) => request('GET', `/tickets/stats/lost-reasons?${new URLSearchParams(params || {})}`),
   addTimeline: (id, data) => request('POST', `/tickets/${id}/timeline`, data),
   submitFollowup: (id, data) => request('POST', `/tickets/${id}/followup`, data),
   addEvidence: (id, formData) => request('POST', `/tickets/${id}/evidence`, formData),

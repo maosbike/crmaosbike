@@ -22,18 +22,25 @@ const SLAService = {
     'financing_updated',   // Cambiar estado financiamiento a algo concreto
   ],
 
-  // Registrar una acción real en el ticket
+  // Registrar una acción real en el ticket.
+  //
+  // ATENCIÓN: NO baja needs_attention. Antes, "registrar contacto" o
+  // "agregar nota" apagaba la bandera roja sin que el vendedor pasara
+  // por el formulario obligatorio de seguimiento. Eso era un bypass del
+  // modal bloqueante. Ahora SOLO POST /tickets/:id/followup (formulario
+  // completo con fecha de próximo contacto) limpia needs_attention.
+  //
+  // Esta función sigue actualizando last_real_action_at y first_action_at
+  // — sirven para el SLA inicial y para detectar leads huérfanos sin
+  // actividad, pero la bandera roja se baja solo con el flujo formal.
   async registerAction(ticket_id, action_type) {
     if (!this.REAL_ACTIONS.includes(action_type)) return;
 
     const now = new Date().toISOString();
-    // Una acción real también limpia el flag "Necesita atención" (si estaba activo)
     await db.query(
       `UPDATE tickets SET
         last_real_action_at = $1,
         first_action_at = COALESCE(first_action_at, $1),
-        needs_attention = FALSE,
-        needs_attention_since = NULL,
         sla_status = CASE
           WHEN sla_status IN ('breached', 'reassigned') THEN sla_status
           ELSE 'normal'
@@ -443,7 +450,18 @@ const SLAService = {
     return rows.length;
   },
 
-  // Leads activos en estados de trabajo que llevan >48h sin acción real → flag needs_attention
+  // Leads activos sin formulario de seguimiento reciente → flag needs_attention.
+  //
+  // Cambio importante: la condición usa COALESCE(followup_updated_at,
+  // assigned_to_at, created_at) en lugar de last_real_action_at. Antes el
+  // vendedor podía resetear el contador con notas cortas o "registrar
+  // contacto" sin pasar por el formulario formal — ahora solo el flujo
+  // POST /tickets/:id/followup (formulario completo con fecha de próximo
+  // contacto) renueva el contador.
+  //
+  // Threshold: 72 horas (3 días). Más generoso que las 48h originales
+  // para no abrumar al vendedor con leads que apenas creó, pero firme
+  // para no dejar leads dormidos sin planificación.
   async checkStagnantLeads() {
     const { rows } = await db.query(
       `UPDATE tickets SET
@@ -452,12 +470,7 @@ const SLAService = {
          attention_count = attention_count + 1
        WHERE status IN ('en_gestion','cotizado','financiamiento')
          AND needs_attention = FALSE
-         AND (
-           GREATEST(
-             COALESCE(last_real_action_at, '1970-01-01'::timestamptz),
-             COALESCE(last_contact_at, '1970-01-01'::timestamptz)
-           ) < NOW() - INTERVAL '48 hours'
-         )
+         AND COALESCE(followup_updated_at, created_at) < NOW() - INTERVAL '72 hours'
        RETURNING id, assigned_to, branch_id, ticket_num`
     );
 
@@ -467,7 +480,7 @@ const SLAService = {
         await NotificationService.notifyMany([t.assigned_to], {
           type: 'lead_needs_attention',
           title: `Lead #${t.ticket_num} necesita seguimiento`,
-          message: 'Llevan 48h sin contacto — registrá una gestión o marcá el estado.',
+          message: 'Lleva 3 días sin formulario de seguimiento. Completá el modal al entrar a Leads.',
           link_type: 'ticket',
           link_id: t.id,
         });
