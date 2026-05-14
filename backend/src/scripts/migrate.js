@@ -111,6 +111,7 @@ async function migrate() {
     await runMigration('060', 'invoices.ref_tipo (anulacion/correccion/ajuste)', m('060_invoices_ref_tipo.sql'));
     await runMigration('061', 'abono_lines (multi-medio en reservas)',          m('061_abono_lines.sql'));
     await runMigration('062', 'strip brand prefix de modelos duplicados',       m('062_strip_brand_prefix.sql'));
+    await runMigration('063', 'lead lost_reason + lost_at',                     m('063_lead_lost_reason.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');

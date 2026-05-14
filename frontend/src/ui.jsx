@@ -42,6 +42,16 @@ export const FOLLOWUP_OPTS = [
   {v:'agendar_visita',        l:'Agendar visita'},
   {v:'no_responde',           l:'No responde'},
 ];
+// 6 motivos al cerrar lead como 'perdido' — espejo backend.
+export const LOST_REASON_OPTS = [
+  {v:'compro_otra_marca',        l:'Compró en otra marca'},
+  {v:'no_aplica_financiamiento', l:'No aplica para financiamiento'},
+  {v:'solo_cotizando',           l:'Solo estaba cotizando (sin intención real)'},
+  {v:'sin_presupuesto',          l:'Sin presupuesto / sin pie'},
+  {v:'no_contesta',              l:'No volvió a contestar tras varios intentos'},
+  {v:'otro',                     l:'Otro motivo'},
+];
+export const LOST_REASON_LABELS = Object.fromEntries(LOST_REASON_OPTS.map(o => [o.v, o.l]));
 // Roles — fuente única de verdad. `hasRole(user, ...roles)` centraliza los
 // checks repetidos en vistas. No altera la semántica: es solo un alias de
 // `roles.includes(user?.role)`.
@@ -133,6 +143,9 @@ export const mapTicket=(t)=>{
     followup_next_step:t.followup_next_step||null,
     next_followup_at:t.next_followup_at||null,
     followup_updated_at:t.followup_updated_at||null,
+    lost_reason:t.lost_reason||null,
+    lost_reason_detail:t.lost_reason_detail||null,
+    lost_at:t.lost_at||null,
     last_contact_entry:t.last_contact_entry||null,
     reassignment_summary:t.reassignment_summary||null,
     lastRealActionAt:t.last_real_action_at||null,

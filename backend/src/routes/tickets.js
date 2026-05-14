@@ -11,6 +11,8 @@ const {
   CONTACT_ADVANCES_FROM,
   FOLLOWUP_STATUSES,
   FOLLOWUP_LABELS,
+  LOST_REASONS,
+  LOST_REASON_LABELS,
 } = require('../config/leadStatus');
 const { resolveAssignmentBranch } = require('../config/branchRouting');
 const multer = require('multer');
@@ -281,7 +283,32 @@ router.put('/:id', asyncHandler(async (req, res) => {
   const fields = ['first_name','last_name','rut','birthdate','email','phone','comuna','source',
                    'model_id','color_pref','status','priority','wants_financing','sit_laboral',
                    'continuidad','renta','pie','test_ride','fin_status','fin_institution',
-                   'rechazo_motivo','obs_vendedor','obs_supervisor','seller_id','post_venta'];
+                   'rechazo_motivo','obs_vendedor','obs_supervisor','seller_id','post_venta',
+                   'lost_reason','lost_reason_detail'];
+
+  // Si el vendedor está cerrando el lead como 'perdido', exigir motivo.
+  // Esto resuelve el caso del admin que necesita reportar a Yamaha por qué
+  // se cierra cada lead (antes el estado 'perdido' no exigía explicación).
+  if (req.body.status === 'perdido') {
+    const reason = req.body.lost_reason;
+    if (!reason || !LOST_REASONS.includes(reason)) {
+      return res.status(400).json({
+        error: 'lost_reason_required',
+        message: 'Para cerrar el lead como Perdido, indicá el motivo de cierre.',
+        valid_reasons: LOST_REASONS,
+      });
+    }
+    // Si el motivo es "otro", exigir detalle escrito.
+    if (reason === 'otro') {
+      const detail = (req.body.lost_reason_detail || '').trim();
+      if (detail.length < 10) {
+        return res.status(400).json({
+          error: 'lost_reason_detail_required',
+          message: 'Si elegís "Otro motivo", explicá brevemente (mínimo 10 caracteres).',
+        });
+      }
+    }
+  }
   const sets = [], params = [];
   let idx = 1;
 
@@ -297,6 +324,16 @@ router.put('/:id', asyncHandler(async (req, res) => {
         params.push(req.body[f]);
       }
     }
+  }
+
+  // Si está cerrando como perdido, setear lost_at automáticamente.
+  // Si está reabriendo (volviendo a un estado activo), limpiar lost_at/lost_reason.
+  if (req.body.status === 'perdido') {
+    sets.push(`lost_at = COALESCE(lost_at, NOW())`);
+  } else if (req.body.status && req.body.status !== 'perdido') {
+    sets.push(`lost_at = NULL`);
+    sets.push(`lost_reason = NULL`);
+    sets.push(`lost_reason_detail = NULL`);
   }
 
   if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
@@ -531,6 +568,67 @@ router.get('/stats/dashboard', asyncHandler(async (req, res) => {
     FROM tickets WHERE 1=1 ${bWhere}`, params);
 
   res.json(stats.rows[0]);
+}));
+
+// ─── GET /api/tickets/stats/lost-reasons ─────────────────────────────────────
+// Reporte para admin: leads perdidos agrupados por motivo, con filtros de
+// rango de fecha, sucursal y vendedor. Lista los leads de cada motivo para
+// que el admin pueda reportar a Yamaha o re-activar oportunidades.
+router.get('/stats/lost-reasons', asyncHandler(async (req, res) => {
+  // Solo admins ven el reporte. Vendedores no acceden.
+  if (!['super_admin','admin_comercial','backoffice'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Solo admins acceden al reporte' });
+  }
+
+  const { desde, hasta, branch_id, seller_id } = req.query;
+  const where = [`t.status = 'perdido'`, `t.lost_reason IS NOT NULL`];
+  const params = [];
+  let idx = 1;
+
+  if (desde) { where.push(`COALESCE(t.lost_at, t.updated_at) >= $${idx++}`); params.push(desde); }
+  if (hasta) { where.push(`COALESCE(t.lost_at, t.updated_at) <= $${idx++}`); params.push(hasta); }
+  if (branch_id) { where.push(`t.branch_id = $${idx++}`); params.push(branch_id); }
+  if (seller_id) { where.push(`t.assigned_to = $${idx++}`); params.push(seller_id); }
+
+  // admin_comercial limitado a su sucursal
+  if (req.user.role === 'admin_comercial' && req.user.branch_id) {
+    where.push(`t.branch_id = $${idx++}`);
+    params.push(req.user.branch_id);
+  }
+
+  const whereSql = where.join(' AND ');
+
+  const summary = await db.query(
+    `SELECT t.lost_reason, COUNT(*)::int AS count
+     FROM tickets t
+     WHERE ${whereSql}
+     GROUP BY t.lost_reason
+     ORDER BY count DESC`,
+    params
+  );
+
+  const details = await db.query(
+    `SELECT
+       t.id, t.ticket_num, t.first_name, t.last_name, t.phone, t.email,
+       t.lost_reason, t.lost_reason_detail, t.lost_at, t.updated_at,
+       t.branch_id, b.name AS branch_name,
+       t.assigned_to, u.first_name AS seller_fn, u.last_name AS seller_ln,
+       m.brand AS moto_brand, m.model AS moto_model
+     FROM tickets t
+     LEFT JOIN branches b   ON t.branch_id = b.id
+     LEFT JOIN users u      ON t.assigned_to = u.id
+     LEFT JOIN moto_models m ON t.model_id = m.id
+     WHERE ${whereSql}
+     ORDER BY COALESCE(t.lost_at, t.updated_at) DESC
+     LIMIT 500`,
+    params
+  );
+
+  res.json({
+    summary: summary.rows,
+    leads:   details.rows,
+    total:   details.rows.length,
+  });
 }));
 
 module.exports = router;
