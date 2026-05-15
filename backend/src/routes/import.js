@@ -269,12 +269,12 @@ async function resolveModelWithAliases(modeloRaw, models) {
   }
   if (ai.newModel) {
     // Claude reconoció un modelo real que no está en el catálogo.
-    // Lo creamos activo y guardamos alias. Marcamos en commercial_name
-    // que vino auto-creado para que el admin lo revise si quiere.
+    // Lo creamos activo y guardamos alias. year y price son NOT NULL:
+    // usamos año actual y price=0 para que el admin lo complete después.
     try {
       const { rows: created } = await db.query(
-        `INSERT INTO moto_models (brand, model, active, created_at, updated_at)
-         VALUES ($1, $2, true, NOW(), NOW())
+        `INSERT INTO moto_models (brand, model, year, price, active, created_at, updated_at)
+         VALUES ($1, $2, EXTRACT(YEAR FROM NOW())::INT, 0, true, NOW(), NOW())
          ON CONFLICT DO NOTHING
          RETURNING *`,
         [ai.newModel.brand, ai.newModel.model]

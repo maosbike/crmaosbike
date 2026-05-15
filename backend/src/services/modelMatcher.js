@@ -42,9 +42,19 @@ async function matchWithClaude(raw, models) {
   if (!client) return null;
   if (!raw || !models || !models.length) return null;
 
-  // Catálogo compactado para el prompt. Limitamos a 600 entradas
-  // (suficiente para el catálogo real, mantiene costo bajo).
-  const catalog = models.slice(0, 600).map(m => ({
+  // Filtrar el catálogo por marca si la podemos extraer del raw. Esto
+  // baja el prompt de ~30k tokens (todo el catálogo) a ~500 tokens
+  // (solo modelos de esa marca) y evita reventar el rate limit de 50k
+  // tokens/min de Anthropic.
+  const rawLower = raw.toLowerCase();
+  const detectedBrand = ALLOWED_BRANDS.find(b =>
+    rawLower.includes(b.toLowerCase())
+  );
+  const filtered = detectedBrand
+    ? models.filter(m => (m.brand || '').toLowerCase() === detectedBrand.toLowerCase())
+    : models;
+  // Si después del filtro queda demasiado grande, igual cortamos a 200.
+  const catalog = filtered.slice(0, 200).map(m => ({
     id: m.id,
     brand: m.brand,
     model: m.model,

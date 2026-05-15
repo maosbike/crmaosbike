@@ -112,6 +112,8 @@ async function migrate() {
     await runMigration('061', 'abono_lines (multi-medio en reservas)',          m('061_abono_lines.sql'));
     await runMigration('062', 'strip brand prefix de modelos duplicados',       m('062_strip_brand_prefix.sql'));
     await runMigration('063', 'lead lost_reason + lost_at',                     m('063_lead_lost_reason.sql'));
+    await runMigration('064', 'model_aliases.source',                           m('064_model_aliases_source.sql'));
+    await runMigration('065', 'force-link Hayabusa/Himalayan stuck leads',     m('065_force_link_stuck_leads.sql'));
 
     // Seed solo corre si no hay usuarios — evita wiping assigned_to en cada deploy
     const { rows: existingUsers } = await db.query('SELECT 1 FROM users LIMIT 1');

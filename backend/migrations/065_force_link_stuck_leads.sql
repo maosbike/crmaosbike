@@ -10,8 +10,10 @@
 BEGIN;
 
 -- (1) Asegurar que Suzuki Hayabusa exista en el catálogo.
-INSERT INTO moto_models (brand, model, active, created_at, updated_at)
-SELECT 'Suzuki', 'Hayabusa', true, NOW(), NOW()
+--     year y price son NOT NULL: usamos año actual y price=0 (admin lo
+--     completa al editar el modelo en Catálogo).
+INSERT INTO moto_models (brand, model, year, price, active, created_at, updated_at)
+SELECT 'Suzuki', 'Hayabusa', EXTRACT(YEAR FROM NOW())::INT, 0, true, NOW(), NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM moto_models
    WHERE brand ILIKE 'suzuki'
@@ -19,8 +21,8 @@ WHERE NOT EXISTS (
 );
 
 -- (2) Asegurar que Royal Enfield Himalayan 450 exista en el catálogo.
-INSERT INTO moto_models (brand, model, active, created_at, updated_at)
-SELECT 'Royal Enfield', 'Himalayan 450', true, NOW(), NOW()
+INSERT INTO moto_models (brand, model, year, price, active, created_at, updated_at)
+SELECT 'Royal Enfield', 'Himalayan 450', EXTRACT(YEAR FROM NOW())::INT, 0, true, NOW(), NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM moto_models
    WHERE brand ILIKE 'royal enfield'
