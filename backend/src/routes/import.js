@@ -7,6 +7,7 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const TelegramService = require('../services/telegramService');
 const SLAService = require('../services/slaService');
+const { matchWithClaude } = require('../services/modelMatcher');
 const { calcSlaDeadline } = require('../utils/slaUtils');
 const {
   normalizeRut,
@@ -248,7 +249,54 @@ async function resolveModelWithAliases(modeloRaw, models) {
     if (rows[0]) return rows[0];
   } catch (_) {}
   // 2. Fuzzy matching como fallback
-  return resolveModel(cleaned, models);
+  const fuzzy = resolveModel(cleaned, models);
+  if (fuzzy) return fuzzy;
+  // 3. Último recurso: Claude. Si el matcher fuzzy se rinde, le pasamos el raw
+  //    al LLM con el catálogo. Solo se llama cuando todo lo demás falló, así
+  //    que cada raw cuesta a lo más 1 call de Haiku.
+  const ai = await matchWithClaude(cleaned, models);
+  if (!ai) return null;
+  if (ai.match) {
+    // Persistir como alias para no volver a gastar tokens con el mismo raw.
+    try {
+      await db.query(
+        `INSERT INTO model_aliases (alias, model_id, source) VALUES ($1, $2, 'claude')
+         ON CONFLICT (alias) DO NOTHING`,
+        [cleaned, ai.match.id]
+      );
+    } catch (e) { logger.warn(`No pude guardar alias claude: ${e.message}`); }
+    return ai.match;
+  }
+  if (ai.newModel) {
+    // Claude reconoció un modelo real que no está en el catálogo.
+    // Lo creamos activo y guardamos alias. Marcamos en commercial_name
+    // que vino auto-creado para que el admin lo revise si quiere.
+    try {
+      const { rows: created } = await db.query(
+        `INSERT INTO moto_models (brand, model, active, created_at, updated_at)
+         VALUES ($1, $2, true, NOW(), NOW())
+         ON CONFLICT DO NOTHING
+         RETURNING *`,
+        [ai.newModel.brand, ai.newModel.model]
+      );
+      const newRow = created[0] || (await db.query(
+        `SELECT * FROM moto_models WHERE lower(brand)=lower($1) AND lower(model)=lower($2) LIMIT 1`,
+        [ai.newModel.brand, ai.newModel.model]
+      )).rows[0];
+      if (newRow) {
+        await db.query(
+          `INSERT INTO model_aliases (alias, model_id, source) VALUES ($1, $2, 'claude')
+           ON CONFLICT (alias) DO NOTHING`,
+          [cleaned, newRow.id]
+        );
+        logger.info(`modelMatcher: catálogo extendido con ${newRow.brand} ${newRow.model} (id=${newRow.id})`);
+        return newRow;
+      }
+    } catch (e) {
+      logger.warn(`No pude crear nuevo moto_model desde Claude: ${e.message}`);
+    }
+  }
+  return null;
 }
 
 function resolveModel(modeloRaw, models) {
@@ -979,24 +1027,14 @@ router.get('/logs', asyncHandler(async (req, res) => {
     res.json(rows);
 }));
 
-// ─── POST /api/import/relink-models ──────────────────────────────────────────
-// Re-corre el matcher mejorado sobre todos los leads (tickets) cuyo
-// model_id está en NULL pero la nota del timeline guarda el raw original
-// del modelo ('Moto sin resolver: "X"'). Útil tras mejorar el matcher
-// — los leads viejos importados con la versión anterior se reparan en
-// bulk sin pedirle al admin que asigne uno por uno.
-router.post('/relink-models', asyncHandler(async (req, res) => {
-  // Cargar catálogo de modelos una sola vez.
-  // No filtramos por active: un lead histórico puede apuntar a un modelo
-  // descontinuado, y aun así queremos vincularlo para no perder la trazabilidad.
+// ─── Función reutilizable: relink-models ─────────────────────────────────────
+// Se llama desde el endpoint POST /api/import/relink-models, al final de cada
+// import bulk, y como tarea de arranque del server. userId es opcional:
+// si no viene, las anotaciones de timeline se hacen como sistema (NULL).
+async function relinkUnresolvedLeads(userId = null) {
   const { rows: models } = await db.query(
     `SELECT id, brand, model, commercial_name, active FROM moto_models`
   );
-
-  // Buscar tickets sin model_id que tengan timeline con el raw.
-  // Usamos LATERAL para tomar la primera nota de tipo 'system' por ticket
-  // (la que crea el import). La regex `Moto sin resolver: "X"` la pusimos
-  // en import.js cuando el matcher falla.
   const { rows: candidates } = await db.query(
     `SELECT t.id, tl.note
        FROM tickets t
@@ -1014,7 +1052,6 @@ router.post('/relink-models', asyncHandler(async (req, res) => {
 
   let scanned = 0, fixed = 0, stillUnresolved = 0;
   const samples = [];
-  const diagnostics = [];  // por cada raw no resuelto: candidatos del catálogo
   for (const c of candidates) {
     scanned++;
     const m = c.note.match(/Moto sin resolver:\s*"([^"]+)"/i);
@@ -1026,48 +1063,32 @@ router.post('/relink-models', asyncHandler(async (req, res) => {
         `UPDATE tickets SET model_id = $1, updated_at = NOW() WHERE id = $2`,
         [resolved.id, c.id]
       );
-      // Anotar en timeline el fix para trazabilidad.
       await db.query(
         `INSERT INTO timeline (ticket_id, user_id, type, title, note)
          VALUES ($1, $2, 'system', 'Modelo asignado por re-vinculación', $3)`,
-        [c.id, req.user.id, `Raw original: "${raw}" → ${resolved.brand} ${resolved.model}`]
+        [c.id, userId, `Raw original: "${raw}" → ${resolved.brand} ${resolved.model}`]
       );
       fixed++;
     } else {
       stillUnresolved++;
-      if (samples.length < 10) {
-        samples.push(raw);
-        // Diagnóstico: buscar los 3 modelos del catálogo que más tokens
-        // comparten con el raw. Si la lista llega vacía, el modelo realmente
-        // no está en el catálogo. Si llega con candidatos pero el matcher
-        // falló, hay un bug residual o el catálogo tiene naming distinto.
-        const rawTokens = normalizeStr(raw).split(/\s+/).filter(t => t.length >= 3);
-        const scored = models.map(m => {
-          const cat = normalizeStr(`${m.brand} ${m.model} ${m.commercial_name || ''}`);
-          const hits = rawTokens.filter(t => cat.includes(t)).length;
-          return { m, hits };
-        }).filter(s => s.hits > 0)
-          .sort((a, b) => b.hits - a.hits)
-          .slice(0, 3)
-          .map(s => ({
-            brand: s.m.brand,
-            model: s.m.model,
-            commercial_name: s.m.commercial_name,
-            active: s.m.active,
-            matched_tokens: s.hits,
-          }));
-        diagnostics.push({ raw, candidates: scored });
-      }
+      if (samples.length < 20) samples.push(raw);
     }
   }
+  return { scanned, fixed, stillUnresolved, samples };
+}
 
+// ─── POST /api/import/relink-models ──────────────────────────────────────────
+// Endpoint manual (admin only). El flujo automático lo dispara import.js y el
+// boot del server. Lo dejamos para que el admin pueda forzarlo a demanda.
+router.post('/relink-models', asyncHandler(async (req, res) => {
+  const r = await relinkUnresolvedLeads(req.user.id);
   res.json({
-    scanned,
-    fixed,
-    still_unresolved: stillUnresolved,
-    sample_unresolved: samples,  // primeros 10 raw que aún no matchean
-    diagnostics,                 // candidatos del catálogo cercanos a cada raw
+    scanned: r.scanned,
+    fixed: r.fixed,
+    still_unresolved: r.stillUnresolved,
+    sample_unresolved: r.samples,
   });
 }));
 
 module.exports = router;
+module.exports.relinkUnresolvedLeads = relinkUnresolvedLeads;

@@ -120,41 +120,9 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         itemLabel="ficha"
         filtered={hasFilters}
         actions={
-          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            {hasRole(user, ROLES.SUPER) && (
-              <button onClick={async()=>{
-                if(!window.confirm('Re-correr el matcher sobre todos los leads sin modelo asignado. Asigna el modelo correcto en bulk a los que ya estaban importados.'))return;
-                try {
-                  const r = await api.relinkLeadModels();
-                  let msg = `Re-vinculación completa:\n${r.scanned} leads revisados\n${r.fixed} arreglados\n${r.still_unresolved} sin resolver`;
-                  if (r.diagnostics?.length) {
-                    msg += '\n\nDiagnóstico (qué hay en el catálogo cerca de cada nombre):';
-                    for (const d of r.diagnostics) {
-                      msg += `\n\n• "${d.raw}"`;
-                      if (d.candidates.length === 0) {
-                        msg += '\n   → catálogo no tiene ningún modelo con esos tokens';
-                      } else {
-                        for (const c of d.candidates) {
-                          const tag = c.active === false ? ' [INACTIVO]' : '';
-                          msg += `\n   → ${c.brand} ${c.model}${c.commercial_name?' ('+c.commercial_name+')':''}${tag}`;
-                        }
-                      }
-                    }
-                  } else if (r.sample_unresolved?.length) {
-                    msg += `\n\nNombres que no matchean (muestra):\n${r.sample_unresolved.join('\n')}`;
-                  }
-                  alert(msg);
-                  if (typeof window !== 'undefined') window.location.reload();
-                } catch(e) { alert('Error: '+(e.message||'falló')); }
-              }} style={{...S.btn2,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,padding:'8px 14px',whiteSpace:'nowrap'}}
-                title="Asignar modelo automáticamente a leads viejos que entraron sin modelo">
-                Reparar leads sin modelo
-              </button>
-            )}
-            <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
-              <Ic.plus size={14}/>Nueva ficha
-            </button>
-          </div>
+          <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
+            <Ic.plus size={14}/>Nueva ficha
+          </button>
         }
       />
       {reassignErr && <ErrorMsg msg={reassignErr} />}
