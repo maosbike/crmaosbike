@@ -199,9 +199,12 @@ function coreModel(s) {
     .split(' ')
     .filter(t => !COLORS.includes(t) && !VARIANTS.includes(t))
     .filter(t => !/^20\d{2}$/.test(t))     // años sueltos: "2024","2025","2026"
+    // Sufijo "a" final SOLO sobre tokens con dígito (R15A → R15, FZ250A → FZ250).
+    // El bug anterior usaba .replace(/a$/, '') sobre el string completo, lo que
+    // truncaba "hayabusa" → "hayabus" y rompía el match.
+    .map(t => t.replace(/(\d)a$/, '$1'))
     .join(' ')
     .replace(/\b(yzf|xtz|xt)\b/g, '')      // prefijos Yamaha
-    .replace(/a$/, '')                      // sufijo "a" final (R15A → R15)
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -385,6 +388,32 @@ function resolveModel(modeloRaw, models) {
       }
       if (hits.length === 1) return hits[0].m;
       // Si hay varios, tomar el más corto (suele ser el más específico).
+      if (hits.length > 1) {
+        hits.sort((a, b) => a.len - b.len);
+        return hits[0].m;
+      }
+    }
+  }
+  // 13. Modelos de un solo token alfa sin número (Hayabusa, Vespa, Vstrom).
+  //     Tras stripBrand queda una sola palabra de 5+ caracteres. Buscamos
+  //     coincidencia por contains en m.model o m.commercial_name. Para evitar
+  //     ambigüedad pedimos también que la marca calce con brand del catálogo.
+  if (rawNoBrand && rawNoBrand !== raw) {
+    const nbTokens = rawNoBrand.split(/\s+/).filter(t => t.length >= 2);
+    const nbAlfa   = nbTokens.find(t => /^[a-z]{5,}$/.test(t));
+    if (nbAlfa && nbTokens.length === 1) {
+      // Extraer la marca del input para acotar la búsqueda.
+      const inputBrand = KNOWN_BRANDS.find(b => raw.startsWith(b + ' ') || raw === b);
+      const hits = [];
+      for (const m of models) {
+        const brandMatch = !inputBrand || compactStr(m.brand) === compactStr(inputBrand);
+        if (!brandMatch) continue;
+        const mc = compactStr(`${m.model} ${m.commercial_name || ''}`);
+        if (mc.includes(nbAlfa)) {
+          hits.push({ m, len: mc.length });
+        }
+      }
+      if (hits.length === 1) return hits[0].m;
       if (hits.length > 1) {
         hits.sort((a, b) => a.len - b.len);
         return hits[0].m;
@@ -958,8 +987,10 @@ router.get('/logs', asyncHandler(async (req, res) => {
 // bulk sin pedirle al admin que asigne uno por uno.
 router.post('/relink-models', asyncHandler(async (req, res) => {
   // Cargar catálogo de modelos una sola vez.
+  // No filtramos por active: un lead histórico puede apuntar a un modelo
+  // descontinuado, y aun así queremos vincularlo para no perder la trazabilidad.
   const { rows: models } = await db.query(
-    `SELECT id, brand, model, commercial_name FROM moto_models WHERE active = true`
+    `SELECT id, brand, model, commercial_name, active FROM moto_models`
   );
 
   // Buscar tickets sin model_id que tengan timeline con el raw.
@@ -983,6 +1014,7 @@ router.post('/relink-models', asyncHandler(async (req, res) => {
 
   let scanned = 0, fixed = 0, stillUnresolved = 0;
   const samples = [];
+  const diagnostics = [];  // por cada raw no resuelto: candidatos del catálogo
   for (const c of candidates) {
     scanned++;
     const m = c.note.match(/Moto sin resolver:\s*"([^"]+)"/i);
@@ -1003,7 +1035,29 @@ router.post('/relink-models', asyncHandler(async (req, res) => {
       fixed++;
     } else {
       stillUnresolved++;
-      if (samples.length < 10) samples.push(raw);
+      if (samples.length < 10) {
+        samples.push(raw);
+        // Diagnóstico: buscar los 3 modelos del catálogo que más tokens
+        // comparten con el raw. Si la lista llega vacía, el modelo realmente
+        // no está en el catálogo. Si llega con candidatos pero el matcher
+        // falló, hay un bug residual o el catálogo tiene naming distinto.
+        const rawTokens = normalizeStr(raw).split(/\s+/).filter(t => t.length >= 3);
+        const scored = models.map(m => {
+          const cat = normalizeStr(`${m.brand} ${m.model} ${m.commercial_name || ''}`);
+          const hits = rawTokens.filter(t => cat.includes(t)).length;
+          return { m, hits };
+        }).filter(s => s.hits > 0)
+          .sort((a, b) => b.hits - a.hits)
+          .slice(0, 3)
+          .map(s => ({
+            brand: s.m.brand,
+            model: s.m.model,
+            commercial_name: s.m.commercial_name,
+            active: s.m.active,
+            matched_tokens: s.hits,
+          }));
+        diagnostics.push({ raw, candidates: scored });
+      }
     }
   }
 
@@ -1012,6 +1066,7 @@ router.post('/relink-models', asyncHandler(async (req, res) => {
     fixed,
     still_unresolved: stillUnresolved,
     sample_unresolved: samples,  // primeros 10 raw que aún no matchean
+    diagnostics,                 // candidatos del catálogo cercanos a cada raw
   });
 }));
 
