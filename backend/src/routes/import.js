@@ -1052,6 +1052,7 @@ async function relinkUnresolvedLeads(userId = null) {
 
   let scanned = 0, fixed = 0, stillUnresolved = 0;
   const samples = [];
+  const diagnostics = [];  // por cada raw no resuelto: candidatos del catálogo
   for (const c of candidates) {
     scanned++;
     const m = c.note.match(/Moto sin resolver:\s*"([^"]+)"/i);
