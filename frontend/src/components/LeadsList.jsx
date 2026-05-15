@@ -121,6 +121,20 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
         filtered={hasFilters}
         actions={
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {hasRole(user, ROLES.SUPER) && (
+              <button onClick={async()=>{
+                if(!window.confirm('Re-correr el matcher sobre todos los leads sin modelo asignado. Asigna el modelo correcto en bulk a los que ya estaban importados.'))return;
+                try {
+                  const r = await api.relinkLeadModels();
+                  alert(`Re-vinculación completa:\n${r.scanned} leads revisados\n${r.fixed} arreglados\n${r.still_unresolved} sin resolver (catálogo no tiene esos modelos)` +
+                    (r.sample_unresolved?.length ? `\n\nNombres que no matchean (muestra):\n${r.sample_unresolved.join('\n')}` : ''));
+                  if (typeof window !== 'undefined') window.location.reload();
+                } catch(e) { alert('Error: '+(e.message||'falló')); }
+              }} style={{...S.btn2,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:600,padding:'8px 14px',whiteSpace:'nowrap'}}
+                title="Asignar modelo automáticamente a leads viejos que entraron sin modelo">
+                Reparar leads sin modelo
+              </button>
+            )}
             <button onClick={()=>setShowNew(true)} style={{...S.btn,display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,padding:'8px 16px'}}>
               <Ic.plus size={14}/>Nueva ficha
             </button>
