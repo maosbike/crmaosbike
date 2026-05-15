@@ -167,6 +167,24 @@ router.get('/:id', asyncHandler(async (req, res) => {
 router.post('/', asyncHandler(async (req, res) => {
   const { first_name, last_name, rut, email, phone, comuna, source, branch_id, model_id, priority, color_pref, assigned_to: manualSeller } = req.body;
   if (!first_name) return res.status(400).json({ error: 'Nombre requerido' });
+  // Modelo obligatorio: política del CRM — ningún lead se crea sin saber qué
+  // moto le interesa al cliente. Antes pasaban leads con model_id=NULL y los
+  // vendedores no sabían qué cotizar. Si el catálogo no tiene aún ese modelo,
+  // hay que cargarlo al catálogo primero.
+  if (!model_id) {
+    return res.status(400).json({
+      error: 'model_id_required',
+      message: 'Tenés que elegir un modelo de moto antes de crear el lead.',
+    });
+  }
+  // Validar que el model_id exista en el catálogo (evita FK rota o ID inventado).
+  const { rows: mm } = await db.query('SELECT id FROM moto_models WHERE id = $1', [model_id]);
+  if (!mm[0]) {
+    return res.status(400).json({
+      error: 'model_not_found',
+      message: 'El modelo elegido no existe en el catálogo.',
+    });
+  }
 
   // MOV → MPN: regla documentada en config/branchRouting.js
   const branch = resolveAssignmentBranch(branch_id || req.user.branch_id);
