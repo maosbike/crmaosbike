@@ -204,24 +204,8 @@ app.listen(PORT, () => {
   // Iniciar cron jobs de seguimiento comercial
   require('./jobs/slaChecker').start();
   require('./jobs/reminderChecker').start();
+  require('./jobs/relinkChecker').start();
 
   // Registrar webhook de Telegram (no-op si TELEGRAM_WEBHOOK_URL no está configurada)
   require('./services/telegramService').setupWebhook();
-
-  // One-shot al arranque: re-vincular leads viejos sin modelo. Con el matcher
-  // mejorado + fallback de Claude resolvemos los que quedaron en NULL por
-  // versiones previas del matcher. Si no hay candidatos, el costo es 0.
-  // Lo demoramos 10s para no competir con el arranque por conexiones DB.
-  setTimeout(() => {
-    const importRoute = require('./routes/import');
-    if (typeof importRoute.relinkUnresolvedLeads === 'function') {
-      importRoute.relinkUnresolvedLeads(null)
-        .then(r => {
-          if (r.scanned > 0) {
-            logger.info(`[Boot relink] ${r.fixed}/${r.scanned} leads re-vinculados. Sin resolver: ${r.stillUnresolved}`);
-          }
-        })
-        .catch(e => logger.warn(`[Boot relink] falló: ${e.message}`));
-    }
-  }, 10_000);
 });
