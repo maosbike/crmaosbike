@@ -796,22 +796,39 @@ router.post('/confirm', asyncHandler(async (req, res) => {
     }
 
     // ── Crear tickets ──────────────────────────────────────────
-    const stats = { imported: 0, errors: 0, no_seller: 0 };
+    const stats = { imported: 0, errors: 0, no_seller: 0, skipped_no_model: 0 };
     const createdNums = [];
+    const skippedNoModel = []; // raw modelos que no resolvieron — para reportar al admin
 
     for (const r of toImport) {
       try {
         const seller = r.branch_id ? await assignSellerForImport(r.branch_id) : null;
-        const { rows: seqR } = await db.query("SELECT 'SCM-' || nextval('ticket_num_seq') AS num");
-        const num = seqR[0].num;
 
-        // Resolver model_id: primero el que viene del preview (si el cliente
-        // lo mandó ya resuelto), sino resolverlo ahora desde el catálogo.
+        // Resolver model_id ANTES de crear el ticket. Política del CRM:
+        // ningún lead entra sin modelo asignado. Si el modelo del archivo
+        // no matchea con el catálogo (alias incluido), se SALTEA la fila
+        // y se reporta — el admin tiene que cargar ese modelo al catálogo
+        // o crear un alias antes de re-importar.
         const modeloRaw = r.fin_data?.modelo || r.model_raw || '';
         const motoMatch = r.model_id
           ? models.find(m => m.id === r.model_id) || await resolveModelWithAliases(modeloRaw, models)
           : await resolveModelWithAliases(modeloRaw, models);
         const resolvedModelId = motoMatch?.id || null;
+        if (!resolvedModelId) {
+          stats.skipped_no_model++;
+          skippedNoModel.push({
+            row: r.row_number || null,
+            nombre: r.nombre,
+            apellido: r.apellido,
+            rut: r.rut,
+            modelo_raw: modeloRaw || '(vacío)',
+          });
+          logger.warn({ row: r.row_number, modeloRaw, nombre: r.nombre }, '[import] lead saltado por modelo no resuelto');
+          continue; // NO crear el ticket sin modelo
+        }
+
+        const { rows: seqR } = await db.query("SELECT 'SCM-' || nextval('ticket_num_seq') AS num");
+        const num = seqR[0].num;
 
         const { rows: created } = await db.query(
           `INSERT INTO tickets (
@@ -918,7 +935,7 @@ router.post('/confirm', asyncHandler(async (req, res) => {
       ]
     );
 
-    res.json({ ...stats, tickets: createdNums });
+    res.json({ ...stats, tickets: createdNums, skipped_no_model_list: skippedNoModel });
 }));
 
 // ─── GET /api/import/logs ─────────────────────────────────────
