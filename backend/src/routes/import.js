@@ -1078,52 +1078,6 @@ async function relinkUnresolvedLeads(userId = null) {
   return { scanned, fixed, stillUnresolved, samples };
 }
 
-// ─── GET /api/import/unresolved-debug ────────────────────────────────────────
-// Diagnóstico de TODOS los leads sin model_id: trae ticket_num, nombre,
-// nota completa del timeline (para ver qué raw quedó) y qué dice el matcher
-// + Claude si lo corremos ahora. NO escribe nada — es solo para debug.
-router.get('/unresolved-debug', asyncHandler(async (req, res) => {
-  const { rows: models } = await db.query(
-    `SELECT id, brand, model, commercial_name, active FROM moto_models`
-  );
-  const { rows: tickets } = await db.query(
-    `SELECT t.id, t.ticket_num, t.first_name, t.last_name, t.created_at,
-            (SELECT note FROM timeline
-              WHERE ticket_id = t.id AND type = 'system'
-              ORDER BY created_at ASC LIMIT 1) AS first_note
-       FROM tickets t
-      WHERE t.model_id IS NULL
-      ORDER BY t.created_at DESC
-      LIMIT 100`
-  );
-  const out = [];
-  for (const t of tickets) {
-    const noteMatch = (t.first_note || '').match(/Moto sin resolver:\s*"([^"]+)"/i);
-    const raw = noteMatch ? noteMatch[1] : null;
-    let matcherResult = null;
-    if (raw) {
-      try {
-        const m = await resolveModelWithAliases(raw, models);
-        matcherResult = m ? `${m.brand} ${m.model} (id=${m.id})` : 'NO MATCH';
-      } catch (e) { matcherResult = `ERROR: ${e.message}`; }
-    }
-    out.push({
-      ticket_num: t.ticket_num,
-      cliente: `${t.first_name || ''} ${t.last_name || ''}`.trim(),
-      created_at: t.created_at,
-      first_note: t.first_note,
-      raw_extraido: raw,
-      matcher_result: matcherResult,
-    });
-  }
-  res.json({
-    total_unresolved: tickets.length,
-    catalog_size: models.length,
-    has_anthropic_key: !!process.env.ANTHROPIC_API_KEY,
-    leads: out,
-  });
-}));
-
 // ─── POST /api/import/relink-models ──────────────────────────────────────────
 // Endpoint manual (admin only). El flujo automático lo dispara import.js y el
 // boot del server. Lo dejamos para que el admin pueda forzarlo a demanda.
