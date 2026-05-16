@@ -297,7 +297,9 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
   async function handleToggleDelivered() {
     setToggling(true);
     try {
-      await api.updateSale(sale.id, { delivered: !sale.delivered });
+      // is_note_only es necesario para que el backend rutee al tabla correcta.
+      // Sin él, una venta de sales_notes era buscada en inventory → 404.
+      await api.updateSale(sale.id, { delivered: !sale.delivered, is_note_only: !!sale.is_note_only });
       onSaved();
     } catch(e) { setErr(e.message || 'Error'); }
     finally { setToggling(false); }
@@ -312,7 +314,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
       const totalExtra = valid.reduce((s, i) => s + (parseInt(i.price) || 0), 0);
       const append = `\n\n— Ítems adicionales —\n${itemsText}${totalExtra > 0 ? '\nTotal extra: ' + fmt(totalExtra) : ''}`;
       const newNotes = (sale.sale_notes || '') + append;
-      await api.updateSale(sale.id, { sale_notes: newNotes });
+      await api.updateSale(sale.id, { sale_notes: newNotes, is_note_only: !!sale.is_note_only });
       setPostItems([]);
       onSaved();
     } catch(e) { setErr(e.message || 'Error'); }
@@ -323,7 +325,7 @@ function SaleDetailModal({ sale, user, sellers = [], branches = [], onClose, onS
     if (!file) return;
     setUploading(field);
     try {
-      await api.uploadSaleDoc(sale.id, field, file);
+      await api.uploadSaleDoc(sale.id, field, file, !!sale.is_note_only);
       onSaved();
     } catch (e) { setErr(e.message); }
     finally { setUploading(''); }
