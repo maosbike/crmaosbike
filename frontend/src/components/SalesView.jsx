@@ -2406,9 +2406,14 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
     // estricta: la factura electrónica ya tiene nombre, RUT, dirección,
     // comuna y giro del cliente, así que no tiene sentido forzar a la
     // vendedora a reescribirlos para editar.
+    //
+    // ADMIN: salteamos por completo. El admin edita ventas viejas /
+    // corrige errores / hace movimientos manuales donde no tiene sentido
+    // pedirle email/dirección/comuna del cliente. La validación queda
+    // para vendedores (creación / edición normal).
     const yaTieneFactura = !!(editSale && (editSale.doc_factura_cli || editSale.accounting_invoice_id));
     const isEmpresaCli = form.client_type === 'empresa';
-    if (!yaTieneFactura) {
+    if (!isAdmin && !yaTieneFactura) {
       if (isEmpresaCli) {
         if (!form.empresa_name?.trim())  { setErr('Nombre de la empresa obligatorio'); return; }
         if (!form.empresa_rut?.trim())   { setErr('RUT de la empresa obligatorio'); return; }
@@ -2422,9 +2427,8 @@ function NewSaleModal({ sellers, branches, onClose, onCreated, noteType = 'venta
         if (!form.client_address?.trim()) { setErr('Dirección del cliente obligatoria'); return; }
         if (!form.client_commune?.trim()) { setErr('Comuna del cliente obligatoria'); return; }
       }
-    } else {
-      // Mínimo defendible: nombre y RUT siempre. El resto puede salir de la
-      // factura. Si ni siquiera tienen nombre, está mal.
+    } else if (!isAdmin && yaTieneFactura) {
+      // Mínimo defendible para vendedor con factura ya cargada: nombre y RUT.
       if (isEmpresaCli) {
         if (!form.empresa_name?.trim() && !form.client_name?.trim()) {
           setErr('Falta nombre del cliente / empresa'); return;
