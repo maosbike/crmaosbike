@@ -1594,8 +1594,33 @@ router.post('/:id/create-sale', roleCheck(...ADMIN_ROLES), asyncHandler(async (r
 
 // ─── DELETE /api/accounting/:id ───────────────────────────────────────────────
 router.delete('/:id', roleCheck('super_admin'), asyncHandler(async (req, res) => {
-    const { rows } = await db.query('DELETE FROM invoices WHERE id=$1 RETURNING id', [req.params.id]);
-    if (!rows[0]) return res.status(404).json({ error: 'Factura no encontrada' });
+    // Antes de borrar la factura, limpiar las referencias en las ventas
+    // vinculadas: inventory.doc_factura_cli y sales_notes.doc_factura_cli
+    // apuntaban al PDF de esta factura. Sin esta limpieza, la venta seguía
+    // mostrando "factura cargada" con un link roto y el banner de "facturas
+    // sin vincular" no detectaba el huérfano.
+    const { rows: inv } = await db.query(
+      `SELECT id, inventory_id, sale_note_id, pdf_url FROM invoices WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!inv[0]) return res.status(404).json({ error: 'Factura no encontrada' });
+
+    if (inv[0].inventory_id) {
+      await db.query(
+        `UPDATE inventory SET doc_factura_cli = NULL, updated_at = NOW()
+          WHERE id = $1 AND doc_factura_cli = $2`,
+        [inv[0].inventory_id, inv[0].pdf_url]
+      );
+    }
+    if (inv[0].sale_note_id) {
+      await db.query(
+        `UPDATE sales_notes SET doc_factura_cli = NULL, updated_at = NOW()
+          WHERE id = $1 AND doc_factura_cli = $2`,
+        [inv[0].sale_note_id, inv[0].pdf_url]
+      );
+    }
+
+    await db.query('DELETE FROM invoices WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
 }));
 

@@ -670,6 +670,43 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
     const table       = isNoteOnly ? 'sales_notes' : 'inventory';
     const statusCheck = isNoteOnly ? '' : `AND status IN ('vendida', 'reservada')`;
 
+    // Guardia server-side: si se está convirtiendo una reserva a 'vendida'
+    // (cambio de status), exigir que el total abonado cubra el precio.
+    // Antes esta validación vivía solo en el frontend → un POST directo a la
+    // API podía cerrar una reserva como vendida con saldo pendiente.
+    if (req.body.status === 'vendida') {
+      const { rows: curRows } = await db.query(
+        `SELECT status, sale_price, invoice_amount, abono_lines FROM ${table} WHERE id = $1`,
+        [req.params.id]
+      );
+      const cur = curRows[0];
+      if (cur && cur.status === 'reservada') {
+        // Tomar los valores actualizados del body o caer al estado actual.
+        const finalPrice = req.body.sale_price !== undefined
+          ? (parseInt(req.body.sale_price, 10) || 0)
+          : (cur.sale_price || 0);
+        let totalAbonado = 0;
+        if (Array.isArray(req.body.abono_lines)) {
+          totalAbonado = req.body.abono_lines.reduce((s, l) => s + (parseInt(l.amount, 10) || 0), 0);
+        } else if (req.body.invoice_amount !== undefined) {
+          totalAbonado = parseInt(req.body.invoice_amount, 10) || 0;
+        } else if (Array.isArray(cur.abono_lines)) {
+          totalAbonado = cur.abono_lines.reduce((s, l) => s + (parseInt(l.amount, 10) || 0), 0);
+        } else {
+          totalAbonado = cur.invoice_amount || 0;
+        }
+        if (finalPrice > 0 && totalAbonado < finalPrice) {
+          return res.status(400).json({
+            error: 'saldo_pendiente',
+            message: `No se puede convertir a venta con saldo pendiente. Total: ${finalPrice}, abonado: ${totalAbonado}.`,
+            sale_price: finalPrice,
+            total_abonado: totalAbonado,
+            saldo: finalPrice - totalAbonado,
+          });
+        }
+      }
+    }
+
     const { rows } = await db.query(
       `UPDATE ${table} SET ${sets.join(', ')}, updated_at = NOW()
        WHERE id = $${idx} ${statusCheck}

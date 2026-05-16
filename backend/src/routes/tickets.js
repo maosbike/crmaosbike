@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db = require('../config/db');
-const { auth } = require('../middleware/auth');
+const { auth, roleCheck } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const SLAService = require('../services/slaService');
 const TelegramService = require('../services/telegramService');
@@ -291,11 +291,22 @@ router.post('/', asyncHandler(async (req, res) => {
 }));
 
 // Update ticket
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), asyncHandler(async (req, res) => {
   // Vendedores solo pueden modificar sus propios tickets (con ventana de gracia por reasignación)
   if (req.user.role === 'vendedor') {
     const ok = await vendedorPuedeAccionar(req.params.id, req.user.id);
     if (!ok) return res.status(403).json({ error: 'Sin permiso para modificar este ticket' });
+  }
+
+  // El estado 'ganado' se setea automáticamente cuando se registra la venta
+  // (POST /sales, POST /inventory/:id/sell, POST /sales/:id/link-ticket).
+  // No se permite vía PUT directo — eso saltearía el embudo de venta y
+  // dejaría el reporte de cierres sin la unidad/factura asociada.
+  if (req.body.status === 'ganado') {
+    return res.status(400).json({
+      error: 'ganado_via_venta_solamente',
+      message: 'Para cerrar el lead como "ganado", registra la venta. El estado se actualiza automáticamente.',
+    });
   }
 
   const fields = ['first_name','last_name','rut','birthdate','email','phone','comuna','source',
@@ -303,6 +314,15 @@ router.put('/:id', asyncHandler(async (req, res) => {
                    'continuidad','renta','pie','test_ride','fin_status','fin_institution',
                    'rechazo_motivo','obs_vendedor','obs_supervisor','seller_id','post_venta',
                    'lost_reason','lost_reason_detail'];
+
+  // Vendedor no debe poder modificar campos financieros sensibles del cliente
+  // (renta líquida, situación laboral, pie, status de financiamiento). Estos
+  // vienen del Excel Yamaha y los gestiona el admin / backoffice.
+  const VENDEDOR_BLOCKED_FIELDS = new Set([
+    'renta', 'pie', 'sit_laboral', 'continuidad',
+    'fin_status', 'fin_institution', 'rechazo_motivo',
+    'obs_supervisor',
+  ]);
 
   // Si el vendedor está cerrando el lead como 'perdido', exigir motivo.
   // Esto resuelve el caso del admin que necesita reportar a Yamaha por qué
@@ -334,6 +354,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
     if (req.body[f] !== undefined) {
       // Vendedores no pueden cambiar seller_id — la reasignación es exclusiva de roles altos
       if (f === 'seller_id' && req.user.role === 'vendedor') continue;
+      // Vendedor bloqueado de campos financieros sensibles.
+      if (req.user.role === 'vendedor' && VENDEDOR_BLOCKED_FIELDS.has(f)) continue;
       if (f === 'post_venta') {
         sets.push(`${f} = $${idx++}::jsonb`);
         params.push(JSON.stringify(req.body[f]));
@@ -458,7 +480,7 @@ router.post('/:id/followup', asyncHandler(async (req, res) => {
 }));
 
 // Add timeline entry
-router.post('/:id/timeline', asyncHandler(async (req, res) => {
+router.post('/:id/timeline', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), asyncHandler(async (req, res) => {
   if (req.user.role === 'vendedor') {
     const ok = await vendedorPuedeAccionar(req.params.id, req.user.id);
     if (!ok) return res.status(403).json({ error: 'Sin permiso para este ticket' });
@@ -513,7 +535,7 @@ router.post('/:id/timeline', asyncHandler(async (req, res) => {
 }));
 
 // Upload evidence for a ticket contact
-router.post('/:id/evidence', uploadEvidence.single('file'), asyncHandler(async (req, res) => {
+router.post('/:id/evidence', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadEvidence.single('file'), asyncHandler(async (req, res) => {
   if (req.user.role === 'vendedor') {
     const ok = await vendedorPuedeAccionar(req.params.id, req.user.id);
     if (!ok) return res.status(403).json({ error: 'Sin permiso para este ticket' });
