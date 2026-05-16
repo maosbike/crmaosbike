@@ -291,11 +291,11 @@ export const api = {
   getSale:        (id)     => request('GET',   `/sales/${id}`),
   createSale:     (data)   => request('POST',  '/sales', data),
   updateSale:     (id, data) => request('PATCH', `/sales/${id}`, data),
-  uploadSaleDoc:  (id, field, file) => {
+  uploadSaleDoc:  (id, field, file, isNote) => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('field', field);
-    return request('POST', `/sales/${id}/doc`, fd);
+    return request('POST', `/sales/${id}/doc${isNote ? '?note=1' : ''}`, fd);
   },
   deleteSale: (id, isNote) => request('DELETE', `/sales/${id}${isNote ? '?note=1' : ''}`),
   linkTicketToSale:   (id, ticketId, isNote) => request('POST',   `/sales/${id}/link-ticket${isNote ? '?note=1' : ''}`, { ticket_id: ticketId }),
