@@ -7,8 +7,11 @@ export function RemindersTab({ticketId,user}){
   const toast=useToast();
   const confirm=useConfirm();
   const[showNew,setShowNew]=useState(false);
-  const[form,setForm]=useState({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});
-  const TYPE_L={llamada:"Llamada",visita:"Visita",whatsapp:"WhatsApp",email:"Email",otro:"Otro"};
+  // Nombres alineados con el backend (reminders.js): due_date, due_time, reminder_type, description.
+  // Antes el form usaba reminder_date/reminder_time/type/note → el backend rebotaba 400
+  // ("due_date requerido") aunque el form estuviera completo. Bug invisible para el usuario.
+  const[form,setForm]=useState({title:"",reminder_type:"follow_up",due_date:"",due_time:"",priority:"media",description:""});
+  const TYPE_L={follow_up:"Seguimiento",llamada:"Llamada",visita:"Visita",whatsapp:"WhatsApp",email:"Email",otro:"Otro"};
   const ST_C={pending:"#F59E0B",completed:"#10B981",overdue:"#EF4444"};
   const ST_L={pending:"Pendiente",completed:"Completado",overdue:"Vencido"};
 
@@ -20,7 +23,7 @@ export function RemindersTab({ticketId,user}){
 
   const create=async(e)=>{
     e.preventDefault();
-    try{await api.createReminder({...form,ticket_id:ticketId});setShowNew(false);setForm({title:"",type:"llamada",reminder_date:"",reminder_time:"",priority:"media",note:""});refetch();}
+    try{await api.createReminder({...form,ticket_id:ticketId});setShowNew(false);setForm({title:"",reminder_type:"follow_up",due_date:"",due_time:"",priority:"media",description:""});refetch();}
     catch(err){toast.error(err.message);}
   };
   const complete=async(id)=>{try{await api.completeReminder(id);refetch();}catch(ex){toast.error('No se pudo marcar como completado: '+(ex.message||'Error'));}};
@@ -44,11 +47,11 @@ export function RemindersTab({ticketId,user}){
                   <Bdg l={ST_L[r.status]||r.status} c={ST_C[r.status]||"var(--text-subtle)"}/>
                 </div>
                 <div style={{fontSize:11,color:"var(--text-disabled)",display:"flex",gap:12,flexWrap:"wrap"}}>
-                  <span>{TYPE_L[r.type]||r.type}</span>
-                  <span>{fD(r.reminder_date)}{r.reminder_time&&" · "+r.reminder_time}</span>
+                  <span>{TYPE_L[r.reminder_type]||r.reminder_type}</span>
+                  <span>{fD(r.due_date)}{r.due_time&&" · "+r.due_time}</span>
                   {r.priority==="alta"&&<span style={{color:"#EF4444",fontWeight:600}}>Alta prioridad</span>}
                 </div>
-                {r.note&&<div style={{fontSize:11,color:"var(--text-subtle)",marginTop:6}}>{r.note}</div>}
+                {r.description&&<div style={{fontSize:11,color:"var(--text-subtle)",marginTop:6}}>{r.description}</div>}
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
                 {r.status==="pending"&&<button onClick={()=>complete(r.id)} style={{...S.btn2,padding:"4px 10px",fontSize:11,background:"rgba(16,185,129,0.1)",color:"#10B981",border:"1px solid rgba(16,185,129,0.2)"}}>Completar</button>}
@@ -63,14 +66,14 @@ export function RemindersTab({ticketId,user}){
           <form onSubmit={create}>
             <div style={{marginBottom:10}}><Field label="Título *" value={form.title} onChange={v=>setForm({...form,title:v})} req ph="Ej: Llamar para confirmar visita..."/></div>
             <div className="grid-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              <Field label="Tipo" value={form.type} onChange={v=>setForm({...form,type:v})} opts={Object.entries(TYPE_L).map(([k,v])=>({v:k,l:v}))}/>
+              <Field label="Tipo" value={form.reminder_type} onChange={v=>setForm({...form,reminder_type:v})} opts={Object.entries(TYPE_L).map(([k,v])=>({v:k,l:v}))}/>
               <Field label="Prioridad" value={form.priority} onChange={v=>setForm({...form,priority:v})} opts={[{v:"alta",l:"Alta"},{v:"media",l:"Media"},{v:"baja",l:"Baja"}]}/>
             </div>
             <div className="grid-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              <Field label="Fecha *" value={form.reminder_date} onChange={v=>setForm({...form,reminder_date:v})} type="date" req/>
-              <Field label="Hora" value={form.reminder_time} onChange={v=>setForm({...form,reminder_time:v})} type="time"/>
+              <Field label="Fecha *" value={form.due_date} onChange={v=>setForm({...form,due_date:v})} type="date" req/>
+              <Field label="Hora" value={form.due_time} onChange={v=>setForm({...form,due_time:v})} type="time"/>
             </div>
-            <div style={{marginBottom:16}}><Field label="Nota" value={form.note} onChange={v=>setForm({...form,note:v})} rows={2} ph="Detalles adicionales..."/></div>
+            <div style={{marginBottom:16}}><Field label="Nota" value={form.description} onChange={v=>setForm({...form,description:v})} rows={2} ph="Detalles adicionales..."/></div>
             <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
               <button type="button" onClick={()=>setShowNew(false)} style={S.btn2}>Cancelar</button>
               <button type="submit" style={S.btn}>Crear Recordatorio</button>

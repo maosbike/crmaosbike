@@ -516,11 +516,16 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     // Trazabilidad: sold_by guarda el vendedor real, la unidad conserva su
     // branch_id original (la moto sale del inventario de esa tienda), y la
     // venta queda visible para super_admin/admin_comercial.
-    // Si se vincula un ticket, vendedor debe ser dueño del ticket.
-    if (ticket_id && req.user.role === 'vendedor') {
+    //
+    // Ownership de ticket: si el caller manda ticket_id explícito O si la
+    // unidad ya tenía un ticket_id (caso reserva→venta), validar que el
+    // vendedor sea dueño. Antes solo se validaba el body — un vendedor podía
+    // convertir una reserva ajena y "robar" el cierre del ticket.
+    const effectiveTicketId = ticket_id || unit.ticket_id || null;
+    if (effectiveTicketId && req.user.role === 'vendedor') {
       const { rows: tk } = await db.query(
         `SELECT id FROM tickets WHERE id = $1 AND (seller_id = $2 OR assigned_to = $2)`,
-        [ticket_id, req.user.id]
+        [effectiveTicketId, req.user.id]
       );
       if (!tk[0]) return res.status(403).json({ error: 'No puedes vincular esta venta a un ticket que no te pertenece.' });
     }
@@ -579,19 +584,21 @@ router.post('/:id/sell', roleCheck('super_admin', 'admin_comercial', 'backoffice
     const { rows: sv } = await db.query('SELECT first_name, last_name FROM users WHERE id=$1', [sold_by]);
     const svName = sv[0] ? `${sv[0].first_name} ${sv[0].last_name||''}`.trim() : 'Vendedor';
 
-    // Timeline del ticket si existe
-    if (ticket_id) {
+    // Timeline + cierre del ticket: usa effectiveTicketId para cubrir el
+    // caso reserva→venta donde el body no manda ticket_id (se preserva el
+    // de la unidad). Sin esto, una conversión perdía la traza en timeline
+    // y dejaba el ticket abierto.
+    if (effectiveTicketId) {
       await db.query(
         `INSERT INTO timeline (ticket_id, user_id, type, title, note)
          VALUES ($1,$2,'system',$3,$4)`,
-        [ticket_id, req.user.id,
+        [effectiveTicketId, req.user.id,
          `Moto vendida: ${unit.brand} ${unit.model} · Chasis ${unit.chassis}`,
          `Vendida por ${svName}. ${payment_method ? 'Pago: ' + payment_method + '. ' : ''}${sale_notes||''}`]
       );
-      // También marcar el ticket como ganado si no lo está aún
       await db.query(
         `UPDATE tickets SET status='ganado', updated_at=NOW() WHERE id=$1 AND status != 'ganado'`,
-        [ticket_id]
+        [effectiveTicketId]
       );
     }
 

@@ -97,6 +97,7 @@ async function migrate() {
     await runMigration('045', 'sales notes table',             m('045_sales_notes.sql'));
     await runMigration('046', 'lead followup + needs_attention',m('046_lead_followup.sql'));
     await runMigration('047', 'supplier_payments.model_id ON DELETE SET NULL', m('047_supplier_payments_fk_set_null.sql'));
+    await runMigration('048', 'attention_count en tickets',                    m('048_attention_count.sql'));
     await runMigration('049', 'inventory color_hex',                           m('049_inventory_color_hex.sql'));
     await runMigration('050', 'sales_notes.model_id',                          m('050_sales_notes_model_id.sql'));
     await runMigration('051', 'brands + brand_categories',                     m('051_brands_and_categories.sql'));

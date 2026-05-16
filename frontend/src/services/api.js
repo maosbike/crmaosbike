@@ -326,7 +326,6 @@ export const api = {
   debugAccountingInvoice: (id) => request('GET', `/accounting/${id}/debug`),
   patchAccounting: (id, data) => request('PATCH', `/accounting/${id}`, data),
   getSalesDuplicates: () => request('GET', '/sales/duplicates'),
-  deleteSale: (id, isNoteOnly) => request('DELETE', `/sales/${id}${isNoteOnly ? '?note=1' : ''}`),
   createSaleFromInvoice: (id, data) => request('POST', `/accounting/${id}/create-sale`, data),
   deleteAccounting: (id) => request('DELETE', `/accounting/${id}`),
   syncAccountingFromDrive: () => request('POST', '/accounting/sync-drive'),

@@ -50,9 +50,16 @@ async function matchWithClaude(raw, models) {
   const detectedBrand = ALLOWED_BRANDS.find(b =>
     rawLower.includes(b.toLowerCase())
   );
-  const filtered = detectedBrand
-    ? models.filter(m => (m.brand || '').toLowerCase() === detectedBrand.toLowerCase())
-    : models;
+  // Si no detectamos marca en el raw, NO llamamos a Claude. El catálogo
+  // entero excede el rate limit (50k tokens/min) y la chance de match es
+  // baja sin marca de referencia. Mejor saltar y devolver null que reventar.
+  if (!detectedBrand) {
+    logger.info(`modelMatcher: skip Claude para "${raw}" — no se detectó marca en el raw`);
+    return null;
+  }
+  const filtered = models.filter(m =>
+    (m.brand || '').toLowerCase() === detectedBrand.toLowerCase()
+  );
   // Si después del filtro queda demasiado grande, igual cortamos a 200.
   const catalog = filtered.slice(0, 200).map(m => ({
     id: m.id,
