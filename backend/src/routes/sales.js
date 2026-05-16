@@ -58,6 +58,30 @@ function sanitizeSale(sale, userRole) {
   return sale;
 }
 
+// ─── Resolver tabla para un sale_id ───────────────────────────────────────────
+// El frontend puede pasar la flag (body.is_note_only o query.note=1) para evitar
+// el costo de la doble query, pero NO depende de eso: si la flag viene undefined
+// o equivocada, buscamos el id en ambas tablas y usamos la que corresponda.
+//
+// Esto previene la clase entera de bugs "Venta no encontrada" cuando una llamada
+// se olvida del flag. Patrón: pasar el resultado a las queries posteriores.
+async function resolveSaleTable(saleId, explicitFlag) {
+  // Si el caller fue explícito y existe en esa tabla, usar eso (rápido).
+  if (explicitFlag === true) {
+    const { rows } = await db.query('SELECT 1 FROM sales_notes WHERE id = $1', [saleId]);
+    if (rows[0]) return { table: 'sales_notes', isNoteOnly: true };
+  } else if (explicitFlag === false) {
+    const { rows } = await db.query('SELECT 1 FROM inventory WHERE id = $1', [saleId]);
+    if (rows[0]) return { table: 'inventory', isNoteOnly: false };
+  }
+  // Fallback: el caller no especificó o se equivocó. Buscar en ambas.
+  const { rows: inv } = await db.query('SELECT 1 FROM inventory WHERE id = $1', [saleId]);
+  if (inv[0]) return { table: 'inventory', isNoteOnly: false };
+  const { rows: sn } = await db.query('SELECT 1 FROM sales_notes WHERE id = $1', [saleId]);
+  if (sn[0]) return { table: 'sales_notes', isNoteOnly: true };
+  return null;
+}
+
 // ─── Vista combinada: inventory (vendida/reservada) + sales_notes ─────────────
 // is_note_only discrimina el origen. Se usa en GET, stats y GET/:id.
 const COMBINED_FROM = `(
@@ -554,7 +578,14 @@ router.post('/', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vend
 // is_note_only en el body → UPDATE sales_notes
 // sin is_note_only (o false) → UPDATE inventory
 router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), asyncHandler(async (req, res) => {
-    const isNoteOnly = req.body.is_note_only === true || req.body.is_note_only === 'true';
+    // El flag puede venir explícito o no — auto-detectamos contra DB para que
+    // un caller que se olvide del flag igual encuentre la fila correcta.
+    const explicit = req.body.is_note_only === true || req.body.is_note_only === 'true'
+      ? true
+      : (req.body.is_note_only === false || req.body.is_note_only === 'false' ? false : undefined);
+    const resolved = await resolveSaleTable(req.params.id, explicit);
+    if (!resolved) return res.status(404).json({ error: 'Venta no encontrada' });
+    const isNoteOnly = resolved.isNoteOnly;
 
     // Vendedor: ownership check y bloqueo de campos sensibles
     if (req.user.role === 'vendedor') {
@@ -655,7 +686,11 @@ router.patch('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', '
 // sin flag → revierte unidad de inventory a 'disponible'
 router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
   try {
-    const isNoteOnly = req.query.note === '1';
+    // Resuelve la tabla aunque el caller no haya pasado ?note=1.
+    const explicit = req.query.note === '1' ? true : (req.query.note === '0' ? false : undefined);
+    const resolved = await resolveSaleTable(req.params.id, explicit);
+    if (!resolved) return res.status(404).json({ error: 'Venta no encontrada' });
+    const isNoteOnly = resolved.isNoteOnly;
 
     if (isNoteOnly) {
       const { rows } = await db.query(
@@ -755,7 +790,10 @@ router.delete('/:id', roleCheck('super_admin'), async (req, res) => {
 // ?note=1 → sube doc a sales_notes; sin flag → a inventory
 router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice', 'vendedor'), uploadDoc.single('file'), asyncHandler(async (req, res) => {
     const { field } = req.body;
-    const isNoteOnly = req.query.note === '1';
+    const explicit = req.query.note === '1' ? true : (req.query.note === '0' ? false : undefined);
+    const resolved = await resolveSaleTable(req.params.id, explicit);
+    if (!resolved) return res.status(404).json({ error: 'Venta no encontrada' });
+    const isNoteOnly = resolved.isNoteOnly;
 
     if (!DOC_FIELDS.includes(field)) {
       return res.status(400).json({ error: `Campo inválido. Válidos: ${DOC_FIELDS.join(', ')}` });
@@ -801,10 +839,13 @@ router.post('/:id/doc', roleCheck('super_admin', 'admin_comercial', 'backoffice'
 // Si el ticket está abierto y la venta está 'vendida', cierra el ticket como 'ganado'.
 router.post('/:id/link-ticket', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
   const { ticket_id } = req.body;
-  const isNoteOnly = req.query.note === '1';
   if (!ticket_id) return res.status(400).json({ error: 'ticket_id requerido' });
 
-  const table = isNoteOnly ? 'sales_notes' : 'inventory';
+  const explicit = req.query.note === '1' ? true : (req.query.note === '0' ? false : undefined);
+  const resolved = await resolveSaleTable(req.params.id, explicit);
+  if (!resolved) return res.status(404).json({ error: 'Venta no encontrada' });
+  const isNoteOnly = resolved.isNoteOnly;
+  const table = resolved.table;
 
   const { rows: tk } = await db.query(
     `SELECT id, status FROM tickets WHERE id = $1`,
@@ -858,16 +899,17 @@ router.post('/:id/link-ticket', roleCheck('super_admin', 'admin_comercial', 'bac
 // ─── DELETE /api/sales/:id/link-ticket ────────────────────────────────────────
 // Desasocia el lead de la venta (no cambia el estado del ticket).
 router.delete('/:id/link-ticket', roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
-  const isNoteOnly = req.query.note === '1';
-  const table = isNoteOnly ? 'sales_notes' : 'inventory';
+  const explicit = req.query.note === '1' ? true : (req.query.note === '0' ? false : undefined);
+  const resolved = await resolveSaleTable(req.params.id, explicit);
+  if (!resolved) return res.status(404).json({ error: 'Venta no encontrada' });
 
   const { rows } = await db.query(
-    `UPDATE ${table} SET ticket_id = NULL, updated_at = NOW()
+    `UPDATE ${resolved.table} SET ticket_id = NULL, updated_at = NOW()
      WHERE id = $1 RETURNING id, ticket_id`,
     [req.params.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Venta no encontrada' });
-  res.json({ ok: true, sale_id: req.params.id, is_note_only: isNoteOnly });
+  res.json({ ok: true, sale_id: req.params.id, is_note_only: resolved.isNoteOnly });
 }));
 
 module.exports = router;
