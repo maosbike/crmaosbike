@@ -46,6 +46,21 @@ function handleUploadError(err, _req, res, next) {
   return res.status(500).json({ error: 'Error al procesar archivo' });
 }
 
+// Wrapper de subida a Cloudinary que NO traga el error. Si Cloudinary falla
+// (credenciales malas, network, archivo inválido), retorna {error} en vez de
+// lanzar a 500 genérico — el frontend ve el motivo real y el admin puede
+// reaccionar (renovar API key, reintentar, etc.).
+async function uploadToCloudinary(file, options) {
+  const b64 = file.buffer.toString('base64');
+  try {
+    const result = await cloudinary.uploader.upload(`data:${file.mimetype};base64,${b64}`, options);
+    return { result };
+  } catch (e) {
+    console.error('[Cloudinary upload error]', options?.folder, e.message, e.http_code);
+    return { error: e.message || 'error desconocido', http_code: e.http_code };
+  }
+}
+
 // ── CATALOG ──
 router.get('/models', asyncHandler(async (req, res) => {
     const { brand, search } = req.query;
@@ -84,17 +99,17 @@ router.post('/brands/:name/logo',
   asyncHandler(async (req, res) => {
       if (!req.file) return res.status(400).json({ error: 'Logo requerido' });
       const name = decodeURIComponent(req.params.name);
-      const b64 = req.file.buffer.toString('base64');
-      const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+      const up = await uploadToCloudinary(req.file, {
         folder: 'crmaosbike/brands',
         transformation: [{ width: 800, crop: 'limit', quality: 'auto:good' }],
       });
+      if (up.error) return res.status(502).json({ error: `Cloudinary: ${up.error}` });
       await db.query(
         `INSERT INTO brands (name, logo_url) VALUES ($1, $2)
          ON CONFLICT (name) DO UPDATE SET logo_url = EXCLUDED.logo_url, updated_at = NOW()`,
-        [name, result.secure_url]
+        [name, up.result.secure_url]
       );
-      res.json({ url: result.secure_url });
+      res.json({ url: up.result.secure_url });
   })
 );
 
@@ -234,13 +249,17 @@ router.post('/models/:id/image',
   (req, res, next) => uploadImg.single('image')(req, res, (err) => err ? handleUploadError(err, req, res, next) : next()),
   asyncHandler(async (req, res) => {
       if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
-      const b64 = req.file.buffer.toString('base64');
-      const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+      const { rows: existing } = await db.query('SELECT id FROM moto_models WHERE id = $1', [req.params.id]);
+      if (!existing[0]) return res.status(404).json({ error: 'Modelo no encontrado en el catálogo' });
+
+      const up = await uploadToCloudinary(req.file, {
         folder: 'crmaosbike/catalog',
         transformation: [{ width: 1600, crop: 'limit', quality: 'auto:good' }],
       });
-      await db.query('UPDATE moto_models SET image_url = $1, updated_at = NOW() WHERE id = $2', [result.secure_url, req.params.id]);
-      res.json({ url: result.secure_url });
+      if (up.error) return res.status(502).json({ error: `Cloudinary: ${up.error}` });
+
+      await db.query('UPDATE moto_models SET image_url = $1, updated_at = NOW() WHERE id = $2', [up.result.secure_url, req.params.id]);
+      res.json({ url: up.result.secure_url });
   })
 );
 
@@ -259,18 +278,18 @@ router.post('/models/:id/gallery',
     if (current.length >= MAX_GALLERY)
       return res.status(400).json({ error: `Máximo ${MAX_GALLERY} fotos por modelo` });
 
-    const b64 = req.file.buffer.toString('base64');
-    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+    const up = await uploadToCloudinary(req.file, {
       folder: 'crmaosbike/catalog/gallery',
       transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }],
     });
+    if (up.error) return res.status(502).json({ error: `Cloudinary: ${up.error}` });
 
-    const updated = [...current, result.secure_url];
+    const updated = [...current, up.result.secure_url];
     await db.query(
       'UPDATE moto_models SET image_gallery = $1::jsonb, updated_at = NOW() WHERE id = $2',
       [JSON.stringify(updated), req.params.id]
     );
-    res.json({ url: result.secure_url, gallery: updated });
+    res.json({ url: up.result.secure_url, gallery: updated });
   })
 );
 
@@ -306,23 +325,23 @@ router.post('/models/:id/color-photo',
     const current = Array.isArray(rows[0].color_photos) ? rows[0].color_photos
                   : (rows[0].color_photos ? JSON.parse(rows[0].color_photos) : []);
 
-    const b64 = req.file.buffer.toString('base64');
-    const result = await cloudinary.uploader.upload(`data:${req.file.mimetype};base64,${b64}`, {
+    const up = await uploadToCloudinary(req.file, {
       folder: 'crmaosbike/catalog/colors',
       transformation: [{ width: 1200, crop: 'limit', quality: 'auto:good' }],
     });
+    if (up.error) return res.status(502).json({ error: `Cloudinary: ${up.error}` });
 
     // Upsert: preservar hex existente, reemplazar/agregar url
     const colorLow = color.toLowerCase().trim();
     const existing = current.find(p => p.color.toLowerCase().trim() === colorLow);
     const filtered = current.filter(p => p.color.toLowerCase().trim() !== colorLow);
-    const updated = [...filtered, { color: color.trim(), hex: req.body.hex || existing?.hex || null, url: result.secure_url }];
+    const updated = [...filtered, { color: color.trim(), hex: req.body.hex || existing?.hex || null, url: up.result.secure_url }];
 
     await db.query(
       'UPDATE moto_models SET color_photos = $1::jsonb, updated_at = NOW() WHERE id = $2',
       [JSON.stringify(updated), req.params.id]
     );
-    res.json({ color: color.trim(), url: result.secure_url, color_photos: updated });
+    res.json({ color: color.trim(), url: up.result.secure_url, color_photos: updated });
   })
 );
 
