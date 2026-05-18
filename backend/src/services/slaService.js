@@ -526,7 +526,7 @@ const SLAService = {
         await NotificationService.notifyMany([t.assigned_to], {
           type: 'lead_needs_attention',
           title: `Lead #${t.ticket_num} necesita seguimiento`,
-          message: 'Lleva 48h sin gestión o se pasó la fecha comprometida. Registrá el próximo paso.',
+          message: 'Lleva 48h sin gestión o se pasó la fecha comprometida. Registra el próximo paso.',
           link_type: 'ticket',
           link_id: t.id,
         });

@@ -174,7 +174,7 @@ router.post('/', asyncHandler(async (req, res) => {
   if (!model_id) {
     return res.status(400).json({
       error: 'model_id_required',
-      message: 'Tenés que elegir un modelo de moto antes de crear el lead.',
+      message: 'Selecciona un modelo de moto antes de crear el lead.',
     });
   }
   // Validar que el model_id exista en el catálogo (evita FK rota o ID inventado).
@@ -342,7 +342,7 @@ router.put('/:id', roleCheck('super_admin', 'admin_comercial', 'backoffice', 've
       if (detail.length < 10) {
         return res.status(400).json({
           error: 'lost_reason_detail_required',
-          message: 'Si elegís "Otro motivo", explicá brevemente (mínimo 10 caracteres).',
+          message: 'Si eliges "Otro motivo", explica brevemente (mínimo 10 caracteres).',
         });
       }
     }
@@ -439,7 +439,7 @@ router.post('/:id/followup', asyncHandler(async (req, res) => {
     return res.status(400).json({ error: `El comentario no puede superar los ${NOTE_MAX} caracteres` });
   }
   if (!followup_next_step || followup_next_step.trim().length < 5) {
-    return res.status(400).json({ error: 'Indicá el próximo paso concreto' });
+    return res.status(400).json({ error: 'Indica el próximo paso concreto' });
   }
   if (followup_next_step.length > NEXT_STEP_MAX) {
     return res.status(400).json({ error: `El próximo paso no puede superar los ${NEXT_STEP_MAX} caracteres` });

@@ -158,19 +158,17 @@ export function TicketView({lead,user,nav,updLead}){
       if(cf.evMode==='note'&&cf.note.trim().length<50){setCfErr(`La nota debe tener al menos 50 caracteres (${cf.note.trim().length}/50).`);return;}
     }
     if(needsNote&&cf.note.trim().length<40){setCfErr(`Para este resultado la nota es obligatoria (mín. 40 caracteres, ${cf.note.trim().length}/40).`);return;}
-    // Seguimiento integrado: status + próximo paso + fecha.
-    // Solo es obligatorio si el lead tiene needs_attention (banner rojo 48h
-    // sin gestión) — en ese caso el sistema necesita saber el plan. Para
-    // un primer contacto en lead nuevo, es opcional (el vendedor puede
-    // todavía no saber cómo va a avanzar el cliente).
+    // Seguimiento solo se exige cuando el lead tiene needs_attention=true
+    // (pasaron 48h sin gestión o se pasó la fecha comprometida). Para
+    // el primer contacto en un lead nuevo, no se le muestra ni se le pide
+    // — subir evidencia es suficiente para pasar a "En Gestión".
     const requireFollowup = !!lead.needs_attention;
-    const anyFollowupField = !!(cf.followup_status || cf.next_step.trim() || cf.next_at);
-    if (requireFollowup || anyFollowupField) {
+    if (requireFollowup) {
       if(!cf.followup_status){setCfErr('Selecciona el estado del seguimiento.');return;}
       if(cf.next_step.trim().length<5){setCfErr('Describe el próximo paso (mín. 5 caracteres).');return;}
       if(!cf.next_at){setCfErr('Indica la fecha de próxima gestión.');return;}
     }
-    const submitFollowupNow = requireFollowup || anyFollowupField;
+    const submitFollowupNow = requireFollowup;
     setCfSaving(true);
     try{
       // Si hay evidencia con archivo, subirla como entrada de evidencia
@@ -281,7 +279,7 @@ export function TicketView({lead,user,nav,updLead}){
   const confirmPerdido=async()=>{
     if(!perdidoMotivo){toast.error('Selecciona un motivo antes de continuar.');return;}
     if(perdidoMotivo==='otro'&&perdidoDetalle.trim().length<10){
-      toast.error('Si elegís "Otro motivo", explicá brevemente (mínimo 10 caracteres).');return;
+      toast.error('Si eliges "Otro motivo", explica brevemente (mínimo 10 caracteres).');return;
     }
     setPerdidoSaving(true);
     const prev=lead.status;
@@ -415,8 +413,8 @@ export function TicketView({lead,user,nav,updLead}){
             <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead necesita atención</div>
             <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>
               {lead.next_followup_at
-                ? `Se pasó la fecha comprometida (${new Date(lead.next_followup_at).toLocaleDateString('es-CL')}). Registrá el próximo paso.`
-                : 'Lleva más de 48h sin gestión. Registrá contacto + plan de seguimiento.'}
+                ? `Se pasó la fecha comprometida (${new Date(lead.next_followup_at).toLocaleDateString('es-CL')}). Registra el próximo paso.`
+                : 'Lleva más de 48h sin gestión. Registra contacto + plan de seguimiento.'}
             </div>
           </div>
           <button onClick={()=>{resetContact();setShowContact(true);}}
@@ -1207,7 +1205,7 @@ export function TicketView({lead,user,nav,updLead}){
             <label style={{ ...S.lbl,marginBottom:6 }}>
               Detalle adicional{' '}
               <span style={{ fontWeight:400,color: perdidoMotivo==='otro' ? '#DC2626' : 'var(--text-disabled)' }}>
-                {perdidoMotivo==='otro' ? '(obligatorio — explicá brevemente)' : '(opcional)'}
+                {perdidoMotivo==='otro' ? '(obligatorio — explica brevemente)' : '(opcional)'}
               </span>
             </label>
             <textarea value={perdidoDetalle} onChange={e=>setPerdidoDetalle(e.target.value)}
@@ -1418,80 +1416,68 @@ export function TicketView({lead,user,nav,updLead}){
               </div>
             )}
 
-            {/* ── Seguimiento (integrado) ─────────────────────────────────
-                Obligatorio solo si el lead tiene needs_attention (lleva 48h+
-                sin gestión y necesita plan claro). Opcional para primer
-                contacto en lead nuevo — el vendedor puede no saber todavía
-                cómo va a avanzar el cliente. */}
-            {cf.result && (() => {
-              const required = !!lead.needs_attention;
-              // Atajos rápidos: pre-llenan los 3 campos del seguimiento
-              // sin que el vendedor tenga que tipear. El form detallado
-              // queda visible abajo por si quiere ajustar.
+            {/* ── Próximo paso ────────────────────────────────────────────
+                SOLO se muestra cuando el lead tiene needs_attention=true
+                (pasaron 48h sin gestión o se pasó la fecha comprometida).
+                Para el primer contacto en un lead nuevo NO aparece nada:
+                subir evidencia ya basta para pasar a "En Gestión". */}
+            {cf.result && lead.needs_attention && (() => {
               const addDays = (n) => {
                 const d = new Date(); d.setDate(d.getDate()+n);
                 return d.toISOString().slice(0,10);
               };
-              const QUICK = [
-                { l:'Cliente aún no decide', sub:'+3 días', status:'contactar_mas_adelante',  step:'Esperando decisión del cliente, contactar para confirmar.', at:addDays(3) },
-                { l:'Pidió más tiempo',       sub:'+14 días', status:'contactar_mas_adelante', step:'Cliente pidió plazo. Volver a contactar.',                     at:addDays(14) },
-                { l:'No responde',            sub:'+1 día',   status:'no_responde',            step:'Reintentar contacto mañana.',                                  at:addDays(1) },
-                { l:'Revisando cotización',   sub:'+2 días',  status:'revisando_cotizacion',   step:'Volver a contactar para resolver dudas de cotización.',        at:addDays(2) },
-                { l:'Agendar visita',         sub:'',         status:'agendar_visita',         step:'Coordinar visita / test ride con el cliente.',                 at:addDays(2) },
+              // Cada opción mapea a (status backend, próximo paso por defecto, fecha sugerida).
+              // El vendedor elige una y, si quiere, edita la fecha abajo.
+              const OPTIONS = [
+                { l:'Cliente sigue interesado',  days:2,  status:'cliente_interesado',     step:'Volver a contactar para avanzar la gestión.' },
+                { l:'Pidió contactar más adelante', days:7, status:'contactar_mas_adelante', step:'Cliente pidió plazo. Volver a contactar.' },
+                { l:'Está revisando cotización', days:2,  status:'revisando_cotizacion',   step:'Volver a contactar para resolver dudas de la cotización.' },
+                { l:'Agendar visita o test ride', days:2, status:'agendar_visita',         step:'Coordinar visita / test ride con el cliente.' },
+                { l:'No responde',                days:1, status:'no_responde',            step:'Reintentar contacto al día siguiente.' },
               ];
+              const selectedKey = OPTIONS.find(o => o.status === cf.followup_status)?.l || '';
               return (
-                <div style={{ background: required ? '#FEF2F2' : '#F9FAFB', border: required ? '1px solid #FECACA' : '1px solid var(--surface-sunken)', borderRadius:'var(--radius-lg)', padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:6 }}>
-                    <div style={{ fontSize:11, fontWeight:800, color: required ? '#B91C1C' : 'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
-                      Seguimiento del lead {required ? '(obligatorio)' : '(opcional)'}
-                    </div>
-                    {!required && (
-                      <span style={{ fontSize:10, color:'var(--text-disabled)' }}>
-                        Si todavía no sabés cómo va a avanzar, podés dejarlo vacío
-                      </span>
-                    )}
+                <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:'var(--radius-lg)', padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
+                  <div style={{ fontSize:11, fontWeight:800, color:'#B91C1C', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                    Próximo paso <span style={{ color:'#B91C1C' }}>*</span>
                   </div>
-                  {required && (
-                    <div style={{ fontSize:11, color:'#B91C1C' }}>
-                      Este lead lleva 48h+ sin gestión. Completá el plan para liberarlo.
-                    </div>
-                  )}
+                  <div style={{ fontSize:11, color:'#B91C1C' }}>
+                    Este lead pasó el tiempo de gestión. Indica qué sigue para liberarlo.
+                  </div>
 
-                  {/* Atajos rápidos */}
-                  <div>
-                    <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Atajos</div>
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                      {QUICK.map(q=>(
-                        <button key={q.l} type="button"
-                          onClick={()=>setCf(p=>({...p, followup_status:q.status, next_step:q.step, next_at:q.at}))}
-                          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'6px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'flex-start', gap:1 }}>
-                          <span style={{ color:'var(--text)' }}>{q.l}</span>
-                          {q.sub && <span style={{ color:'var(--text-disabled)', fontSize:9, fontWeight:500 }}>{q.sub}</span>}
+                  {/* Opciones (chips). Un click setea status + sugiere fecha. */}
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                    {OPTIONS.map(o=>{
+                      const sel = selectedKey === o.l;
+                      return (
+                        <button key={o.l} type="button"
+                          onClick={()=>setCf(p=>({...p, followup_status: sel ? '' : o.status, next_step: sel ? '' : o.step, next_at: sel ? '' : addDays(o.days)}))}
+                          style={{
+                            background: sel ? '#EFF6FF' : 'var(--surface)',
+                            border: sel ? '1.5px solid #3B82F6' : '1px solid var(--border)',
+                            borderRadius:'var(--radius-md)', padding:'8px 12px',
+                            fontSize:12, fontWeight: sel ? 700 : 600,
+                            color: sel ? '#1E3A8A' : 'var(--text)',
+                            cursor:'pointer', fontFamily:'inherit',
+                          }}>
+                          {o.l}
                         </button>
-                      ))}
-                      {/* Descartar abre el modal existente de motivo */}
-                      <button type="button"
-                        onClick={()=>{closeContact(); setPerdidoModal(true);}}
-                        style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:'var(--radius-md)', padding:'6px 10px', fontSize:11, fontWeight:700, color:'#B91C1C', cursor:'pointer', fontFamily:'inherit' }}>
-                        Descartar lead
-                      </button>
-                    </div>
+                      );
+                    })}
+                    {/* Descartar — abre modal existente de motivo de cierre */}
+                    <button type="button"
+                      onClick={()=>{closeContact(); setPerdidoModal(true);}}
+                      style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:'var(--radius-md)', padding:'8px 12px', fontSize:12, fontWeight:700, color:'#B91C1C', cursor:'pointer', fontFamily:'inherit' }}>
+                      Descartar lead
+                    </button>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Estado {required && '*'}</div>
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                      {FOLLOWUP_OPTS.map(o=>(
-                        <ChoiceChip key={o.v}
-                          selected={cf.followup_status===o.v}
-                          onClick={()=>setCf(p=>({...p,followup_status:p.followup_status===o.v?'':o.v}))}
-                        >{o.l}</ChoiceChip>
-                      ))}
-                    </div>
-                  </div>
+                  {/* Detalle: próximo paso (texto) + fecha. Visibles siempre
+                      pero recién toman valor al elegir una opción arriba (o
+                      el vendedor escribe a mano). */}
                   <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10 }}>
                     <div>
-                      <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Próximo paso {required && '*'}</div>
+                      <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Qué vas a hacer *</div>
                       <input value={cf.next_step}
                         onChange={e=>setCf(p=>({...p,next_step:e.target.value}))}
                         maxLength={200}
@@ -1499,7 +1485,7 @@ export function TicketView({lead,user,nav,updLead}){
                         style={{ ...S.inp, width:'100%', fontSize:12 }}/>
                     </div>
                     <div>
-                      <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Próxima fecha {required && '*'}</div>
+                      <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Cuándo *</div>
                       <input type="date" value={cf.next_at}
                         onChange={e=>setCf(p=>({...p,next_at:e.target.value}))}
                         style={{ ...S.inp, width:'100%', fontSize:12 }}/>

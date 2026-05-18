@@ -848,7 +848,7 @@ function ManageCategoriesPanel({allCategories,onRenamed,onClose}){
   const[saving,setSaving]=useState(false);
   const[errMsg,setErrMsg]=useState('');
   const handleRename=async()=>{
-    if(!renameFrom||!renameTo.trim()){setErrMsg("Completá ambos campos");return;}
+    if(!renameFrom||!renameTo.trim()){setErrMsg("Completa ambos campos");return;}
     if(renameFrom===renameTo.trim()){setErrMsg("El nombre nuevo es igual al actual");return;}
     setSaving(true); setErrMsg('');
     try{
