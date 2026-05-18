@@ -412,8 +412,12 @@ export function TicketView({lead,user,nav,updLead}){
         <div style={{ background:'rgba(239,68,68,0.07)',border:'2px solid rgba(239,68,68,0.3)',borderRadius:'var(--radius-lg)',padding:'14px 18px',marginBottom:12,display:'flex',alignItems:'center',gap:14 }}>
           <Ic.alert size={22} color="#B91C1C"/>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead lleva más de 48h sin contacto</div>
-            <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Registra el seguimiento para continuar gestionando este lead.</div>
+            <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead necesita atención</div>
+            <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>
+              {lead.next_followup_at
+                ? `Se pasó la fecha comprometida (${new Date(lead.next_followup_at).toLocaleDateString('es-CL')}). Registrá el próximo paso.`
+                : 'Lleva más de 48h sin gestión. Registrá contacto + plan de seguimiento.'}
+            </div>
           </div>
           <button onClick={()=>{resetContact();setShowContact(true);}}
             style={{ padding:'10px 20px',background:'#DC2626',color:'var(--text-on-dark)',border:'none',borderRadius:'var(--radius-md)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
@@ -1421,9 +1425,23 @@ export function TicketView({lead,user,nav,updLead}){
                 cómo va a avanzar el cliente. */}
             {cf.result && (() => {
               const required = !!lead.needs_attention;
+              // Atajos rápidos: pre-llenan los 3 campos del seguimiento
+              // sin que el vendedor tenga que tipear. El form detallado
+              // queda visible abajo por si quiere ajustar.
+              const addDays = (n) => {
+                const d = new Date(); d.setDate(d.getDate()+n);
+                return d.toISOString().slice(0,10);
+              };
+              const QUICK = [
+                { l:'Cliente aún no decide', sub:'+3 días', status:'contactar_mas_adelante',  step:'Esperando decisión del cliente, contactar para confirmar.', at:addDays(3) },
+                { l:'Pidió más tiempo',       sub:'+14 días', status:'contactar_mas_adelante', step:'Cliente pidió plazo. Volver a contactar.',                     at:addDays(14) },
+                { l:'No responde',            sub:'+1 día',   status:'no_responde',            step:'Reintentar contacto mañana.',                                  at:addDays(1) },
+                { l:'Revisando cotización',   sub:'+2 días',  status:'revisando_cotizacion',   step:'Volver a contactar para resolver dudas de cotización.',        at:addDays(2) },
+                { l:'Agendar visita',         sub:'',         status:'agendar_visita',         step:'Coordinar visita / test ride con el cliente.',                 at:addDays(2) },
+              ];
               return (
                 <div style={{ background: required ? '#FEF2F2' : '#F9FAFB', border: required ? '1px solid #FECACA' : '1px solid var(--surface-sunken)', borderRadius:'var(--radius-lg)', padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:6 }}>
                     <div style={{ fontSize:11, fontWeight:800, color: required ? '#B91C1C' : 'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
                       Seguimiento del lead {required ? '(obligatorio)' : '(opcional)'}
                     </div>
@@ -1438,6 +1456,28 @@ export function TicketView({lead,user,nav,updLead}){
                       Este lead lleva 48h+ sin gestión. Completá el plan para liberarlo.
                     </div>
                   )}
+
+                  {/* Atajos rápidos */}
+                  <div>
+                    <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Atajos</div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {QUICK.map(q=>(
+                        <button key={q.l} type="button"
+                          onClick={()=>setCf(p=>({...p, followup_status:q.status, next_step:q.step, next_at:q.at}))}
+                          style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'6px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'flex-start', gap:1 }}>
+                          <span style={{ color:'var(--text)' }}>{q.l}</span>
+                          {q.sub && <span style={{ color:'var(--text-disabled)', fontSize:9, fontWeight:500 }}>{q.sub}</span>}
+                        </button>
+                      ))}
+                      {/* Descartar abre el modal existente de motivo */}
+                      <button type="button"
+                        onClick={()=>{closeContact(); setPerdidoModal(true);}}
+                        style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:'var(--radius-md)', padding:'6px 10px', fontSize:11, fontWeight:700, color:'#B91C1C', cursor:'pointer', fontFamily:'inherit' }}>
+                        Descartar lead
+                      </button>
+                    </div>
+                  </div>
+
                   <div>
                     <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Estado {required && '*'}</div>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
