@@ -364,188 +364,153 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
         {/* Cuerpo del formulario */}
         <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Tabs: Continuar / Descartar */}
-          <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--border)' }}>
-            <button onClick={()=>{setMode('continuar'); setErr('');}}
-              style={{
-                flex:1, padding:'10px 0', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-                background:'transparent', border:'none',
-                borderBottom: mode==='continuar' ? '2.5px solid var(--brand)' : '2.5px solid transparent',
-                color: mode==='continuar' ? 'var(--brand)' : 'var(--text-subtle)',
-              }}>
-              Seguir gestionando
-            </button>
-            <button onClick={()=>{setMode('descartar'); setErr('');}}
-              style={{
-                flex:1, padding:'10px 0', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-                background:'transparent', border:'none',
-                borderBottom: mode==='descartar' ? '2.5px solid #DC2626' : '2.5px solid transparent',
-                color: mode==='descartar' ? '#DC2626' : 'var(--text-subtle)',
-              }}>
-              Descartar lead
-            </button>
+          {/* ── Resolver en 1 click — continuar gestionando ── */}
+          <div>
+            <div style={{ ...S.lbl, marginBottom: 8 }}>Resolver en 1 click</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {QUICK_CONTINUE.map(q => (
+                <button key={q.l} disabled={saving}
+                  onClick={()=>handleQuickContinue(q)}
+                  style={{
+                    textAlign:'left', padding:'10px 14px',
+                    background:'var(--surface)', border:'1px solid var(--border)',
+                    borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
+                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    opacity: saving ? 0.5 : 1,
+                  }}>
+                  <span style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{q.l}</span>
+                  <span style={{ fontSize:10, color:'var(--text-disabled)', fontWeight:600 }}>+{q.days} día{q.days>1?'s':''}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Modo CONTINUAR */}
-          {mode === 'continuar' && (
-            <>
-              {/* Atajos: 1 click guarda + pasa al siguiente */}
-              <div>
-                <div style={{ ...S.lbl, marginBottom: 8 }}>Resolver en 1 click</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                  {QUICK_CONTINUE.map(q => (
-                    <button key={q.l} disabled={saving}
-                      onClick={()=>handleQuickContinue(q)}
-                      style={{
-                        textAlign:'left', padding:'10px 14px',
-                        background:'var(--surface)', border:'1px solid var(--border)',
-                        borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
-                        display:'flex', justifyContent:'space-between', alignItems:'center',
-                        opacity: saving ? 0.5 : 1,
-                      }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{q.l}</span>
-                      <span style={{ fontSize:10, color:'var(--text-disabled)', fontWeight:600 }}>+{q.days} día{q.days>1?'s':''}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Separador "o detalla manualmente" */}
-              <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-disabled)', fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em' }}>
-                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
-                o detalla manualmente
-                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
-              </div>
-
-              {/* Estado de seguimiento */}
-              <div>
-                <div style={{ ...S.lbl, marginBottom: 8 }}>
-                  Estado del seguimiento <span style={{ color: '#EF4444' }}>*</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {FOLLOWUP_OPTS.map(o => (
-                    <ChoiceChip
-                      key={o.v}
-                      selected={fq.status === o.v}
-                      tone="brand"
-                      onClick={() => setFq(p => ({ ...p, status: o.v }))}
-                    >
-                      {o.l}
-                    </ChoiceChip>
-                  ))}
-                </div>
-              </div>
-
-              {/* Nota / qué pasó */}
-              <div>
-                <label style={{ ...S.lbl, marginBottom: 5 }}>
-                  ¿Qué pasó con este lead? <span style={{ color: '#EF4444' }}>*</span>{' '}
-                  <span style={{ fontWeight: 400, color: 'var(--text-disabled)' }}>(mín. 15 caracteres)</span>
-                </label>
-                <textarea
-                  value={fq.note}
-                  onChange={e => setFq(p => ({ ...p, note: e.target.value }))}
-                  maxLength={5000}
-                  rows={3}
-                  style={{ ...S.inp, width: '100%', resize: 'vertical', fontSize: 12, boxSizing: 'border-box' }}
-                  placeholder="Ej: Llamé al cliente, dice que necesita hablar con su pareja antes de decidir..."
-                />
-                <div
+          {/* ── Descartar lead — 1 click cierra como perdido ── */}
+          <div>
+            <div style={{ ...S.lbl, marginBottom: 8, color:'#B91C1C' }}>Descartar lead</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              {LOST_REASON_OPTS.filter(o => o.v !== 'otro').map(o => (
+                <button key={o.v} disabled={saving}
+                  onClick={()=>handleQuickDiscard(o.v)}
                   style={{
-                    textAlign: 'right',
-                    fontSize: 10,
-                    color: fq.note.length >= 15 ? '#10B981' : 'var(--text-disabled)',
-                    marginTop: 2,
-                  }}
+                    textAlign:'left', padding:'10px 14px',
+                    background:'#FEF2F2', border:'1px solid #FECACA',
+                    borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
+                    fontSize:13, fontWeight:600, color:'#B91C1C',
+                    opacity: saving ? 0.5 : 1,
+                  }}>
+                  {o.l}
+                </button>
+              ))}
+              {/* Otro motivo: chip + textarea inline; el botón de guardar
+                  abajo lo dispara con handleSubmit en modo 'descartar'. */}
+              <button disabled={saving}
+                onClick={()=>{ setMode('descartar'); setLostReason('otro'); setErr(''); }}
+                style={{
+                  textAlign:'left', padding:'10px 14px',
+                  background: (mode==='descartar' && lostReason==='otro') ? '#FEE2E2' : '#FEF2F2',
+                  border: (mode==='descartar' && lostReason==='otro') ? '1.5px solid #DC2626' : '1px solid #FECACA',
+                  borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
+                  fontSize:13, fontWeight:600, color:'#B91C1C',
+                  opacity: saving ? 0.5 : 1,
+                }}>
+                Otro motivo (escribir)
+              </button>
+              {mode==='descartar' && lostReason==='otro' && (
+                <textarea
+                  value={lostDetail}
+                  onChange={e => setLostDetail(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:12, boxSizing:'border-box' }}
+                  placeholder="Explica brevemente por qué se cierra el lead (mín. 10 caracteres)..."
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Separador "o detalla manualmente" */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-disabled)', fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em' }}>
+            <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
+            o detalla manualmente
+            <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
+          </div>
+
+          {/* Form manual de seguimiento — para casos no estándar.
+              Si el vendedor edita acá, asumimos modo='continuar' y se valida
+              con las reglas normales al apretar el botón inferior. */}
+          <div>
+            <div style={{ ...S.lbl, marginBottom: 8 }}>
+              Estado del seguimiento <span style={{ color: '#EF4444' }}>*</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {FOLLOWUP_OPTS.map(o => (
+                <ChoiceChip
+                  key={o.v}
+                  selected={fq.status === o.v}
+                  tone="brand"
+                  onClick={() => { setFq(p => ({ ...p, status: o.v })); setMode('continuar'); }}
                 >
-                  {fq.note.length}/15
-                </div>
-              </div>
+                  {o.l}
+                </ChoiceChip>
+              ))}
+            </div>
+          </div>
 
-              {/* Próximo paso — solo si el lead no está en estado terminal */}
-              {!isTerminal && (
-                <div>
-                  <label style={{ ...S.lbl, marginBottom: 5 }}>
-                    Próximo paso <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={fq.nextStep}
-                    onChange={e => setFq(p => ({ ...p, nextStep: e.target.value }))}
-                    maxLength={500}
-                    style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
-                    placeholder="Ej: Volver a llamar el jueves a las 15:00"
-                  />
-                </div>
-              )}
+          <div>
+            <label style={{ ...S.lbl, marginBottom: 5 }}>
+              ¿Qué pasó con este lead? <span style={{ color: '#EF4444' }}>*</span>{' '}
+              <span style={{ fontWeight: 400, color: 'var(--text-disabled)' }}>(mín. 15 caracteres)</span>
+            </label>
+            <textarea
+              value={fq.note}
+              onChange={e => { setFq(p => ({ ...p, note: e.target.value })); setMode('continuar'); }}
+              maxLength={5000}
+              rows={3}
+              style={{ ...S.inp, width: '100%', resize: 'vertical', fontSize: 12, boxSizing: 'border-box' }}
+              placeholder="Ej: Llamé al cliente, dice que necesita hablar con su pareja antes de decidir..."
+            />
+            <div
+              style={{
+                textAlign: 'right',
+                fontSize: 10,
+                color: fq.note.length >= 15 ? '#10B981' : 'var(--text-disabled)',
+                marginTop: 2,
+              }}
+            >
+              {fq.note.length}/15
+            </div>
+          </div>
 
-              {/* Próxima fecha — solo si el lead no está en estado terminal */}
-              {!isTerminal && (
-                <div>
-                  <label style={{ ...S.lbl, marginBottom: 5 }}>
-                    Próxima fecha <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={fq.nextAt}
-                    onChange={e => setFq(p => ({ ...p, nextAt: e.target.value }))}
-                    min={today}
-                    style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
-                  />
-                </div>
-              )}
-            </>
+          {!isTerminal && (
+            <div>
+              <label style={{ ...S.lbl, marginBottom: 5 }}>
+                Próximo paso <span style={{ color: '#EF4444' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={fq.nextStep}
+                onChange={e => { setFq(p => ({ ...p, nextStep: e.target.value })); setMode('continuar'); }}
+                maxLength={500}
+                style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
+                placeholder="Ej: Volver a llamar el jueves a las 15:00"
+              />
+            </div>
           )}
 
-          {/* Modo DESCARTAR */}
-          {mode === 'descartar' && (
-            <>
-              {/* Atajos de descarte rápido: 1 click cierra el lead */}
-              <div>
-                <div style={{ ...S.lbl, marginBottom: 8 }}>Descarte rápido (1 click)</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                  {LOST_REASON_OPTS.filter(o => o.v !== 'otro').map(o => (
-                    <button key={o.v} disabled={saving}
-                      onClick={()=>handleQuickDiscard(o.v)}
-                      style={{
-                        textAlign:'left', padding:'10px 14px',
-                        background:'#FEF2F2', border:'1px solid #FECACA',
-                        borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
-                        fontSize:13, fontWeight:600, color:'#B91C1C',
-                        opacity: saving ? 0.5 : 1,
-                      }}>
-                      {o.l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Otro motivo — requiere texto */}
-              <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-disabled)', fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em' }}>
-                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
-                o explica otro motivo
-                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
-              </div>
-              <div>
-                <ChoiceChip
-                  selected={lostReason === 'otro'}
-                  tone="brand"
-                  onClick={()=>setLostReason('otro')}
-                >
-                  Otro motivo
-                </ChoiceChip>
-                {lostReason === 'otro' && (
-                  <textarea
-                    value={lostDetail}
-                    onChange={e => setLostDetail(e.target.value)}
-                    maxLength={500}
-                    rows={3}
-                    style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:12, boxSizing:'border-box', marginTop:8 }}
-                    placeholder="Explica brevemente por qué se cierra el lead (mín. 10 caracteres)..."
-                  />
-                )}
-              </div>
-            </>
+          {!isTerminal && (
+            <div>
+              <label style={{ ...S.lbl, marginBottom: 5 }}>
+                Próxima fecha <span style={{ color: '#EF4444' }}>*</span>
+              </label>
+              <input
+                type="date"
+                value={fq.nextAt}
+                onChange={e => { setFq(p => ({ ...p, nextAt: e.target.value })); setMode('continuar'); }}
+                min={today}
+                style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
+              />
+            </div>
           )}
 
           {/* Error */}
