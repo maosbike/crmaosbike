@@ -25,7 +25,28 @@ import { SupplierPaymentsView } from "./components/SupplierPaymentsView";
 import { AccountingView } from "./components/AccountingView";
 
 export default function App(){
-  const[user,setUser]=useState(null);
+  const[realUser,setRealUser]=useState(null);
+  // Modo demo: solo super_admin puede activarlo. Suplanta el rol en TODA la
+  // UI (no toca el backend, los requests siguen yendo con el JWT real del
+  // super_admin). Sirve para ver cómo ven la app vendedores / admin_comercial
+  // / backoffice sin tener que logearse como otra persona.
+  const[viewAsRole,setViewAsRoleRaw]=useState(()=>{
+    try{ return localStorage.getItem('demo_view_as_role') || ''; }catch{ return ''; }
+  });
+  const setViewAsRole=(r)=>{
+    setViewAsRoleRaw(r||'');
+    try{
+      if(r) localStorage.setItem('demo_view_as_role', r);
+      else  localStorage.removeItem('demo_view_as_role');
+    }catch{}
+  };
+  // Usuario efectivo: si el real es super_admin y eligió un rol demo,
+  // suplantamos role para que hasRole(...) refleje la vista deseada.
+  const user = (realUser && realUser.role === 'super_admin' && viewAsRole)
+    ? { ...realUser, role: viewAsRole, _demo: true, _realRole: realUser.role }
+    : realUser;
+  // Wrapper para que el resto del código siga llamando setUser(...) sin saber.
+  const setUser = (u) => { setRealUser(u); if(!u) setViewAsRole(''); };
   const[sessionLoading,setSessionLoading]=useState(true);
   const[page,setPage]=useState("dashboard");
   const[leads,setLeads]=useState([]);
@@ -294,8 +315,48 @@ export default function App(){
           <button onClick={()=>setShowChangePw(true)} style={{...S.gh,padding:4}} title="Cambiar contraseña"><Ic.lock size={14} color="var(--text-subtle)"/></button>
           <button onClick={handleLogout} style={{...S.gh,padding:4}} title="Cerrar sesión"><Ic.out size={14} color="var(--text-subtle)"/></button>
         </div>
+        {/* Modo demo — solo super_admin. Permite ver la app con permisos de
+            otro rol sin tener que loguearse como otra persona. Backend sigue
+            recibiendo el JWT real del super_admin, así que toda acción queda
+            registrada como ejecutada por el admin. */}
+        {realUser && realUser.role === 'super_admin' && (
+          <div style={{padding:'8px 12px',borderTop:'1px solid var(--surface-sunken)',background:viewAsRole?'#FEF3C7':'transparent',flexShrink:0}}>
+            <div style={{fontSize:9,fontWeight:800,color:viewAsRole?'#92400E':'var(--text-subtle)',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:4}}>
+              {viewAsRole ? 'Modo demo activo' : 'Ver como (demo)'}
+            </div>
+            <select value={viewAsRole} onChange={e=>setViewAsRole(e.target.value)}
+              style={{width:'100%',padding:'5px 8px',fontSize:11,fontWeight:600,border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',background:'var(--surface)',color:'var(--text)',fontFamily:'inherit'}}>
+              <option value="">Yo mismo (super admin)</option>
+              <option value="admin_comercial">Admin comercial</option>
+              <option value="backoffice">Backoffice</option>
+              <option value="vendedor">Vendedor</option>
+            </select>
+            {viewAsRole && (
+              <div style={{fontSize:9,color:'#92400E',marginTop:4,fontWeight:600}}>
+                La app se muestra como {viewAsRole.replace('_',' ')}. Las acciones quedan registradas como super_admin.
+              </div>
+            )}
+          </div>
+        )}
       </aside>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
+        {/* Banner sticky cuando el modo demo está activo. Recordatorio visual
+            constante de que la UI no es la real del usuario. */}
+        {viewAsRole && realUser?.role === 'super_admin' && (
+          <div style={{
+            background:'#FEF3C7', borderBottom:'1px solid #FDE68A',
+            padding:'6px 16px', display:'flex', alignItems:'center',
+            justifyContent:'space-between', gap:10, flexShrink:0,
+          }}>
+            <div style={{fontSize:12, fontWeight:600, color:'#92400E'}}>
+              Modo demo: viendo la app como <strong>{viewAsRole.replace('_',' ')}</strong>. Las acciones que hagas quedan registradas con tu usuario real.
+            </div>
+            <button onClick={()=>setViewAsRole('')}
+              style={{background:'#92400E',color:'var(--text-on-dark)',border:'none',borderRadius:'var(--radius-sm)',padding:'4px 10px',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
+              Salir del modo demo
+            </button>
+          </div>
+        )}
         <header className="crm-mobile-hdr" style={{display:"none",height:64,alignItems:"center",justifyContent:"space-between",padding:"0 14px",borderBottom:"1px solid var(--border)",background:"var(--surface)",flexShrink:0,gap:10}}>
           <button onClick={()=>nav('dashboard')} title="Ir al dashboard"
             style={{display:"flex",alignItems:"center",gap:8,background:'transparent',border:'none',padding:0,cursor:'pointer',fontFamily:'inherit'}}>
