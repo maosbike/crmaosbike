@@ -116,10 +116,13 @@ export default function App(){
     api.getInventory().then(d=>setInv(Array.isArray(d)?d:[])).catch(()=>{});
   },[user?.id]);
 
-  // Fase 3 — modal bloqueante de seguimiento. Solo se dispara para vendedores
-  // que entran al módulo de leads y tienen leads con needs_attention pendientes.
+  // Modal bloqueante de seguimiento obligatorio para vendedores.
+  // Dispara en CUALQUIER sección de la app (no solo "leads") — la idea es
+  // que el vendedor no pueda navegar a inventario / ventas / dashboard
+  // mientras tiene leads con plan vencido o sin gestionar en 48h. Cierra
+  // recién cuando resuelve todos (o usa "Ver ficha" → se cierra para
+  // gestionar y vuelve a aparecer al siguiente render si quedan otros).
   useEffect(()=>{
-    if(page!=='leads')return;
     if(!hasRole(user,ROLES.VEND))return;
     const pending=leads.filter(l=>
       l.needs_attention&&
@@ -128,7 +131,7 @@ export default function App(){
       (l.seller_id==null||l.seller_id===user.id)
     );
     if(pending.length>0)setShowOverdueModal(true);
-  },[page,leads]);
+  },[page,leads,user?.id]);
 
   if(sessionLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--surface-muted)"}}><img src="/logo.png" alt="MaosBike" style={{height:48,opacity:0.5}}/></div>;
   if(!user)return<Login onLogin={setUser}/>;
@@ -179,6 +182,11 @@ export default function App(){
     setOverdueResolved(new Set());
   };
   const handleViewLead=(id)=>{
+    // Marca este lead como "atendido en esta sesión" para que el modal no
+    // vuelva a aparecer sobre la ficha del lead que el vendedor está
+    // gestionando. Cuando complete contacto+seguimiento el flag real
+    // (needs_attention) baja vía updLead y el lead sale del set general.
+    setOverdueResolved(prev=>new Set([...prev,id]));
     setShowOverdueModal(false);
     nav('ticket',String(id));
   };
