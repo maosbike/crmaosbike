@@ -120,8 +120,11 @@ export function TicketView({lead,user,nav,updLead}){
   const[noteErr,setNoteErr]=useState("");
 
   // ── Modal Registrar Contacto ──
+  // Estado unificado: campos de contacto (method/result/note/evidencia) +
+  // campos de seguimiento (followup_status, next_step, next_at). En un solo
+  // submit se hace contacto + evidencia + followup → libera needs_attention.
   const[showContact,setShowContact]=useState(false);
-  const[cf,setCf]=useState({method:'whatsapp',result:'',note:'',evMode:'file',evType:'screenshot_whatsapp'});
+  const[cf,setCf]=useState({method:'whatsapp',result:'',note:'',evMode:'file',evType:'screenshot_whatsapp',followup_status:'',next_step:'',next_at:''});
   const[evFile,setEvFile]=useState(null);
   const[evPreview,setEvPreview]=useState(null);
   const[cfErr,setCfErr]=useState('');
@@ -142,7 +145,7 @@ export function TicketView({lead,user,nav,updLead}){
   const noteMinLen=needsEvidence?50:needsNote?40:0;
 
   const resetContact=()=>{
-    setCf({method:'whatsapp',result:'',note:'',evMode:'file',evType:'screenshot_whatsapp'});
+    setCf({method:'whatsapp',result:'',note:'',evMode:'file',evType:'screenshot_whatsapp',followup_status:'',next_step:'',next_at:''});
     setEvFile(null);setEvPreview(null);setCfErr('');setCfDone(false);
   };
   const closeContact=()=>{setShowContact(false);resetContact();};
@@ -155,6 +158,19 @@ export function TicketView({lead,user,nav,updLead}){
       if(cf.evMode==='note'&&cf.note.trim().length<50){setCfErr(`La nota debe tener al menos 50 caracteres (${cf.note.trim().length}/50).`);return;}
     }
     if(needsNote&&cf.note.trim().length<40){setCfErr(`Para este resultado la nota es obligatoria (mín. 40 caracteres, ${cf.note.trim().length}/40).`);return;}
+    // Seguimiento integrado: status + próximo paso + fecha.
+    // Solo es obligatorio si el lead tiene needs_attention (banner rojo 48h
+    // sin gestión) — en ese caso el sistema necesita saber el plan. Para
+    // un primer contacto en lead nuevo, es opcional (el vendedor puede
+    // todavía no saber cómo va a avanzar el cliente).
+    const requireFollowup = !!lead.needs_attention;
+    const anyFollowupField = !!(cf.followup_status || cf.next_step.trim() || cf.next_at);
+    if (requireFollowup || anyFollowupField) {
+      if(!cf.followup_status){setCfErr('Selecciona el estado del seguimiento.');return;}
+      if(cf.next_step.trim().length<5){setCfErr('Describe el próximo paso (mín. 5 caracteres).');return;}
+      if(!cf.next_at){setCfErr('Indica la fecha de próxima gestión.');return;}
+    }
+    const submitFollowupNow = requireFollowup || anyFollowupField;
     setCfSaving(true);
     try{
       // Si hay evidencia con archivo, subirla como entrada de evidencia
@@ -178,6 +194,29 @@ export function TicketView({lead,user,nav,updLead}){
       // Reflejo inmediato del estado en UI: si el lead no está en estado avanzado/terminal, pasa a En gestión
       if(!['en_gestion','cotizado','financiamiento','ganado','perdido'].includes(lead.status)){
         updLead(lead.id,{status:'en_gestion'});
+      }
+      // Submit del seguimiento solo si el vendedor lo completó (o el lead lo
+      // exige por needs_attention). En contactos de leads nuevos, se omite.
+      if (submitFollowupNow) {
+        try{
+          const followNote = cf.note.trim() || `Contacto vía ${cf.method}: ${cf.result}`;
+          const fres = await api.submitFollowup(lead.id,{
+            followup_status: cf.followup_status,
+            followup_note:   followNote.length < 15 ? `${followNote} — sin más detalle` : followNote,
+            followup_next_step: cf.next_step.trim(),
+            next_followup_at:   cf.next_at,
+          });
+          if (fres?.timeline) addTimelineLocal(fres.timeline);
+          updLead(lead.id,{
+            needs_attention:false, needs_attention_since:null,
+            followup_status: cf.followup_status,
+            followup_note: followNote,
+            followup_next_step: cf.next_step.trim(),
+            next_followup_at: cf.next_at,
+          });
+        }catch(eFol){
+          console.warn('[contact] followup falló pero contacto OK:', eFol.message);
+        }
       }
       setCfDone(true);
       setTimeout(()=>closeContact(),2200);
@@ -376,9 +415,9 @@ export function TicketView({lead,user,nav,updLead}){
             <div style={{ fontSize:14,fontWeight:800,color:'#B91C1C' }}>Este lead lleva más de 48h sin contacto</div>
             <div style={{ fontSize:12,color:'#DC2626',marginTop:2 }}>Registra el seguimiento para continuar gestionando este lead.</div>
           </div>
-          <button onClick={()=>{resetFq();setShowFollowup(true);}}
+          <button onClick={()=>{resetContact();setShowContact(true);}}
             style={{ padding:'10px 20px',background:'#DC2626',color:'var(--text-on-dark)',border:'none',borderRadius:'var(--radius-md)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap' }}>
-            Registrar seguimiento
+            Registrar contacto
           </button>
         </div>
       )}
@@ -1238,7 +1277,20 @@ export function TicketView({lead,user,nav,updLead}){
             {/* Resultado */}
             <div>
               <div style={{ fontSize:10,fontWeight:800,color:'var(--text-subtle)',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:9 }}>Resultado del contacto</div>
-              <select value={cf.result} onChange={e=>setCf(p=>({...p,result:e.target.value,note:'',evMode:'file'}))}
+              <select value={cf.result} onChange={e=>{
+                const v = e.target.value;
+                // Auto-sugerir followup_status según resultado para reducir clicks.
+                // "No responde" / similar → followup = no_responde.
+                // "Cotizado" → revisando_cotizacion. "Visita agendada" → agendar_visita.
+                // Cualquier resultado positivo sin pista → cliente_interesado.
+                let suggested = '';
+                if (/no contest|no respond/i.test(v))            suggested = 'no_responde';
+                else if (/cotiz/i.test(v))                        suggested = 'revisando_cotizacion';
+                else if (/visit|test ride/i.test(v))              suggested = 'agendar_visita';
+                else if (/m[aá]s adelante|despu[eé]s|llamar/i.test(v)) suggested = 'contactar_mas_adelante';
+                else if (v)                                       suggested = 'cliente_interesado';
+                setCf(p=>({...p,result:v,note:'',evMode:'file', followup_status: p.followup_status || suggested}));
+              }}
                 style={{ ...S.inp,width:'100%',fontSize:13,padding:'10px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--radius-md)',fontWeight:cf.result?600:400,color:cf.result?'var(--text)':'var(--text-disabled)' }}>
                 <option value="">Seleccionar resultado...</option>
                 <optgroup label="— Contacto real">
@@ -1362,6 +1414,61 @@ export function TicketView({lead,user,nav,updLead}){
               </div>
             )}
 
+            {/* ── Seguimiento (integrado) ─────────────────────────────────
+                Obligatorio solo si el lead tiene needs_attention (lleva 48h+
+                sin gestión y necesita plan claro). Opcional para primer
+                contacto en lead nuevo — el vendedor puede no saber todavía
+                cómo va a avanzar el cliente. */}
+            {cf.result && (() => {
+              const required = !!lead.needs_attention;
+              return (
+                <div style={{ background: required ? '#FEF2F2' : '#F9FAFB', border: required ? '1px solid #FECACA' : '1px solid var(--surface-sunken)', borderRadius:'var(--radius-lg)', padding:'14px 16px', display:'flex', flexDirection:'column', gap:12 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div style={{ fontSize:11, fontWeight:800, color: required ? '#B91C1C' : 'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                      Seguimiento del lead {required ? '(obligatorio)' : '(opcional)'}
+                    </div>
+                    {!required && (
+                      <span style={{ fontSize:10, color:'var(--text-disabled)' }}>
+                        Si todavía no sabés cómo va a avanzar, podés dejarlo vacío
+                      </span>
+                    )}
+                  </div>
+                  {required && (
+                    <div style={{ fontSize:11, color:'#B91C1C' }}>
+                      Este lead lleva 48h+ sin gestión. Completá el plan para liberarlo.
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Estado {required && '*'}</div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {FOLLOWUP_OPTS.map(o=>(
+                        <ChoiceChip key={o.v}
+                          selected={cf.followup_status===o.v}
+                          onClick={()=>setCf(p=>({...p,followup_status:p.followup_status===o.v?'':o.v}))}
+                        >{o.l}</ChoiceChip>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10 }}>
+                    <div>
+                      <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Próximo paso {required && '*'}</div>
+                      <input value={cf.next_step}
+                        onChange={e=>setCf(p=>({...p,next_step:e.target.value}))}
+                        maxLength={200}
+                        placeholder="Ej: Llamar al cliente el lunes para confirmar visita"
+                        style={{ ...S.inp, width:'100%', fontSize:12 }}/>
+                    </div>
+                    <div>
+                      <div style={{ fontSize:10,fontWeight:700,color:'var(--text-subtle)',marginBottom:6 }}>Próxima fecha {required && '*'}</div>
+                      <input type="date" value={cf.next_at}
+                        onChange={e=>setCf(p=>({...p,next_at:e.target.value}))}
+                        style={{ ...S.inp, width:'100%', fontSize:12 }}/>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Error */}
             {cfErr&&(
               <div style={{ background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:'var(--radius-lg)',padding:'10px 14px',fontSize:12,color:'#B91C1C',fontWeight:600,display:'flex',alignItems:'flex-start',gap:8 }}>
@@ -1374,7 +1481,7 @@ export function TicketView({lead,user,nav,updLead}){
               <button onClick={closeContact} style={{ ...S.btn2,padding:'10px 20px',fontSize:12,fontWeight:600,borderRadius:'var(--radius-md)' }}>Cancelar</button>
               <button onClick={submitContact} disabled={cfSaving||!cf.result}
                 style={{ ...S.btn,padding:'10px 22px',fontSize:12,fontWeight:700,borderRadius:'var(--radius-md)',opacity:(cfSaving||!cf.result)?0.5:1,boxShadow:(cfSaving||!cf.result)?'none':'0 2px 8px var(--brand-strong)' }}>
-                {cfSaving?'Guardando...':'Guardar contacto'}
+                {cfSaving?'Guardando...':'Guardar'}
               </button>
             </div>
           </div>
