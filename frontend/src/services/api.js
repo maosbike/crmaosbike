@@ -228,6 +228,7 @@ export const api = {
   getReassignments: (ticketId) => request('GET', `/reassignments/ticket/${ticketId}`),
   getReassignmentLog: (params) => request('GET', `/reassignments?${new URLSearchParams(params || {})}`),
   manualReassign: (data) => request('POST', '/reassignments/manual', data),
+  bulkManualReassign: (ticketIds, toUserId) => request('POST', '/reassignments/bulk-manual', { ticket_ids: ticketIds, to_user_id: toUserId }),
 
   // Dashboard comercial
   getCommercialStats: ({ signal } = {}) => request('GET', '/dashboard/commercial', undefined, false, signal),
