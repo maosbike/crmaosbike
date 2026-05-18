@@ -42,13 +42,19 @@ export const FOLLOWUP_OPTS = [
   {v:'agendar_visita',        l:'Agendar visita'},
   {v:'no_responde',           l:'No responde'},
 ];
-// 6 motivos al cerrar lead como 'perdido' — espejo backend.
+// Motivos al cerrar lead como 'perdido' — espejo backend. Incluye motivos
+// operativos para limpiar leads acumulados (teléfono malo, duplicado, etc.).
 export const LOST_REASON_OPTS = [
   {v:'compro_otra_marca',        l:'Compró en otra marca'},
+  {v:'compro_misma_marca',       l:'Ya compró por otro canal'},
   {v:'no_aplica_financiamiento', l:'No aplica para financiamiento'},
   {v:'solo_cotizando',           l:'Solo estaba cotizando (sin intención real)'},
   {v:'sin_presupuesto',          l:'Sin presupuesto / sin pie'},
   {v:'no_contesta',              l:'No volvió a contestar tras varios intentos'},
+  {v:'telefono_malo',            l:'Teléfono inválido / no se ubicó'},
+  {v:'duplicado',                l:'Lead duplicado'},
+  {v:'fuera_de_zona',            l:'Cliente fuera de zona'},
+  {v:'no_califica',              l:'No califica (sin licencia u otro)'},
   {v:'otro',                     l:'Otro motivo'},
 ];
 export const LOST_REASON_LABELS = Object.fromEntries(LOST_REASON_OPTS.map(o => [o.v, o.l]));
