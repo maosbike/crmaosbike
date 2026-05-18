@@ -24,6 +24,10 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
   // Acordeón: form manual oculto por defecto para que el modal entre en
   // pantalla sin scroll. Vendedor lo expande si necesita detallar.
   const [showManual, setShowManual] = useState(false);
+  // Descarte oculto detrás de un dropdown — evita que el vendedor cierre
+  // leads por impulso al ver botones rojos llamativos. Tiene que ir a
+  // buscarlo deliberadamente.
+  const [showDiscardMenu, setShowDiscardMenu] = useState(false);
 
   const lead = overdueLeads[idx];
   const total = overdueLeads.length;
@@ -34,6 +38,8 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
     setMode('continuar');
     setLostReason('');
     setLostDetail('');
+    setShowDiscardMenu(false);
+    setShowManual(false);
   };
 
   // Helper: avanzar al siguiente lead o cerrar el modal si fue el último
@@ -389,45 +395,84 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
             </div>
           </div>
 
-          {/* ── Descartar lead — pills horizontales rojas ── */}
-          <div>
-            <div style={{ ...S.lbl, marginBottom: 6, color:'#B91C1C' }}>Descartar lead</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-              {LOST_REASON_OPTS.filter(o => o.v !== 'otro').map(o => (
-                <button key={o.v} disabled={saving}
-                  onClick={()=>handleQuickDiscard(o.v)}
+          {/* ── Descartar lead — dropdown colapsable ─────────────────────
+              Oculto detrás de un botón para que el vendedor no descarte
+              por impulso. Click → se despliega lista vertical con los
+              motivos. Cada motivo: 1 click cierra el lead + pasa al
+              siguiente. */}
+          <div style={{ position:'relative' }}>
+            <button type="button" disabled={saving}
+              onClick={()=>setShowDiscardMenu(v=>!v)}
+              style={{
+                width:'100%', padding:'10px 14px',
+                background: showDiscardMenu ? '#FEF2F2' : 'var(--surface)',
+                border: showDiscardMenu ? '1px solid #FECACA' : '1px solid var(--border)',
+                borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
+                display:'flex', justifyContent:'space-between', alignItems:'center',
+                fontSize:13, fontWeight:600,
+                color: showDiscardMenu ? '#B91C1C' : 'var(--text-subtle)',
+                opacity: saving ? 0.5 : 1,
+              }}>
+              <span>Descartar este lead</span>
+              <span style={{ fontSize:11, fontWeight:700 }}>{showDiscardMenu ? '▴' : '▾'}</span>
+            </button>
+            {showDiscardMenu && (
+              <div style={{
+                marginTop:6,
+                background:'var(--surface)',
+                border:'1px solid #FECACA',
+                borderRadius:'var(--radius-md)',
+                overflow:'hidden',
+                boxShadow:'0 4px 12px rgba(220,38,38,0.08)',
+              }}>
+                {LOST_REASON_OPTS.filter(o => o.v !== 'otro').map((o, i) => (
+                  <button key={o.v} disabled={saving}
+                    onClick={()=>handleQuickDiscard(o.v)}
+                    style={{
+                      display:'block', width:'100%', textAlign:'left',
+                      padding:'9px 14px',
+                      background:'transparent',
+                      border:'none',
+                      borderTop: i===0 ? 'none' : '1px solid #FEE2E2',
+                      cursor:'pointer', fontFamily:'inherit',
+                      fontSize:12, fontWeight:500, color:'#7F1D1D',
+                      opacity: saving ? 0.5 : 1,
+                    }}
+                    onMouseEnter={e=>{ if(!saving) e.currentTarget.style.background='#FEF2F2'; }}
+                    onMouseLeave={e=>{ e.currentTarget.style.background='transparent'; }}>
+                    {o.l}
+                  </button>
+                ))}
+                <button disabled={saving}
+                  onClick={()=>{ setMode('descartar'); setLostReason('otro'); setErr(''); }}
                   style={{
-                    padding:'7px 11px',
-                    background:'#FEF2F2', border:'1px solid #FECACA',
-                    borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
-                    fontSize:12, fontWeight:600, color:'#B91C1C',
+                    display:'block', width:'100%', textAlign:'left',
+                    padding:'9px 14px',
+                    background: (mode==='descartar' && lostReason==='otro') ? '#FEF2F2' : 'transparent',
+                    border:'none', borderTop:'1px solid #FEE2E2',
+                    cursor:'pointer', fontFamily:'inherit',
+                    fontSize:12, fontWeight:600, color:'#7F1D1D',
                     opacity: saving ? 0.5 : 1,
+                  }}
+                  onMouseEnter={e=>{ if(!saving) e.currentTarget.style.background='#FEF2F2'; }}
+                  onMouseLeave={e=>{
+                    e.currentTarget.style.background = (mode==='descartar' && lostReason==='otro') ? '#FEF2F2' : 'transparent';
                   }}>
-                  {o.l}
+                  Otro motivo (escribir)…
                 </button>
-              ))}
-              <button disabled={saving}
-                onClick={()=>{ setMode('descartar'); setLostReason('otro'); setErr(''); }}
-                style={{
-                  padding:'7px 11px',
-                  background: (mode==='descartar' && lostReason==='otro') ? '#FEE2E2' : '#FEF2F2',
-                  border: (mode==='descartar' && lostReason==='otro') ? '1.5px solid #DC2626' : '1px solid #FECACA',
-                  borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
-                  fontSize:12, fontWeight:600, color:'#B91C1C',
-                  opacity: saving ? 0.5 : 1,
-                }}>
-                Otro motivo…
-              </button>
-            </div>
-            {mode==='descartar' && lostReason==='otro' && (
-              <textarea
-                value={lostDetail}
-                onChange={e => setLostDetail(e.target.value)}
-                maxLength={500}
-                rows={2}
-                style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:12, boxSizing:'border-box', marginTop:8 }}
-                placeholder="Explica brevemente por qué se cierra el lead (mín. 10 caracteres)..."
-              />
+                {mode==='descartar' && lostReason==='otro' && (
+                  <div style={{ padding:'10px 14px', borderTop:'1px solid #FEE2E2', background:'#FEF2F2' }}>
+                    <textarea
+                      value={lostDetail}
+                      onChange={e => setLostDetail(e.target.value)}
+                      maxLength={500}
+                      rows={2}
+                      style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:12, boxSizing:'border-box' }}
+                      placeholder="Explica brevemente por qué se cierra el lead (mín. 10 caracteres)..."
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
