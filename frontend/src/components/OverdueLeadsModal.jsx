@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../services/api';
-import { S, FOLLOWUP_OPTS, TERMINAL_STATUSES, ChoiceChip, TICKET_STATUS, SRC, fD, ago, colorFor } from '../ui.jsx';
+import { S, FOLLOWUP_OPTS, LOST_REASON_OPTS, LOST_REASON_LABELS, TERMINAL_STATUSES, ChoiceChip, TICKET_STATUS, SRC, fD, ago, colorFor } from '../ui.jsx';
 
 // OverdueLeadsModal — modal bloqueante de seguimiento obligatorio.
 // Se muestra cuando el vendedor entra al módulo de leads con leads atrasados.
@@ -17,15 +17,122 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
   const [fq, setFq] = useState({ status: '', note: '', nextStep: '', nextAt: '' });
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
+  // Modo: 'continuar' (seguir gestionando) o 'descartar' (cerrar como perdido)
+  const [mode, setMode] = useState('continuar');
+  const [lostReason, setLostReason] = useState('');
+  const [lostDetail, setLostDetail] = useState('');
 
   const lead = overdueLeads[idx];
   const total = overdueLeads.length;
   const isTerminal = TERMINAL_STATUSES.includes(lead?.status);
 
-  const resetForm = () => setFq({ status: '', note: '', nextStep: '', nextAt: '' });
+  const resetForm = () => {
+    setFq({ status: '', note: '', nextStep: '', nextAt: '' });
+    setMode('continuar');
+    setLostReason('');
+    setLostDetail('');
+  };
+
+  // Helper: avanzar al siguiente lead o cerrar el modal si fue el último
+  const advanceOrClose = () => {
+    onResolved(lead.id);
+    const next = idx + 1;
+    if (next >= total) onDone();
+    else { setIdx(next); resetForm(); setErr(''); }
+  };
+
+  // Atajos rápidos para "continuar gestionando": setea status + step + fecha
+  // en 1 click. La nota la rellena con un default razonable; el vendedor
+  // todavía puede editarla antes de guardar.
+  const addDaysISO = (n) => {
+    const d = new Date(); d.setDate(d.getDate()+n);
+    return d.toISOString().slice(0,10);
+  };
+  const QUICK_CONTINUE = [
+    { l:'Cliente sigue interesado', days:2, status:'cliente_interesado',     step:'Volver a contactar para avanzar la gestión.', note:'Cliente confirmó interés. Continuar seguimiento.' },
+    { l:'Pidió más tiempo',          days:14, status:'contactar_mas_adelante', step:'Cliente pidió plazo. Volver a contactar.',     note:'Cliente solicitó más tiempo para decidir.' },
+    { l:'Revisando cotización',      days:2, status:'revisando_cotizacion',   step:'Resolver dudas de la cotización.',             note:'Cliente está revisando la cotización enviada.' },
+    { l:'Agendar visita',            days:2, status:'agendar_visita',         step:'Coordinar visita / test ride.',                note:'Cliente acepta coordinar visita o test ride.' },
+    { l:'No responde',               days:1, status:'no_responde',            step:'Reintentar contacto al día siguiente.',        note:'Cliente no contestó pese a los intentos.' },
+  ];
+
+  // Descarte rápido: cierra el lead como perdido con motivo predefinido.
+  // Cada chip es 1 click → confirma → cierra → siguiente lead.
+  const handleQuickDiscard = async (reason) => {
+    if (saving) return;
+    setSaving(true); setErr('');
+    try {
+      const label = LOST_REASON_LABELS[reason] || reason;
+      await api.updateTicket(lead.id, {
+        status: 'perdido',
+        lost_reason: reason,
+        lost_reason_detail: reason === 'otro' ? (lostDetail.trim() || null) : null,
+      });
+      // Anotar en timeline para trazabilidad
+      try {
+        await api.addTimeline(lead.id, {
+          type: 'system',
+          title: `Lead perdido · ${label}`,
+          note: reason === 'otro' ? lostDetail.trim() : null,
+        });
+      } catch (_) {}
+      advanceOrClose();
+    } catch (e) {
+      setErr(e.message || 'No se pudo cerrar el lead');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Continuar rápido: aplica un atajo y guarda el seguimiento en 1 click.
+  const handleQuickContinue = async (q) => {
+    if (saving) return;
+    setSaving(true); setErr('');
+    try {
+      await api.submitFollowup(lead.id, {
+        followup_status: q.status,
+        followup_note:   q.note,
+        followup_next_step: q.step,
+        next_followup_at:   addDaysISO(q.days),
+      });
+      advanceOrClose();
+    } catch (e) {
+      setErr(e.message || 'Error al guardar el seguimiento');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setErr('');
+    if (mode === 'descartar') {
+      if (!lostReason) { setErr('Selecciona un motivo de descarte'); return; }
+      if (lostReason === 'otro' && lostDetail.trim().length < 10) {
+        setErr('Si eliges "Otro motivo", explica brevemente (mín. 10 caracteres)'); return;
+      }
+      setSaving(true);
+      try {
+        const label = LOST_REASON_LABELS[lostReason] || lostReason;
+        await api.updateTicket(lead.id, {
+          status: 'perdido',
+          lost_reason: lostReason,
+          lost_reason_detail: lostReason === 'otro' ? lostDetail.trim() : null,
+        });
+        try {
+          await api.addTimeline(lead.id, {
+            type: 'system',
+            title: `Lead perdido · ${label}`,
+            note: lostReason === 'otro' ? lostDetail.trim() : null,
+          });
+        } catch (_) {}
+        advanceOrClose();
+      } catch (e) {
+        setErr(e.message || 'No se pudo cerrar el lead');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
 
     if (!fq.status) { setErr('Selecciona el estado de seguimiento'); return; }
     if (fq.note.trim().length < 15) { setErr('El comentario debe tener al menos 15 caracteres'); return; }
@@ -46,17 +153,7 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
         followup_next_step: fq.nextStep.trim(),
         next_followup_at: fq.nextAt || null,
       });
-
-      onResolved(lead.id);
-
-      const next = idx + 1;
-      if (next >= total) {
-        onDone();
-      } else {
-        setIdx(next);
-        resetForm();
-        setErr('');
-      }
+      advanceOrClose();
     } catch (e) {
       setErr(e.message || 'Error al guardar el seguimiento');
     } finally {
@@ -267,82 +364,188 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
         {/* Cuerpo del formulario */}
         <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Estado de seguimiento */}
-          <div>
-            <div style={{ ...S.lbl, marginBottom: 8 }}>
-              Estado del seguimiento <span style={{ color: '#EF4444' }}>*</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {FOLLOWUP_OPTS.map(o => (
-                <ChoiceChip
-                  key={o.v}
-                  selected={fq.status === o.v}
-                  tone="brand"
-                  onClick={() => setFq(p => ({ ...p, status: o.v }))}
-                >
-                  {o.l}
-                </ChoiceChip>
-              ))}
-            </div>
-          </div>
-
-          {/* Nota / qué pasó */}
-          <div>
-            <label style={{ ...S.lbl, marginBottom: 5 }}>
-              ¿Qué pasó con este lead? <span style={{ color: '#EF4444' }}>*</span>{' '}
-              <span style={{ fontWeight: 400, color: 'var(--text-disabled)' }}>(mín. 15 caracteres)</span>
-            </label>
-            <textarea
-              value={fq.note}
-              onChange={e => setFq(p => ({ ...p, note: e.target.value }))}
-              maxLength={5000}
-              rows={3}
-              style={{ ...S.inp, width: '100%', resize: 'vertical', fontSize: 12, boxSizing: 'border-box' }}
-              placeholder="Ej: Llamé al cliente, dice que necesita hablar con su pareja antes de decidir..."
-            />
-            <div
+          {/* Tabs: Continuar / Descartar */}
+          <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--border)' }}>
+            <button onClick={()=>{setMode('continuar'); setErr('');}}
               style={{
-                textAlign: 'right',
-                fontSize: 10,
-                color: fq.note.length >= 15 ? '#10B981' : 'var(--text-disabled)',
-                marginTop: 2,
-              }}
-            >
-              {fq.note.length}/15
-            </div>
+                flex:1, padding:'10px 0', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                background:'transparent', border:'none',
+                borderBottom: mode==='continuar' ? '2.5px solid var(--brand)' : '2.5px solid transparent',
+                color: mode==='continuar' ? 'var(--brand)' : 'var(--text-subtle)',
+              }}>
+              Seguir gestionando
+            </button>
+            <button onClick={()=>{setMode('descartar'); setErr('');}}
+              style={{
+                flex:1, padding:'10px 0', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                background:'transparent', border:'none',
+                borderBottom: mode==='descartar' ? '2.5px solid #DC2626' : '2.5px solid transparent',
+                color: mode==='descartar' ? '#DC2626' : 'var(--text-subtle)',
+              }}>
+              Descartar lead
+            </button>
           </div>
 
-          {/* Próximo paso — solo si el lead no está en estado terminal */}
-          {!isTerminal && (
-            <div>
-              <label style={{ ...S.lbl, marginBottom: 5 }}>
-                Próximo paso <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={fq.nextStep}
-                onChange={e => setFq(p => ({ ...p, nextStep: e.target.value }))}
-                maxLength={500}
-                style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
-                placeholder="Ej: Volver a llamar el jueves a las 15:00"
-              />
-            </div>
+          {/* Modo CONTINUAR */}
+          {mode === 'continuar' && (
+            <>
+              {/* Atajos: 1 click guarda + pasa al siguiente */}
+              <div>
+                <div style={{ ...S.lbl, marginBottom: 8 }}>Resolver en 1 click</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  {QUICK_CONTINUE.map(q => (
+                    <button key={q.l} disabled={saving}
+                      onClick={()=>handleQuickContinue(q)}
+                      style={{
+                        textAlign:'left', padding:'10px 14px',
+                        background:'var(--surface)', border:'1px solid var(--border)',
+                        borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
+                        display:'flex', justifyContent:'space-between', alignItems:'center',
+                        opacity: saving ? 0.5 : 1,
+                      }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{q.l}</span>
+                      <span style={{ fontSize:10, color:'var(--text-disabled)', fontWeight:600 }}>+{q.days} día{q.days>1?'s':''}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Separador "o detalla manualmente" */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-disabled)', fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
+                o detalla manualmente
+                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
+              </div>
+
+              {/* Estado de seguimiento */}
+              <div>
+                <div style={{ ...S.lbl, marginBottom: 8 }}>
+                  Estado del seguimiento <span style={{ color: '#EF4444' }}>*</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {FOLLOWUP_OPTS.map(o => (
+                    <ChoiceChip
+                      key={o.v}
+                      selected={fq.status === o.v}
+                      tone="brand"
+                      onClick={() => setFq(p => ({ ...p, status: o.v }))}
+                    >
+                      {o.l}
+                    </ChoiceChip>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nota / qué pasó */}
+              <div>
+                <label style={{ ...S.lbl, marginBottom: 5 }}>
+                  ¿Qué pasó con este lead? <span style={{ color: '#EF4444' }}>*</span>{' '}
+                  <span style={{ fontWeight: 400, color: 'var(--text-disabled)' }}>(mín. 15 caracteres)</span>
+                </label>
+                <textarea
+                  value={fq.note}
+                  onChange={e => setFq(p => ({ ...p, note: e.target.value }))}
+                  maxLength={5000}
+                  rows={3}
+                  style={{ ...S.inp, width: '100%', resize: 'vertical', fontSize: 12, boxSizing: 'border-box' }}
+                  placeholder="Ej: Llamé al cliente, dice que necesita hablar con su pareja antes de decidir..."
+                />
+                <div
+                  style={{
+                    textAlign: 'right',
+                    fontSize: 10,
+                    color: fq.note.length >= 15 ? '#10B981' : 'var(--text-disabled)',
+                    marginTop: 2,
+                  }}
+                >
+                  {fq.note.length}/15
+                </div>
+              </div>
+
+              {/* Próximo paso — solo si el lead no está en estado terminal */}
+              {!isTerminal && (
+                <div>
+                  <label style={{ ...S.lbl, marginBottom: 5 }}>
+                    Próximo paso <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={fq.nextStep}
+                    onChange={e => setFq(p => ({ ...p, nextStep: e.target.value }))}
+                    maxLength={500}
+                    style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
+                    placeholder="Ej: Volver a llamar el jueves a las 15:00"
+                  />
+                </div>
+              )}
+
+              {/* Próxima fecha — solo si el lead no está en estado terminal */}
+              {!isTerminal && (
+                <div>
+                  <label style={{ ...S.lbl, marginBottom: 5 }}>
+                    Próxima fecha <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={fq.nextAt}
+                    onChange={e => setFq(p => ({ ...p, nextAt: e.target.value }))}
+                    min={today}
+                    style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
+                  />
+                </div>
+              )}
+            </>
           )}
 
-          {/* Próxima fecha — solo si el lead no está en estado terminal */}
-          {!isTerminal && (
-            <div>
-              <label style={{ ...S.lbl, marginBottom: 5 }}>
-                Próxima fecha <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input
-                type="date"
-                value={fq.nextAt}
-                onChange={e => setFq(p => ({ ...p, nextAt: e.target.value }))}
-                min={today}
-                style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
-              />
-            </div>
+          {/* Modo DESCARTAR */}
+          {mode === 'descartar' && (
+            <>
+              {/* Atajos de descarte rápido: 1 click cierra el lead */}
+              <div>
+                <div style={{ ...S.lbl, marginBottom: 8 }}>Descarte rápido (1 click)</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  {LOST_REASON_OPTS.filter(o => o.v !== 'otro').map(o => (
+                    <button key={o.v} disabled={saving}
+                      onClick={()=>handleQuickDiscard(o.v)}
+                      style={{
+                        textAlign:'left', padding:'10px 14px',
+                        background:'#FEF2F2', border:'1px solid #FECACA',
+                        borderRadius:'var(--radius-md)', cursor:'pointer', fontFamily:'inherit',
+                        fontSize:13, fontWeight:600, color:'#B91C1C',
+                        opacity: saving ? 0.5 : 1,
+                      }}>
+                      {o.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Otro motivo — requiere texto */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-disabled)', fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
+                o explica otro motivo
+                <div style={{ flex:1, height:1, background:'var(--surface-sunken)' }}/>
+              </div>
+              <div>
+                <ChoiceChip
+                  selected={lostReason === 'otro'}
+                  tone="brand"
+                  onClick={()=>setLostReason('otro')}
+                >
+                  Otro motivo
+                </ChoiceChip>
+                {lostReason === 'otro' && (
+                  <textarea
+                    value={lostDetail}
+                    onChange={e => setLostDetail(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:12, boxSizing:'border-box', marginTop:8 }}
+                    placeholder="Explica brevemente por qué se cierra el lead (mín. 10 caracteres)..."
+                  />
+                )}
+              </div>
+            </>
           )}
 
           {/* Error */}
@@ -384,22 +587,23 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
             )}
             <button
               onClick={handleSubmit}
-              disabled={saving}
+              disabled={saving || (mode==='descartar' && lostReason !== 'otro')}
               style={{
                 ...S.btn,
                 padding: '10px 22px',
                 fontSize: 13,
                 fontWeight: 700,
-                opacity: saving ? 0.6 : 1,
+                opacity: (saving || (mode==='descartar' && lostReason !== 'otro')) ? 0.6 : 1,
                 minWidth: 160,
                 marginLeft: onViewLead ? 0 : 'auto',
+                background: mode==='descartar' ? '#DC2626' : undefined,
               }}
             >
               {saving
                 ? 'Guardando...'
-                : idx + 1 < total
-                  ? 'Guardar y continuar'
-                  : 'Guardar y cerrar'}
+                : mode==='descartar'
+                  ? (idx + 1 < total ? 'Cerrar y continuar' : 'Cerrar y terminar')
+                  : (idx + 1 < total ? 'Guardar y continuar' : 'Guardar y cerrar')}
             </button>
           </div>
 
