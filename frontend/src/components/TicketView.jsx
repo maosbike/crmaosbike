@@ -1422,7 +1422,6 @@ export function TicketView({lead,user,nav,updLead}){
                 Para el primer contacto en un lead nuevo NO aparece nada:
                 subir evidencia ya basta para pasar a "En Gestión". */}
             {cf.result && lead.needs_attention && (() => {
-              const required = true;
               const addDays = (n) => {
                 const d = new Date(); d.setDate(d.getDate()+n);
                 return d.toISOString().slice(0,10);
