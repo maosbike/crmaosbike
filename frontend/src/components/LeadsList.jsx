@@ -93,6 +93,53 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
     return true;
   });
   const hasFilters=!!(search||stF||brF||prF||srcF||selF||attF||orpF);
+  // ── Multi-select para reasignación masiva (solo admin/super) ──
+  // Mismo gate que el endpoint backend: super_admin + admin_comercial.
+  const canBulkReassign = hasRole(user, ROLES.SUPER, ROLES.ADMIN);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkTo, setBulkTo] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkErr, setBulkErr] = useState('');
+  // Si cambian los filtros, limpiamos selección (evita reasignar leads
+  // que ya no se ven en pantalla).
+  useEffect(()=>{ setSelectedIds(new Set()); setBulkTo(''); setBulkErr(''); }, [search,stF,brF,prF,srcF,selF,attF,orpF]);
+  const toggleSelected = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const selectAllVisible = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      f.forEach(l => next.add(l.id));
+      return next;
+    });
+  };
+  const clearSelection = () => { setSelectedIds(new Set()); setBulkTo(''); setBulkErr(''); };
+  const handleBulkReassign = async () => {
+    if (!bulkTo || selectedIds.size === 0) return;
+    if (!window.confirm(`¿Traspasar ${selectedIds.size} lead${selectedIds.size>1?'s':''} al vendedor seleccionado?`)) return;
+    setBulkBusy(true); setBulkErr('');
+    try {
+      const ids = Array.from(selectedIds);
+      const r = await api.bulkManualReassign(ids, bulkTo);
+      let msg = `${r.count_reassigned} lead${r.count_reassigned!==1?'s':''} reasignado${r.count_reassigned!==1?'s':''} a ${r.to_name}.`;
+      if (r.count_failed > 0) {
+        msg += `\n${r.count_failed} no se pudieron reasignar:\n` +
+          r.errors.slice(0,5).map(e => `· ${e.error}`).join('\n');
+      }
+      alert(msg);
+      clearSelection();
+      onRefresh?.();
+    } catch (e) {
+      setBulkErr(e.message || 'Error al traspasar leads');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const[adding,setAdding]=useState(false);
   const handleAdd=async e=>{
     e.preventDefault();
@@ -321,6 +368,46 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
       </div>
 
 
+      {/* ── Barra sticky de selección múltiple (solo admin/super) ── */}
+      {canBulkReassign && selectedIds.size > 0 && (
+        <div style={{
+          position:'sticky', top:0, zIndex:20,
+          background:'#EFF6FF', border:'1.5px solid #BFDBFE',
+          borderRadius:'var(--radius-lg)', padding:'10px 14px',
+          marginBottom:12, display:'flex', alignItems:'center',
+          gap:12, flexWrap:'wrap', boxShadow:'0 2px 12px rgba(59,130,246,0.12)',
+        }}>
+          <div style={{fontSize:13, fontWeight:700, color:'#1E3A8A'}}>
+            {selectedIds.size} lead{selectedIds.size>1?'s':''} seleccionado{selectedIds.size>1?'s':''}
+          </div>
+          <button onClick={selectAllVisible} style={{...S.btn2, fontSize:11, padding:'5px 10px'}}>
+            Seleccionar todos los visibles ({f.length})
+          </button>
+          <select
+            value={bulkTo}
+            onChange={e=>setBulkTo(e.target.value)}
+            disabled={bulkBusy}
+            style={{...selectCtrl, height:32, fontSize:12, minWidth:180}}
+          >
+            <option value="">Traspasar a vendedor…</option>
+            {allSellers.map(s=>(
+              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleBulkReassign}
+            disabled={!bulkTo || bulkBusy}
+            style={{...S.btn, fontSize:12, padding:'6px 14px', opacity:(!bulkTo||bulkBusy)?0.5:1}}
+          >
+            {bulkBusy ? 'Traspasando…' : 'Traspasar todos'}
+          </button>
+          <button onClick={clearSelection} style={{...S.gh, fontSize:11, padding:'5px 10px'}}>
+            Cancelar
+          </button>
+        </div>
+      )}
+      {bulkErr && <ErrorMsg msg={bulkErr}/>}
+
       {/* ── Lista de registros ── */}
       {f.length>0&&!stF&&<div style={{fontSize:10,fontWeight:600,color:'var(--text-disabled)',paddingLeft:2,marginBottom:6,letterSpacing:'0.04em'}}>Ordenado por estado</div>}
       {f.length===0?(
@@ -342,11 +429,22 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
                 <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                   display:'flex',alignItems:'stretch',
                   background:'var(--surface)',
-                  border:'1px solid var(--border)',borderRadius:'var(--radius-xl)',
+                  border: selectedIds.has(x.id) ? '2px solid #3B82F6' : '1px solid var(--border)',
+                  borderRadius:'var(--radius-xl)',
                   overflow:'hidden',
                   cursor:'pointer',minHeight:130,
                   boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
                 }}>
+                  {canBulkReassign && (
+                    <div onClick={e=>{e.stopPropagation(); toggleSelected(x.id);}}
+                         style={{display:'flex',alignItems:'center',justifyContent:'center',width:36,flexShrink:0,background:selectedIds.has(x.id)?'#EFF6FF':'var(--surface-muted)',cursor:'pointer'}}>
+                      <input type="checkbox"
+                        checked={selectedIds.has(x.id)}
+                        onChange={()=>{}}
+                        style={{width:16,height:16,cursor:'pointer'}}
+                      />
+                    </div>
+                  )}
                   {/* Foto protagonista */}
                   <div style={{
                     width:130,flexShrink:0,
@@ -398,16 +496,27 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               <div key={x.id} onClick={()=>nav('ticket',x.id)} style={{
                 display:'flex',alignItems:'stretch',
                 background:'var(--surface)',
-                border:'1px solid var(--border)',borderRadius:'var(--radius-xl)',
+                border: selectedIds.has(x.id) ? '2px solid #3B82F6' : '1px solid var(--border)',
+                borderRadius:'var(--radius-xl)',
                 overflow:'hidden',
                 cursor:'pointer',
                 minHeight:148,
-                boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
+                boxShadow: selectedIds.has(x.id) ? '0 2px 10px rgba(59,130,246,0.15)' : '0 1px 3px rgba(0,0,0,0.04)',
                 transition:'box-shadow 0.15s, transform 0.15s, border-color 0.15s',
               }}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.08)';e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.borderColor='var(--border-strong)';}}
-                onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor='var(--border)';}}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.08)';e.currentTarget.style.transform='translateY(-1px)';}}
+                onMouseLeave={e=>{e.currentTarget.style.boxShadow= selectedIds.has(x.id) ? '0 2px 10px rgba(59,130,246,0.15)' : '0 1px 3px rgba(0,0,0,0.04)';e.currentTarget.style.transform='translateY(0)';}}
               >
+                {canBulkReassign && (
+                  <div onClick={e=>{e.stopPropagation(); toggleSelected(x.id);}}
+                       style={{display:'flex',alignItems:'center',justifyContent:'center',width:42,flexShrink:0,background:selectedIds.has(x.id)?'#EFF6FF':'var(--surface-muted)',cursor:'pointer',borderRight:'1px solid var(--border)'}}>
+                    <input type="checkbox"
+                      checked={selectedIds.has(x.id)}
+                      onChange={()=>{}}
+                      style={{width:18,height:18,cursor:'pointer'}}
+                    />
+                  </div>
+                )}
                 {/* FOTO — protagonista, 220px */}
                 <div style={{
                   width:220,flexShrink:0,

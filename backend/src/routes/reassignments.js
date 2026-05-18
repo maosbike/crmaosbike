@@ -248,6 +248,119 @@ router.post('/manual', roleCheck('super_admin', 'admin_comercial'), asyncHandler
 }));
 
 // ═══════════════════════════════════════════════════
+// POST /api/reassignments/bulk-manual
+// Reasignación múltiple: { ticket_ids: [uuid...], to_user_id }.
+// Reusa la lógica del manual single por cada ticket. Acumula errores
+// pero no aborta: si 5/10 fallan, devuelve los 5 errores y los 5 OK.
+// ═══════════════════════════════════════════════════
+router.post('/bulk-manual', roleCheck('super_admin', 'admin_comercial'), asyncHandler(async (req, res) => {
+  const { ticket_ids, to_user_id } = req.body;
+  if (!Array.isArray(ticket_ids) || ticket_ids.length === 0) {
+    return res.status(400).json({ error: 'ticket_ids debe ser un array no vacío' });
+  }
+  if (!to_user_id) return res.status(400).json({ error: 'to_user_id requerido' });
+  if (ticket_ids.length > 100) {
+    return res.status(400).json({ error: 'Máximo 100 leads por operación bulk' });
+  }
+
+  // Validar vendedor destino una sola vez.
+  const { rows: toUser } = await db.query(
+    'SELECT first_name, last_name, telegram_chat_id, branch_id FROM users WHERE id = $1 AND active = true',
+    [to_user_id]
+  );
+  if (!toUser[0]) return res.status(404).json({ error: 'Vendedor destino no encontrado' });
+  if (req.user.role === 'admin_comercial' &&
+      req.user.branch_id &&
+      toUser[0].branch_id !== req.user.branch_id) {
+    return res.status(403).json({ error: 'Solo puedes reasignar a usuarios de tu sucursal' });
+  }
+  const toName = `${toUser[0].first_name} ${toUser[0].last_name}`;
+
+  const NotificationService = require('../services/notificationService');
+  const TelegramService = require('../services/telegramService');
+
+  const results = { reassigned: [], errors: [] };
+
+  for (const ticket_id of ticket_ids) {
+    try {
+      const { rows: tickets } = await db.query(
+        `SELECT t.*, b.name AS branch_name,
+                m.brand AS moto_brand, m.model AS moto_model
+         FROM tickets t
+         LEFT JOIN branches b ON b.id = t.branch_id
+         LEFT JOIN moto_models m ON m.id = t.model_id
+         WHERE t.id = $1`,
+        [ticket_id]
+      );
+      if (!tickets[0]) { results.errors.push({ ticket_id, error: 'Ticket no encontrado' }); continue; }
+      const ticket = tickets[0];
+
+      if (req.user.role === 'admin_comercial' &&
+          req.user.branch_id && ticket.branch_id !== req.user.branch_id) {
+        results.errors.push({ ticket_id, error: 'Ticket de otra sucursal' });
+        continue;
+      }
+      // Si ya está asignado al destino, no es error pero tampoco re-procesa.
+      if (ticket.assigned_to === to_user_id) {
+        results.errors.push({ ticket_id, error: 'Ya estaba asignado al mismo vendedor' });
+        continue;
+      }
+
+      const { rows: fromUser } = await db.query(
+        'SELECT first_name, last_name FROM users WHERE id = $1',
+        [ticket.assigned_to]
+      );
+      const fromName = fromUser[0] ? `${fromUser[0].first_name} ${fromUser[0].last_name}` : 'N/A';
+      const newDeadline = calcSlaDeadline().toISOString();
+
+      await db.query(
+        `UPDATE tickets SET
+          assigned_to = $1,
+          sla_status = 'reassigned',
+          sla_deadline = $2,
+          first_action_at = CASE WHEN first_action_at IS NOT NULL THEN first_action_at ELSE NULL END,
+          reassignment_count = reassignment_count + 1
+         WHERE id = $3`,
+        [to_user_id, newDeadline, ticket_id]
+      );
+      await db.query(
+        `INSERT INTO reassignment_log (ticket_id, from_user_id, to_user_id, reason, reassigned_by)
+         VALUES ($1, $2, $3, 'manual_bulk', $4)`,
+        [ticket_id, ticket.assigned_to, to_user_id, req.user.id]
+      );
+      await db.query(
+        `INSERT INTO timeline (ticket_id, user_id, type, title, note)
+         VALUES ($1, $2, 'system', $3, $4)`,
+        [ticket_id, req.user.id, `Reasignado manualmente a ${toName} (bulk)`, `Antes: ${fromName}`]
+      );
+
+      // Notificaciones en background — no esperamos. Si una falla, no
+      // bloquea el batch.
+      NotificationService.reassigned(ticket, to_user_id, fromName)
+        .catch(e => console.warn('[bulk reassign] notif:', e.message));
+      if (toUser[0].telegram_chat_id) {
+        TelegramService.notifyReassigned(ticket, toUser[0], fromName, 'manual')
+          .catch(e => console.warn('[bulk reassign] telegram:', e.message));
+      }
+
+      results.reassigned.push(ticket_id);
+    } catch (e) {
+      console.error('[bulk reassign] ticket', ticket_id, e.message);
+      results.errors.push({ ticket_id, error: e.message });
+    }
+  }
+
+  res.json({
+    ok: true,
+    count_reassigned: results.reassigned.length,
+    count_failed: results.errors.length,
+    to_name: toName,
+    reassigned_ids: results.reassigned,
+    errors: results.errors,
+  });
+}));
+
+// ═══════════════════════════════════════════════════
 // LOG GLOBAL DE REASIGNACIONES (admins)
 // GET /api/reassignments?limit=20
 // ═══════════════════════════════════════════════════
