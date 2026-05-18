@@ -378,7 +378,7 @@ function extractEmitida(text, fileName = '') {
       const prefix = words[0];
       let fixed = null;
 
-      // (1) Buscá la línea que contenía "COMUNA" — puede que el sufijo esté
+      // (1) Busca la línea que contenía "COMUNA" — puede que el sufijo esté
       //     en la siguiente línea si pdf-parse partió el cell.
       for (let i = 0; i < lines.length; i++) {
         if (!/COMUNA/i.test(lines[i])) continue;

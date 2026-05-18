@@ -145,7 +145,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
     e.preventDefault();
     // Validación client-side: modelo obligatorio. El backend también lo
     // exige (400 model_id_required), pero atajamos acá para mensaje claro.
-    if(!nw.motoId){setAddErr('Tenés que seleccionar la moto de interés antes de crear la ficha.');return;}
+    if(!nw.motoId){setAddErr('Selecciona la moto de interés antes de crear la ficha.');return;}
     setAdding(true);setAddErr('');
     try{
       const body={first_name:nw.fn,last_name:nw.ln,phone:nw.phone,email:nw.email,rut:nw.rut,comuna:nw.comuna,source:nw.source,branch_id:nw.branch_id||null,priority:nw.priority,model_id:nw.motoId,wants_financing:false,...(nw.seller_id?{assigned_to:nw.seller_id}:{})};
