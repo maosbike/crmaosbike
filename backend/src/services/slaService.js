@@ -485,18 +485,22 @@ const SLAService = {
     return rows.length;
   },
 
-  // Leads activos sin formulario de seguimiento reciente → flag needs_attention.
+  // Leads activos sin gestión reciente → flag needs_attention.
   //
-  // Cambio importante: la condición usa COALESCE(followup_updated_at,
-  // assigned_to_at, created_at) en lugar de last_real_action_at. Antes el
-  // vendedor podía resetear el contador con notas cortas o "registrar
-  // contacto" sin pasar por el formulario formal — ahora solo el flujo
-  // POST /tickets/:id/followup (formulario completo con fecha de próximo
-  // contacto) renueva el contador.
+  // Regla (decidida con el dueño):
+  //  1) Si el vendedor comprometió una fecha de próxima gestión
+  //     (next_followup_at), respetar esa fecha. El lead no se marca
+  //     hasta que esa fecha quedó atrás.
+  //  2) Si no comprometió fecha, contar 48h desde la última gestión real:
+  //     followup_updated_at (formulario completo), o si nunca llenó,
+  //     last_real_action_at (registrar contacto, evidencia), o creación.
+  //  Threshold: 48 horas (antes 72h).
   //
-  // Threshold: 72 horas (3 días). Más generoso que las 48h originales
-  // para no abrumar al vendedor con leads que apenas creó, pero firme
-  // para no dejar leads dormidos sin planificación.
+  // El "registrar contacto" ya no es un bypass por dos razones:
+  //  · La UI ahora unifica contacto+seguimiento — si está obligado el
+  //    seguimiento, no puede guardar contacto sin completar el plan.
+  //  · El cron sigue marcando needs_attention aunque haya contactos
+  //    nuevos si no hay un plan con fecha futura.
   async checkStagnantLeads() {
     const { rows } = await db.query(
       `UPDATE tickets SET
@@ -505,7 +509,14 @@ const SLAService = {
          attention_count = attention_count + 1
        WHERE status IN ('en_gestion','cotizado','financiamiento')
          AND needs_attention = FALSE
-         AND COALESCE(followup_updated_at, created_at) < NOW() - INTERVAL '72 hours'
+         AND (
+           -- (1) Hay fecha comprometida que ya pasó.
+           (next_followup_at IS NOT NULL AND next_followup_at < NOW())
+           OR
+           -- (2) No hay fecha comprometida: 48h desde última gestión real.
+           (next_followup_at IS NULL
+            AND COALESCE(followup_updated_at, last_real_action_at, created_at) < NOW() - INTERVAL '48 hours')
+         )
        RETURNING id, assigned_to, branch_id, ticket_num`
     );
 
@@ -515,7 +526,7 @@ const SLAService = {
         await NotificationService.notifyMany([t.assigned_to], {
           type: 'lead_needs_attention',
           title: `Lead #${t.ticket_num} necesita seguimiento`,
-          message: 'Lleva 3 días sin formulario de seguimiento. Completá el modal al entrar a Leads.',
+          message: 'Lleva 48h sin gestión o se pasó la fecha comprometida. Registrá el próximo paso.',
           link_type: 'ticket',
           link_id: t.id,
         });
