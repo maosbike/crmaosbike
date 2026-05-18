@@ -402,7 +402,15 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
               siguiente. */}
           <div style={{ position:'relative' }}>
             <button type="button" disabled={saving}
-              onClick={()=>setShowDiscardMenu(v=>!v)}
+              onClick={()=>{
+                setShowDiscardMenu(v=>{
+                  // Al cerrar el menú, limpiamos cualquier "Otro motivo"
+                  // que haya quedado a medio escribir (sin esto el botón
+                  // del footer queda flotando con estado residual).
+                  if (v) { setMode('continuar'); setLostReason(''); setLostDetail(''); setErr(''); }
+                  return !v;
+                });
+              }}
               style={{
                 width:'100%', padding:'10px 14px',
                 background: showDiscardMenu ? '#FEF2F2' : 'var(--surface)',
@@ -600,9 +608,12 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
                 Ver ficha completa
               </button>
             )}
-            {/* Botón Guardar solo si el vendedor está usando el form manual o
-                el "Otro motivo" de descarte. Los atajos rápidos guardan solos. */}
-            {(showManual || (mode==='descartar' && lostReason === 'otro')) && (
+            {/* Botón Guardar solo si la sección que lo necesita está visible
+                (form manual abierto, o dropdown de descarte abierto con
+                "Otro motivo" elegido). Los atajos rápidos (continuar /
+                motivos predefinidos) guardan solos al click — no usan
+                este botón. */}
+            {(showManual || (showDiscardMenu && mode==='descartar' && lostReason === 'otro')) && (
               <button
                 onClick={handleSubmit}
                 disabled={saving}
