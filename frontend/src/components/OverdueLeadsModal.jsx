@@ -143,23 +143,25 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
       return;
     }
 
-    if (!fq.status) { setErr('Selecciona el estado de seguimiento'); return; }
-    if (fq.note.trim().length < 15) { setErr('El comentario debe tener al menos 15 caracteres'); return; }
-
-    // nextStep y nextAt solo son obligatorios si el estado del lead NO es terminal
+    // Form manual simplificado: solo pide motivo (note) + próxima fecha.
+    // El status del seguimiento se infiere como 'cliente_interesado' para
+    // los casos donde el vendedor solo quiere comprometer próximo contacto
+    // sin clasificar más. El "próximo paso" se rellena con el mismo motivo.
+    if (!fq.note.trim()) { setErr('Escribe el motivo'); return; }
     if (!isTerminal) {
-      if (fq.nextStep.trim().length < 5) { setErr('Indica el próximo paso (mínimo 5 caracteres)'); return; }
-      if (!fq.nextAt) { setErr('Ingresa la fecha de próxima gestión'); return; }
-      const today = new Date().toISOString().split('T')[0];
-      if (fq.nextAt < today) { setErr('La fecha de próxima gestión debe ser hoy o posterior'); return; }
+      if (!fq.nextAt) { setErr('Indica cuándo vas a volver a contactar'); return; }
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (fq.nextAt < todayStr) { setErr('La fecha debe ser hoy o posterior'); return; }
     }
 
     setSaving(true);
     try {
+      const status = fq.status || 'cliente_interesado';
+      const note = fq.note.trim();
       await api.submitFollowup(lead.id, {
-        followup_status: fq.status,
-        followup_note: fq.note.trim(),
-        followup_next_step: fq.nextStep.trim(),
+        followup_status: status,
+        followup_note: note,
+        followup_next_step: (fq.nextStep && fq.nextStep.trim()) || note,
         next_followup_at: fq.nextAt || null,
       });
       advanceOrClose();
@@ -402,7 +404,15 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
               siguiente. */}
           <div style={{ position:'relative' }}>
             <button type="button" disabled={saving}
-              onClick={()=>setShowDiscardMenu(v=>!v)}
+              onClick={()=>{
+                setShowDiscardMenu(v=>{
+                  // Al cerrar el menú, limpiamos cualquier "Otro motivo"
+                  // que haya quedado a medio escribir (sin esto el botón
+                  // del footer queda flotando con estado residual).
+                  if (v) { setMode('continuar'); setLostReason(''); setLostDetail(''); setErr(''); }
+                  return !v;
+                });
+              }}
               style={{
                 width:'100%', padding:'10px 14px',
                 background: showDiscardMenu ? '#FEF2F2' : 'var(--surface)',
@@ -476,92 +486,45 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
             )}
           </div>
 
-          {/* Toggle del form manual (cerrado por defecto para no estirar el modal) */}
-          <button type="button" onClick={()=>setShowManual(p=>!p)}
-            style={{
-              background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit',
-              fontSize:11, fontWeight:600, color:'var(--text-subtle)',
-              display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-              padding:'4px 0', alignSelf:'center',
-            }}>
-            {showManual ? '▴ Ocultar opciones manuales' : '▾ Más opciones (detallar manualmente)'}
-          </button>
-
-          {showManual && (<>
-          <div>
-            <div style={{ ...S.lbl, marginBottom: 8 }}>
-              Estado del seguimiento <span style={{ color: '#EF4444' }}>*</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {FOLLOWUP_OPTS.map(o => (
-                <ChoiceChip
-                  key={o.v}
-                  selected={fq.status === o.v}
-                  tone="brand"
-                  onClick={() => { setFq(p => ({ ...p, status: o.v })); setMode('continuar'); }}
-                >
-                  {o.l}
-                </ChoiceChip>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label style={{ ...S.lbl, marginBottom: 5 }}>
-              ¿Qué pasó con este lead? <span style={{ color: '#EF4444' }}>*</span>{' '}
-              <span style={{ fontWeight: 400, color: 'var(--text-disabled)' }}>(mín. 15 caracteres)</span>
-            </label>
-            <textarea
-              value={fq.note}
-              onChange={e => { setFq(p => ({ ...p, note: e.target.value })); setMode('continuar'); }}
-              maxLength={5000}
-              rows={3}
-              style={{ ...S.inp, width: '100%', resize: 'vertical', fontSize: 12, boxSizing: 'border-box' }}
-              placeholder="Ej: Llamé al cliente, dice que necesita hablar con su pareja antes de decidir..."
-            />
-            <div
-              style={{
-                textAlign: 'right',
-                fontSize: 10,
-                color: fq.note.length >= 15 ? '#10B981' : 'var(--text-disabled)',
-                marginTop: 2,
-              }}
-            >
-              {fq.note.length}/15
-            </div>
-          </div>
-
+          {/* ── Caso no estándar — visible siempre, simple ──────────────
+              Dos campos: motivo (texto libre) + cuándo volver a contactar.
+              El estado de seguimiento se infiere ('cliente_interesado' por
+              defecto al guardar). Si el lead ya está en estado terminal
+              esta sección se oculta — no aplica programar próximo contacto. */}
           {!isTerminal && (
-            <div>
-              <label style={{ ...S.lbl, marginBottom: 5 }}>
-                Próximo paso <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={fq.nextStep}
-                onChange={e => { setFq(p => ({ ...p, nextStep: e.target.value })); setMode('continuar'); }}
+            <div style={{ background:'var(--surface-muted)', border:'1px solid var(--surface-sunken)', borderRadius:'var(--radius-md)', padding:'12px 14px', display:'flex', flexDirection:'column', gap:10 }}>
+              <div style={{ ...S.lbl }}>O escribe el motivo y la próxima fecha</div>
+              <textarea
+                value={fq.note}
+                onChange={e => { setFq(p => ({ ...p, note: e.target.value })); setMode('continuar'); setShowManual(true); }}
                 maxLength={500}
-                style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
-                placeholder="Ej: Volver a llamar el jueves a las 15:00"
+                rows={2}
+                style={{ ...S.inp, width:'100%', resize:'vertical', fontSize:12, boxSizing:'border-box' }}
+                placeholder="Ej: Cliente está afuera por trabajo hasta el viernes, retoma la otra semana"
               />
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, alignItems:'end' }}>
+                <div>
+                  <label style={{ ...S.lbl, marginBottom: 4 }}>Volver a contactar el</label>
+                  <input
+                    type="date"
+                    value={fq.nextAt}
+                    onChange={e => { setFq(p => ({ ...p, nextAt: e.target.value })); setMode('continuar'); setShowManual(true); }}
+                    min={today}
+                    style={{ ...S.inp, width:'100%', fontSize:12, boxSizing:'border-box' }}
+                  />
+                </div>
+                <button type="button"
+                  onClick={handleSubmit}
+                  disabled={saving || !fq.note.trim() || !fq.nextAt}
+                  style={{
+                    ...S.btn, padding:'9px 16px', fontSize:12, fontWeight:700,
+                    opacity: (saving || !fq.note.trim() || !fq.nextAt) ? 0.5 : 1,
+                  }}>
+                  {saving ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
             </div>
           )}
-
-          {!isTerminal && (
-            <div>
-              <label style={{ ...S.lbl, marginBottom: 5 }}>
-                Próxima fecha <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input
-                type="date"
-                value={fq.nextAt}
-                onChange={e => { setFq(p => ({ ...p, nextAt: e.target.value })); setMode('continuar'); }}
-                min={today}
-                style={{ ...S.inp, width: '100%', fontSize: 12, boxSizing: 'border-box' }}
-              />
-            </div>
-          )}
-          </>)}
 
           {/* Error */}
           {err && (
@@ -600,28 +563,28 @@ export function OverdueLeadsModal({ overdueLeads, onResolved, onDone, onViewLead
                 Ver ficha completa
               </button>
             )}
-            {/* Botón Guardar solo si el vendedor está usando el form manual o
-                el "Otro motivo" de descarte. Los atajos rápidos guardan solos. */}
-            {(showManual || (mode==='descartar' && lostReason === 'otro')) && (
+            {/* Si el vendedor está escribiendo "Otro motivo" en el dropdown
+                de descarte, mostramos su propio botón de confirmación. Los
+                atajos (continuar / motivos predefinidos) y el form manual
+                simplificado guardan con sus propios botones inline. */}
+            {(showDiscardMenu && mode==='descartar' && lostReason === 'otro') && (
               <button
                 onClick={handleSubmit}
-                disabled={saving}
+                disabled={saving || lostDetail.trim().length < 10}
                 style={{
                   ...S.btn,
                   padding: '10px 22px',
                   fontSize: 13,
                   fontWeight: 700,
-                  opacity: saving ? 0.6 : 1,
+                  opacity: (saving || lostDetail.trim().length < 10) ? 0.6 : 1,
                   minWidth: 160,
                   marginLeft: onViewLead ? 0 : 'auto',
-                  background: mode==='descartar' ? '#DC2626' : undefined,
+                  background: '#DC2626',
                 }}
               >
                 {saving
-                  ? 'Guardando...'
-                  : mode==='descartar'
-                    ? (idx + 1 < total ? 'Cerrar y continuar' : 'Cerrar y terminar')
-                    : (idx + 1 < total ? 'Guardar y continuar' : 'Guardar y cerrar')}
+                  ? 'Cerrando…'
+                  : (idx + 1 < total ? 'Cerrar y continuar' : 'Cerrar y terminar')}
               </button>
             )}
           </div>
