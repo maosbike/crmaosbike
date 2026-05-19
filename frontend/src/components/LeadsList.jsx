@@ -32,7 +32,7 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
   const brs=realBranches||[];
   const isMobile = useIsMobile();
   // Filtros persistidos en App.jsx para mantener contexto al volver de una ficha
-  const {search='',stF='',brF='',prF='',srcF='',selF='',attF=false,orpF=false}=filter||{};
+  const {search='',stF='',brF='',prF='',srcF='',selF='',attF=false,orpF=false,mkF='',mdF=''}=filter||{};
   const setFilter=(key,val)=>onFilterChange(f=>({...f,[key]:val}));
   const setSearch=v=>setFilter('search',v);
   const setStF=v=>setFilter('stF',v);
@@ -42,7 +42,9 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
   const setSelF=v=>setFilter('selF',v);
   const setAttF=v=>setFilter('attF',v);
   const setOrpF=v=>setFilter('orpF',v);
-  const clearFilters=()=>onFilterChange({search:'',stF:'',brF:'',prF:'',srcF:'',selF:'',attF:false,orpF:false});
+  const setMkF=v=>setFilter('mkF',v);
+  const setMdF=v=>setFilter('mdF',v);
+  const clearFilters=()=>onFilterChange({search:'',stF:'',brF:'',prF:'',srcF:'',selF:'',attF:false,orpF:false,mkF:'',mdF:''});
   const[showNew,setShowNew]=useState(false);
   const[catalogModels,setCatalogModels]=useState([]);
   const[allSellers,setAllSellers]=useState([]);
@@ -89,10 +91,57 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
     if(selF&&String(l.seller_id)!==String(selF))return false;
     if(attF&&!l.needs_attention)return false;
     if(orpF&&l.seller_id)return false;
+    if(mkF&&String(l.model_brand||'').toLowerCase()!==mkF.toLowerCase())return false;
+    if(mdF&&String(l.model_name||'').toLowerCase()!==mdF.toLowerCase())return false;
     if(hasRole(user, ROLES.VEND)&&l.seller_id!==user.id)return false;
     return true;
   });
-  const hasFilters=!!(search||stF||brF||prF||srcF||selF||attF||orpF);
+  const hasFilters=!!(search||stF||brF||prF||srcF||selF||attF||orpF||mkF||mdF);
+  // Marcas y modelos derivados de los leads visibles (no del catálogo entero)
+  // para que el dropdown solo muestre opciones que efectivamente hay en pantalla.
+  const brandOptions = [...new Set(effectiveLeads.map(l=>l.model_brand).filter(Boolean))].sort();
+  const modelOptions = [...new Set(effectiveLeads
+    .filter(l => !mkF || String(l.model_brand||'').toLowerCase()===mkF.toLowerCase())
+    .map(l=>l.model_name).filter(Boolean))].sort();
+
+  // Exportar leads filtrados a CSV (para reportar a Yamaha). Compatible con
+  // Excel (UTF-8 BOM + separador coma). Solo admin/backoffice/super_admin.
+  const exportCSV = () => {
+    const headers = ['Ficha','Estado','Prioridad','Cliente','RUT','Teléfono','Email','Marca','Modelo','Sucursal','Vendedor','Origen','Creado','Último contacto','Próximo paso','Próxima fecha','Motivo cierre'];
+    const esc = (v) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v).replace(/"/g,'""');
+      return /[",\n]/.test(s) ? `"${s}"` : s;
+    };
+    const fmtD = (d) => d ? new Date(d).toLocaleDateString('es-CL') : '';
+    const rows = f.map(l => [
+      l.num || '',
+      l.status || '',
+      l.priority || '',
+      `${l.fn||''} ${l.ln||''}`.trim(),
+      l.rut || '',
+      l.phone || '',
+      l.email || '',
+      l.model_brand || '',
+      l.model_name || '',
+      brs.find(b => String(b.id)===String(l.branch_id))?.name || l.branch_name || '',
+      [l.seller_fn, l.seller_ln].filter(Boolean).join(' '),
+      l.source || '',
+      fmtD(l.created_at),
+      fmtD(l.lastContact || l.last_contact_at),
+      l.followup_next_step || '',
+      fmtD(l.next_followup_at),
+      l.lost_reason || '',
+    ]);
+    const csv = '﻿' + [headers, ...rows].map(r => r.map(esc).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   // ── Multi-select para reasignación masiva (solo admin/super) ──
   // Mismo gate que el endpoint backend: super_admin + admin_comercial.
   const canBulkReassign = hasRole(user, ROLES.SUPER, ROLES.ADMIN);
@@ -355,6 +404,27 @@ export function LeadsList({leads,user,nav,addLead,onRefresh,realBranches,filter,
               <option value="">Vendedor</option>
               {sellers.map(s=><option key={s.id} value={s.id}>{s.fn} {s.ln}</option>)}
             </select>
+          )}
+          {brandOptions.length>0&&(
+            <select value={mkF} onChange={e=>{setMkF(e.target.value);setMdF('');}} style={{...selectCtrl,height:34,flex:'1 1 130px',minWidth:110}}>
+              <option value="">Marca</option>
+              {brandOptions.map(b=><option key={b} value={b}>{b}</option>)}
+            </select>
+          )}
+          {modelOptions.length>0&&(
+            <select value={mdF} onChange={e=>setMdF(e.target.value)} style={{...selectCtrl,height:34,flex:'1 1 140px',minWidth:120}}>
+              <option value="">Modelo</option>
+              {modelOptions.map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
+          {/* Exportar leads filtrados a CSV — solo admin/super/backoffice
+              para reportes a Yamaha. Vendedores no descargan listas. */}
+          {!hasRole(user, ROLES.VEND) && f.length > 0 && (
+            <button onClick={exportCSV}
+              title={`Descargar ${f.length} leads visibles como CSV`}
+              style={{height:34,padding:'0 12px',border:'1px solid var(--border-strong)',background:'var(--surface)',color:'var(--text-body)',borderRadius:'var(--radius-md)',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}>
+              Exportar CSV ({f.length})
+            </button>
           )}
           {hasFilters&&(
             <button onClick={clearFilters} style={{
