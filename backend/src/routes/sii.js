@@ -35,6 +35,43 @@ router.post('/test-auth', auth, roleCheck('super_admin', 'admin_comercial', 'bac
 }));
 
 /**
+ * GET /api/sii/debug/sii-html — dumpea el HTML crudo del SII para encontrar
+ * sitekey/config manualmente. Solo devuelve los primeros 50KB.
+ */
+router.get('/debug/sii-html', auth, roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
+  const axios = require('axios');
+  const target = req.query.url || 'https://www4.sii.cl/consdcvinternetui/';
+  try {
+    const r = await axios.get(target, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-CL,es;q=0.9,en;q=0.8',
+      },
+      timeout: 20_000,
+      maxRedirects: 5,
+      transformResponse: x => x,
+      validateStatus: () => true,
+    });
+    const html = String(r.data || '');
+    // Buscar TODOS los URLs de assets para que el caller los descargue uno por uno si quiere.
+    const scriptUrls = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/g)].map(m => m[1]);
+    const linkUrls = [...html.matchAll(/<link[^>]+href=["']([^"']+)["']/g)].map(m => m[1]);
+    res.json({
+      ok: true,
+      url: target,
+      status: r.status,
+      htmlLen: html.length,
+      scripts: scriptUrls,
+      links: linkUrls,
+      htmlHead: html.slice(0, 50_000),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+}));
+
+/**
  * POST /api/sii/test-captcha — verifica que el captcha solver (2Captcha) está
  * configurado: descubre el sitekey, pide un solve, devuelve el token.
  * No toca el SII propiamente (esto es solo el solver).
