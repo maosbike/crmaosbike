@@ -35,6 +35,47 @@ router.post('/test-auth', auth, roleCheck('super_admin', 'admin_comercial', 'bac
 }));
 
 /**
+ * POST /api/sii/debug/rcv — llama directamente al RCV y devuelve la respuesta
+ * CRUDA del SII (sin parsear). Para debugging cuando `found:0` y queremos ver
+ * qué shape devuelve realmente el SII.
+ * Body o query: year, month, source (emitida|recibida), tipoDoc (default 33)
+ */
+router.post('/debug/rcv', auth, roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
+  const year = parseInt(req.query.year ?? req.body?.year, 10);
+  const month = parseInt(req.query.month ?? req.body?.month, 10);
+  const source = req.query.source ?? req.body?.source;
+  const tipoDoc = parseInt(req.query.tipoDoc ?? req.body?.tipoDoc ?? '33', 10);
+  if (!year || !month) return res.status(400).json({ error: 'year/month requeridos' });
+  if (!['emitida', 'recibida'].includes(source)) return res.status(400).json({ error: 'source debe ser emitida|recibida' });
+
+  const { callFacade, getEmpresaRut } = require('../services/sii/rcv');
+  const { rut, dv } = getEmpresaRut();
+  const data = {
+    rutEmisor: rut,
+    dvEmisor: dv,
+    ptributario: `${year}${String(month).padStart(2, '0')}`,
+    codTipoDoc: tipoDoc,
+    operacion: source === 'emitida' ? 'VENTA' : 'COMPRA',
+    estadoContab: 'REGISTRO',
+  };
+  const method = source === 'emitida' ? 'getDetalleVentaExport' : 'getDetalleCompraExport';
+  try {
+    const raw = await callFacade(method, data);
+    res.json({
+      ok: true,
+      method,
+      sentData: data,
+      rawType: Array.isArray(raw) ? 'array' : typeof raw,
+      rawTopLevelKeys: raw && typeof raw === 'object' && !Array.isArray(raw) ? Object.keys(raw) : null,
+      rawSize: Array.isArray(raw) ? raw.length : (typeof raw === 'string' ? raw.length : null),
+      raw,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, method, sentData: data, error: e.message });
+  }
+}));
+
+/**
  * POST /api/sii/sync — sync de últimos N meses (default 1 = actual + previo).
  * Query: ?monthsBack=2 para incluir más historia.
  */
