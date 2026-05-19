@@ -170,6 +170,7 @@ app.use('/api/telegram',  require('./routes/telegram'));
 app.use('/api/time-off',  require('./routes/timeOff'));
 app.use('/api/accounting', require('./routes/accounting'));
 app.use('/api/ingest', require('./routes/ingest'));
+app.use('/api/sii', require('./routes/sii'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'CRMaosBike API v2.0' }));
@@ -204,6 +205,10 @@ app.listen(PORT, () => {
   // Iniciar cron jobs de seguimiento comercial
   require('./jobs/slaChecker').start();
   require('./jobs/reminderChecker').start();
+
+  // Sync periódico con SII (RCV — facturas emitidas y recibidas).
+  // No arranca si las variables SII_* no están configuradas.
+  require('./jobs/siiSync').start();
 
   // Registrar webhook de Telegram (no-op si TELEGRAM_WEBHOOK_URL no está configurada)
   require('./services/telegramService').setupWebhook();
