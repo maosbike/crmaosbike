@@ -19,6 +19,7 @@
  */
 const axios = require('axios');
 const logger = require('../../config/logger');
+const { getToken } = require('./auth');
 
 const SII_PAGE_URL = 'https://www4.sii.cl/consdcvinternetui/';
 const DEFAULT_ACTION = 'consultarRcv';
@@ -50,6 +51,16 @@ async function discoverSitekey() {
   // El charset es alfanumérico + guion + guion bajo (URL-safe base64).
   const SITEKEY_REGEX = /\b(6L[A-Za-z0-9_-]{38,44})\b/g;
 
+  // Si no nos autenticamos antes, el SII nos redirige a zeusr.sii.cl (login),
+  // que NO tiene el sitekey del RCV. Hay que obtener un TOKEN con el cert y
+  // pasarlo como cookie en el GET de la SPA para que devuelva el HTML real.
+  let siiToken = null;
+  try {
+    siiToken = await getToken();
+  } catch (e) {
+    logger.warn({ err: e.message }, '[sii.captcha] no pude obtener TOKEN del SII para autenticar el fetch — seguiré sin cookie');
+  }
+
   // Headers de un browser real para no ser bloqueados.
   const browserHeaders = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -58,6 +69,7 @@ async function discoverSitekey() {
     'Accept-Encoding': 'gzip, deflate, br',
     'Cache-Control': 'no-cache',
   };
+  if (siiToken) browserHeaders.Cookie = `TOKEN=${siiToken}`;
 
   const candidatePages = [
     'https://www4.sii.cl/consdcvinternetui/',
