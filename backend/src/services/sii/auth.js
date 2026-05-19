@@ -44,11 +44,16 @@ async function getSeed() {
     headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': '' },
     timeout: 30_000,
   });
-  // La respuesta envuelve un <SII:RESP_HDR><ESTADO>00</ESTADO>...<SEMILLA>X</SEMILLA>
-  // dentro de un <getSeedReturn>...</getSeedReturn> con CDATA.
-  const m = res.data.match(/<SEMILLA>(\d+)<\/SEMILLA>/);
+  // El SII anida un XML dentro del SOAP envelope con escapado de entidades:
+  //   <getSeedReturn>&lt;SII:RESPUESTA&gt;...&lt;SEMILLA&gt;040711828&lt;/SEMILLA&gt;...</getSeedReturn>
+  // Por eso buscamos primero la forma escapada; si no, caemos a la cruda
+  // (por si en algún momento cambian el wire format).
+  const raw = String(res.data || '');
+  const m =
+    raw.match(/&lt;SEMILLA&gt;(\d+)&lt;\/SEMILLA&gt;/) ||
+    raw.match(/<SEMILLA>(\d+)<\/SEMILLA>/);
   if (!m) {
-    logger.warn({ body: String(res.data).slice(0, 500) }, '[sii.auth] getSeed: no encontré <SEMILLA>');
+    logger.warn({ body: raw.slice(0, 1500) }, '[sii.auth] getSeed: no encontré SEMILLA');
     throw new Error('SII getSeed: respuesta inesperada (sin SEMILLA)');
   }
   return m[1];
@@ -119,10 +124,16 @@ async function getTokenFromSeed(signedXml) {
     headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': '' },
     timeout: 30_000,
   });
-  const estadoMatch = res.data.match(/<ESTADO>([^<]+)<\/ESTADO>/);
-  const tokenMatch = res.data.match(/<TOKEN>([^<]+)<\/TOKEN>/);
+  // Mismo patrón que getSeed: el SII anida XML escapado dentro del SOAP body.
+  const raw = String(res.data || '');
+  const estadoMatch =
+    raw.match(/&lt;ESTADO&gt;([^&]+)&lt;\/ESTADO&gt;/) ||
+    raw.match(/<ESTADO>([^<]+)<\/ESTADO>/);
+  const tokenMatch =
+    raw.match(/&lt;TOKEN&gt;([^&]+)&lt;\/TOKEN&gt;/) ||
+    raw.match(/<TOKEN>([^<]+)<\/TOKEN>/);
   if (!tokenMatch) {
-    logger.warn({ body: String(res.data).slice(0, 800) }, '[sii.auth] getToken: no encontré <TOKEN>');
+    logger.warn({ body: raw.slice(0, 2000) }, '[sii.auth] getToken: no encontré TOKEN');
     const estado = estadoMatch ? estadoMatch[1] : '??';
     throw new Error(`SII getToken: respuesta sin TOKEN. Estado=${estado}. Posibles causas: cert no autenticado, RUT del cert sin permisos.`);
   }
