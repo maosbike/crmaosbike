@@ -35,6 +35,115 @@ router.post('/test-auth', auth, roleCheck('super_admin', 'admin_comercial', 'bac
 }));
 
 /**
+ * POST /api/sii/debug/full — diagnóstico mega-completo en UNA sola llamada.
+ *
+ * Para cada combinación (últimos 3 meses) × (emitida | recibida) × (33,34,56,61,52):
+ *   1. Llama al RCV con todos los métodos disponibles hasta que uno funcione
+ *      (getDetalleVentaExport, getDetalleVenta, getResumen) para saber qué
+ *      shape devuelve el SII en ESTE contribuyente específico.
+ *   2. Reporta: count, keys del top-level, keys de la primera fila (sample),
+ *      y un sample row con los primeros 3 campos.
+ *
+ * Output: un objeto plano con todo lo que necesito para diagnosticar sin más
+ * iteraciones. El response es grande pero cabe en una respuesta JSON normal.
+ */
+router.post('/debug/full', auth, roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
+  const { callFacade, getEmpresaRut } = require('../services/sii/rcv');
+  const TIPOS = [33, 34, 56, 61, 52];
+
+  let rutInfo;
+  try { rutInfo = getEmpresaRut(); }
+  catch (e) { return res.status(500).json({ ok: false, error: 'getEmpresaRut: ' + e.message }); }
+
+  // Construir últimos 3 meses (incluye actual).
+  const now = new Date();
+  const periodos = [];
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    periodos.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
+  }
+
+  const results = [];
+  // Métodos candidatos a probar en orden — si el primero devuelve datos paramos.
+  // Si todos devuelven vacío, registramos el shape de cada uno.
+  const METHODS_VENTA = ['getDetalleVentaExport', 'getDetalleVenta'];
+  const METHODS_COMPRA = ['getDetalleCompraExport', 'getDetalleCompra'];
+
+  function describeResp(raw) {
+    if (raw == null) return { type: 'null', size: 0 };
+    if (Array.isArray(raw)) {
+      return {
+        type: 'array',
+        size: raw.length,
+        firstRowKeys: raw[0] && typeof raw[0] === 'object' ? Object.keys(raw[0]).slice(0, 30) : null,
+        firstRowSample: raw[0] ?? null,
+      };
+    }
+    if (typeof raw === 'object') {
+      const keys = Object.keys(raw);
+      const detRows = raw.data?.detRows || raw.dataResp?.detRows || raw.data?.detalleDte || raw.dataResp?.detalleDte
+        || (Array.isArray(raw.data) ? raw.data : null)
+        || (Array.isArray(raw.dataResp) ? raw.dataResp : null);
+      return {
+        type: 'object',
+        topKeys: keys,
+        dataKeys: raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data) ? Object.keys(raw.data) : null,
+        dataRespKeys: raw.dataResp && typeof raw.dataResp === 'object' && !Array.isArray(raw.dataResp) ? Object.keys(raw.dataResp) : null,
+        detRowsLen: Array.isArray(detRows) ? detRows.length : null,
+        firstRowKeys: detRows && detRows[0] && typeof detRows[0] === 'object' ? Object.keys(detRows[0]).slice(0, 30) : null,
+        firstRowSample: detRows && detRows[0] ? detRows[0] : null,
+      };
+    }
+    return { type: typeof raw, value: String(raw).slice(0, 200) };
+  }
+
+  for (const { year, month } of periodos) {
+    for (const source of ['emitida', 'recibida']) {
+      const methods = source === 'emitida' ? METHODS_VENTA : METHODS_COMPRA;
+      for (const tipoDoc of TIPOS) {
+        const data = {
+          rutEmisor: rutInfo.rut,
+          dvEmisor: rutInfo.dv,
+          ptributario: `${year}${String(month).padStart(2, '0')}`,
+          codTipoDoc: tipoDoc,
+          operacion: source === 'emitida' ? 'VENTA' : 'COMPRA',
+          estadoContab: 'REGISTRO',
+        };
+        for (const method of methods) {
+          try {
+            const raw = await callFacade(method, data);
+            const desc = describeResp(raw);
+            results.push({ year, month, source, tipoDoc, method, ok: true, ...desc });
+            // Si encontramos filas, no probamos el siguiente método para ese tipoDoc.
+            if (desc.size > 0 || desc.detRowsLen > 0) break;
+          } catch (e) {
+            results.push({ year, month, source, tipoDoc, method, ok: false, error: e.message });
+          }
+        }
+      }
+    }
+  }
+
+  // Resumen agregado para skim rápido.
+  const aggregate = results.reduce((acc, r) => {
+    const key = `${r.year}-${String(r.month).padStart(2, '0')} ${r.source} tipo${r.tipoDoc}`;
+    const count = r.size ?? r.detRowsLen ?? 0;
+    if (!acc[key] || count > (acc[key].count || 0)) {
+      acc[key] = { method: r.method, count, ok: r.ok, error: r.error || null };
+    }
+    return acc;
+  }, {});
+
+  res.json({
+    ok: true,
+    rutEmpresa: `${rutInfo.rut}-${rutInfo.dv}`,
+    periodosProbados: periodos,
+    aggregate,
+    detail: results,
+  });
+}));
+
+/**
  * POST /api/sii/debug/rcv — llama directamente al RCV y devuelve la respuesta
  * CRUDA del SII (sin parsear). Para debugging cuando `found:0` y queremos ver
  * qué shape devuelve realmente el SII.
