@@ -35,6 +35,30 @@ router.post('/test-auth', auth, roleCheck('super_admin', 'admin_comercial', 'bac
 }));
 
 /**
+ * POST /api/sii/test-captcha — verifica que el captcha solver (2Captcha) está
+ * configurado: descubre el sitekey, pide un solve, devuelve el token.
+ * No toca el SII propiamente (esto es solo el solver).
+ */
+router.post('/test-captcha', auth, roleCheck('super_admin', 'admin_comercial', 'backoffice'), asyncHandler(async (req, res) => {
+  const { solveCaptcha, discoverSitekey } = require('../services/sii/captcha');
+  const startedAt = Date.now();
+  try {
+    const sitekey = await discoverSitekey();
+    const solved = await solveCaptcha();
+    res.json({
+      ok: true,
+      sitekeyPreview: sitekey.slice(0, 12) + '...',
+      tokenPreview: solved.tokenRecaptcha.slice(0, 24) + '...',
+      action: solved.accionRecaptcha,
+      durationMs: Date.now() - startedAt,
+    });
+  } catch (e) {
+    logger.error({ err: e.message }, '[sii.test-captcha] falló');
+    res.status(500).json({ ok: false, error: e.message, durationMs: Date.now() - startedAt });
+  }
+}));
+
+/**
  * POST /api/sii/debug/full — diagnóstico mega-completo en UNA sola llamada.
  *
  * Para cada combinación (últimos 3 meses) × (emitida | recibida) × (33,34,56,61,52):

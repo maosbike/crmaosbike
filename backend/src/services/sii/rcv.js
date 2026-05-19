@@ -44,6 +44,7 @@
 const axios = require('axios');
 const logger = require('../../config/logger');
 const { getToken, invalidateToken } = require('./auth');
+const { solveCaptcha } = require('./captcha');
 
 const RCV_BASE = 'https://www4.sii.cl/consdcvinternetui/services/data/facadeService';
 const NS_PREFIX = 'cl.sii.sdi.lob.diii.consdcv.data.api.interfaces.FacadeService';
@@ -76,16 +77,45 @@ function periodoYYYYMM(year, month) {
   return `${year}${String(month).padStart(2, '0')}`;
 }
 
+// Cache de captcha por instancia del módulo. Los tokens de recaptcha v3 valen
+// ~2 minutos en general — los reusamos en llamadas back-to-back del mismo
+// sync (la corrida tarda <2min). Si vienen tan rápido que el segundo request
+// falla por token expirado, el catch dispara una segunda solve.
+let _captchaCache = { token: null, action: null, expiresAt: 0 };
+const CAPTCHA_TTL_MS = 90_000; // 1.5 min seguro
+
+async function getCaptchaToken(action) {
+  const now = Date.now();
+  if (_captchaCache.token && _captchaCache.action === action && _captchaCache.expiresAt > now) {
+    return { tokenRecaptcha: _captchaCache.token, accionRecaptcha: action };
+  }
+  const solved = await solveCaptcha(action);
+  _captchaCache = { token: solved.tokenRecaptcha, action: solved.accionRecaptcha, expiresAt: now + CAPTCHA_TTL_MS };
+  return solved;
+}
+
+function invalidateCaptcha() {
+  _captchaCache = { token: null, action: null, expiresAt: 0 };
+}
+
 /**
- * POST a un método del facadeService con auth por cookie + conversationId.
- * Maneja 401 → invalida token y reintenta una vez.
+ * POST a un método del facadeService con auth por cookie + conversationId
+ * + tokenRecaptcha. Maneja 401 → invalida token y reintenta una vez. Si
+ * el SII responde con error de recaptcha (TokenRecaptcha vacío/inválido),
+ * fuerza una resolve nueva y reintenta.
  *
  * @param {string} method nombre del método del facadeService (ej "getDetalleCompraExport")
- * @param {object} dataBody el bloque `data` del body
+ * @param {object} dataBody el bloque `data` del body (sin captcha — lo agregamos acá)
+ * @param {string} [captchaAction] override de la acción de recaptcha
  * @returns {Promise<any>}
  */
-async function callFacade(method, dataBody, attempt = 1) {
+async function callFacade(method, dataBody, captchaAction, attempt = 1) {
   const token = await getToken();
+  // El SII espera Data.tokenRecaptcha y Data.accionRecaptcha en cada request.
+  // La acción default 'consultarRcv' es lo que se ve en el JS del SII; si en
+  // el futuro cambia, override por SII_CAPTCHA_ACTION env var.
+  const action = captchaAction || process.env.SII_CAPTCHA_ACTION || 'consultarRcv';
+  const captcha = await getCaptchaToken(action);
   const url = `${RCV_BASE}/${method}`;
   const body = {
     metaData: {
@@ -94,7 +124,11 @@ async function callFacade(method, dataBody, attempt = 1) {
       page: null,
       transactionId: '0',
     },
-    data: dataBody,
+    data: {
+      ...dataBody,
+      tokenRecaptcha: captcha.tokenRecaptcha,
+      accionRecaptcha: captcha.accionRecaptcha,
+    },
   };
   let res;
   try {
@@ -113,18 +147,28 @@ async function callFacade(method, dataBody, attempt = 1) {
   } catch (e) {
     if (attempt === 1 && (e.code === 'ECONNRESET' || e.code === 'ETIMEDOUT')) {
       logger.warn({ method, code: e.code }, '[sii.rcv] error de red, reintento único');
-      return callFacade(method, dataBody, 2);
+      return callFacade(method, dataBody, captchaAction, 2);
     }
     throw e;
   }
   if (res.status === 401 && attempt === 1) {
     logger.warn({ method }, '[sii.rcv] 401 — refrescando token y reintentando');
     invalidateToken();
-    return callFacade(method, dataBody, 2);
+    return callFacade(method, dataBody, captchaAction, 2);
   }
   if (res.status >= 400) {
     const snippet = typeof res.data === 'string' ? res.data.slice(0, 400) : JSON.stringify(res.data).slice(0, 400);
     throw new Error(`SII facadeService/${method} → HTTP ${res.status}: ${snippet}`);
+  }
+  // Si el SII devuelve 200 con error de recaptcha (token vacío / score bajo /
+  // expirado), forzamos una solve nueva y reintentamos una sola vez.
+  const respEstado = res.data?.respEstado;
+  const errArr = res.data?.metaData?.errors || [];
+  const recaptchaErr = errArr.find(e => /recaptcha|recapcha/i.test(e?.descripcion || ''));
+  if (attempt === 1 && (recaptchaErr || /recaptcha/i.test(respEstado?.codError || ''))) {
+    logger.warn({ method, recaptchaErr }, '[sii.rcv] error de recaptcha — solve nuevo y reintento');
+    invalidateCaptcha();
+    return callFacade(method, dataBody, captchaAction, 2);
   }
   return res.data;
 }
@@ -308,4 +352,5 @@ module.exports = {
   splitRut,
   getEmpresaRut,
   callFacade,
+  invalidateCaptcha,
 };
