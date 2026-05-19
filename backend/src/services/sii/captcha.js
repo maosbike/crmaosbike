@@ -30,6 +30,14 @@ let _sitekeyCache = { value: null, expiresAt: 0 };
  * Descubre el reCAPTCHA site key del SII fetcheando su SPA y parseando el HTML.
  * El site key v3 es público (va en el HTML), así que no necesita auth.
  *
+ * Estrategia agresiva (porque la SPA del SII tiene la sitekey enterrada):
+ *  1. Probamos varias URLs candidatas (root SPA + páginas internas comunes).
+ *  2. Para cada una, fetcheamos con UA realista.
+ *  3. Buscamos en el HTML patrones directos primero.
+ *  4. Si no, extraemos TODAS las URLs de scripts JS y CSS, las fetcheamos
+ *     en paralelo, y buscamos el sitekey en cada bundle.
+ *  5. Si encontramos múltiples candidatos, devolvemos el primero válido.
+ *
  * @returns {Promise<string>}
  */
 async function discoverSitekey() {
@@ -38,54 +46,86 @@ async function discoverSitekey() {
   const now = Date.now();
   if (_sitekeyCache.value && _sitekeyCache.expiresAt > now) return _sitekeyCache.value;
 
-  try {
-    const res = await axios.get(SII_PAGE_URL, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-      timeout: 15_000,
-    });
-    const html = String(res.data || '');
-    // Buscamos patrones comunes de incrustación del sitekey:
-    //   render=6Le...  (script src)
-    //   data-sitekey="6Le..."
-    //   grecaptcha.execute('6Le...', ...)
-    //   "sitekey":"6Le..."
-    const patterns = [
-      /render=([6L][^"&'\s]+)/,
-      /data-sitekey=["']([^"']+)["']/,
-      /grecaptcha\.execute\(['"]([^'"]+)['"]/,
-      /["']sitekey["']\s*:\s*["']([^"']+)["']/,
-      /siteKey\s*=\s*["']([^"']+)["']/,
-    ];
-    for (const re of patterns) {
-      const m = html.match(re);
-      if (m && m[1] && m[1].length > 20) {
-        _sitekeyCache = { value: m[1], expiresAt: now + SITEKEY_CACHE_MS };
-        logger.info({ sitekey: m[1].slice(0, 12) + '...' }, '[sii.captcha] site key descubierto del SII');
-        return m[1];
+  // El sitekey v3 de Google empieza con "6L" y tiene ~40 chars de longitud.
+  // El charset es alfanumérico + guion + guion bajo (URL-safe base64).
+  const SITEKEY_REGEX = /\b(6L[A-Za-z0-9_-]{38,44})\b/g;
+
+  // Headers de un browser real para no ser bloqueados.
+  const browserHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'es-CL,es;q=0.9,en;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+  };
+
+  const candidatePages = [
+    'https://www4.sii.cl/consdcvinternetui/',
+    'https://www4.sii.cl/consdcvinternetui/index.html',
+    'https://www4.sii.cl/consdcvinternetui/#/',
+  ];
+
+  const tried = [];
+
+  for (const pageUrl of candidatePages) {
+    try {
+      const res = await axios.get(pageUrl, {
+        headers: browserHeaders,
+        timeout: 20_000,
+        maxRedirects: 5,
+        validateStatus: () => true,
+      });
+      const html = String(res.data || '');
+      tried.push({ pageUrl, status: res.status, htmlLen: html.length });
+
+      // Búsqueda directa en el HTML.
+      const directMatches = html.match(SITEKEY_REGEX);
+      if (directMatches && directMatches.length > 0) {
+        const found = directMatches[0];
+        _sitekeyCache = { value: found, expiresAt: now + SITEKEY_CACHE_MS };
+        logger.info({ sitekey: found.slice(0, 12) + '...', from: pageUrl, source: 'html-direct' }, '[sii.captcha] site key descubierto');
+        return found;
       }
-    }
-    // Si el HTML es la SPA mínima, el sitekey vive en el JS bundle. Buscamos
-    // el primer .js linkeado y lo recorremos también.
-    const jsFile = html.match(/src=["']([^"']+\.js[^"']*)["']/);
-    if (jsFile) {
-      const jsUrl = jsFile[1].startsWith('http')
-        ? jsFile[1]
-        : `${new URL(SII_PAGE_URL).origin}${jsFile[1].startsWith('/') ? '' : '/'}${jsFile[1]}`;
-      const jsRes = await axios.get(jsUrl, { timeout: 15_000 });
-      for (const re of patterns) {
-        const m = String(jsRes.data || '').match(re);
-        if (m && m[1] && m[1].length > 20) {
-          _sitekeyCache = { value: m[1], expiresAt: now + SITEKEY_CACHE_MS };
-          logger.info({ sitekey: m[1].slice(0, 12) + '...', from: jsUrl }, '[sii.captcha] site key descubierto en el JS bundle');
-          return m[1];
+
+      // Extraer TODOS los URLs de assets (JS y CSS) del HTML.
+      const assetUrls = new Set();
+      const scriptMatches = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/g)];
+      const linkMatches = [...html.matchAll(/<link[^>]+href=["']([^"']+\.css[^"']*)["']/g)];
+      for (const m of [...scriptMatches, ...linkMatches]) {
+        const rawUrl = m[1];
+        const absUrl = rawUrl.startsWith('http')
+          ? rawUrl
+          : new URL(rawUrl, pageUrl).toString();
+        assetUrls.add(absUrl);
+      }
+
+      // Fetcheo paralelo de los assets (con límite razonable).
+      const assets = [...assetUrls].slice(0, 30);
+      logger.info({ pageUrl, assetCount: assets.length }, '[sii.captcha] buscando sitekey en assets del SII');
+      const responses = await Promise.allSettled(assets.map(u =>
+        axios.get(u, { headers: browserHeaders, timeout: 15_000, validateStatus: () => true, transformResponse: x => x })
+      ));
+
+      for (let i = 0; i < responses.length; i++) {
+        const r = responses[i];
+        if (r.status !== 'fulfilled') continue;
+        const content = String(r.value.data || '');
+        const matches = content.match(SITEKEY_REGEX);
+        if (matches && matches.length > 0) {
+          // Filtrar: el sitekey de Google empieza con 6L y específicamente
+          // las primeras letras suelen ser 6Lc, 6Le, 6Ld, 6Lf.
+          const valid = matches.find(k => /^6L[cdef]/.test(k)) || matches[0];
+          _sitekeyCache = { value: valid, expiresAt: now + SITEKEY_CACHE_MS };
+          logger.info({ sitekey: valid.slice(0, 12) + '...', from: assets[i], source: 'asset-scan' }, '[sii.captcha] site key descubierto en asset');
+          return valid;
         }
       }
+    } catch (e) {
+      tried.push({ pageUrl, error: e.message });
     }
-    throw new Error('No pude extraer el sitekey del HTML/JS del SII. Setear SII_CAPTCHA_SITEKEY manualmente.');
-  } catch (e) {
-    if (e.message.includes('sitekey')) throw e;
-    throw new Error(`Falló descubrir sitekey: ${e.message}`);
   }
+
+  throw new Error(`No pude extraer el sitekey del SII tras escanear ${candidatePages.length} páginas y sus assets. Setear SII_CAPTCHA_SITEKEY manualmente. Diagnóstico: ${JSON.stringify(tried)}`);
 }
 
 /**
